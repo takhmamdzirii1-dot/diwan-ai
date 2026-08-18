@@ -38,7 +38,7 @@ const categoryData = {
 };
 
 // Switch Category in Hero Ledger Device
-function switchLedgerCategory(cat) {
+window.switchLedgerCategory = function(cat) {
   activeCategory = cat;
   
   // Update Tabs
@@ -65,7 +65,7 @@ function switchLedgerCategory(cat) {
 }
 
 // Execute Simulated Credit Ledger Deduction
-function executeSimulatedOperation() {
+window.executeSimulatedOperation = function() {
   const data = categoryData[activeCategory];
   if (!data) return;
 
@@ -111,11 +111,18 @@ function updateBalanceDisplay() {
   const balanceEl = document.getElementById('live-balance');
   if (balanceEl) {
     balanceEl.textContent = currentBalance.toLocaleString('en-US');
+    balanceEl.style.transform = 'scale(1.2)';
+    balanceEl.style.color = 'var(--gold-400)';
+    balanceEl.style.transition = 'transform 0.3s ease, color 0.3s ease';
+    setTimeout(() => {
+      balanceEl.style.transform = 'scale(1)';
+      balanceEl.style.color = 'var(--text-primary)';
+    }, 300);
   }
 }
 
 // Table Filter
-function filterTable(category) {
+window.filterTable = function(category) {
   document.querySelectorAll('.filter-tab').forEach(tab => {
     if (tab.dataset.filter === category) {
       tab.classList.add('active');
@@ -126,16 +133,26 @@ function filterTable(category) {
 
   const rows = document.querySelectorAll('#cost-table-body tr');
   rows.forEach(row => {
-    if (category === 'all' || row.dataset.category === category) {
-      row.style.display = '';
-    } else {
-      row.style.display = 'none';
-    }
+    row.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+    row.style.opacity = '0';
+    row.style.transform = 'translateY(10px)';
+    
+    setTimeout(() => {
+      if (category === 'all' || row.dataset.category === category) {
+        row.style.display = '';
+        setTimeout(() => {
+          row.style.opacity = '1';
+          row.style.transform = 'translateY(0)';
+        }, 50);
+      } else {
+        row.style.display = 'none';
+      }
+    }, 300);
   });
 }
 
 // FAQ Accordion Toggle
-function toggleFaq(btn) {
+window.toggleFaq = function(btn) {
   const item = btn.closest('.faq-item');
   const isOpen = item.classList.contains('open');
 
@@ -159,7 +176,7 @@ const planDetails = {
 
 let selectedPlanKey = 'pro';
 
-function openTopupModal(planKey = 'pro') {
+window.openTopupModal = function(planKey = 'pro') {
   selectedPlanKey = planKey;
   const plan = planDetails[planKey] || planDetails.pro;
 
@@ -171,17 +188,17 @@ function openTopupModal(planKey = 'pro') {
   modal.classList.add('active');
 }
 
-function closeTopupModal() {
+window.closeTopupModal = function() {
   const modal = document.getElementById('topup-modal');
   modal.classList.remove('active');
 }
 
-function selectPaymentOption(cardEl, method) {
+window.selectPaymentOption = function(cardEl, method) {
   document.querySelectorAll('.payment-option-card').forEach(el => el.classList.remove('selected'));
   cardEl.classList.add('selected');
 }
 
-function confirmSimulatedTopup() {
+window.confirmSimulatedTopup = function() {
   const plan = planDetails[selectedPlanKey] || planDetails.pro;
   let addedPoints = 7500;
   if (selectedPlanKey === 'starter') addedPoints = 2500;
@@ -221,15 +238,35 @@ function showToast(message) {
   }, 3500);
 }
 
-// Scroll Behavior for Header
+// Scroll Behavior for Header and Scroll Spy
 window.addEventListener('scroll', () => {
   const header = document.getElementById('main-header');
-  if (!header) return;
-  if (window.scrollY > 40) {
-    header.classList.add('scrolled');
-  } else {
-    header.classList.remove('scrolled');
+  if (header) {
+    if (window.scrollY > 40) {
+      header.classList.add('scrolled');
+    } else {
+      header.classList.remove('scrolled');
+    }
   }
+
+  // Scroll Spy for active navigation highlighting
+  const sections = document.querySelectorAll('section[id]');
+  const scrollY = window.scrollY;
+
+  sections.forEach(current => {
+    const sectionHeight = current.offsetHeight;
+    const sectionTop = current.offsetTop - 150;
+    const sectionId = current.getAttribute('id');
+
+    if (scrollY > sectionTop && scrollY <= sectionTop + sectionHeight) {
+      document.querySelectorAll('.nav-links a, .mobile-nav-links a').forEach(a => {
+        a.classList.remove('active');
+        if (a.getAttribute('href') === '#' + sectionId) {
+          a.classList.add('active');
+        }
+      });
+    }
+  });
 });
 
 // Close modal on backdrop click
@@ -240,12 +277,12 @@ document.getElementById('topup-modal')?.addEventListener('click', (e) => {
 });
 
 // Mobile navigation toggle
-function openMobileMenu() {
+window.openMobileMenu = function() {
   document.getElementById('mobile-menu-overlay').classList.add('active');
   document.getElementById('mobile-sheet').classList.add('active');
 }
 
-function closeMobileMenu() {
+window.closeMobileMenu = function() {
   document.getElementById('mobile-menu-overlay').classList.remove('active');
   document.getElementById('mobile-sheet').classList.remove('active');
 }
@@ -270,6 +307,15 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.querySelectorAll('.reveal-on-scroll').forEach(el => {
+    // Add staggered delay to inner cards if it's a grid section
+    const cards = el.querySelectorAll('.feature-card, .step-card, .ticket-card, .ledger-table-wrapper');
+    cards.forEach((card, index) => {
+      card.style.transitionDelay = `${(index % 4) * 0.15 + 0.2}s`;
+      card.classList.add('reveal-on-scroll');
+      revealObserver.observe(card);
+    });
+    
+    // Also observe the section itself
     revealObserver.observe(el);
   });
 

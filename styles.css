@@ -450,6 +450,14 @@ button {
   margin-bottom: auto;
 }
 
+section {
+  scroll-margin-top: 100px;
+}
+
+.mobile-nav-links a.active {
+  color: var(--petrol-400);
+}
+
 .mobile-nav-links a {
   display: block;
   font-size: 18px;

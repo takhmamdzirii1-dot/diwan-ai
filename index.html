@@ -26,27 +26,27 @@
     <div class="animated-bg"></div>
 
     <!-- Mobile Menu Overlay & Sheet -->
-    <div class="mobile-menu-overlay" id="mobile-menu-overlay" onclick="closeMobileMenu()"></div>
+    <div class="mobile-menu-overlay" id="mobile-menu-overlay" onclick="window.closeMobileMenu()"></div>
     <div class="mobile-sheet" id="mobile-sheet">
       <div class="mobile-sheet-header">
         <div class="brand-logo">
           <div class="logo-badge"><span>د</span></div>
           <span class="brand-name">دِيـــوَان</span>
         </div>
-        <button class="mobile-close-btn" onclick="closeMobileMenu()" aria-label="إغلاق القائمة">✕</button>
+        <button class="mobile-close-btn" onclick="window.closeMobileMenu()" aria-label="إغلاق القائمة">✕</button>
       </div>
       <ul class="mobile-nav-links">
-        <li><a href="#hero" onclick="closeMobileMenu()">الرئيسية</a></li>
-        <li><a href="#models" onclick="closeMobileMenu()">النماذج</a></li>
-        <li><a href="#features" onclick="closeMobileMenu()">الميزات</a></li>
-        <li><a href="#how-it-works" onclick="closeMobileMenu()">كيف يعمل</a></li>
-        <li><a href="#pricing" onclick="closeMobileMenu()">الأسعار</a></li>
-        <li><a href="#cost-table" onclick="closeMobileMenu()">جدول النقاط</a></li>
-        <li><a href="#faq" onclick="closeMobileMenu()">الأسئلة</a></li>
+        <li><a href="#hero" onclick="window.closeMobileMenu()">الرئيسية</a></li>
+        <li><a href="#models" onclick="window.closeMobileMenu()">النماذج</a></li>
+        <li><a href="#features" onclick="window.closeMobileMenu()">الميزات</a></li>
+        <li><a href="#how-it-works" onclick="window.closeMobileMenu()">كيف يعمل</a></li>
+        <li><a href="#pricing" onclick="window.closeMobileMenu()">الأسعار</a></li>
+        <li><a href="#cost-table" onclick="window.closeMobileMenu()">جدول النقاط</a></li>
+        <li><a href="#faq" onclick="window.closeMobileMenu()">الأسئلة</a></li>
       </ul>
       <div class="mobile-sheet-actions">
-        <button class="btn-ghost" onclick="closeMobileMenu(); openTopupModal('free')">دخول</button>
-        <button class="btn-primary" onclick="closeMobileMenu(); openTopupModal('pro')">
+        <button class="btn-ghost" onclick="window.closeMobileMenu(); window.openTopupModal('free')">دخول</button>
+        <button class="btn-primary" onclick="window.closeMobileMenu(); window.openTopupModal('pro')">
           <i class="fa-solid fa-wallet"></i>
           <span>شحن الرصيد</span>
         </button>
@@ -89,7 +89,7 @@
             <i class="fa-solid fa-wallet"></i>
             <span>شحن الرصيد</span>
           </button>
-          <button class="menu-toggle" id="menu-toggle-btn" aria-label="فتح القائمة" onclick="openMobileMenu()">
+          <button class="menu-toggle" id="menu-toggle-btn" aria-label="فتح القائمة" onclick="window.openMobileMenu()">
             <i class="fa-solid fa-bars"></i>
           </button>
         </div>
@@ -935,6 +935,6 @@
     </div>
 
     <!-- Main Logic Script -->
-    <script src="main.js"></script>
+    <script type="module" src="main.js"></script>
   </body>
 </html>
