@@ -1,245 +1,141 @@
 /**
- * DIWAN (ديوان) - ALGERIAN AI PLATFORM
- * Interactive Client-Side Engine
+ * DIWAN (ديوان) - Unified Main JavaScript
  */
 
-// State Management for Interactive Credit Ledger
-let currentBalance = 10000;
-let activeCategory = 'chat';
+document.addEventListener('DOMContentLoaded', () => {
+  // 1. Mobile Menu Drawer
+  const burger = document.getElementById('burger');
+  const overlay = document.getElementById('overlay');
+  const sheet = document.getElementById('mobileSheet');
 
-const categoryData = {
-  chat: {
-    name: 'Claude 3.5 Sonnet',
-    category: 'محادثة فائقة الذكاء وتحليل المستندات',
-    icon: 'fa-brain',
-    cost: 25,
-    prompt: '"اكتب لي خطة تسويقية لمشروع متجر إلكتروني في الجزائر بالدارجة مع ميزانية الإعلانات."',
-    btnText: 'جرّب استدعاء نموذج المحادثة (-25 نقطة)',
-    opName: 'استدعاء Claude 3.5 (محادثة)'
-  },
-  image: {
-    name: 'Flux.1 Pro (Black Forest Labs)',
-    category: 'توليد صور فوتوغرافية وإعلانية واقعية',
-    icon: 'fa-image',
-    cost: 65,
-    prompt: '"صورة فوتوغرافية احترافية لقصبة الجزائر وقت الغروب، إضاءة سينمائية دقيقة بدقة 4K."',
-    btnText: 'جرّب توليد صورة سينمائية (-65 نقطة)',
-    opName: 'توليد صورة Flux.1 Pro'
-  },
-  video: {
-    name: 'Kling AI 1.5 HD (1080p)',
-    category: 'توليد مقاطع فيديو واقعية وحركة سينمائية',
-    icon: 'fa-video',
-    cost: 450,
-    prompt: '"مشهد درون سينمائي يحلق فوق شواطئ جيجل الخلابة مع حركة أمواج واقعية."',
-    btnText: 'جرّب إنتاج فيديو 5 ثوانٍ (-450 نقطة)',
-    opName: 'إنتاج فيديو Kling AI (5s)'
+  function closeMenu() {
+    if (overlay) overlay.classList.remove('open');
+    if (sheet) sheet.classList.remove('open');
+    document.body.style.overflow = '';
   }
-};
 
-// Switch Category in Hero Ledger Device
-function switchLedgerCategory(cat) {
-  activeCategory = cat;
-  
-  // Update Tabs
-  document.querySelectorAll('.ledger-tab').forEach(tab => {
-    if (tab.dataset.cat === cat) {
-      tab.classList.add('active');
-    } else {
-      tab.classList.remove('active');
+  function openMenu() {
+    if (overlay) overlay.classList.add('open');
+    if (sheet) sheet.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  if (burger && sheet && overlay) {
+    burger.addEventListener('click', () => {
+      if (sheet.classList.contains('open')) {
+        closeMenu();
+      } else {
+        openMenu();
+      }
+    });
+
+    overlay.addEventListener('click', closeMenu);
+
+    sheet.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', closeMenu);
+    });
+
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 720) {
+        closeMenu();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeMenu();
+      }
+    });
+  }
+
+  // 2. FAQ Accordion
+  const faqItems = document.querySelectorAll('.faq-item');
+  faqItems.forEach(item => {
+    const question = item.querySelector('.faq-q');
+    if (question) {
+      question.addEventListener('click', () => {
+        const isOpen = item.classList.contains('open');
+        faqItems.forEach(i => i.classList.remove('open'));
+        if (!isOpen) {
+          item.classList.add('open');
+        }
+      });
     }
   });
 
-  const data = categoryData[cat];
-  if (!data) return;
+  // 3. Scroll Reveal Animation (.anim)
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('in');
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
 
-  // Update UI Elements
-  document.getElementById('model-name-display').textContent = data.name;
-  document.getElementById('model-category-display').textContent = data.category;
-  document.getElementById('operation-cost').textContent = data.cost;
-  document.getElementById('prompt-preview-text').textContent = data.prompt;
-  document.getElementById('btn-action-text').textContent = data.btnText;
-  
-  const avatar = document.getElementById('model-avatar');
-  avatar.innerHTML = `<i class="fa-solid ${data.icon}"></i>`;
-}
+  document.querySelectorAll('.anim').forEach(el => io.observe(el));
 
-// Execute Simulated Credit Ledger Deduction
-function executeSimulatedOperation() {
-  const data = categoryData[activeCategory];
-  if (!data) return;
-
-  if (currentBalance < data.cost) {
-    showToast('عفواً، رصيد النقاط غير كافٍ! يرجى شحن الرصيد بالدينار.');
-    return;
-  }
-
-  // Deduct
-  currentBalance -= data.cost;
-  updateBalanceDisplay();
-
-  // Add Log Entry
-  const logContainer = document.getElementById('ledger-log-container');
-  const logItem = document.createElement('div');
-  logItem.className = 'log-entry';
-  
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-  logItem.innerHTML = `
-    <span class="log-op">[${timeStr}] ${data.opName}</span>
-    <span class="mono-num log-deduct">-${data.cost} نقطة</span>
-  `;
-
-  logContainer.insertBefore(logItem, logContainer.firstChild);
-
-  // Button micro-interaction feedback
-  const btn = document.getElementById('execute-sim-btn');
-  const originalText = btn.innerHTML;
-  btn.innerHTML = `<i class="fa-solid fa-check"></i> <span>تم استهلاك ${data.cost} نقطة بنجاح!</span>`;
-  btn.style.background = 'var(--petrol-500)';
-
+  // Trigger hero elements immediately
   setTimeout(() => {
-    btn.innerHTML = originalText;
-    btn.style.background = '';
-  }, 1400);
+    document.querySelectorAll('.hero-stage .anim').forEach(el => el.classList.add('in'));
+  }, 60);
 
-  showToast(`تمت المعاملة: خُصمت ${data.cost} نقطة من ديوانك`);
-}
-
-function updateBalanceDisplay() {
-  const balanceEl = document.getElementById('live-balance');
-  if (balanceEl) {
-    balanceEl.textContent = currentBalance.toLocaleString('en-US');
+  // 4. Count-up Stats Animation
+  function easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
   }
-}
 
-// Table Filter
-function filterTable(category) {
-  document.querySelectorAll('.filter-tab').forEach(tab => {
-    if (tab.dataset.filter === category) {
-      tab.classList.add('active');
-    } else {
-      tab.classList.remove('active');
+  function countUp(el, target, suffix, decimals, duration) {
+    const start = performance.now();
+    function tick(now) {
+      const p = Math.min(1, (now - start) / duration);
+      const val = target * easeOutCubic(p);
+      el.textContent = (decimals > 0 ? val.toFixed(decimals) : Math.round(val)) + suffix;
+      if (p < 1) {
+        requestAnimationFrame(tick);
+      } else {
+        el.textContent = (decimals > 0 ? target.toFixed(decimals) : target) + suffix;
+      }
     }
-  });
-
-  const rows = document.querySelectorAll('#cost-table-body tr');
-  rows.forEach(row => {
-    if (category === 'all' || row.dataset.category === category) {
-      row.style.display = '';
-    } else {
-      row.style.display = 'none';
-    }
-  });
-}
-
-// FAQ Accordion Toggle
-function toggleFaq(btn) {
-  const item = btn.closest('.faq-item');
-  const isOpen = item.classList.contains('open');
-
-  // Optional: Close others
-  document.querySelectorAll('.faq-item').forEach(el => {
-    el.classList.remove('open');
-  });
-
-  if (!isOpen) {
-    item.classList.add('open');
+    requestAnimationFrame(tick);
   }
-}
 
-// Modal Plan Data
-const planDetails = {
-  free: { name: 'تسجيل حساب جديد مجاني', price: '0 دج', points: '+150 نقطة تجريبية' },
-  starter: { name: 'باقة الانطلاق • مبتدئ', price: '1,800 دج', points: '+2,500 نقطة' },
-  pro: { name: 'باقة المبدعين • Pro', price: '4,500 دج', points: '+7,500 نقطة' },
-  enterprise: { name: 'باقة الاستوديو • Enterprise', price: '12,000 دج', points: '+22,000 نقطة' }
-};
+  const statObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const el = entry.target;
+        const target = parseFloat(el.dataset.count);
+        const suffix = el.dataset.suffix || '';
+        const decimals = target % 1 !== 0 ? 1 : 0;
+        setTimeout(() => countUp(el, target, suffix, decimals, 1400), 200);
+        statObserver.unobserve(el);
+      }
+    });
+  }, { threshold: 0.3 });
 
-let selectedPlanKey = 'pro';
+  document.querySelectorAll('.stat .val').forEach(el => statObserver.observe(el));
 
-function openTopupModal(planKey = 'pro') {
-  selectedPlanKey = planKey;
-  const plan = planDetails[planKey] || planDetails.pro;
+  // 5. Active Nav Pill Anchor Highlighting
+  const sections = document.querySelectorAll('section[id], #top');
+  const navLinks = document.querySelectorAll('.nav-pill a');
 
-  document.getElementById('modal-plan-name').textContent = plan.name;
-  document.getElementById('modal-plan-price').textContent = plan.price;
-  document.getElementById('modal-plan-points').textContent = plan.points;
+  window.addEventListener('scroll', () => {
+    let current = 'top';
+    const scrollPosition = window.pageYOffset + 200;
 
-  const modal = document.getElementById('topup-modal');
-  modal.classList.add('active');
-}
+    sections.forEach(section => {
+      const sectionTop = section.offsetTop;
+      const sectionHeight = section.offsetHeight;
+      if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
+        current = section.getAttribute('id') || 'top';
+      }
+    });
 
-function closeTopupModal() {
-  const modal = document.getElementById('topup-modal');
-  modal.classList.remove('active');
-}
-
-function selectPaymentOption(cardEl, method) {
-  document.querySelectorAll('.payment-option-card').forEach(el => el.classList.remove('selected'));
-  cardEl.classList.add('selected');
-}
-
-function confirmSimulatedTopup() {
-  const plan = planDetails[selectedPlanKey] || planDetails.pro;
-  let addedPoints = 7500;
-  if (selectedPlanKey === 'starter') addedPoints = 2500;
-  if (selectedPlanKey === 'enterprise') addedPoints = 22000;
-  if (selectedPlanKey === 'free') addedPoints = 150;
-
-  currentBalance += addedPoints;
-  updateBalanceDisplay();
-
-  // Add Log Entry
-  const logContainer = document.getElementById('ledger-log-container');
-  const logItem = document.createElement('div');
-  logItem.className = 'log-entry';
-  logItem.innerHTML = `
-    <span class="log-op">[شحن رصيد بالدينار] ${plan.name}</span>
-    <span class="mono-num" style="color: var(--petrol-300); font-weight: 700;">+${addedPoints.toLocaleString()} نقطة</span>
-  `;
-  logContainer.insertBefore(logItem, logContainer.firstChild);
-
-  closeTopupModal();
-  showToast(`مبروك! تم شحن ${addedPoints.toLocaleString()} نقطة ديوان بنجاح عبر البطاقة.`);
-}
-
-// Toast Notification
-let toastTimeout;
-function showToast(message) {
-  const toast = document.getElementById('app-toast');
-  const toastMsg = document.getElementById('toast-message');
-  if (!toast || !toastMsg) return;
-
-  toastMsg.textContent = message;
-  toast.classList.add('show');
-
-  clearTimeout(toastTimeout);
-  toastTimeout = setTimeout(() => {
-    toast.classList.remove('show');
-  }, 3500);
-}
-
-// Scroll Behavior for Header
-window.addEventListener('scroll', () => {
-  const header = document.getElementById('main-header');
-  if (!header) return;
-  if (window.scrollY > 40) {
-    header.classList.add('scrolled');
-  } else {
-    header.classList.remove('scrolled');
-  }
-});
-
-// Close modal on backdrop click
-document.getElementById('topup-modal')?.addEventListener('click', (e) => {
-  if (e.target.id === 'topup-modal') {
-    closeTopupModal();
-  }
-});
-
-// Mobile navigation toggle
-document.getElementById('menu-toggle-btn')?.addEventListener('click', () => {
-  showToast('قائمة الهاتف: استخدم أقسام الصفحة المباشرة أدناه');
+    navLinks.forEach(link => {
+      link.classList.remove('active');
+      const href = link.getAttribute('href');
+      if (href === `#${current}` || (current === 'top' && href === '#top')) {
+        link.classList.add('active');
+      }
+    });
+  }, { passive: true });
 });
