@@ -205,28 +205,37 @@ button {
    ========================================================================== */
 
 .header {
-  position: sticky;
-  top: 0;
-  width: 100%;
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 1200px;
   z-index: 100;
-  background: rgba(8, 13, 19, 0.72);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-bottom: 1px solid transparent;
-  transition: all 0.3s ease;
+  background: rgba(8, 13, 19, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-full);
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .header.scrolled {
-  background: rgba(14, 21, 32, 0.94);
-  border-bottom: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-sm);
+  top: 8px;
+  background: rgba(14, 21, 32, 0.85);
+  border-color: var(--border-medium);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  width: calc(100% - 16px);
 }
 
 .header-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 76px;
+  height: 70px;
+  padding: 0 24px;
 }
 
 .brand-logo {
@@ -368,6 +377,181 @@ button {
   align-items: center;
   justify-content: center;
   font-size: 18px;
+}
+
+/* ==========================================================================
+   MOBILE MENU (BLURRED OVERLAY + SLIDING SHEET)
+   ========================================================================== */
+
+.mobile-menu-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 7, 11, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.mobile-menu-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mobile-sheet {
+  position: fixed;
+  top: 0;
+  right: -100%;
+  bottom: 0;
+  width: 300px;
+  max-width: 85vw;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-medium);
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  transition: right 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mobile-menu-overlay.active + .mobile-sheet,
+.mobile-sheet.active {
+  right: 0;
+}
+
+.mobile-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+}
+
+.mobile-close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.mobile-nav-links {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: auto;
+}
+
+.mobile-nav-links a {
+  display: block;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.mobile-sheet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+/* ==========================================================================
+   ANIMATIONS & SCROLL REVEAL
+   ========================================================================== */
+
+/* Animated Gradient Background */
+.animated-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: 
+    radial-gradient(circle at 15% 50%, rgba(20, 184, 166, 0.08), transparent 40%),
+    radial-gradient(circle at 85% 30%, rgba(245, 158, 11, 0.05), transparent 40%);
+  background-size: 200% 200%;
+  animation: gradientShift 15s ease infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+
+/* Scroll Reveal Classes */
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translateY(40px);
+  filter: blur(5px);
+  transition: all 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal-on-scroll.is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+
+/* Stagger Delays for Hero and Children */
+.stagger-1 { transition-delay: 0.1s; }
+.stagger-2 { transition-delay: 0.2s; }
+.stagger-3 { transition-delay: 0.3s; }
+.stagger-4 { transition-delay: 0.4s; }
+
+/* Pricing Cards Enhanced Hover */
+.ticket-card {
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.4s ease, border-color 0.4s ease;
+}
+
+.ticket-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7), 0 0 20px var(--petrol-glow);
+}
+
+.ticket-card.popular {
+  animation: popularPulse 3s infinite alternate;
+}
+
+.ticket-card.popular:hover {
+  animation: none;
+  transform: scale(1.03) translateY(-8px);
+  box-shadow: 0 24px 60px -10px rgba(245, 158, 11, 0.25), 0 0 30px var(--gold-glow);
+}
+
+@keyframes popularPulse {
+  0% { box-shadow: var(--shadow-ticket-gold); }
+  100% { box-shadow: 0 24px 60px -10px rgba(245, 158, 11, 0.3), 0 0 0 1px var(--border-gold), 0 0 15px rgba(245, 158, 11, 0.1); }
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal-on-scroll {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+  .animated-bg {
+    animation: none !important;
+  }
+  .ticket-card.popular {
+    animation: none !important;
+  }
 }
 
 /* ==========================================================================

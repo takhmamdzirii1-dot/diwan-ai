@@ -23,6 +23,35 @@
   <body>
     <!-- Subtle Decorative Geometric Background -->
     <div class="zellige-bg"></div>
+    <div class="animated-bg"></div>
+
+    <!-- Mobile Menu Overlay & Sheet -->
+    <div class="mobile-menu-overlay" id="mobile-menu-overlay" onclick="closeMobileMenu()"></div>
+    <div class="mobile-sheet" id="mobile-sheet">
+      <div class="mobile-sheet-header">
+        <div class="brand-logo">
+          <div class="logo-badge"><span>د</span></div>
+          <span class="brand-name">دِيـــوَان</span>
+        </div>
+        <button class="mobile-close-btn" onclick="closeMobileMenu()" aria-label="إغلاق القائمة">✕</button>
+      </div>
+      <ul class="mobile-nav-links">
+        <li><a href="#hero" onclick="closeMobileMenu()">الرئيسية</a></li>
+        <li><a href="#models" onclick="closeMobileMenu()">النماذج</a></li>
+        <li><a href="#features" onclick="closeMobileMenu()">الميزات</a></li>
+        <li><a href="#how-it-works" onclick="closeMobileMenu()">كيف يعمل</a></li>
+        <li><a href="#pricing" onclick="closeMobileMenu()">الأسعار</a></li>
+        <li><a href="#cost-table" onclick="closeMobileMenu()">جدول النقاط</a></li>
+        <li><a href="#faq" onclick="closeMobileMenu()">الأسئلة</a></li>
+      </ul>
+      <div class="mobile-sheet-actions">
+        <button class="btn-ghost" onclick="closeMobileMenu(); openTopupModal('free')">دخول</button>
+        <button class="btn-primary" onclick="closeMobileMenu(); openTopupModal('pro')">
+          <i class="fa-solid fa-wallet"></i>
+          <span>شحن الرصيد</span>
+        </button>
+      </div>
+    </div>
 
     <!-- ==========================================================================
        1. STICKY HEADER
@@ -60,7 +89,7 @@
             <i class="fa-solid fa-wallet"></i>
             <span>شحن الرصيد</span>
           </button>
-          <button class="menu-toggle" id="menu-toggle-btn" aria-label="فتح القائمة">
+          <button class="menu-toggle" id="menu-toggle-btn" aria-label="فتح القائمة" onclick="openMobileMenu()">
             <i class="fa-solid fa-bars"></i>
           </button>
         </div>
@@ -74,22 +103,22 @@
       <div class="container hero-grid">
         <!-- Hero Text Content -->
         <div class="hero-content">
-          <div class="hero-badge">
+          <div class="hero-badge reveal-on-scroll">
             <span class="hero-badge-dot"></span>
             <span class="hero-badge-text">أول منصة ذكاء اصطناعي موحدة في الجزائر</span>
             <span class="hero-badge-currency">DZD / دج</span>
           </div>
 
-          <h1 class="hero-title">
+          <h1 class="hero-title reveal-on-scroll stagger-1">
             بوابة واحدة لكل نماذج الذكاء الاصطناعي،
             <span class="hero-title-gradient">وادفع بالدينار الجزائري.</span>
           </h1>
 
-          <p class="hero-subtitle">
+          <p class="hero-subtitle reveal-on-scroll stagger-2">
             لا داعي للبطاقات الدولية أو تعدد الاشتراكات. ديوان يجمع لك أقوى نماذج المحادثة، وتوليد الصور والفيديو في اشتراك ورصيد نقاط موحد عبر البطاقة الذهبية و CIB.
           </p>
 
-          <div class="hero-cta-group">
+          <div class="hero-cta-group reveal-on-scroll stagger-3">
             <a href="#pricing" class="btn-primary btn-gold" style="padding: 14px 32px; font-size: 16px;">
               <i class="fa-solid fa-bolt"></i>
               <span>ابدأ الآن واشحن رصيدك</span>
@@ -100,7 +129,7 @@
             </a>
           </div>
 
-          <div class="hero-guarantee">
+          <div class="hero-guarantee reveal-on-scroll stagger-4">
             <div class="guarantee-item">
               <i class="fa-solid fa-circle-check"></i>
               <span>دفع آمن بالذهبية & CIB</span>
@@ -117,7 +146,7 @@
         </div>
 
         <!-- Hero Interactive Credit Ledger Simulation Device -->
-        <div class="ledger-device" id="interactive-ledger">
+        <div class="ledger-device reveal-on-scroll stagger-2" id="interactive-ledger">
           <div class="ledger-header">
             <div class="ledger-status">
               <span class="ledger-indicator"></span>
@@ -194,7 +223,7 @@
     <!-- ==========================================================================
        3. TRUST STRIP (MODEL TECHNOLOGIES - PLAIN TEXT)
        ========================================================================== -->
-    <section class="trust-strip" id="models">
+    <section class="trust-strip reveal-on-scroll" id="models">
       <div class="container">
         <div class="trust-label">أفضل محركات ونماذج الذكاء الاصطناعي العالمية المدمجة في ديوان</div>
         <div class="models-ticker">
@@ -215,7 +244,7 @@
     <!-- ==========================================================================
        4. FEATURES SECTION (4 CARDS)
        ========================================================================== -->
-    <section class="features-section" id="features">
+    <section class="features-section reveal-on-scroll" id="features">
       <div class="container">
         <div class="section-intro">
           <span class="section-tag">
@@ -299,7 +328,7 @@
     <!-- ==========================================================================
        5. HOW IT WORKS (3 NUMBERED STEPS)
        ========================================================================== -->
-    <section class="how-section" id="how-it-works">
+    <section class="how-section reveal-on-scroll" id="how-it-works">
       <div class="container">
         <div class="section-intro">
           <span class="section-tag gold">
@@ -346,7 +375,7 @@
     <!-- ==========================================================================
        6. PRICING SECTION (TICKET / BANKNOTE DESIGN)
        ========================================================================== -->
-    <section class="pricing-section" id="pricing">
+    <section class="pricing-section reveal-on-scroll" id="pricing">
       <div class="container">
         <div class="section-intro">
           <span class="section-tag">
@@ -510,7 +539,7 @@
     <!-- ==========================================================================
        7. TRANSPARENT CREDIT COST LEDGER TABLE
        ========================================================================== -->
-    <section class="ledger-table-section" id="cost-table">
+    <section class="ledger-table-section reveal-on-scroll" id="cost-table">
       <div class="container">
         <div class="section-intro">
           <span class="section-tag">
@@ -646,7 +675,7 @@
     <!-- ==========================================================================
        8. FAQ SECTION (COLLAPSIBLE ACCORDION)
        ========================================================================== -->
-    <section class="faq-section" id="faq">
+    <section class="faq-section reveal-on-scroll" id="faq">
       <div class="container">
         <div class="section-intro">
           <span class="section-tag gold">

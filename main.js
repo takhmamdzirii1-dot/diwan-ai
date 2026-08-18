@@ -240,6 +240,81 @@ document.getElementById('topup-modal')?.addEventListener('click', (e) => {
 });
 
 // Mobile navigation toggle
-document.getElementById('menu-toggle-btn')?.addEventListener('click', () => {
-  showToast('قائمة الهاتف: استخدم أقسام الصفحة المباشرة أدناه');
+function openMobileMenu() {
+  document.getElementById('mobile-menu-overlay').classList.add('active');
+  document.getElementById('mobile-sheet').classList.add('active');
+}
+
+function closeMobileMenu() {
+  document.getElementById('mobile-menu-overlay').classList.remove('active');
+  document.getElementById('mobile-sheet').classList.remove('active');
+}
+
+// Intersection Observer for Scroll Reveal
+document.addEventListener('DOMContentLoaded', () => {
+  // Respect prefers-reduced-motion
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReducedMotion) return;
+
+  const revealObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('is-revealed');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, {
+    root: null,
+    threshold: 0.1,
+    rootMargin: '0px 0px -50px 0px'
+  });
+
+  document.querySelectorAll('.reveal-on-scroll').forEach(el => {
+    revealObserver.observe(el);
+  });
+
+  // Number Counter Animation for pricing and points
+  const counterElements = document.querySelectorAll('.ticket-price, .ticket-points-badge .mono-num');
+  
+  const counterObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        startCounterAnimation(entry.target);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, {
+    threshold: 0.1
+  });
+
+  counterElements.forEach(el => counterObserver.observe(el));
 });
+
+function startCounterAnimation(el) {
+  const text = el.innerText.trim();
+  // Extract number ignoring commas
+  const targetNum = parseInt(text.replace(/,/g, ''), 10);
+  if (isNaN(targetNum)) return;
+  
+  const duration = 2000;
+  const startTime = performance.now();
+  
+  function updateCounter(currentTime) {
+    const elapsedTime = currentTime - startTime;
+    const progress = Math.min(elapsedTime / duration, 1);
+    
+    // easeOutExpo
+    const easeOutProgress = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+    
+    const currentVal = Math.floor(easeOutProgress * targetNum);
+    el.innerText = currentVal.toLocaleString('en-US');
+    
+    if (progress < 1) {
+      requestAnimationFrame(updateCounter);
+    } else {
+      el.innerText = targetNum.toLocaleString('en-US');
+    }
+  }
+  
+  requestAnimationFrame(updateCounter);
+}
