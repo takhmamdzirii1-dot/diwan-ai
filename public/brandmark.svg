@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="120 220 760 560" width="100%" height="100%" fill="none">
+  <defs>
+    <!-- Left Top Fold Triangle (Violet) -->
+    <linearGradient id="v-fold-corner" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8F7CFF" />
+      <stop offset="100%" stop-color="#6048FF" />
+    </linearGradient>
+
+    <!-- Left Outer Teal Ribbon Body -->
+    <linearGradient id="v-left-teal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F5D4" />
+      <stop offset="50%" stop-color="#00E0C6" />
+      <stop offset="100%" stop-color="#00BAA6" />
+    </linearGradient>
+
+    <!-- Left Inner Purple Fold (Rising from vertex) -->
+    <linearGradient id="v-left-purple-inner" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#553DF5" />
+      <stop offset="60%" stop-color="#705AF8" />
+      <stop offset="100%" stop-color="#8B78FF" />
+    </linearGradient>
+
+    <!-- Main Right Stem (Cyan top -> Blue -> Violet bottom) -->
+    <linearGradient id="v-main-stem" x1="40%" y1="0%" x2="60%" y2="100%">
+      <stop offset="0%" stop-color="#00F5D4" />
+      <stop offset="30%" stop-color="#00D2C4" />
+      <stop offset="65%" stop-color="#3B82F6" />
+      <stop offset="100%" stop-color="#6C52FF" />
+    </linearGradient>
+
+    <!-- Right Accent Stripe (Inverted: Violet top -> Cyan bottom) -->
+    <linearGradient id="v-accent-stripe" x1="40%" y1="0%" x2="60%" y2="100%">
+      <stop offset="0%" stop-color="#856EFF" />
+      <stop offset="40%" stop-color="#6366F1" />
+      <stop offset="75%" stop-color="#00D2C4" />
+      <stop offset="100%" stop-color="#00F5D4" />
+    </linearGradient>
+
+    <!-- Drop Shadow for Fold Overlap -->
+    <filter id="v-depth-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="-8" dy="10" stdDeviation="12" flood-color="#03050c" flood-opacity="0.85" />
+    </filter>
+
+    <!-- Subtle Luminous Glow -->
+    <filter id="v-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="14" flood-color="#00F5D4" flood-opacity="0.25" />
+      <feDropShadow dx="0" dy="0" stdDeviation="22" flood-color="#6C52FF" flood-opacity="0.2" />
+    </filter>
+  </defs>
+
+  <g filter="url(#v-glow)">
+    <!-- 1. LEFT RIBBON: Outer Cyan Body -->
+    <path d="M 160 260 
+             L 330 260 
+             C 380 260, 420 295, 435 345 
+             L 495 500 
+             L 440 740 
+             L 380 635 
+             L 275 325 
+             L 160 260 Z" 
+          fill="url(#v-left-teal)" />
+
+    <!-- 2. LEFT RIBBON: Top Left Origami Fold Flap (Violet) -->
+    <path d="M 160 260 
+             L 330 260 
+             L 275 325 
+             Z" 
+          fill="url(#v-fold-corner)" />
+
+    <!-- 3. LEFT RIBBON: Inner Shadow Crease -->
+    <path d="M 275 325 
+             L 330 260 
+             C 380 260, 420 295, 435 345 
+             L 495 500 
+             L 455 570 
+             L 355 385 
+             Z" 
+          fill="#060810" 
+          opacity="0.95" />
+
+    <!-- 4. LEFT RIBBON: Inner Purple Ribbon Rising from Bottom Vertex -->
+    <path d="M 380 635 
+             L 455 570 
+             L 495 500 
+             L 440 740 
+             Z" 
+          fill="url(#v-left-purple-inner)" />
+
+    <!-- 5. MAIN RIGHT STEM (With Curved Shoulder & Sharp Bottom Vertex) -->
+    <path d="M 620 260 
+             C 650 260, 685 260, 720 260 
+             L 440 740 
+             L 495 500 
+             C 530 420, 565 295, 620 260 Z" 
+          fill="url(#v-main-stem)" 
+          filter="url(#v-depth-shadow)" />
+
+    <!-- 6. OUTER RIGHT ACCENT STRIPE (Inverted Violet -> Cyan Gradient) -->
+    <path d="M 755 260 
+             L 840 260 
+             L 560 740 
+             L 475 740 
+             Z" 
+          fill="url(#v-accent-stripe)" />
+  </g>
+</svg>

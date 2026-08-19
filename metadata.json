@@ -1,6 +1,6 @@
 {
-  "name": "ديوان | Diwan - منصة الذكاء الاصطناعي الجزائرية",
-  "description": "منصة ديوان الجزائرية الموحدة لتجميع أفضل نماذج الذكاء الاصطناعي (شات، صور، فيديو) باشتراك ورصيد نقاط محلي بالدينار الجزائري عبر بطاقات CIB والذهبية.",
+  "name": "VANTRA | AI Platform",
+  "description": "Unified Algerian AI Platform supporting English, French, and Arabic with local DZD payments via Edahabia and CIB.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

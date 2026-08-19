@@ -1,18 +1,19 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ديوان | Diwan - منصة الذكاء الاصطناعي الجزائرية</title>
-    <meta name="description" content="منصة ديوان الجزائرية الموحدة: أفضل نماذج الذكاء الاصطناعي (ChatGPT, Claude, Flux, Kling) في اشتراك واحد بالدينار الجزائري عبر بطاقتك الذهبية أو CIB." />
-    <meta property="og:title" content="ديوان | Diwan - منصة الذكاء الاصطناعي الجزائرية" />
-    <meta property="og:description" content="اشترك في أقوى نماذج الذكاء الاصطناعي العالمية بنظام النقاط والدفع المحلي بالدينار الجزائري." />
+    <title>VANTRA | Unified AI Platform for Algeria</title>
+    <meta name="description" content="VANTRA: Top global AI models (ChatGPT, Claude, Flux, Kling) unified in one credit subscription in Algerian Dinar via Edahabia & CIB." />
+    <meta property="og:title" content="VANTRA | Unified AI Platform for Algeria" />
+    <meta property="og:description" content="Subscribe to top world AI models with unified credit points and local DZD payment." />
     <meta property="og:type" content="website" />
+    <link rel="icon" type="image/svg+xml" href="/brandmark.svg" />
 
-    <!-- Google Fonts: Reem Kufi (Display Kufic), IBM Plex Sans Arabic (Body), IBM Plex Mono (Ledger numbers) -->
+    <!-- Google Fonts: Cairo (Arabic), Space Grotesk (Latin Display), IBM Plex Mono (Monospace) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Reem+Kufi:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 
     <!-- Font Awesome 6.5.2 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -21,34 +22,49 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <!-- Subtle Decorative Geometric Background -->
-    <div class="zellige-bg"></div>
-    <div class="animated-bg"></div>
+    <!-- Ambient Glowing Orbs Background -->
+    <div class="ambient-bg">
+      <div class="orb orb-teal"></div>
+      <div class="orb orb-violet"></div>
+      <div class="orb orb-gold"></div>
+      <div class="noise-overlay"></div>
+    </div>
 
     <!-- Mobile Menu Overlay & Sheet -->
     <div class="mobile-menu-overlay" id="mobile-menu-overlay" onclick="window.closeMobileMenu()"></div>
     <div class="mobile-sheet" id="mobile-sheet">
       <div class="mobile-sheet-header">
         <div class="brand-logo">
-          <div class="logo-badge"><span>د</span></div>
-          <span class="brand-name">دِيـــوَان</span>
+          <div class="logo-badge"><img src="/brandmark.svg" alt="VANTRA" /></div>
+          <span class="brand-name">VANTRA</span>
         </div>
-        <button class="mobile-close-btn" onclick="window.closeMobileMenu()" aria-label="إغلاق القائمة">✕</button>
+        <button class="mobile-close-btn" onclick="window.closeMobileMenu()" aria-label="Close Menu">✕</button>
       </div>
+
+      <!-- Mobile Language Selector -->
+      <div class="mobile-lang-wrap">
+        <span class="mobile-lang-label"><i class="fa-solid fa-globe"></i> Language:</span>
+        <div class="lang-switcher mobile-lang-switcher">
+          <button type="button" class="lang-btn" data-lang="en" onclick="window.setLanguage('en')">EN</button>
+          <button type="button" class="lang-btn" data-lang="fr" onclick="window.setLanguage('fr')">FR</button>
+          <button type="button" class="lang-btn" data-lang="ar" onclick="window.setLanguage('ar')">عربي</button>
+        </div>
+      </div>
+
       <ul class="mobile-nav-links">
-        <li><a href="#hero" onclick="window.closeMobileMenu()">الرئيسية</a></li>
-        <li><a href="#models" onclick="window.closeMobileMenu()">النماذج</a></li>
-        <li><a href="#features" onclick="window.closeMobileMenu()">الميزات</a></li>
-        <li><a href="#how-it-works" onclick="window.closeMobileMenu()">كيف يعمل</a></li>
-        <li><a href="#pricing" onclick="window.closeMobileMenu()">الأسعار</a></li>
-        <li><a href="#cost-table" onclick="window.closeMobileMenu()">جدول النقاط</a></li>
-        <li><a href="#faq" onclick="window.closeMobileMenu()">الأسئلة</a></li>
+        <li><a href="#hero" onclick="window.closeMobileMenu()" data-i18n="navHome">Home</a></li>
+        <li><a href="#models" onclick="window.closeMobileMenu()" data-i18n="navModels">Models</a></li>
+        <li><a href="#features" onclick="window.closeMobileMenu()" data-i18n="navFeatures">Features</a></li>
+        <li><a href="#how-it-works" onclick="window.closeMobileMenu()" data-i18n="navHowItWorks">How It Works</a></li>
+        <li><a href="#pricing" onclick="window.closeMobileMenu()" data-i18n="navPricing">Pricing</a></li>
+        <li><a href="#cost-table" onclick="window.closeMobileMenu()" data-i18n="navCostTable">Cost Table</a></li>
+        <li><a href="#faq" onclick="window.closeMobileMenu()" data-i18n="navFaq">FAQ</a></li>
       </ul>
       <div class="mobile-sheet-actions">
-        <button class="btn-ghost" onclick="window.closeMobileMenu(); window.openTopupModal('free')">دخول</button>
+        <button class="btn-ghost" onclick="window.closeMobileMenu(); window.openTopupModal('free')" data-i18n="btnLogin">Login</button>
         <button class="btn-primary" onclick="window.closeMobileMenu(); window.openTopupModal('pro')">
           <i class="fa-solid fa-wallet"></i>
-          <span>شحن الرصيد</span>
+          <span data-i18n="btnTopup">Top Up Balance</span>
         </button>
       </div>
     </div>
@@ -59,37 +75,44 @@
     <header class="header" id="main-header">
       <div class="container header-inner">
         <!-- Logo -->
-        <a href="#hero" class="brand-logo" aria-label="ديوان الرئيسية">
+        <a href="#hero" class="brand-logo" aria-label="VANTRA Home">
           <div class="logo-badge">
-            <span>د</span>
+            <img src="/brandmark.svg" alt="VANTRA" />
           </div>
           <div class="brand-name-group">
-            <span class="brand-name">دِيـــوَان</span>
-            <span class="brand-sub">منصة الذكاء الاصطناعي</span>
+            <span class="brand-name">VANTRA</span>
+            <span class="brand-sub" data-i18n="brandSubtitle">Algerian AI Platform</span>
           </div>
         </a>
 
         <!-- Desktop Navigation -->
-        <nav aria-label="التنقل الرئيسي">
+        <nav aria-label="Main Navigation">
           <ul class="nav-links">
-            <li><a href="#hero" class="nav-link active">الرئيسية</a></li>
-            <li><a href="#models" class="nav-link">النماذج</a></li>
-            <li><a href="#features" class="nav-link">الميزات</a></li>
-            <li><a href="#how-it-works" class="nav-link">كيف يعمل</a></li>
-            <li><a href="#pricing" class="nav-link">الأسعار</a></li>
-            <li><a href="#cost-table" class="nav-link">جدول النقاط</a></li>
-            <li><a href="#faq" class="nav-link">الأسئلة</a></li>
+            <li><a href="#hero" class="nav-link active" data-i18n="navHome">Home</a></li>
+            <li><a href="#models" class="nav-link" data-i18n="navModels">Models</a></li>
+            <li><a href="#features" class="nav-link" data-i18n="navFeatures">Features</a></li>
+            <li><a href="#how-it-works" class="nav-link" data-i18n="navHowItWorks">How It Works</a></li>
+            <li><a href="#pricing" class="nav-link" data-i18n="navPricing">Pricing</a></li>
+            <li><a href="#cost-table" class="nav-link" data-i18n="navCostTable">Cost Table</a></li>
+            <li><a href="#faq" class="nav-link" data-i18n="navFaq">FAQ</a></li>
           </ul>
         </nav>
 
         <!-- Actions -->
         <div class="header-actions">
-          <button class="btn-ghost" onclick="openTopupModal('free')">دخول</button>
-          <button class="btn-primary" onclick="openTopupModal('pro')">
+          <!-- Language Switcher Pill -->
+          <div class="lang-switcher" id="desktop-lang-switcher" aria-label="Language Switcher">
+            <button type="button" class="lang-btn" data-lang="en" onclick="window.setLanguage('en')">EN</button>
+            <button type="button" class="lang-btn" data-lang="fr" onclick="window.setLanguage('fr')">FR</button>
+            <button type="button" class="lang-btn" data-lang="ar" onclick="window.setLanguage('ar')">عربي</button>
+          </div>
+
+          <button class="btn-ghost" onclick="window.openTopupModal('free')" data-i18n="btnLogin">Login</button>
+          <button class="btn-primary" onclick="window.openTopupModal('pro')">
             <i class="fa-solid fa-wallet"></i>
-            <span>شحن الرصيد</span>
+            <span data-i18n="btnTopup">Top Up Balance</span>
           </button>
-          <button class="menu-toggle" id="menu-toggle-btn" aria-label="فتح القائمة" onclick="window.openMobileMenu()">
+          <button class="menu-toggle" id="menu-toggle-btn" aria-label="Open Menu" onclick="window.openMobileMenu()">
             <i class="fa-solid fa-bars"></i>
           </button>
         </div>
@@ -98,49 +121,83 @@
 
     <!-- ==========================================================================
        2. HERO SECTION & LIVE INTERACTIVE LEDGER
-       ========================================================================== */ -->
+       ========================================================================== -->
     <section class="hero" id="hero">
       <div class="container hero-grid">
         <!-- Hero Text Content -->
         <div class="hero-content">
           <div class="hero-badge reveal-on-scroll">
             <span class="hero-badge-dot"></span>
-            <span class="hero-badge-text">أول منصة ذكاء اصطناعي موحدة في الجزائر</span>
-            <span class="hero-badge-currency">DZD / دج</span>
+            <span class="hero-badge-text" data-i18n="heroBadge">100% Algerian Platform — Pay directly in DZD</span>
           </div>
 
           <h1 class="hero-title reveal-on-scroll stagger-1">
-            بوابة واحدة لكل نماذج الذكاء الاصطناعي،
-            <span class="hero-title-gradient">وادفع بالدينار الجزائري.</span>
+            <span data-i18n="heroTitlePrefix">One unified gateway for all AI models,</span>
+            <span class="hero-title-gradient" data-i18n="heroTitleGradient">and pay in Algerian Dinar.</span>
           </h1>
 
-          <p class="hero-subtitle reveal-on-scroll stagger-2">
-            لا داعي للبطاقات الدولية أو تعدد الاشتراكات. ديوان يجمع لك أقوى نماذج المحادثة، وتوليد الصور والفيديو في اشتراك ورصيد نقاط موحد عبر البطاقة الذهبية و CIB.
+          <p class="hero-subtitle reveal-on-scroll stagger-2" data-i18n="heroSubtitle">
+            No need for international cards or multiple subscriptions. VANTRA unifies the world's most powerful chat, image, and video generation models in a single credit balance via EDAHABIA & CIB.
           </p>
 
           <div class="hero-cta-group reveal-on-scroll stagger-3">
-            <a href="#pricing" class="btn-primary btn-gold" style="padding: 14px 32px; font-size: 16px;">
+            <a href="#pricing" class="btn-primary" style="padding: 14px 30px; font-size: 15.5px;">
               <i class="fa-solid fa-bolt"></i>
-              <span>ابدأ الآن واشحن رصيدك</span>
+              <span data-i18n="btnStartTopup">Get Started & Top Up</span>
             </a>
-            <a href="#cost-table" class="btn-ghost" style="padding: 14px 24px; font-size: 15px; border: 1px solid var(--border-medium);">
-              <i class="fa-solid fa-list-check" style="margin-left: 6px;"></i>
-              <span>استكشف جدول النقاط</span>
+            <a href="#cost-table" class="btn-ghost" style="padding: 14px 24px; font-size: 15px;">
+              <i class="fa-solid fa-list-check" style="margin-inline-end: 6px;"></i>
+              <span data-i18n="btnExploreCosts">Explore Cost Table</span>
             </a>
+          </div>
+
+          <!-- 3 Floating Glassmorphic Preview Cards -->
+          <div class="hero-floating-cards reveal-on-scroll stagger-4">
+            <div class="floating-card float-1">
+              <i class="fa-solid fa-message" style="color: var(--teal); font-size: 20px;"></i>
+              <span>Claude 3.5 Sonnet</span>
+            </div>
+            <div class="floating-card float-2">
+              <i class="fa-solid fa-image" style="color: var(--violet); font-size: 20px;"></i>
+              <span>Flux.1 Pro</span>
+            </div>
+            <div class="floating-card float-3">
+              <i class="fa-solid fa-play" style="color: var(--gold); font-size: 20px;"></i>
+              <span>Kling AI 1.5</span>
+            </div>
           </div>
 
           <div class="hero-guarantee reveal-on-scroll stagger-4">
             <div class="guarantee-item">
               <i class="fa-solid fa-circle-check"></i>
-              <span>دفع آمن بالذهبية & CIB</span>
+              <span data-i18n="guaranteeEdahabia">Secure Payment via Edahabia & CIB</span>
             </div>
             <div class="guarantee-item">
               <i class="fa-solid fa-shield-halved"></i>
-              <span>نقاط غير منتهية الصلاحية</span>
+              <span data-i18n="guaranteeExpiry">Non-expiring Credit Points</span>
             </div>
             <div class="guarantee-item">
               <i class="fa-solid fa-rotate"></i>
-              <span>بدون أي التزام شهري</span>
+              <span data-i18n="guaranteeNoLockin">Zero Monthly Commitment</span>
+            </div>
+          </div>
+
+          <div class="hero-stats reveal-on-scroll stagger-5">
+            <div class="stat-item">
+              <span class="stat-num">12+</span>
+              <span class="stat-label" data-i18n="statModels">Global Models</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-num">100%</span>
+              <span class="stat-label" data-i18n="statPayment">Local Payment</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-num">0s</span>
+              <span class="stat-label" data-i18n="statActivation">Instant Activation</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-num">99.9%</span>
+              <span class="stat-label" data-i18n="statUptime">High Availability</span>
             </div>
           </div>
         </div>
@@ -149,29 +206,31 @@
         <div class="ledger-device reveal-on-scroll stagger-2" id="interactive-ledger">
           <div class="ledger-header">
             <div class="ledger-status">
-              <span class="ledger-indicator"></span>
-              <span class="ledger-title">سجل ديوان الحي • دفتر الرصيد</span>
+              <div class="logo-badge" style="width: 24px; height: 24px; padding: 2.5px; border-radius: 6px; flex-shrink: 0;">
+                <img src="/brandmark.svg" alt="VANTRA" />
+              </div>
+              <span class="ledger-title" data-i18n="ledgerTitle">VANTRA Live Ledger • Credit Balance</span>
             </div>
             <div class="balance-pill">
-              <span class="balance-label">الرصيد المتاح:</span>
+              <span class="balance-label" data-i18n="ledgerAvailableBalance">Available Balance:</span>
               <span class="balance-val mono-num" id="live-balance">10,000</span>
-              <span style="font-size: 11px; color: var(--gold-400);">نقطة</span>
+              <span style="font-size: 11px; color: var(--gold);" data-i18n="pointsUnit">Points</span>
             </div>
           </div>
 
           <!-- Category Tabs -->
           <div class="ledger-tabs">
-            <button class="ledger-tab active" data-cat="chat" onclick="switchLedgerCategory('chat')">
+            <button class="ledger-tab active" data-cat="chat" onclick="window.switchLedgerCategory('chat')">
               <i class="fa-solid fa-comments"></i>
-              <span>محادثة</span>
+              <span data-i18n="tabChat">Chat</span>
             </button>
-            <button class="ledger-tab" data-cat="image" onclick="switchLedgerCategory('image')">
+            <button class="ledger-tab" data-cat="image" onclick="window.switchLedgerCategory('image')">
               <i class="fa-solid fa-image"></i>
-              <span>توليد صور</span>
+              <span data-i18n="tabImage">Image Gen</span>
             </button>
-            <button class="ledger-tab" data-cat="video" onclick="switchLedgerCategory('video')">
+            <button class="ledger-tab" data-cat="video" onclick="window.switchLedgerCategory('video')">
               <i class="fa-solid fa-video"></i>
-              <span>توليد فيديو</span>
+              <span data-i18n="tabVideo">Video Gen</span>
             </button>
           </div>
 
@@ -185,34 +244,34 @@
                 </div>
                 <div>
                   <div class="model-name" id="model-name-display">Claude 3.5 Sonnet</div>
-                  <div class="model-category" id="model-category-display">محادثة فائقة الذكاء وتحليل المستندات</div>
+                  <div class="model-category" id="model-category-display">Advanced Reasoning, Coding & Document Analysis</div>
                 </div>
               </div>
               <div class="cost-tag">
                 <span class="mono-num" id="operation-cost">25</span>
-                <span>نقطة / طلب</span>
+                <span data-i18n="perRequest">pts / request</span>
               </div>
             </div>
 
             <!-- Sample Prompt Preview -->
             <div class="sample-prompt-box">
-              <div class="prompt-label">العملية الجارية للتجربة:</div>
+              <div class="prompt-label" data-i18n="simulationPromptLabel">Simulated Operation in Progress:</div>
               <div class="prompt-text" id="prompt-preview-text">
-                "اكتب لي خطة تسويقية لمشروع متجر إلكتروني في الجزائر بالدارجة مع ميزانية الإعلانات."
+                "Write a marketing launch plan for an e-commerce store in Algeria with ad budget allocation."
               </div>
             </div>
 
             <!-- Action Button that decrements credit -->
-            <button class="ledger-action-btn" id="execute-sim-btn" onclick="executeSimulatedOperation()">
+            <button class="ledger-action-btn" id="execute-sim-btn" onclick="window.executeSimulatedOperation()">
               <i class="fa-solid fa-play"></i>
-              <span id="btn-action-text">جرّب خصم العملية من الرصيد (محاكاة)</span>
+              <span id="btn-action-text" data-i18n="btnSimulateDeduction">Try Deducting from Balance (Simulation)</span>
             </button>
 
             <!-- Real-time Ledger Log -->
             <div class="ledger-log" id="ledger-log-container">
               <div class="log-entry">
-                <span class="log-op">[شحن رصيد البداية]</span>
-                <span class="mono-num" style="color: var(--petrol-300);">+10,000 نقطة</span>
+                <span class="log-op" data-i18n="initialCreditLog">[Initial Balance Credited]</span>
+                <span class="mono-num" style="color: var(--teal);">+10,000 pts</span>
               </div>
             </div>
           </div>
@@ -221,18 +280,18 @@
     </section>
 
     <!-- ==========================================================================
-       3. TRUST STRIP (MODEL TECHNOLOGIES - PLAIN TEXT)
+       3. TRUST STRIP (MODEL TECHNOLOGIES)
        ========================================================================== -->
     <section class="trust-strip reveal-on-scroll" id="models">
       <div class="container">
-        <div class="trust-label">أفضل محركات ونماذج الذكاء الاصطناعي العالمية المدمجة في ديوان</div>
+        <div class="trust-label" data-i18n="trustLabel">World-Class AI Engines & Foundation Models Unified in VANTRA</div>
         <div class="models-ticker">
           <span class="model-pill-text">Claude 3.5 Sonnet</span>
           <span class="model-pill-text">GPT-4o (OpenAI)</span>
           <span class="model-pill-text">Gemini 1.5 Pro</span>
           <span class="model-pill-text">Flux.1 Pro</span>
           <span class="model-pill-text">Midjourney v6.1</span>
-          <span class="model-pill-text">Kling AI 1.5</span>
+          <span class="model-pill-text">Kling AI 1.5 HD</span>
           <span class="model-pill-text">Runway Gen-3 Alpha</span>
           <span class="model-pill-text">Luma Dream Machine</span>
           <span class="model-pill-text">DeepSeek V3</span>
@@ -249,11 +308,11 @@
         <div class="section-intro">
           <span class="section-tag">
             <i class="fa-solid fa-shapes"></i>
-            <span>مزايا المنصة</span>
+            <span data-i18n="featuresTag">Platform Advantages</span>
           </span>
-          <h2 class="section-title">صُمم ديوان خصيصاً ليناسب واقع المستخدم الجزائري</h2>
-          <p class="section-desc">
-            تخلص من قيود البطاقات الأجنبية والحسابات المتعددة. تجربة متكاملة مصممة بأعلى معايير السرعة والشفافية.
+          <h2 class="section-title" data-i18n="featuresTitle">Engineered specifically for the Algerian workflow</h2>
+          <p class="section-desc" data-i18n="featuresDesc">
+            Say goodbye to foreign credit card hassles and managing dozens of subscriptions. A frictionless platform built for speed, affordability, and crystal-clear transparency.
           </p>
         </div>
 
@@ -263,14 +322,14 @@
             <div class="feature-icon-wrapper">
               <i class="fa-solid fa-credit-card"></i>
             </div>
-            <h3 class="feature-title">دفع محلي فوري ومباشر بالدينار</h3>
-            <p class="feature-desc">
-              اشحن رصيدك في ثوانٍ باستخدام بطاقة الشفاء البريدية (الذهبية) أو بطاقات CIB البنكية عبر منصة الدفع الحكومية الآمنة، دون الحاجة لحسابات بنكية أجنبية كـ Wise أو Paysera.
+            <h3 class="feature-title" data-i18n="feat1Title">Instant Local Payment in Dinar</h3>
+            <p class="feature-desc" data-i18n="feat1Desc">
+              Recharge your balance in seconds using your postal Edahabia card or bank CIB cards through Algeria's official secure payment gateway, without needing Wise or Paysera.
             </p>
             <div class="feature-badge-row">
-              <span class="feature-chip">البطاقة الذهبية</span>
-              <span class="feature-chip">بطاقات CIB</span>
-              <span class="feature-chip">تطبيق BaridiMob</span>
+              <span class="feature-chip" data-i18n="feat1Chip1">Edahabia Card</span>
+              <span class="feature-chip" data-i18n="feat1Chip2">CIB Cards</span>
+              <span class="feature-chip" data-i18n="feat1Chip3">BaridiMob App</span>
             </div>
           </div>
 
@@ -279,14 +338,14 @@
             <div class="feature-icon-wrapper">
               <i class="fa-solid fa-book-bookmark"></i>
             </div>
-            <h3 class="feature-title">شفافية دفتر السجلات (ديوان النقاط)</h3>
-            <p class="feature-desc">
-              لا رسوم خفية ولا اشتراكات متكررة تُخصم دون علمك. كل طلب تقوم به يُسجل فوراً في ديوانك مع بيان عدد النقاط المستهلكة بدقة متناهية وبالوقت الحقيقي.
+            <h3 class="feature-title" data-i18n="feat2Title">Full Credit Ledger Transparency</h3>
+            <p class="feature-desc" data-i18n="feat2Desc">
+              No hidden fees, no recurring auto-renewals debited without your knowledge. Every AI prompt is logged in real-time in your ledger with exact point consumption.
             </p>
             <div class="feature-badge-row">
-              <span class="feature-chip">سجل فوري لحظي</span>
-              <span class="feature-chip">تتبع دقيق للنقاط</span>
-              <span class="feature-chip">لا خصومات خفية</span>
+              <span class="feature-chip" data-i18n="feat2Chip1">Real-time Ledger</span>
+              <span class="feature-chip" data-i18n="feat2Chip2">Precise Point Tracking</span>
+              <span class="feature-chip" data-i18n="feat2Chip3">Zero Hidden Fees</span>
             </div>
           </div>
 
@@ -295,14 +354,14 @@
             <div class="feature-icon-wrapper">
               <i class="fa-solid fa-wand-magic-sparkles"></i>
             </div>
-            <h3 class="feature-title">تعدد النماذج في واجهة واحدة موحدة</h3>
-            <p class="feature-desc">
-              استمتع بأفضل نماذج النصوص (Claude و ChatGPT)، وأقوى مولدات الصور (Flux و Midjourney)، ونماذج الفيديو السينمائي (Kling و Runway) دون التنقل بين عشرات المواقع.
+            <h3 class="feature-title" data-i18n="feat3Title">All Top Models in One Interface</h3>
+            <p class="feature-desc" data-i18n="feat3Desc">
+              Access leading text LLMs (Claude 3.5 & GPT-4o), photorealistic image generators (Flux.1 & Midjourney), and cinematic video models (Kling & Runway) without leaving your workspace.
             </p>
             <div class="feature-badge-row">
-              <span class="feature-chip">نصوص وبرمجة</span>
-              <span class="feature-chip">صور فائقة الدقة</span>
-              <span class="feature-chip">فيديوهات سينمائية</span>
+              <span class="feature-chip" data-i18n="feat3Chip1">Text & Coding</span>
+              <span class="feature-chip" data-i18n="feat3Chip2">Ultra-HD Images</span>
+              <span class="feature-chip" data-i18n="feat3Chip3">Cinematic Videos</span>
             </div>
           </div>
 
@@ -311,14 +370,14 @@
             <div class="feature-icon-wrapper">
               <i class="fa-solid fa-hourglass-half"></i>
             </div>
-            <h3 class="feature-title">مرونة كاملة ورصيد لا ينتهي أبداً</h3>
-            <p class="feature-desc">
-              نقاطك ملكك بالكامل. لا تفقد رصيدك بنهاية الشهر كبقية الاشتراكات التقليدية. اشحن متى شئت واستخدم نقاطك في أي وقت يناسب وتيرة عملك ودراستك.
+            <h3 class="feature-title" data-i18n="feat4Title">Full Flexibility & Non-Expiring Points</h3>
+            <p class="feature-desc" data-i18n="feat4Desc">
+              Your points are 100% yours. Unlike traditional monthly subscriptions where unused quotas expire, VANTRA points never expire. Use them whenever you need.
             </p>
             <div class="feature-badge-row">
-              <span class="feature-chip">صلاحية دائمة</span>
-              <span class="feature-chip">لا التزام شهري إجباري</span>
-              <span class="feature-chip">تحكم كامل بميزانيتك</span>
+              <span class="feature-chip" data-i18n="feat4Chip1">Lifetime Validity</span>
+              <span class="feature-chip" data-i18n="feat4Chip2">No Forced Monthly Fee</span>
+              <span class="feature-chip" data-i18n="feat4Chip3">Total Budget Control</span>
             </div>
           </div>
         </div>
@@ -333,11 +392,11 @@
         <div class="section-intro">
           <span class="section-tag gold">
             <i class="fa-solid fa-route"></i>
-            <span>خطوات العمل</span>
+            <span data-i18n="howTag">Workflow Steps</span>
           </span>
-          <h2 class="section-title">كيف تبدأ استخدام ديوان في 3 خطوات بسيطة؟</h2>
-          <p class="section-desc">
-            عملية سريعة وسلسة تبدأ من التسجيل وحتى التوليد في أقل من دقيقتين.
+          <h2 class="section-title" data-i18n="howTitle">How to get started with VANTRA in 3 simple steps?</h2>
+          <p class="section-desc" data-i18n="howDesc">
+            A smooth and fast onboarding process from registration to AI generation in under 2 minutes.
           </p>
         </div>
 
@@ -345,27 +404,27 @@
           <!-- Step 1 -->
           <div class="step-card">
             <div class="step-num-badge">01</div>
-            <h3 class="step-title">أنشئ حسابك في ديوان</h3>
-            <p class="step-desc">
-              سجّل مجاناً بريدك الإلكتروني أو حساب جوجل لتفعيل ديوانك الخاص والحصول على نقاط تجريبية مجانية فوراً.
+            <h3 class="step-title" data-i18n="step1Title">Create your VANTRA account</h3>
+            <p class="step-desc" data-i18n="step1Desc">
+              Sign up for free using your email or Google account to instantly activate your ledger and receive free trial points.
             </p>
           </div>
 
           <!-- Step 2 -->
           <div class="step-card">
             <div class="step-num-badge">02</div>
-            <h3 class="step-title">اشحن رصيدك بالدينار</h3>
-            <p class="step-desc">
-              اختر باقة النقاط المناسبة لاحتياجك وادفع بأمان عبر بطاقتك الذهبية أو CIB مع استلام تأكيد فوري وشحن آلي.
+            <h3 class="step-title" data-i18n="step2Title">Top up your balance in DZD</h3>
+            <p class="step-desc" data-i18n="step2Desc">
+              Choose the credit pack that fits your workflow and pay securely with your Edahabia or CIB card with instant automated credit.
             </p>
           </div>
 
           <!-- Step 3 -->
           <div class="step-card">
             <div class="step-num-badge">03</div>
-            <h3 class="step-title">ولّد وأبدع بأقوى النماذج</h3>
-            <p class="step-desc">
-              ابدأ المحادثة، ولّد الصور السينمائية، وأنتج مقاطع الفيديو بأحدث الذكاء الاصطناعي مع مراقبة استهلاك نقاطك بدقة.
+            <h3 class="step-title" data-i18n="step3Title">Generate & create with elite models</h3>
+            <p class="step-desc" data-i18n="step3Desc">
+              Prompt chat models, render ultra-detailed images, and direct cinematic videos while monitoring your exact point balance in real time.
             </p>
           </div>
         </div>
@@ -373,18 +432,18 @@
     </section>
 
     <!-- ==========================================================================
-       6. PRICING SECTION (TICKET / BANKNOTE DESIGN)
+       6. PRICING SECTION (TICKET DESIGN)
        ========================================================================== -->
     <section class="pricing-section reveal-on-scroll" id="pricing">
       <div class="container">
         <div class="section-intro">
           <span class="section-tag">
             <i class="fa-solid fa-tags"></i>
-            <span>باقات الرصيد</span>
+            <span data-i18n="pricingTag">Credit Packs</span>
           </span>
-          <h2 class="section-title">باقات شفافة تناسب الطلاب، المبدعين والشركات</h2>
-          <p class="section-desc">
-            اختر رصيدك بالدينار الجزائري. النقاط صالحة للأبد وتستخدم على جميع النماذج دون استثناء.
+          <h2 class="section-title" data-i18n="pricingTitle">Transparent packs for students, creators & enterprises</h2>
+          <p class="section-desc" data-i18n="pricingDesc">
+            Choose your balance in Algerian Dinar. Points never expire and are valid across all AI models without restriction.
           </p>
         </div>
 
@@ -392,15 +451,15 @@
           <!-- Plan 1: Starter -->
           <div class="ticket-card">
             <div class="ticket-header">
-              <div class="ticket-plan-name">باقة الانطلاق • مبتدئ</div>
-              <div class="ticket-plan-desc">مثالية للطلاب والتجارب السريعة</div>
+              <div class="ticket-plan-name" data-i18n="planStarterName">Starter Pack • Beginner</div>
+              <div class="ticket-plan-desc" data-i18n="planStarterDesc">Ideal for students and quick exploratory prompts</div>
               <div class="ticket-price-wrap">
                 <span class="ticket-price mono-num">1,800</span>
-                <span class="ticket-currency">دج (DZD)</span>
+                <span class="ticket-currency" data-i18n="currencyDzd">DZD (دج)</span>
               </div>
               <div class="ticket-points-badge">
                 <span class="mono-num">2,500</span>
-                <span>نقطة ديوان</span>
+                <span data-i18n="pointsUnit">Points</span>
               </div>
             </div>
 
@@ -412,41 +471,41 @@
               <ul class="ticket-features-list">
                 <li class="ticket-feature-item">
                   <i class="fa-solid fa-check"></i>
-                  <span>حوالي <b>100 طلب محادثة</b> مع Claude & GPT-4o</span>
+                  <span data-i18n="planStarterFeat1">Approx. <b>100 Chat requests</b> with Claude 3.5 & GPT-4o</span>
                 </li>
                 <li class="ticket-feature-item">
                   <i class="fa-solid fa-check"></i>
-                  <span>توليد حتى <b>35 صورة</b> فائقة الدقة بـ Flux.1</span>
+                  <span data-i18n="planStarterFeat2">Generate up to <b>35 Ultra-HD images</b> with Flux.1</span>
                 </li>
                 <li class="ticket-feature-item">
                   <i class="fa-solid fa-check"></i>
-                  <span>صلاحية دائمة للرصيد بدون انتهاء</span>
+                  <span data-i18n="planStarterFeat3">Permanent balance validity with no expiration</span>
                 </li>
                 <li class="ticket-feature-item">
                   <i class="fa-solid fa-check"></i>
-                  <span>دعم فني عبر البريد الإلكتروني</span>
+                  <span data-i18n="planStarterFeat4">Standard Email technical support</span>
                 </li>
               </ul>
-              <button class="ticket-cta-btn" onclick="openTopupModal('starter')">
-                <span>شحن باقة 1,800 دج</span>
-                <i class="fa-solid fa-arrow-left"></i>
+              <button class="ticket-cta-btn" onclick="window.openTopupModal('starter')">
+                <span data-i18n="planStarterBtn">Top up 1,800 DZD Pack</span>
+                <i class="fa-solid fa-arrow-right icon-dir"></i>
               </button>
             </div>
           </div>
 
           <!-- Plan 2: Pro Creator (Popular) -->
           <div class="ticket-card popular">
-            <div class="ticket-popular-badge">الأكثر طلباً • الموصى بها</div>
+            <div class="ticket-popular-badge" data-i18n="planProPopular">Most Popular • Recommended</div>
             <div class="ticket-header">
-              <div class="ticket-plan-name">باقة المبدعين • Pro</div>
-              <div class="ticket-plan-desc">الخيار الأمثل لصناع المحتوى والمصممين</div>
+              <div class="ticket-plan-name" data-i18n="planProName">Creator Pack • Pro</div>
+              <div class="ticket-plan-desc" data-i18n="planProDesc">The ultimate choice for content creators, designers & freelancers</div>
               <div class="ticket-price-wrap">
                 <span class="ticket-price mono-num">4,500</span>
-                <span class="ticket-currency">دج (DZD)</span>
+                <span class="ticket-currency" data-i18n="currencyDzd">DZD (دج)</span>
               </div>
               <div class="ticket-points-badge">
                 <span class="mono-num">7,500</span>
-                <span>نقطة ديوان (+20% بونص)</span>
+                <span data-i18n="planProBonus">+20% Bonus Points</span>
               </div>
             </div>
 
@@ -458,27 +517,27 @@
               <ul class="ticket-features-list">
                 <li class="ticket-feature-item">
                   <i class="fa-solid fa-check"></i>
-                  <span><b>300+ طلب محادثة</b> ذكية متقدمة مع Claude 3.5</span>
+                  <span data-i18n="planProFeat1"><b>300+ Advanced reasoning prompts</b> with Claude 3.5 Sonnet</span>
                 </li>
                 <li class="ticket-feature-item">
                   <i class="fa-solid fa-check"></i>
-                  <span>توليد حتى <b>110 صورة</b> بـ Midjourney & Flux Pro</span>
+                  <span data-i18n="planProFeat2">Render up to <b>110 Images</b> with Midjourney & Flux Pro</span>
                 </li>
                 <li class="ticket-feature-item">
                   <i class="fa-solid fa-check"></i>
-                  <span>توليد حتى <b>15 مقطع فيديو</b> بـ Kling & Runway</span>
+                  <span data-i18n="planProFeat3">Generate up to <b>15 Cinematic Videos</b> with Kling & Runway</span>
                 </li>
                 <li class="ticket-feature-item">
                   <i class="fa-solid fa-check"></i>
-                  <span>أولوية قصوى في معالجة الطلبات</span>
+                  <span data-i18n="planProFeat4">Top priority GPU processing queue</span>
                 </li>
                 <li class="ticket-feature-item">
                   <i class="fa-solid fa-check"></i>
-                  <span>دعم فني مخصص عبر واتساب وتيليجرام</span>
+                  <span data-i18n="planProFeat5">Dedicated support via WhatsApp & Telegram</span>
                 </li>
               </ul>
-              <button class="ticket-cta-btn" onclick="openTopupModal('pro')">
-                <span>شحن باقة 4,500 دج</span>
+              <button class="ticket-cta-btn" onclick="window.openTopupModal('pro')">
+                <span data-i18n="planProBtn">Top up 4,500 DZD Pack</span>
                 <i class="fa-solid fa-bolt"></i>
               </button>
             </div>
@@ -487,15 +546,15 @@
           <!-- Plan 3: Studio / Enterprise -->
           <div class="ticket-card">
             <div class="ticket-header">
-              <div class="ticket-plan-name">باقة الاستوديو • Enterprise</div>
-              <div class="ticket-plan-desc">للشركات، الوكالات والمشاريع الكبرى</div>
+              <div class="ticket-plan-name" data-i18n="planEntName">Studio Pack • Enterprise</div>
+              <div class="ticket-plan-desc" data-i18n="planEntDesc">For agencies, software teams & high-volume production</div>
               <div class="ticket-price-wrap">
                 <span class="ticket-price mono-num">12,000</span>
-                <span class="ticket-currency">دج (DZD)</span>
+                <span class="ticket-currency" data-i18n="currencyDzd">DZD (دج)</span>
               </div>
               <div class="ticket-points-badge">
                 <span class="mono-num">22,000</span>
-                <span>نقطة ديوان (+35% بونص)</span>
+                <span data-i18n="planEntBonus">+35% Bonus Points</span>
               </div>
             </div>
 
@@ -507,28 +566,28 @@
               <ul class="ticket-features-list">
                 <li class="ticket-feature-item">
                   <i class="fa-solid fa-check"></i>
-                  <span><b>1,000+ استفسار</b> ومحادثة برمجية وتحليل ملفات</span>
+                  <span data-i18n="planEntFeat1"><b>1,000+ Deep reasoning & coding sessions</b> and document analysis</span>
                 </li>
                 <li class="ticket-feature-item">
                   <i class="fa-solid fa-check"></i>
-                  <span><b>350+ صورة تجارية</b> وإعلانية بأعلى جودة 4K</span>
+                  <span data-i18n="planEntFeat2"><b>350+ Commercial 4K images</b> for marketing & branding</span>
                 </li>
                 <li class="ticket-feature-item">
                   <i class="fa-solid fa-check"></i>
-                  <span><b>50+ فيديو سينمائي</b> كامل بـ Runway Gen-3</span>
+                  <span data-i18n="planEntFeat3"><b>50+ Full cinematic video scenes</b> with Runway Gen-3</span>
                 </li>
                 <li class="ticket-feature-item">
                   <i class="fa-solid fa-check"></i>
-                  <span>مفاتيح API مخصصة وربط تطبيقات</span>
+                  <span data-i18n="planEntFeat4">Dedicated API keys and application integration</span>
                 </li>
                 <li class="ticket-feature-item">
                   <i class="fa-solid fa-check"></i>
-                  <span>فاتورة رسمية للشركات + مدير حساب مخصص</span>
+                  <span data-i18n="planEntFeat5">Official commercial invoice + Dedicated Account Manager</span>
                 </li>
               </ul>
-              <button class="ticket-cta-btn" onclick="openTopupModal('enterprise')">
-                <span>شحن باقة 12,000 دج</span>
-                <i class="fa-solid fa-arrow-left"></i>
+              <button class="ticket-cta-btn" onclick="window.openTopupModal('enterprise')">
+                <span data-i18n="planEntBtn">Top up 12,000 DZD Pack</span>
+                <i class="fa-solid fa-arrow-right icon-dir"></i>
               </button>
             </div>
           </div>
@@ -544,25 +603,25 @@
         <div class="section-intro">
           <span class="section-tag">
             <i class="fa-solid fa-table-list"></i>
-            <span>شفافية الحساب</span>
+            <span data-i18n="costTableTag">Fair & Transparent Billing</span>
           </span>
-          <h2 class="section-title">جدول استهلاك النقاط لكل عملية</h2>
-          <p class="section-desc">
-            تعرف بدقة على تكلفة كل استدعاء بالنقاط قبل إجرائه، مع ثبات الأسعار ووضوحها التام.
+          <h2 class="section-title" data-i18n="costTableTitle">Point consumption per model operation</h2>
+          <p class="section-desc" data-i18n="costTableDesc">
+            Know the precise cost in points for each AI call before generating, with guaranteed rate stability.
           </p>
         </div>
 
         <div class="table-card">
           <div class="table-filter-bar">
-            <div style="font-weight: 600; font-size: 15px; color: var(--text-primary);">
-              تصفية حسب نوع النموذج:
+            <div style="font-weight: 600; font-size: 14.5px; color: var(--text-primary);" data-i18n="filterLabel">
+              Filter by model type:
             </div>
             <div class="filter-btn-group">
-              <button class="filter-tab active" data-filter="all" onclick="filterTable('all')">الكل</button>
-              <button class="filter-tab" data-filter="chat" onclick="filterTable('chat')">شات ومحادثة</button>
-              <button class="filter-tab" data-filter="image" onclick="filterTable('image')">توليد صور</button>
-              <button class="filter-tab" data-filter="video" onclick="filterTable('video')">توليد فيديو</button>
-              <button class="filter-tab" data-filter="audio" onclick="filterTable('audio')">صوت وتفريغ</button>
+              <button class="filter-tab active" data-filter="all" onclick="window.filterTable('all')" data-i18n="filterAll">All</button>
+              <button class="filter-tab" data-filter="chat" onclick="window.filterTable('chat')" data-i18n="filterChat">Chat & LLMs</button>
+              <button class="filter-tab" data-filter="image" onclick="window.filterTable('image')" data-i18n="filterImage">Image Gen</button>
+              <button class="filter-tab" data-filter="video" onclick="window.filterTable('video')" data-i18n="filterVideo">Video Gen</button>
+              <button class="filter-tab" data-filter="audio" onclick="window.filterTable('audio')" data-i18n="filterAudio">Audio & Speech</button>
             </div>
           </div>
 
@@ -570,66 +629,66 @@
             <table class="cost-table">
               <thead>
                 <tr>
-                  <th>النموذج / المحرك</th>
-                  <th>الفئة والوظيفة</th>
-                  <th>وحدة الاستهلاك</th>
-                  <th>التكلفة بنقاط ديوان</th>
-                  <th>المعادل التقديري بالدينار</th>
+                  <th data-i18n="thModel">Model / Engine</th>
+                  <th data-i18n="thCategory">Category & Function</th>
+                  <th data-i18n="thUnit">Billing Unit</th>
+                  <th data-i18n="thCostPoints">Cost in VANTRA Points</th>
+                  <th data-i18n="thEquivalentDzd">Estimated Equivalent (DZD)</th>
                 </tr>
               </thead>
               <tbody id="cost-table-body">
                 <!-- Chat Rows -->
                 <tr data-category="chat">
                   <td class="model-name-td">
-                    <i class="fa-solid fa-brain" style="color: var(--petrol-400);"></i>
+                    <i class="fa-solid fa-brain" style="color: var(--teal);"></i>
                     <span>Claude 3.5 Sonnet</span>
                   </td>
-                  <td><span class="model-type-badge">محادثة وبرمجة</span></td>
-                  <td>لكل 1,000 توكن إدخال/إخراج</td>
-                  <td class="cost-highlight mono-num">25 نقطة</td>
-                  <td class="mono-num">~ 18 دج</td>
+                  <td><span class="model-type-badge" data-i18n="badgeChatCoding">Chat & Code</span></td>
+                  <td data-i18n="unitTokens1k">Per 1,000 Input/Output Tokens</td>
+                  <td class="cost-highlight mono-num">25 pts</td>
+                  <td class="mono-num">~ 18 DZD</td>
                 </tr>
                 <tr data-category="chat">
                   <td class="model-name-td">
-                    <i class="fa-solid fa-robot" style="color: var(--petrol-400);"></i>
+                    <i class="fa-solid fa-robot" style="color: var(--teal);"></i>
                     <span>GPT-4o (OpenAI)</span>
                   </td>
-                  <td><span class="model-type-badge">محادثة متعددة الوسائط</span></td>
-                  <td>لكل 1,000 توكن إدخال/إخراج</td>
-                  <td class="cost-highlight mono-num">20 نقطة</td>
-                  <td class="mono-num">~ 14 دج</td>
+                  <td><span class="model-type-badge" data-i18n="badgeMultimodal">Multimodal Chat</span></td>
+                  <td data-i18n="unitTokens1k">Per 1,000 Input/Output Tokens</td>
+                  <td class="cost-highlight mono-num">20 pts</td>
+                  <td class="mono-num">~ 14 DZD</td>
                 </tr>
                 <tr data-category="chat">
                   <td class="model-name-td">
-                    <i class="fa-solid fa-microchip" style="color: var(--petrol-400);"></i>
+                    <i class="fa-solid fa-microchip" style="color: var(--teal);"></i>
                     <span>DeepSeek V3 / R1</span>
                   </td>
-                  <td><span class="model-type-badge">تفكير واستنتاج عميق</span></td>
-                  <td>لكل 1,000 توكن إدخال/إخراج</td>
-                  <td class="cost-highlight mono-num">10 نقاط</td>
-                  <td class="mono-num">~ 7 دج</td>
+                  <td><span class="model-type-badge" data-i18n="badgeDeepReasoning">Deep Reasoning & Logic</span></td>
+                  <td data-i18n="unitTokens1k">Per 1,000 Input/Output Tokens</td>
+                  <td class="cost-highlight mono-num">10 pts</td>
+                  <td class="mono-num">~ 7 DZD</td>
                 </tr>
 
                 <!-- Image Rows -->
                 <tr data-category="image">
                   <td class="model-name-td">
-                    <i class="fa-solid fa-image" style="color: var(--gold-400);"></i>
+                    <i class="fa-solid fa-image" style="color: var(--gold);"></i>
                     <span>Flux.1 Pro (Schnell/Dev)</span>
                   </td>
-                  <td><span class="model-type-badge" style="color: var(--gold-300); background: rgba(245, 158, 11, 0.12);">توليد صور واقعية</span></td>
-                  <td>لكل صورة (1024×1024)</td>
-                  <td class="cost-highlight mono-num">65 نقطة</td>
-                  <td class="mono-num">~ 45 دج</td>
+                  <td><span class="model-type-badge" style="color: var(--gold-300); background: rgba(245, 185, 66, 0.12);" data-i18n="badgeRealisticImages">Photorealistic Images</span></td>
+                  <td data-i18n="unitImage1k">Per Image (1024×1024)</td>
+                  <td class="cost-highlight mono-num">65 pts</td>
+                  <td class="mono-num">~ 45 DZD</td>
                 </tr>
                 <tr data-category="image">
                   <td class="model-name-td">
-                    <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--gold-400);"></i>
+                    <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--gold);"></i>
                     <span>Midjourney V6.1</span>
                   </td>
-                  <td><span class="model-type-badge" style="color: var(--gold-300); background: rgba(245, 158, 11, 0.12);">فن وتصميم سينمائي</span></td>
-                  <td>لكل صورة عالية التفاصيل</td>
-                  <td class="cost-highlight mono-num">80 نقطة</td>
-                  <td class="mono-num">~ 55 دج</td>
+                  <td><span class="model-type-badge" style="color: var(--gold-300); background: rgba(245, 185, 66, 0.12);" data-i18n="badgeCinematicArt">Cinematic Art & Design</span></td>
+                  <td data-i18n="unitImageDetail">Per High-Detail Render</td>
+                  <td class="cost-highlight mono-num">80 pts</td>
+                  <td class="mono-num">~ 55 DZD</td>
                 </tr>
 
                 <!-- Video Rows -->
@@ -638,20 +697,20 @@
                     <i class="fa-solid fa-video" style="color: #60A5FA;"></i>
                     <span>Kling AI 1.5 HD</span>
                   </td>
-                  <td><span class="model-type-badge" style="color: #93C5FD; background: rgba(59, 130, 246, 0.12);">توليد فيديو بالذكاء</span></td>
-                  <td>لكل مقطع 5 ثوانٍ بجودة 1080p</td>
-                  <td class="cost-highlight mono-num">450 نقطة</td>
-                  <td class="mono-num">~ 310 دج</td>
+                  <td><span class="model-type-badge" style="color: #93C5FD; background: rgba(59, 130, 246, 0.12);" data-i18n="badgeVideoGen">AI Video Generation</span></td>
+                  <td data-i18n="unitVideo5s">Per 5-second video (1080p)</td>
+                  <td class="cost-highlight mono-num">450 pts</td>
+                  <td class="mono-num">~ 310 DZD</td>
                 </tr>
                 <tr data-category="video">
                   <td class="model-name-td">
                     <i class="fa-solid fa-clapperboard" style="color: #60A5FA;"></i>
                     <span>Runway Gen-3 Alpha</span>
                   </td>
-                  <td><span class="model-type-badge" style="color: #93C5FD; background: rgba(59, 130, 246, 0.12);">فيديو سينمائي هوليودي</span></td>
-                  <td>لكل مقطع 5 ثوانٍ سينمائي</td>
-                  <td class="cost-highlight mono-num">520 نقطة</td>
-                  <td class="mono-num">~ 360 دج</td>
+                  <td><span class="model-type-badge" style="color: #93C5FD; background: rgba(59, 130, 246, 0.12);" data-i18n="badgeHollywoodVideo">Hollywood Cinematic Video</span></td>
+                  <td data-i18n="unitVideoCinema">Per 5-second cinematic cut</td>
+                  <td class="cost-highlight mono-num">520 pts</td>
+                  <td class="mono-num">~ 360 DZD</td>
                 </tr>
 
                 <!-- Audio Rows -->
@@ -660,10 +719,10 @@
                     <i class="fa-solid fa-microphone-lines" style="color: #A78BFA;"></i>
                     <span>Whisper Large v3</span>
                   </td>
-                  <td><span class="model-type-badge" style="color: #C4B5FD; background: rgba(167, 139, 250, 0.12);">تفريغ صوتي بالدارجة والعربية</span></td>
-                  <td>لكل دقيقة تسجيل صوتي</td>
-                  <td class="cost-highlight mono-num">15 نقطة</td>
-                  <td class="mono-num">~ 10 دج</td>
+                  <td><span class="model-type-badge" style="color: #C4B5FD; background: rgba(167, 139, 250, 0.12);" data-i18n="badgeAudioTranscription">Speech-to-Text & Transcription</span></td>
+                  <td data-i18n="unitAudioMin">Per minute of audio recording</td>
+                  <td class="cost-highlight mono-num">15 pts</td>
+                  <td class="mono-num">~ 10 DZD</td>
                 </tr>
               </tbody>
             </table>
@@ -680,76 +739,76 @@
         <div class="section-intro">
           <span class="section-tag gold">
             <i class="fa-solid fa-circle-question"></i>
-            <span>الأسئلة الشائعة</span>
+            <span data-i18n="faqTag">Frequently Asked Questions</span>
           </span>
-          <h2 class="section-title">كل ما تحتاج معرفته حول ديوان</h2>
-          <p class="section-desc">
-            إجابات واضحة ومباشرة عن طرق الدفع، النقاط، وضمانات الخدمة.
+          <h2 class="section-title" data-i18n="faqTitle">Everything you need to know about VANTRA</h2>
+          <p class="section-desc" data-i18n="faqDesc">
+            Clear and straightforward answers about local payments, points system, and service reliability.
           </p>
         </div>
 
         <div class="faq-accordion">
           <!-- Item 1 -->
           <div class="faq-item open">
-            <button class="faq-question" onclick="toggleFaq(this)">
-              <span>هل أحتاج إلى بطاقة بنكية دولية (Visa / Mastercard) للتسجيل والشحن؟</span>
+            <button class="faq-question" onclick="window.toggleFaq(this)">
+              <span data-i18n="faq1Q">Do I need an international bank card (Visa / Mastercard) to register and top up?</span>
               <div class="faq-toggle-icon"><i class="fa-solid fa-chevron-down"></i></div>
             </button>
             <div class="faq-answer">
-              <div class="faq-answer-inner">
-                لا إطلاقاً! فكرة منصة ديوان الأساسية هي تمكين كل جزائري من الوصول للذكاء الاصطناعي العالمي باستخدام وسائل الدفع المحلية المتاحة للجميع: <b>البطاقة الذهبية (بريد الجزائر)</b> أو <b>بطاقة CIB البنكية</b>، بالإضافة إلى الدفع المباشر عبر تطبيق BaridiMob.
+              <div class="faq-answer-inner" data-i18n="faq1A">
+                Not at all! The foundational mission of VANTRA is to empower every Algerian with access to premier global AI using everyday local payment methods: <b>Edahabia Card (Algérie Poste)</b>, <b>CIB Bank Cards</b>, and direct payments via the <b>BaridiMob</b> app.
               </div>
             </div>
           </div>
 
           <!-- Item 2 -->
           <div class="faq-item">
-            <button class="faq-question" onclick="toggleFaq(this)">
-              <span>هل تنتهي صلاحية نقاط ديوان إذا لم أستهلكها في نهاية الشهر؟</span>
+            <button class="faq-question" onclick="window.toggleFaq(this)">
+              <span data-i18n="faq2Q">Do my VANTRA points expire if I don't use them by the end of the month?</span>
               <div class="faq-toggle-icon"><i class="fa-solid fa-chevron-down"></i></div>
             </button>
             <div class="faq-answer">
-              <div class="faq-answer-inner">
-                لا تنتهي أبداً. نقاطك تبقى محفوظة في حسابك في "الديوان" حتى تستخدمها بالكامل، دون أي ضغط زمني ودون أي تجديد تلقائي أو خصم دوري من حسابك البنكي.
+              <div class="faq-answer-inner" data-i18n="faq2A">
+                They never expire! Your points remain securely stored in your VANTRA account until you use them up entirely, with zero time pressure, zero recurring fees, and zero auto-debits from your bank account.
               </div>
             </div>
           </div>
 
           <!-- Item 3 -->
           <div class="faq-item">
-            <button class="faq-question" onclick="toggleFaq(this)">
-              <span>كيف يتم احتساب النقاط عند توليد النصوص، الصور أو الفيديوهات؟</span>
+            <button class="faq-question" onclick="window.toggleFaq(this)">
+              <span data-i18n="faq3Q">How are points calculated for text, image, and video generation?</span>
               <div class="faq-toggle-icon"><i class="fa-solid fa-chevron-down"></i></div>
             </button>
             <div class="faq-answer">
-              <div class="faq-answer-inner">
-                يتم احتساب النقاط بناءً على استهلاك خوادم الذكاء الاصطناعي بدقة (Tokens للنصوص، وعدد الصور بدقة 1024px، وثواني التوليد للفيديو). يمكنك دائماً مراجعة <b>جدول استهلاك النقاط</b> أعلاه لمشاهدة التكلفة الشفافة لكل نموذج.
+              <div class="faq-answer-inner" data-i18n="faq3A">
+                Points are calculated based on raw AI compute consumption (Tokens for text, image counts at 1024px, and generation seconds for video). You can always refer to the transparent <b>Cost Table</b> above to check exact rates for every model.
               </div>
             </div>
           </div>
 
           <!-- Item 4 -->
           <div class="faq-item">
-            <button class="faq-question" onclick="toggleFaq(this)">
-              <span>هل النماذج المتوفرة في ديوان تدعم اللغة العربية والدارجة الجزائرية؟</span>
+            <button class="faq-question" onclick="window.toggleFaq(this)">
+              <span data-i18n="faq4Q">Do the AI models available on VANTRA support Arabic and Algerian Darja?</span>
               <div class="faq-toggle-icon"><i class="fa-solid fa-chevron-down"></i></div>
             </button>
             <div class="faq-answer">
-              <div class="faq-answer-inner">
-                نعم، نماذج مثل <b>Claude 3.5 Sonnet</b> و <b>GPT-4o</b> و <b>DeepSeek</b> تدعم اللغة العربية الفصحى والدارجة الجزائرية بكفاءة عالية جداً، مع فهم المصطلحات المحلية والثقافة الجزائرية وتوليد محتوى مناسب لسوقنا المحلي.
+              <div class="faq-answer-inner" data-i18n="faq4A">
+                Yes! Flagship models such as <b>Claude 3.5 Sonnet</b>, <b>GPT-4o</b>, and <b>DeepSeek</b> excel in Modern Standard Arabic and Algerian Darja, understanding local cultural nuances, dialects, and generating tailored content for the Algerian market.
               </div>
             </div>
           </div>
 
           <!-- Item 5 -->
           <div class="faq-item">
-            <button class="faq-question" onclick="toggleFaq(this)">
-              <span>ماذا أفعل إذا واجهت مشكلة أثناء الدفع أو لم يصل الرصيد فوراً؟</span>
+            <button class="faq-question" onclick="window.toggleFaq(this)">
+              <span data-i18n="faq5Q">What should I do if I encounter an issue during payment or points aren't credited immediately?</span>
               <div class="faq-toggle-icon"><i class="fa-solid fa-chevron-down"></i></div>
             </button>
             <div class="faq-answer">
-              <div class="faq-answer-inner">
-                عملية الشحن آلية وتتم في أقل من 30 ثانية. وإذا حدث أي تأخير من جانب الشبكة البنكية، فإن فريق الدعم الفني الجزائري متاح عبر واتساب وتيليجرام على مدار الساعة لمساعدتك وتأكيد عملية الشحن برقم المعاملة فوراً.
+              <div class="faq-answer-inner" data-i18n="faq5A">
+                Top-ups are fully automated and complete in under 30 seconds. If any bank network delay occurs, our local Algerian support team is available 24/7 via WhatsApp and Telegram to assist you and verify your transaction ID instantly.
               </div>
             </div>
           </div>
@@ -763,17 +822,17 @@
     <section class="closing-cta-section">
       <div class="container">
         <div class="closing-card">
-          <h2 class="closing-title">جاهز لإطلاق العنان لقوة الذكاء الاصطناعي بالدينار؟</h2>
-          <p class="closing-desc">
-            انضم إلى آلاف الطلاب، المصممين والمطورين الجزائريين الذين يستخدمون ديوان يومياً لتطوير أعمالهم ودراستهم.
+          <h2 class="closing-title" data-i18n="closingTitle">Ready to unleash the power of global AI in DZD?</h2>
+          <p class="closing-desc" data-i18n="closingDesc">
+            Join thousands of Algerian students, creators, and developers who rely on VANTRA daily to build their projects and accelerate their workflow.
           </p>
           <div class="closing-cta-btns">
-            <button class="btn-primary btn-gold" style="padding: 15px 36px; font-size: 16px;" onclick="openTopupModal('pro')">
+            <button class="btn-primary" style="padding: 15px 34px; font-size: 15.5px;" onclick="window.openTopupModal('pro')">
               <i class="fa-solid fa-wallet"></i>
-              <span>اشحن ديوانك الآن بالبطاقة الذهبية</span>
+              <span data-i18n="btnClosingTopup">Top up your VANTRA now with Edahabia</span>
             </button>
             <a href="#cost-table" class="btn-ghost" style="padding: 15px 26px; font-size: 15px; background: rgba(255, 255, 255, 0.08);">
-              <span>مقارنة النماذج والأسعار</span>
+              <span data-i18n="btnClosingCompare">Compare Models & Pricing</span>
             </a>
           </div>
         </div>
@@ -788,57 +847,57 @@
         <div class="footer-top">
           <!-- Col 1: Brand Info -->
           <div>
-            <div class="brand-logo" style="margin-bottom: 8px;">
-              <div class="logo-badge"><span>د</span></div>
-              <span class="brand-name">دِيـــوَان</span>
+            <div class="brand-logo" style="margin-bottom: 10px;">
+              <div class="logo-badge"><img src="/brandmark.svg" alt="VANTRA" /></div>
+              <span class="brand-name">VANTRA</span>
             </div>
-            <p class="footer-brand-desc">
-              المنصة الجزائرية الرائدة لتجميع وإدارة رصيد نماذج الذكاء الاصطناعي التوليدي عبر الدفع بالعملة الوطنية.
+            <p class="footer-brand-desc" data-i18n="footerBrandDesc">
+              The leading Algerian platform unifying top generative AI foundation models with local currency payment.
             </p>
           </div>
 
           <!-- Col 2: Navigation Links -->
           <div>
-            <div class="footer-heading">الروابط السريعة</div>
+            <div class="footer-heading" data-i18n="footerQuickLinks">Quick Links</div>
             <ul class="footer-links">
-              <li><a href="#hero" class="footer-link">الرئيسية</a></li>
-              <li><a href="#models" class="footer-link">محركات الذكاء الاصطناعي</a></li>
-              <li><a href="#pricing" class="footer-link">باقات شحن الرصيد</a></li>
-              <li><a href="#cost-table" class="footer-link">جدول استهلاك النقاط</a></li>
+              <li><a href="#hero" class="footer-link" data-i18n="navHome">Home</a></li>
+              <li><a href="#models" class="footer-link" data-i18n="footerLinkModels">AI Models & Engines</a></li>
+              <li><a href="#pricing" class="footer-link" data-i18n="footerLinkPricing">Recharge Packs</a></li>
+              <li><a href="#cost-table" class="footer-link" data-i18n="footerLinkCostTable">Point Consumption Table</a></li>
             </ul>
           </div>
 
           <!-- Col 3: Legal & Support -->
           <div>
-            <div class="footer-heading">الدعم والأمان</div>
+            <div class="footer-heading" data-i18n="footerSupportLegal">Support & Security</div>
             <ul class="footer-links">
-              <li><a href="#faq" class="footer-link">الأسئلة الشائعة</a></li>
-              <li><a href="mailto:support@diwan.dz" class="footer-link">الدعم الفني: support@diwan.dz</a></li>
-              <li><a href="#terms" class="footer-link">شروط الاستخدام والخصوصية</a></li>
-              <li><a href="#security" class="footer-link">معايير أمان المعاملات</a></li>
+              <li><a href="#faq" class="footer-link" data-i18n="footerLinkFaq">FAQ</a></li>
+              <li><a href="mailto:support@vantra.dz" class="footer-link" data-i18n="footerLinkSupportEmail">Support: support@vantra.dz</a></li>
+              <li><a href="#terms" class="footer-link" data-i18n="footerLinkTerms">Terms of Service & Privacy</a></li>
+              <li><a href="#security" class="footer-link" data-i18n="footerLinkSecurity">Transaction Security Standards</a></li>
             </ul>
           </div>
 
           <!-- Col 4: Payment Badges -->
           <div>
-            <div class="footer-heading">طرق الدفع المحلية المعتمدة</div>
+            <div class="footer-heading" data-i18n="footerPaymentsTitle">Accepted Local Payment Methods</div>
             <div class="payment-badges-wrap">
               <div class="payment-badges-row">
                 <div class="payment-pill edahabia">
                   <i class="fa-solid fa-credit-card"></i>
-                  <span>البطاقة الذهبية (Algérie Poste)</span>
+                  <span data-i18n="footerEdahabiaBadge">Edahabia Card (Algérie Poste)</span>
                 </div>
               </div>
               <div class="payment-badges-row">
                 <div class="payment-pill cib">
                   <i class="fa-solid fa-building-columns"></i>
-                  <span>بطاقات CIB البنكية المعتمدة</span>
+                  <span data-i18n="footerCibBadge">Certified CIB Bank Cards</span>
                 </div>
               </div>
               <div class="payment-badges-row">
                 <div class="payment-pill">
                   <i class="fa-solid fa-mobile-screen"></i>
-                  <span>تطبيق بريد موب (BaridiMob)</span>
+                  <span data-i18n="footerBaridiBadge">BaridiMob Mobile App</span>
                 </div>
               </div>
             </div>
@@ -847,11 +906,11 @@
 
         <!-- Footer Bottom -->
         <div class="footer-bottom">
-          <div>
-            جميع الحقوق محفوظة © 2026 ديوان (Diwan AI Algeria) • مسجل ومعتمد للدفع الإلكتروني المحلي.
+          <div data-i18n="footerCopyright">
+            All rights reserved © 2026 VANTRA (VANTRA AI Algeria) • Certified for local electronic payments.
           </div>
-          <div style="font-family: var(--font-mono); font-size: 11px; color: var(--petrol-400);">
-            v2.4.0-dz • Secured via SATIM & Algérie Poste
+          <div style="font-family: var(--font-mono); font-size: 11px; color: var(--teal);" data-i18n="footerSecuredVia">
+            v2.5.0-dz • Secured via SATIM & Algérie Poste
           </div>
         </div>
       </div>
@@ -863,29 +922,34 @@
     <div class="modal-backdrop" id="topup-modal" role="dialog" aria-modal="true" aria-labelledby="modal-plan-title">
       <div class="modal-dialog">
         <div class="modal-head">
-          <div class="modal-title" id="modal-plan-title">شحن رصيد ديوان بالدينار</div>
-          <button class="modal-close" onclick="closeTopupModal()" aria-label="إغلاق">✕</button>
+          <div class="modal-title" id="modal-plan-title">
+            <div class="logo-badge" style="width: 28px; height: 28px; padding: 3px; border-radius: 8px;">
+              <img src="/brandmark.svg" alt="VANTRA" />
+            </div>
+            <span data-i18n="modalTitle">Top up VANTRA Balance in DZD</span>
+          </div>
+          <button class="modal-close" onclick="window.closeTopupModal()" aria-label="Close">✕</button>
         </div>
 
         <div class="modal-content-inner">
-          <div style="font-size: 13.5px; color: var(--text-secondary);">
-            اختر وسيلة الدفع بالدينار الجزائري لتأكيد شحن رصيد النقاط فورياً:
+          <div style="font-size: 13.5px; color: var(--text-secondary);" data-i18n="modalSub">
+            Select your preferred payment method to instantly credit your balance:
           </div>
 
           <!-- Payment Option Selector -->
           <div class="payment-method-selector">
-            <div class="payment-option-card selected" onclick="selectPaymentOption(this, 'edahabia')">
-              <i class="fa-solid fa-credit-card" style="color: var(--gold-400); font-size: 18px;"></i>
+            <div class="payment-option-card selected" onclick="window.selectPaymentOption(this, 'edahabia')">
+              <i class="fa-solid fa-credit-card" style="color: var(--gold); font-size: 18px;"></i>
               <div>
-                <div style="font-weight: 600; font-size: 13px; color: var(--text-primary);">البطاقة الذهبية</div>
-                <div style="font-size: 11px; color: var(--text-muted);">بريد الجزائر (EDAHABIA)</div>
+                <div style="font-weight: 600; font-size: 13px; color: var(--text-primary);" data-i18n="optEdahabiaTitle">Edahabia Card</div>
+                <div style="font-size: 11px; color: var(--text-muted);" data-i18n="optEdahabiaSub">Algérie Poste (EDAHABIA)</div>
               </div>
             </div>
-            <div class="payment-option-card" onclick="selectPaymentOption(this, 'cib')">
-              <i class="fa-solid fa-building-columns" style="color: var(--petrol-400); font-size: 18px;"></i>
+            <div class="payment-option-card" onclick="window.selectPaymentOption(this, 'cib')">
+              <i class="fa-solid fa-building-columns" style="color: var(--teal); font-size: 18px;"></i>
               <div>
-                <div style="font-weight: 600; font-size: 13px; color: var(--text-primary);">بطاقة CIB</div>
-                <div style="font-size: 11px; color: var(--text-muted);">البنوك الجزائرية (SATIM)</div>
+                <div style="font-weight: 600; font-size: 13px; color: var(--text-primary);" data-i18n="optCibTitle">CIB Card</div>
+                <div style="font-size: 11px; color: var(--text-muted);" data-i18n="optCibSub">Algerian Banks (SATIM)</div>
               </div>
             </div>
           </div>
@@ -893,23 +957,23 @@
           <!-- Invoice Summary -->
           <div class="modal-receipt-box">
             <div class="receipt-row">
-              <span>الباقة المختارة:</span>
-              <span id="modal-plan-name" style="font-weight: 600; color: var(--text-primary);">باقة المبدعين • Pro</span>
+              <span data-i18n="receiptPlan">Selected Pack:</span>
+              <span id="modal-plan-name" style="font-weight: 600; color: var(--text-primary);">Creator Pack • Pro</span>
             </div>
             <div class="receipt-row">
-              <span>رصيد النقاط المضاف:</span>
-              <span class="mono-num" id="modal-plan-points" style="color: var(--petrol-300); font-weight: 600;">+7,500 نقطة</span>
+              <span data-i18n="receiptPoints">Credited Points:</span>
+              <span class="mono-num" id="modal-plan-points" style="color: var(--teal); font-weight: 600;">+7,500 pts</span>
             </div>
             <div class="receipt-row total">
-              <span>المبلغ الإجمالي للدفع:</span>
-              <span class="mono-num" id="modal-plan-price" style="font-size: 17px; color: var(--gold-400);">4,500 دج</span>
+              <span data-i18n="receiptTotal">Total Amount to Pay:</span>
+              <span class="mono-num" id="modal-plan-price" style="font-size: 17px; color: var(--gold);">4,500 DZD</span>
             </div>
           </div>
 
           <!-- Phone Number Input for Confirmation -->
           <div>
-            <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px;">
-              رقم الهاتف المرتبط بالبطاقة (لاستلام رمز التحقق OTP):
+            <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px;" data-i18n="phoneLabel">
+              Phone number linked to your card (for OTP verification):
             </label>
             <input 
               type="text" 
@@ -920,9 +984,9 @@
             />
           </div>
 
-          <button class="btn-primary btn-gold" style="width: 100%; padding: 13px; font-size: 15px;" onclick="confirmSimulatedTopup()">
+          <button class="btn-primary" style="width: 100%; padding: 13px; font-size: 14.5px;" onclick="window.confirmSimulatedTopup()">
             <i class="fa-solid fa-lock"></i>
-            <span>تأكيد الشحن الفوري بالدينار (محاكاة)</span>
+            <span data-i18n="btnConfirmTopup">Confirm Instant Top-Up in DZD (Simulation)</span>
           </button>
         </div>
       </div>
@@ -930,8 +994,8 @@
 
     <!-- Toast Notification Element -->
     <div class="toast" id="app-toast">
-      <i class="fa-solid fa-circle-check" style="color: var(--petrol-400); font-size: 18px;"></i>
-      <span id="toast-message">تمت العملية بنجاح</span>
+      <i class="fa-solid fa-circle-check" style="color: var(--teal); font-size: 18px;"></i>
+      <span id="toast-message">Operation successful</span>
     </div>
 
     <!-- Main Logic Script -->
