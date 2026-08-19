@@ -769,11 +769,156 @@ window.closeMobileMenu = function() {
   document.getElementById('mobile-sheet')?.classList.remove('active');
 };
 
+function initHeroCinematicCanvas() {
+  const canvas = document.getElementById('hero-cinematic-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d', { alpha: true });
+  if (!ctx) return;
+
+  const container = canvas.parentElement || document.querySelector('.hero');
+  if (!container) return;
+
+  let width = container.clientWidth || window.innerWidth;
+  let height = container.clientHeight || 750;
+  let time = 0;
+  let mouseX = 0, mouseY = 0, targetMouseX = 0, targetMouseY = 0;
+
+  function resize() {
+    const rect = container.getBoundingClientRect();
+    width = rect.width || window.innerWidth;
+    height = rect.height || 750;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
+  }
+
+  window.addEventListener('resize', resize);
+  window.addEventListener('mousemove', (e) => {
+    const rect = container.getBoundingClientRect();
+    targetMouseX = (e.clientX - rect.left) / (width || 1) - 0.5;
+    targetMouseY = (e.clientY - rect.top) / (height || 1) - 0.5;
+  }, { passive: true });
+
+  resize();
+
+  const waveColors = [
+    { r: 31, g: 216, b: 184, alpha: 0.65 },
+    { r: 110, g: 107, b: 255, alpha: 0.58 },
+    { r: 0, g: 240, b: 255, alpha: 0.48 },
+    { r: 245, g: 185, b: 66, alpha: 0.35 },
+    { r: 31, g: 216, b: 184, alpha: 0.55 },
+  ];
+
+  const flecks = Array.from({ length: 42 }, () => ({
+    x: Math.random() * (width || 1200),
+    y: Math.random() * (height || 700),
+    size: Math.random() * 2.2 + 0.8,
+    vx: (Math.random() - 0.5) * 0.4,
+    vy: (Math.random() - 0.5) * 0.4,
+    alpha: Math.random() * 0.7 + 0.3,
+    pulseSpeed: Math.random() * 0.04 + 0.015,
+    phase: Math.random() * Math.PI * 2,
+  }));
+
+  function render() {
+    time += 0.01;
+    mouseX += (targetMouseX - mouseX) * 0.05;
+    mouseY += (targetMouseY - mouseY) * 0.05;
+
+    ctx.clearRect(0, 0, width, height);
+
+    // 1. Top Aurora Beam Cone
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const beamX = width * 0.5 + mouseX * 120;
+    const beamRadius = Math.max(width * 0.7, 520);
+    const beamGrad = ctx.createRadialGradient(beamX, -20, 15, beamX, -20, beamRadius);
+    beamGrad.addColorStop(0, 'rgba(31, 216, 184, 0.65)');
+    beamGrad.addColorStop(0.25, 'rgba(110, 107, 255, 0.45)');
+    beamGrad.addColorStop(0.55, 'rgba(31, 216, 184, 0.18)');
+    beamGrad.addColorStop(1, 'rgba(10, 11, 15, 0)');
+    ctx.fillStyle = beamGrad;
+    ctx.beginPath();
+    ctx.arc(beamX, -20, beamRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 2. Multi-layer Flowing Waves
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (let i = 0; i < 5; i++) {
+      const color = waveColors[i];
+      const freq1 = 0.0022 + i * 0.0007;
+      const freq2 = 0.0016 - i * 0.0003;
+      const amp1 = 65 + i * 22;
+      const amp2 = 42 + i * 15;
+      const phaseOffset = i * 1.4;
+      const baselineY = height * 0.44 + i * 26 + mouseY * 70;
+
+      ctx.beginPath();
+      ctx.moveTo(-40, height + 60);
+      for (let x = -40; x <= width + 40; x += 10) {
+        const normalizedX = x + mouseX * 90;
+        const y = baselineY + Math.sin(normalizedX * freq1 + time + phaseOffset) * amp1 + Math.cos(normalizedX * freq2 - time * 0.75 + phaseOffset) * amp2;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(width + 40, height + 80);
+      ctx.lineTo(-40, height + 80);
+      ctx.closePath();
+
+      const waveGrad = ctx.createLinearGradient(0, baselineY - amp1, 0, height);
+      waveGrad.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, ${Math.min(color.alpha, 0.7)})`);
+      waveGrad.addColorStop(0.4, `rgba(${color.r}, ${color.g}, ${color.b}, ${color.alpha * 0.4})`);
+      waveGrad.addColorStop(1, 'rgba(10, 11, 15, 0)');
+      ctx.fillStyle = waveGrad;
+      ctx.fill();
+
+      ctx.shadowColor = `rgba(${color.r}, ${color.g}, ${color.b}, 0.9)`;
+      ctx.shadowBlur = 16;
+      ctx.lineWidth = 2.4;
+      ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${Math.min(color.alpha * 1.5, 0.95)})`;
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // 3. Floating Starlight Flecks
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    flecks.forEach(fleck => {
+      fleck.x += fleck.vx + mouseX * 0.6;
+      fleck.y += fleck.vy + mouseY * 0.6;
+      fleck.phase += fleck.pulseSpeed;
+      if (fleck.x < 0) fleck.x = width;
+      if (fleck.x > width) fleck.x = 0;
+      if (fleck.y < 0) fleck.y = height;
+      if (fleck.y > height) fleck.y = 0;
+      const alpha = fleck.alpha * (0.65 + Math.sin(fleck.phase) * 0.35);
+      ctx.shadowColor = '#1FD8B8';
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = `rgba(31, 216, 184, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(fleck.x, fleck.y, fleck.size, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.restore();
+
+    requestAnimationFrame(render);
+  }
+
+  render();
+}
+
 // -----------------------------------------------------------------------------
 // Initialization on DOM Ready
 // -----------------------------------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize dynamic cinematic hero canvas
+  initHeroCinematicCanvas();
   // Initialize detected language
   const initialLang = detectInitialLanguage();
   window.setLanguage(initialLang);
