@@ -17,19 +17,15 @@ export default function AmbientMotionBackground({
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
-  // Smooth physics-based spring follower for cursor interaction
-  const smoothX = useSpring(mouseX, { stiffness: 45, damping: 25 });
-  const smoothY = useSpring(mouseY, { stiffness: 45, damping: 25 });
+  const smoothX = useSpring(mouseX, { stiffness: 40, damping: 30 });
+  const smoothY = useSpring(mouseY, { stiffness: 40, damping: 30 });
 
-  // Transform offsets for floating orbs and grid parallax
-  const tealX = useTransform(smoothX, [-500, 500], [-35, 35]);
-  const tealY = useTransform(smoothY, [-500, 500], [-25, 25]);
-  const violetX = useTransform(smoothX, [-500, 500], [30, -30]);
-  const violetY = useTransform(smoothY, [-500, 500], [20, -20]);
-  const amberX = useTransform(smoothX, [-500, 500], [-15, 15]);
-  const amberY = useTransform(smoothY, [-500, 500], [15, -15]);
-  const gridX = useTransform(smoothX, [-500, 500], [-12, 12]);
-  const gridY = useTransform(smoothY, [-500, 500], [-12, 12]);
+  const tealX = useTransform(smoothX, [-500, 500], [-25, 25]);
+  const tealY = useTransform(smoothY, [-500, 500], [-20, 20]);
+  const violetX = useTransform(smoothX, [-500, 500], [25, -25]);
+  const violetY = useTransform(smoothY, [-500, 500], [18, -18]);
+  const gridX = useTransform(smoothX, [-500, 500], [-8, 8]);
+  const gridY = useTransform(smoothY, [-500, 500], [-8, 8]);
 
   useEffect(() => {
     if (!interactive) return;
@@ -44,17 +40,17 @@ export default function AmbientMotionBackground({
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, [interactive, mouseX, mouseY]);
 
-  const opacityMultiplier = intensity === 'subtle' ? 0.6 : intensity === 'vibrant' ? 1.2 : 1;
+  const opacityMultiplier = intensity === 'subtle' ? 0.7 : intensity === 'vibrant' ? 1.1 : 0.9;
 
   return (
     <div
       aria-hidden="true"
-      className={`pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#0A0B0F] select-none ${className}`}
+      className={`pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#050506] select-none ${className}`}
     >
-      {/* 1. Interactive Micro Dot Grid Layer */}
+      {/* 1. Subtle Micro Dot Grid */}
       <motion.div
         style={{ x: gridX, y: gridY }}
-        className="absolute inset-[-40px] opacity-[0.14] transition-opacity duration-700"
+        className="absolute inset-[-40px] opacity-[0.08]"
       >
         <svg
           className="h-full w-full"
@@ -78,86 +74,56 @@ export default function AmbientMotionBackground({
         </svg>
       </motion.div>
 
-      {/* 2. Floating Mesh Gradient Orbs (GPU accelerated blur & transform) */}
+      {/* 2. Quiet Ambient Mesh Gradient Orbs (3: Opacity 0.15-0.18, calm ambient light) */}
       
-      {/* Primary Vantra Teal Orb (#1FD8B8) */}
+      {/* Primary Teal Ambient Glow */}
       <motion.div
         animate={{
-          scale: [1, 1.15, 0.95, 1],
-          rotate: [0, 15, -15, 0],
+          scale: [1, 1.08, 0.96, 1],
+          rotate: [0, 10, -10, 0],
         }}
         transition={{
-          duration: 18,
+          duration: 20,
           repeat: Infinity,
           ease: 'easeInOut',
         }}
-        className="absolute -top-[15%] -left-[10%] h-[650px] w-[650px] rounded-full blur-[140px]"
+        className="absolute -top-[10%] -left-[5%] h-[550px] w-[550px] rounded-full blur-[100px]"
         style={{
           x: tealX,
           y: tealY,
-          background: 'radial-gradient(circle, rgba(31, 216, 184, 0.22) 0%, rgba(31, 216, 184, 0.05) 55%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(31, 216, 184, 0.16) 0%, rgba(31, 216, 184, 0.03) 55%, transparent 70%)',
           opacity: opacityMultiplier,
           transform: 'translateZ(0)',
         }}
       />
 
-      {/* Accent Violet Orb (#6E6BFF) */}
+      {/* Accent Violet Ambient Glow */}
       <motion.div
         animate={{
-          scale: [1, 0.9, 1.12, 1],
-          rotate: [0, -20, 20, 0],
+          scale: [1, 0.94, 1.06, 1],
+          rotate: [0, -15, 15, 0],
         }}
         transition={{
-          duration: 22,
+          duration: 24,
           repeat: Infinity,
           ease: 'easeInOut',
           delay: 2,
         }}
-        className="absolute top-[20%] -right-[12%] h-[720px] w-[720px] rounded-full blur-[160px]"
+        className="absolute top-[25%] -right-[8%] h-[600px] w-[600px] rounded-full blur-[110px]"
         style={{
           x: violetX,
           y: violetY,
-          background: 'radial-gradient(circle, rgba(110, 107, 255, 0.20) 0%, rgba(110, 107, 255, 0.04) 60%, transparent 75%)',
+          background: 'radial-gradient(circle, rgba(110, 107, 255, 0.14) 0%, rgba(110, 107, 255, 0.02) 60%, transparent 75%)',
           opacity: opacityMultiplier,
           transform: 'translateZ(0)',
         }}
       />
 
-      {/* Warm Amber / Gold Glow (#F5B942) */}
-      <motion.div
-        animate={{
-          scale: [0.95, 1.1, 0.9, 0.95],
-          rotate: [0, 10, -10, 0],
-        }}
-        transition={{
-          duration: 25,
-          repeat: Infinity,
-          ease: 'easeInOut',
-          delay: 4,
-        }}
-        className="absolute bottom-[-10%] left-[25%] h-[580px] w-[580px] rounded-full blur-[150px]"
-        style={{
-          x: amberX,
-          y: amberY,
-          background: 'radial-gradient(circle, rgba(245, 185, 66, 0.12) 0%, rgba(245, 185, 66, 0.02) 50%, transparent 70%)',
-          opacity: opacityMultiplier,
-          transform: 'translateZ(0)',
-        }}
-      />
-
-      {/* Deep Center Radial Vignette to maintain crisp luxury contrast */}
+      {/* Center Vignette for Clean Deep Contrast */}
       <div
-        className="absolute inset-0 opacity-80"
+        className="absolute inset-0 opacity-90"
         style={{
-          background: 'radial-gradient(ellipse at center, transparent 0%, rgba(10, 11, 15, 0.4) 50%, rgba(10, 11, 15, 0.95) 100%)',
-        }}
-      />
-
-      {/* Subtle Film Grain Noise Texture */}
-      <div
-        className="absolute inset-0 opacity-[0.025] mix-blend-overlay"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+          background: 'radial-gradient(ellipse at center, transparent 0%, rgba(5, 5, 6, 0.5) 60%, rgba(5, 5, 6, 0.98) 100%)',
         }}
       />
     </div>

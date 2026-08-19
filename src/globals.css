@@ -2,12 +2,12 @@
 
 @layer base {
   :root {
-    --bg: #08090C;
-    --bg-soft: #0F1116;
-    --glass: rgba(255, 255, 255, 0.045);
-    --glass-hover: rgba(255, 255, 255, 0.08);
-    --glass-border: rgba(255, 255, 255, 0.09);
-    --glass-border-hover: rgba(255, 255, 255, 0.18);
+    --bg: #050506;
+    --bg-soft: #0A0B0D;
+    --glass: rgba(255, 255, 255, 0.035);
+    --glass-hover: rgba(255, 255, 255, 0.065);
+    --glass-border: rgba(255, 255, 255, 0.06);
+    --glass-border-hover: rgba(255, 255, 255, 0.12);
     
     --teal: #1FD8B8;
     --teal-dim: #0EA98E;
@@ -21,7 +21,6 @@
     --bg-surface: var(--bg-soft);
     --primary: var(--teal);
     --primary-dim: var(--teal-dim);
-    --accent: var(--violet);
     --border-subtle: var(--glass-border);
     --text-primary: var(--text);
     --text-secondary: var(--muted);
@@ -38,13 +37,20 @@
     selection-color: var(--bg);
   }
 
-  h1, h2, h3, h4 {
+  h1 {
     font-family: 'Space Grotesk', 'Cairo', sans-serif;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  h2, h3, h4 {
+    font-family: 'Space Grotesk', 'Cairo', sans-serif;
+    font-weight: 700;
     color: var(--text);
   }
 }
 
-/* Unified Keyframes & Utility Animations */
+/* Keyframes & Animations */
 @keyframes gradient {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
@@ -76,7 +82,7 @@
     transform: translateY(0px) rotate(0deg);
   }
   50% {
-    transform: translateY(-6px) rotate(0.5deg);
+    transform: translateY(-4px) rotate(0.5deg);
   }
 }
 
@@ -117,7 +123,7 @@
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--glass-border);
   border-radius: 16px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
 }
 
 @media (prefers-reduced-motion: reduce) {
