@@ -2639,6 +2639,16 @@ html[dir="rtl"] .cost-table {
   100% { transform: translateY(-8px); }
 }
 
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient {
+  animation: gradient 6s ease infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
     animation-duration: 0.01ms !important;
@@ -2652,7 +2662,7 @@ html[dir="rtl"] .cost-table {
     transform: none !important;
   }
 
-  .orb, .floating-card, .hero-badge-dot {
+  .orb, .floating-card, .hero-badge-dot, .animate-gradient {
     animation: none !important;
   }
 }
