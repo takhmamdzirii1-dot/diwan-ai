@@ -2,9 +2,10 @@
 
 import React from 'react';
 import { motion, type Variants } from 'framer-motion';
-import { Sparkles, ArrowRight, ShieldCheck, Zap, Layers, Lock, MessageSquare, Image as ImageIcon, Video, CheckCircle2 } from 'lucide-react';
+import { Sparkles, ArrowRight, ShieldCheck, Zap, Layers, MessageSquare, Image as ImageIcon, Video, CheckCircle2 } from 'lucide-react';
 import LiveLedgerCard from './LiveLedgerCard';
 import ShimmerButton from './ShimmerButton';
+import HeroCinematicBackground from './HeroCinematicBackground';
 
 // Staggered motion container variants
 const containerVariants: Variants = {
@@ -44,8 +45,11 @@ const floatingCardVariants: Variants = {
 
 export default function HeroSection() {
   return (
-    <section className="relative min-h-[92vh] flex items-center justify-center pt-24 pb-16 px-4 md:px-8 overflow-hidden">
-      <div className="max-w-7xl mx-auto w-full">
+    <section className="relative min-h-[92vh] flex items-center justify-center pt-28 pb-16 px-4 md:px-8 overflow-hidden">
+      {/* Dynamic Cinematic Canvas & Quantum Beam Shader Layer */}
+      <HeroCinematicBackground speed={1.1} beamIntensity={1.15} />
+
+      <div className="max-w-7xl mx-auto w-full relative z-10">
         <motion.div
           variants={containerVariants}
           initial="hidden"
@@ -56,7 +60,7 @@ export default function HeroSection() {
           <div className="lg:col-span-7 space-y-7 text-left">
             {/* 1. Animated Badge */}
             <motion.div variants={itemVariants} className="inline-flex items-center">
-              <div className="group relative flex items-center gap-2.5 rounded-full border border-white/[0.12] bg-[#0E1017]/80 px-4 py-1.5 backdrop-blur-xl shadow-[0_0_20px_rgba(31,216,184,0.1)] transition-all hover:border-[#1FD8B8]/40">
+              <div className="group relative flex items-center gap-2.5 rounded-full border border-white/[0.12] bg-[#0E1017]/85 px-4 py-1.5 backdrop-blur-xl shadow-[0_0_25px_rgba(31,216,184,0.12)] transition-all hover:border-[#1FD8B8]/40">
                 <span className="relative flex h-2.5 w-2.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#1FD8B8] opacity-75" />
                   <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#1FD8B8]" />
@@ -71,7 +75,7 @@ export default function HeroSection() {
             {/* 2. Hero Main Title */}
             <motion.h1
               variants={itemVariants}
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.15]"
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.15] drop-shadow-[0_2px_15px_rgba(0,0,0,0.8)]"
             >
               One unified gateway for all AI models,{' '}
               <span className="bg-gradient-to-r from-[#1FD8B8] via-[#8583FF] to-[#1FD8B8] bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent">
@@ -82,7 +86,7 @@ export default function HeroSection() {
             {/* 3. Subtitle */}
             <motion.p
               variants={itemVariants}
-              className="text-base sm:text-lg text-white/70 max-w-2xl leading-relaxed"
+              className="text-base sm:text-lg text-white/75 max-w-2xl leading-relaxed drop-shadow-[0_1px_10px_rgba(0,0,0,0.6)]"
             >
               No need for international cards or multiple subscriptions. VANTRA unifies the world's
               most powerful chat, image, and video generation models in a single credit balance via
@@ -108,7 +112,7 @@ export default function HeroSection() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 href="#cost-table"
-                className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-[#0E1017]/80 px-6 py-3 text-sm font-semibold text-white/90 backdrop-blur-md transition-all hover:bg-white/[0.06] hover:border-white/[0.2]"
+                className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-[#0E1017]/85 px-6 py-3 text-sm font-semibold text-white/90 backdrop-blur-md transition-all hover:bg-white/[0.06] hover:border-white/[0.2]"
               >
                 <Layers className="h-4 w-4 text-[#1FD8B8]" />
                 <span>Explore Cost Table</span>
@@ -122,7 +126,7 @@ export default function HeroSection() {
                 variants={floatingCardVariants}
                 animate={{ y: [0, -5, 0] }}
                 transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-                className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0E1017]/70 px-3.5 py-2 backdrop-blur-md shadow-sm"
+                className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0E1017]/75 px-3.5 py-2 backdrop-blur-md shadow-sm"
               >
                 <MessageSquare className="h-4 w-4 text-[#1FD8B8]" />
                 <span className="text-xs font-semibold text-white/90">Claude 3.5 Sonnet</span>
@@ -132,7 +136,7 @@ export default function HeroSection() {
                 variants={floatingCardVariants}
                 animate={{ y: [0, -6, 0] }}
                 transition={{ duration: 4.6, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
-                className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0E1017]/70 px-3.5 py-2 backdrop-blur-md shadow-sm"
+                className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0E1017]/75 px-3.5 py-2 backdrop-blur-md shadow-sm"
               >
                 <ImageIcon className="h-4 w-4 text-[#6E6BFF]" />
                 <span className="text-xs font-semibold text-white/90">Flux.1 Pro</span>
@@ -142,7 +146,7 @@ export default function HeroSection() {
                 variants={floatingCardVariants}
                 animate={{ y: [0, -5, 0] }}
                 transition={{ duration: 5.2, repeat: Infinity, ease: 'easeInOut', delay: 1.2 }}
-                className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0E1017]/70 px-3.5 py-2 backdrop-blur-md shadow-sm"
+                className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0E1017]/75 px-3.5 py-2 backdrop-blur-md shadow-sm"
               >
                 <Video className="h-4 w-4 text-[#F5B942]" />
                 <span className="text-xs font-semibold text-white/90">Kling AI 1.5 HD</span>
@@ -152,7 +156,7 @@ export default function HeroSection() {
             {/* 6. Trust Guarantees */}
             <motion.div
               variants={itemVariants}
-              className="flex flex-wrap items-center gap-y-2 gap-x-6 pt-3 text-xs text-white/55"
+              className="flex flex-wrap items-center gap-y-2 gap-x-6 pt-3 text-xs text-white/60"
             >
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="h-4 w-4 text-[#1FD8B8]" />
