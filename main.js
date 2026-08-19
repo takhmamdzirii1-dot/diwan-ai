@@ -991,7 +991,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.reveal-on-scroll').forEach(el => {
       const cards = el.querySelectorAll('.feature-card, .step-card, .ticket-card, .model-card');
       cards.forEach((card, index) => {
-        card.style.transitionDelay = `${(index % 4) * 0.1 + 0.05}s`;
+        card.style.transitionDelay = `${(index % 6) * 0.07}s`;
         card.classList.add('reveal-on-scroll');
         revealObserver.observe(card);
       });
