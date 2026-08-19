@@ -243,7 +243,7 @@ button {
 }
 
 /* ==========================================================================
-   AMBIENT GLOWING ORBS BACKGROUND
+   1. FLOATING AMBIENT MESH GLOW BACKGROUND (GPU ACCELERATED, ZERO CLS)
    ========================================================================== */
 
 .ambient-bg {
@@ -261,42 +261,46 @@ button {
 .orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.45;
-  animation: orb-drift 18s ease-in-out infinite alternate;
+  filter: blur(110px);
+  will-change: transform, opacity;
+  pointer-events: none;
 }
 
 .orb-teal {
-  top: -10%;
-  right: -5%;
-  width: 55vw;
-  height: 55vw;
-  max-width: 650px;
-  max-height: 650px;
-  background: radial-gradient(circle, var(--teal) 0%, rgba(31, 216, 184, 0.3) 40%, transparent 70%);
-  animation-delay: 0s;
+  top: -12%;
+  right: -8%;
+  width: 58vw;
+  height: 58vw;
+  max-width: 680px;
+  max-height: 680px;
+  background: radial-gradient(circle at 45% 45%, var(--teal) 0%, rgba(31, 216, 184, 0.4) 40%, transparent 75%);
+  opacity: 0.42;
+  animation: orb-teal-float 20s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
 }
 
 .orb-violet {
-  bottom: -15%;
-  left: -10%;
-  width: 60vw;
-  height: 60vw;
-  max-width: 750px;
-  max-height: 750px;
-  background: radial-gradient(circle, var(--violet) 0%, rgba(110, 107, 255, 0.25) 40%, transparent 70%);
-  animation-delay: -6s;
+  bottom: -18%;
+  left: -12%;
+  width: 62vw;
+  height: 62vw;
+  max-width: 780px;
+  max-height: 780px;
+  background: radial-gradient(circle at 55% 55%, var(--violet) 0%, rgba(110, 107, 255, 0.35) 40%, transparent 75%);
+  opacity: 0.38;
+  animation: orb-violet-float 24s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+  animation-delay: -5s;
 }
 
 .orb-gold {
-  top: 35%;
-  left: 35%;
-  width: 35vw;
-  height: 35vw;
-  max-width: 450px;
-  max-height: 450px;
-  background: radial-gradient(circle, var(--gold) 0%, rgba(245, 185, 66, 0.2) 40%, transparent 70%);
-  opacity: 0.3;
+  top: 30%;
+  left: 30%;
+  width: 38vw;
+  height: 38vw;
+  max-width: 480px;
+  max-height: 480px;
+  background: radial-gradient(circle at 50% 50%, var(--gold) 0%, rgba(245, 185, 66, 0.25) 45%, transparent 75%);
+  opacity: 0.22;
+  animation: orb-gold-float 28s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
   animation-delay: -12s;
 }
 
@@ -306,21 +310,39 @@ button {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.035'/%3E%3C/svg%3E");
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+  mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, #000 60%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, #000 60%, transparent 100%);
   pointer-events: none;
+  opacity: 0.7;
 }
 
-@keyframes orb-drift {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-35px, 35px) scale(1.06); }
-  100% { transform: translate(35px, -25px) scale(0.96); }
+@keyframes orb-teal-float {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-45px, 40px, 0) scale(1.12); }
+  100% { transform: translate3d(35px, -30px, 0) scale(0.94); }
+}
+
+@keyframes orb-violet-float {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(50px, -45px, 0) scale(0.92); }
+  100% { transform: translate3d(-40px, 35px, 0) scale(1.15); }
+}
+
+@keyframes orb-gold-float {
+  0% { transform: translate3d(0, 0, 0) scale(0.95); }
+  50% { transform: translate3d(-30px, -40px, 0) scale(1.1); }
+  100% { transform: translate3d(40px, 30px, 0) scale(0.9); }
 }
 
 /* ==========================================================================
-   BUTTONS (TEAL GLOW PILL & GLASS OUTLINE PILL)
+   2. GLOWING CTA BUTTONS WITH SHIMMER & PULSE
    ========================================================================== */
 
 .btn-primary {
+  position: relative;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -329,26 +351,52 @@ button {
   color: #08090C;
   font-weight: 700;
   font-size: 15px;
-  padding: 12px 26px;
+  padding: 12px 28px;
   border-radius: var(--radius-full);
-  box-shadow: 0 4px 20px var(--petrol-glow);
-  transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 22px var(--petrol-glow), 0 0 12px rgba(31, 216, 184, 0.25);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1), background 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.35);
   white-space: nowrap;
+  cursor: pointer;
+}
+
+/* Moving Linear Shimmer Reflection */
+.btn-primary::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 50%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 100%
+  );
+  transform: rotate(25deg);
+  pointer-events: none;
+  transition: transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-primary:hover::after {
+  transform: rotate(25deg) translateX(360%);
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px var(--petrol-glow-strong);
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 8px 34px var(--petrol-glow-strong), 0 0 20px rgba(31, 216, 184, 0.5);
   background: linear-gradient(135deg, #3ff4d5, var(--teal));
   color: #041210;
 }
 
 .btn-primary:active {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.98);
 }
 
 .btn-ghost {
+  position: relative;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -356,21 +404,44 @@ button {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
-  padding: 10px 22px;
+  padding: 10px 24px;
   border-radius: var(--radius-full);
   background: var(--glass);
   border: 1px solid var(--border-subtle);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.btn-ghost::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 40%;
+  height: 200%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  transform: rotate(25deg);
+  pointer-events: none;
+  transition: transform 0.8s ease;
+}
+
+.btn-ghost:hover::after {
+  transform: rotate(25deg) translateX(380%);
 }
 
 .btn-ghost:hover {
   background: var(--glass-hover);
   border-color: var(--border-medium);
-  transform: translateY(-2px);
+  transform: translateY(-2px) scale(1.02);
   color: #ffffff;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+}
+
+.btn-ghost:active {
+  transform: translateY(0) scale(0.98);
 }
 
 /* ==========================================================================
@@ -656,6 +727,7 @@ button {
   font-weight: 700;
   font-size: 13.5px;
   color: var(--text-primary);
+  animation: hero-fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.08s backwards;
 }
 
 .hero-badge-dot {
@@ -680,6 +752,7 @@ button {
   margin-bottom: var(--space-4);
   color: var(--text-primary);
   letter-spacing: -0.01em;
+  animation: hero-fade-up 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.18s backwards;
 }
 
 .hero-title-gradient {
@@ -696,6 +769,7 @@ button {
   line-height: 1.75;
   margin-bottom: var(--space-6);
   max-width: 580px;
+  animation: hero-fade-up 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.28s backwards;
 }
 
 .hero-cta-group {
@@ -704,6 +778,7 @@ button {
   gap: 14px;
   flex-wrap: wrap;
   margin-bottom: var(--space-6);
+  animation: hero-fade-up 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.38s backwards;
 }
 
 /* Floating Preview Cards */
@@ -712,6 +787,20 @@ button {
   gap: 14px;
   margin-bottom: var(--space-6);
   flex-wrap: wrap;
+  animation: hero-fade-up 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.48s backwards;
+}
+
+@keyframes hero-fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(28px);
+    filter: blur(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0px);
+  }
 }
 
 .floating-card {
@@ -1218,6 +1307,58 @@ button {
   color: var(--teal);
   border-color: var(--teal);
   background: rgba(31, 216, 184, 0.08);
+}
+
+/* ==========================================================================
+   3. INTERACTIVE SPOTLIGHT / RADIAL HOVER CARD EFFECT
+   ========================================================================== */
+
+.spotlight-card,
+.model-card,
+.feature-card,
+.step-card,
+.ticket-card,
+.ledger-device {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Dynamic Radial Spotlight Glow Following Mouse Cursor */
+.model-card::after,
+.feature-card::after,
+.step-card::after,
+.ticket-card::after,
+.ledger-device::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    380px circle at var(--mouse-x, -400px) var(--mouse-y, -400px),
+    var(--card-spotlight, rgba(31, 216, 184, 0.12)),
+    transparent 75%
+  );
+  opacity: 0;
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.model-card:hover::after,
+.feature-card:hover::after,
+.step-card:hover::after,
+.ticket-card:hover::after,
+.ledger-device:hover::after {
+  opacity: 1;
+}
+
+.feature-card > *,
+.model-card > *,
+.step-card > *,
+.ticket-card > *,
+.ledger-device > * {
+  position: relative;
+  z-index: 2;
 }
 
 .models-grid {

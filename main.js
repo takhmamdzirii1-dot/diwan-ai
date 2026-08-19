@@ -139,6 +139,36 @@ const planDetailsByLang = {
 let selectedPlanKey = 'pro';
 
 // -----------------------------------------------------------------------------
+// Interactive Spotlight Follower Engine (60fps Smooth Pointer Tracking)
+// -----------------------------------------------------------------------------
+export function initCardSpotlights() {
+  if (typeof document === 'undefined') return;
+  const cards = document.querySelectorAll(
+    '.spotlight-card, .model-card, .feature-card, .step-card, .ticket-card, .ledger-device, .floating-card'
+  );
+
+  cards.forEach((card) => {
+    if (card.dataset.spotlightBound) return;
+    card.dataset.spotlightBound = 'true';
+
+    card.addEventListener('mousemove', (e) => {
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      card.style.setProperty('--mouse-x', `${x}px`);
+      card.style.setProperty('--mouse-y', `${y}px`);
+    });
+
+    card.addEventListener('mouseleave', () => {
+      card.style.setProperty('--mouse-x', '-400px');
+      card.style.setProperty('--mouse-y', '-400px');
+    });
+  });
+}
+
+window.initCardSpotlights = initCardSpotlights;
+
+// -----------------------------------------------------------------------------
 // Auto-Detection & Language Switcher Engine
 // -----------------------------------------------------------------------------
 
@@ -327,6 +357,9 @@ window.renderModelsGrid = function() {
       </div>
     `;
   }).join('');
+
+  // Re-attach interactive spotlight listeners on newly rendered cards
+  initCardSpotlights();
 };
 
 window.filterModels = function(category) {
@@ -382,18 +415,49 @@ window.launchModel = function(modelId) {
   if (!model) return;
 
   const dict = translations[currentLang] || translations.en;
-  
-  // Switch ledger to matching category
-  if (['chat', 'image', 'video'].includes(model.category)) {
-    window.switchLedgerCategory(model.category);
+  const descText = model.desc[currentLang] || model.desc.en;
+
+  // Update Ledger Active Model Details
+  const nameEl = document.getElementById('model-name-display') || document.getElementById('ledger-model-name');
+  const catEl = document.getElementById('model-category-display') || document.getElementById('ledger-model-category');
+  const costEl = document.getElementById('operation-cost') || document.getElementById('ledger-cost-num');
+  const promptEl = document.getElementById('prompt-preview-text') || document.getElementById('ledger-sample-prompt');
+  const avatarEl = document.getElementById('model-avatar');
+  const btnTextEl = document.getElementById('btn-action-text');
+
+  if (nameEl) nameEl.textContent = model.name;
+  if (catEl) catEl.textContent = `${model.provider} • ${model.superpower}`;
+  if (costEl) costEl.textContent = model.costPerReq;
+  if (promptEl) promptEl.textContent = `"${model.samplePrompt}"`;
+  if (avatarEl) {
+    avatarEl.innerHTML = `<i class="fa-solid ${model.icon}"></i>`;
+    avatarEl.style.color = model.color;
+    avatarEl.style.borderColor = `${model.color}40`;
+    avatarEl.style.background = model.bgGlow;
+  }
+  if (btnTextEl) {
+    const launchActionText = currentLang === 'ar' 
+      ? `تنفيذ طلب تجريبي (${model.costPerReq} نقطة)` 
+      : (currentLang === 'fr' ? `Exécuter requête (${model.costPerReq} pts)` : `Run Query (${model.costPerReq} pts)`);
+    btnTextEl.textContent = launchActionText;
   }
 
-  // Scroll smoothly to Interactive Ledger device
+  // Update ledger tab matching
+  if (['chat', 'image', 'video'].includes(model.category)) {
+    activeCategory = model.category;
+    document.querySelectorAll('.ledger-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.cat === model.category);
+    });
+  }
+
+  // Scroll smoothly to Interactive Ledger device with spotlight highlight
   const ledgerEl = document.getElementById('interactive-ledger');
   if (ledgerEl) {
     ledgerEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    ledgerEl.classList.add('pulse-highlight');
-    setTimeout(() => ledgerEl.classList.remove('pulse-highlight'), 1600);
+    ledgerEl.style.boxShadow = `0 0 35px ${model.color}40, 0 16px 40px rgba(0,0,0,0.6)`;
+    setTimeout(() => {
+      ledgerEl.style.boxShadow = '';
+    }, 1800);
   }
 
   showToast(`${dict.btnLaunchModel || 'Activated:'} ${model.name}`);
@@ -403,21 +467,7 @@ window.testSamplePrompt = function(modelId) {
   const model = aiModels.find(m => m.id === modelId);
   if (!model) return;
 
-  // Set category
-  if (['chat', 'image', 'video'].includes(model.category)) {
-    window.switchLedgerCategory(model.category);
-  }
-
-  const promptEl = document.getElementById('ledger-sample-prompt');
-  if (promptEl) {
-    promptEl.textContent = `"${model.samplePrompt}"`;
-  }
-
-  const ledgerEl = document.getElementById('interactive-ledger');
-  if (ledgerEl) {
-    ledgerEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
-
+  window.launchModel(modelId);
   showToast(`Sample prompt loaded for ${model.name}`);
 };
 
@@ -442,48 +492,60 @@ window.switchLedgerCategory = function(cat) {
   if (!data) return;
 
   // Update UI Elements in device
-  const nameEl = document.getElementById('ledger-model-name');
-  const catEl = document.getElementById('ledger-model-category');
-  const costEl = document.getElementById('ledger-cost-num');
-  const promptEl = document.getElementById('ledger-sample-prompt');
-  const btnEl = document.getElementById('ledger-action-btn');
-  const unitEl = document.getElementById('ledger-cost-unit');
+  const nameEl = document.getElementById('model-name-display') || document.getElementById('ledger-model-name');
+  const catEl = document.getElementById('model-category-display') || document.getElementById('ledger-model-category');
+  const costEl = document.getElementById('operation-cost') || document.getElementById('ledger-cost-num');
+  const promptEl = document.getElementById('prompt-preview-text') || document.getElementById('ledger-sample-prompt');
+  const btnTextEl = document.getElementById('btn-action-text');
+  const avatarEl = document.getElementById('model-avatar');
 
   if (nameEl) nameEl.textContent = data.name;
   if (catEl) catEl.textContent = data.category;
   if (costEl) costEl.textContent = data.cost;
   if (promptEl) promptEl.textContent = data.prompt;
-  if (btnEl) btnEl.innerHTML = `<i class="fa-solid fa-bolt"></i> ${data.btnText}`;
-  if (unitEl) unitEl.textContent = data.unit;
+  if (btnTextEl) btnTextEl.textContent = data.btnText;
+
+  if (avatarEl) {
+    const iconClass = cat === 'chat' ? 'fa-brain' : (cat === 'image' ? 'fa-palette' : 'fa-film');
+    const color = cat === 'chat' ? 'var(--teal)' : (cat === 'image' ? 'var(--violet)' : 'var(--gold)');
+    avatarEl.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
+    avatarEl.style.color = color;
+  }
 };
 
-window.simulateLedgerDeduction = function() {
-  const langData = categoryDataByLang[currentLang] || categoryDataByLang.en;
-  const data = langData[activeCategory];
+window.executeSimulatedOperation = function() {
+  const costEl = document.getElementById('operation-cost') || document.getElementById('ledger-cost-num');
+  const nameEl = document.getElementById('model-name-display') || document.getElementById('ledger-model-name');
   const dict = translations[currentLang] || translations.en;
-  if (!data) return;
+  
+  const cost = costEl ? parseInt(costEl.textContent, 10) || 25 : 25;
+  const modelName = nameEl ? nameEl.textContent : 'AI Model';
 
-  if (currentBalance < data.cost) {
-    showToast(dict.toastInsufficientBalance);
+  if (currentBalance < cost) {
+    showToast(dict.toastInsufficientBalance || 'Insufficient balance!');
     window.openTopupModal('starter');
     return;
   }
 
   // Deduct points
-  currentBalance -= data.cost;
-  const balanceEl = document.getElementById('ledger-balance-num');
+  currentBalance -= cost;
+  
+  // Update all balance indicators on screen
+  const balanceEl = document.getElementById('live-balance') || document.getElementById('ledger-balance-num');
   if (balanceEl) {
     balanceEl.textContent = currentBalance.toLocaleString();
   }
 
-  // Add Log Entry
+  // Add Real-time Log Entry
   const logContainer = document.getElementById('ledger-log-container');
   if (logContainer) {
     const logItem = document.createElement('div');
     logItem.className = 'log-entry';
+    logItem.style.animation = 'hero-fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
+    const opPrefix = currentLang === 'ar' ? 'طلب تشغيل' : (currentLang === 'fr' ? 'Exécution' : 'Query');
     logItem.innerHTML = `
-      <span class="log-op">${data.opName}</span>
-      <span class="log-deduct mono-num">-${data.cost} ${dict.pointsUnit}</span>
+      <span class="log-op">${opPrefix}: ${modelName}</span>
+      <span class="log-deduct mono-num" style="color: #FF5A5F; font-weight: 700;">-${cost} ${dict.pointsUnit || 'pts'}</span>
     `;
     logContainer.insertBefore(logItem, logContainer.firstChild);
 
@@ -494,16 +556,21 @@ window.simulateLedgerDeduction = function() {
   }
 
   // Visual button feedback
-  const btn = document.getElementById('ledger-action-btn');
+  const btn = document.getElementById('execute-sim-btn') || document.getElementById('ledger-action-btn');
   if (btn) {
-    btn.style.transform = 'scale(0.97)';
+    btn.style.transform = 'scale(0.96)';
+    btn.style.filter = 'brightness(1.2)';
     setTimeout(() => {
       btn.style.transform = 'scale(1)';
-    }, 150);
+      btn.style.filter = 'none';
+    }, 160);
   }
 
-  showToast(`${dict.logSuccessTransaction} (-${data.cost} ${dict.pointsUnit})`);
+  showToast(`${dict.logSuccessTransaction || 'Operation completed!'} (-${cost} ${dict.pointsUnit || 'pts'})`);
 };
+
+// Provide aliases for backwards compatibility
+window.simulateLedgerDeduction = window.executeSimulatedOperation;
 
 // -----------------------------------------------------------------------------
 // Cost Table Category Filtering
@@ -609,7 +676,7 @@ window.confirmSimulatedTopup = function() {
 
   // Increment Balance
   currentBalance += addedPoints;
-  const balanceEl = document.getElementById('ledger-balance-num');
+  const balanceEl = document.getElementById('live-balance') || document.getElementById('ledger-balance-num');
   if (balanceEl) {
     balanceEl.textContent = currentBalance.toLocaleString();
   }
@@ -756,6 +823,9 @@ document.addEventListener('DOMContentLoaded', () => {
       closeModelRequestModal();
     }
   });
+
+  // Initialize interactive card spotlights
+  initCardSpotlights();
 
   // Scroll Reveal Observer
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
