@@ -411,33 +411,20 @@ button {
 .logo-badge {
   width: 42px;
   height: 42px;
-  border-radius: 12px;
-  background: rgba(13, 16, 23, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 0 20px rgba(31, 216, 184, 0.22), 0 0 10px rgba(110, 107, 255, 0.18);
+  border-radius: 11px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 5px;
+  padding: 0;
   flex-shrink: 0;
   transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
   position: relative;
-  overflow: hidden;
-}
-
-.logo-badge::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 12px;
-  background: radial-gradient(circle at 30% 30%, rgba(31, 216, 184, 0.2), transparent 70%);
-  pointer-events: none;
+  filter: drop-shadow(0 4px 14px rgba(31, 216, 184, 0.28)) drop-shadow(0 2px 8px rgba(110, 107, 255, 0.22));
 }
 
 .logo-badge:hover {
-  transform: translateY(-2px) scale(1.05);
-  border-color: rgba(31, 216, 184, 0.5);
-  box-shadow: 0 0 26px rgba(31, 216, 184, 0.42), 0 0 14px rgba(110, 107, 255, 0.35);
+  transform: translateY(-2px) scale(1.08);
+  filter: drop-shadow(0 6px 22px rgba(31, 216, 184, 0.5)) drop-shadow(0 4px 14px rgba(110, 107, 255, 0.4));
 }
 
 .logo-badge img,
@@ -446,7 +433,6 @@ button {
   height: 100%;
   object-fit: contain;
   display: block;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
 }
 
 .brand-name-group {
