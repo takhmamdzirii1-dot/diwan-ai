@@ -280,22 +280,118 @@
     </section>
 
     <!-- ==========================================================================
-       3. TRUST STRIP (MODEL TECHNOLOGIES)
+       3. INTERACTIVE AI MODEL EXPLORER & DIRECTORY
        ========================================================================== -->
-    <section class="trust-strip reveal-on-scroll" id="models">
+    <section class="models-hub-section reveal-on-scroll" id="models">
       <div class="container">
-        <div class="trust-label" data-i18n="trustLabel">World-Class AI Engines & Foundation Models Unified in VANTRA</div>
-        <div class="models-ticker">
-          <span class="model-pill-text">Claude 3.5 Sonnet</span>
-          <span class="model-pill-text">GPT-4o (OpenAI)</span>
-          <span class="model-pill-text">Gemini 1.5 Pro</span>
-          <span class="model-pill-text">Flux.1 Pro</span>
-          <span class="model-pill-text">Midjourney v6.1</span>
-          <span class="model-pill-text">Kling AI 1.5 HD</span>
-          <span class="model-pill-text">Runway Gen-3 Alpha</span>
-          <span class="model-pill-text">Luma Dream Machine</span>
-          <span class="model-pill-text">DeepSeek V3</span>
-          <span class="model-pill-text">Whisper Large v3</span>
+        <div class="section-intro">
+          <span class="section-tag">
+            <i class="fa-solid fa-compass"></i>
+            <span data-i18n="modelsHubTag">Comprehensive AI Model Hub</span>
+          </span>
+          <h2 class="section-title" data-i18n="modelsHubTitle">Discover & Run the World's Best AI Foundation Models</h2>
+          <p class="section-desc" data-i18n="modelsHubDesc">
+            Easily search, compare, and launch top-tier models for Coding, Image Design, Cinematic Video, Audio Dubbing, and Algerian Darja understanding in one click.
+          </p>
+        </div>
+
+        <!-- Smart Search & Filter Control Bar -->
+        <div class="models-hub-controls">
+          <!-- Search Bar -->
+          <div class="model-search-wrapper">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input 
+              type="text" 
+              id="model-search-input" 
+              class="model-search-input" 
+              placeholder="Search any model by name, provider or task (e.g. Claude, Flux, DeepSeek, Coding, Darja, Video)..." 
+              data-i18n-placeholder="searchPlaceholder"
+              oninput="window.handleModelSearch(this.value)"
+              autocomplete="off"
+            />
+            <button class="clear-search-btn" id="clear-search-btn" onclick="window.clearModelSearch()" style="display: none;" aria-label="Clear Search">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <!-- Category Filter Tabs -->
+          <div class="model-filter-tabs">
+            <button class="model-filter-tab active" data-cat="all" onclick="window.filterModels('all')">
+              <span data-i18n="filterAll">All Models</span>
+            </button>
+            <button class="model-filter-tab" data-cat="chat" onclick="window.filterModels('chat')">
+              <i class="fa-solid fa-brain" style="color: var(--teal); margin-inline-end: 6px;"></i>
+              <span data-i18n="filterChat">💬 Text, Code & Reasoning</span>
+            </button>
+            <button class="model-filter-tab" data-cat="image" onclick="window.filterModels('image')">
+              <i class="fa-solid fa-palette" style="color: var(--violet); margin-inline-end: 6px;"></i>
+              <span data-i18n="filterImage">🎨 Images & Art</span>
+            </button>
+            <button class="model-filter-tab" data-cat="video" onclick="window.filterModels('video')">
+              <i class="fa-solid fa-video" style="color: var(--gold); margin-inline-end: 6px;"></i>
+              <span data-i18n="filterVideo">🎥 Video & Motion</span>
+            </button>
+            <button class="model-filter-tab" data-cat="audio" onclick="window.filterModels('audio')">
+              <i class="fa-solid fa-microphone-lines" style="color: #00D2D3; margin-inline-end: 6px;"></i>
+              <span data-i18n="filterAudio">🎙️ Voice & Audio</span>
+            </button>
+            <button class="model-filter-tab darja-pill-tab" data-cat="darja" onclick="window.filterModels('darja')">
+              <i class="fa-solid fa-star" style="color: var(--gold); margin-inline-end: 6px;"></i>
+              <span data-i18n="tagDarjaFilter">🇩🇿 Darja & Arabic Elite</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Result Counter & Quick Tag Bar -->
+        <div class="models-stats-bar">
+          <div class="models-count-label">
+            <span class="pulse-dot"></span>
+            <span id="models-count-num" class="mono-num">12</span> <span data-i18n="modelsFoundCount">AI Models Available</span>
+          </div>
+          <div class="quick-tags">
+            <span class="quick-tag" onclick="window.applyQuickTag('Coding')">#Coding</span>
+            <span class="quick-tag" onclick="window.applyQuickTag('Darja')">#Darja</span>
+            <span class="quick-tag" onclick="window.applyQuickTag('Photorealism')">#Photorealism</span>
+            <span class="quick-tag" onclick="window.applyQuickTag('Video')">#1080pVideo</span>
+            <span class="quick-tag" onclick="window.applyQuickTag('Reasoning')">#Reasoning</span>
+            <span class="quick-tag" onclick="window.applyQuickTag('Voice')">#VoiceCloning</span>
+          </div>
+        </div>
+
+        <!-- Dynamic AI Models Grid Container -->
+        <div class="models-grid" id="models-grid-container">
+          <!-- Dynamically rendered by main.js from aiModels -->
+        </div>
+
+        <!-- No Results Fallback -->
+        <div class="no-models-box" id="no-models-box" style="display: none;">
+          <i class="fa-solid fa-magnifying-glass-chart" style="font-size: 38px; color: var(--teal); margin-bottom: 12px;"></i>
+          <p data-i18n="noModelsFound" style="font-size: 14.5px; color: var(--text-secondary); max-width: 500px; margin: 0 auto;">
+            No models matched your search query. Try searching for 'Claude', 'Flux', 'DeepSeek' or 'Video'.
+          </p>
+          <button class="btn-ghost" onclick="window.clearModelSearch()" style="margin-top: 14px; font-size: 13px;">
+            <i class="fa-solid fa-rotate-left" style="margin-inline-end: 6px;"></i>
+            <span data-i18n="filterAll">Show All Models</span>
+          </button>
+        </div>
+
+        <!-- Request A Model Banner -->
+        <div class="request-model-banner">
+          <div class="request-model-left">
+            <div class="request-icon">
+              <i class="fa-solid fa-wand-magic-sparkles"></i>
+            </div>
+            <div>
+              <h4 class="request-title" data-i18n="requestModelTitle">Looking for a model not listed here?</h4>
+              <p class="request-desc" data-i18n="requestModelDesc">
+                We continuously add the latest AI models. Submit your desired model, and our engineering team will activate it in your dashboard within 24 hours.
+              </p>
+            </div>
+          </div>
+          <button class="btn-primary request-btn" onclick="window.openModelRequestModal()">
+            <i class="fa-solid fa-plus"></i>
+            <span data-i18n="btnRequestModel">Request an AI Model</span>
+          </button>
         </div>
       </div>
     </section>
@@ -987,6 +1083,60 @@
           <button class="btn-primary" style="width: 100%; padding: 13px; font-size: 14.5px;" onclick="window.confirmSimulatedTopup()">
             <i class="fa-solid fa-lock"></i>
             <span data-i18n="btnConfirmTopup">Confirm Instant Top-Up in DZD (Simulation)</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================================================
+       AI MODEL REQUEST MODAL
+       ========================================================================== -->
+    <div class="modal-backdrop" id="request-modal" role="dialog" aria-modal="true" aria-labelledby="modal-req-title">
+      <div class="modal-dialog">
+        <div class="modal-head">
+          <div class="modal-title" id="modal-req-title">
+            <div class="logo-badge" style="width: 28px; height: 28px; padding: 3px; border-radius: 8px;">
+              <img src="/brandmark.svg" alt="VANTRA" />
+            </div>
+            <span data-i18n="modalRequestTitle">Request an AI Model</span>
+          </div>
+          <button class="modal-close" onclick="window.closeModelRequestModal()" aria-label="Close">✕</button>
+        </div>
+
+        <div class="modal-content-inner">
+          <div style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 14px;" data-i18n="requestModelDesc">
+            We continuously add the latest AI models. Submit your desired model, and our engineering team will activate it in your dashboard within 24 hours.
+          </div>
+
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px;" data-i18n="modalRequestTitle">
+              Model Name:
+            </label>
+            <input 
+              type="text" 
+              id="req-model-name" 
+              class="modal-input" 
+              placeholder="e.g. Qwen 2.5 72B, Ideogram 2.0, MiniMax Video, Suno v4..." 
+              data-i18n-placeholder="modalRequestPlaceholder" 
+            />
+          </div>
+
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px;" data-i18n="phoneLabel">
+              Email or Phone Number:
+            </label>
+            <input 
+              type="text" 
+              id="req-model-contact" 
+              class="modal-input" 
+              placeholder="Your email or phone number for activation notification..." 
+              data-i18n-placeholder="modalRequestEmailPlaceholder" 
+            />
+          </div>
+
+          <button class="btn-primary" style="width: 100%; justify-content: center; padding: 13px; font-size: 14px;" onclick="window.submitModelRequest()">
+            <i class="fa-solid fa-paper-plane"></i>
+            <span data-i18n="modalRequestBtn">Submit Activation Request</span>
           </button>
         </div>
       </div>

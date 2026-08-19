@@ -1,14 +1,18 @@
 /**
  * VANTRA (VANTRA) - UNIFIED AI PLATFORM FOR ALGERIA
  * Interactive Client-Side Engine with Trilingual i18n (EN, FR, AR)
+ * Interactive AI Model Hub & Discovery Engine
  */
 
 import { translations } from './src/translations.js';
+import { aiModels } from './src/modelsData.js';
 
 // State Management
 let currentBalance = 10000;
 let activeCategory = 'chat';
 let currentLang = 'en';
+let activeModelCategory = 'all';
+let currentSearchQuery = '';
 
 // Category Data by Language for Interactive Ledger Simulation
 const categoryDataByLang = {
@@ -178,12 +182,19 @@ window.setLanguage = function(lang) {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     if (dict[key] !== undefined) {
-      // Check if translation contains HTML (like <b> tags)
       if (dict[key].includes('<') && dict[key].includes('>')) {
         el.innerHTML = dict[key];
       } else {
         el.textContent = dict[key];
       }
+    }
+  });
+
+  // Apply placeholder translations
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    if (dict[key]) {
+      el.setAttribute('placeholder', dict[key]);
     }
   });
 
@@ -197,6 +208,217 @@ window.setLanguage = function(lang) {
   if (document.getElementById('topup-modal')?.classList.contains('active')) {
     window.openTopupModal(selectedPlanKey);
   }
+
+  // Re-render models grid for language description update
+  window.renderModelsGrid();
+};
+
+// -----------------------------------------------------------------------------
+// Interactive AI Models Discovery Hub
+// -----------------------------------------------------------------------------
+
+window.renderModelsGrid = function() {
+  const container = document.getElementById('models-grid-container');
+  const countEl = document.getElementById('models-count-num');
+  const noBox = document.getElementById('no-models-box');
+  if (!container) return;
+
+  const dict = translations[currentLang] || translations.en;
+  const q = currentSearchQuery.trim().toLowerCase();
+
+  // Filter models
+  const filtered = aiModels.filter(m => {
+    // Category check
+    if (activeModelCategory === 'darja') {
+      if (m.arabicDarjaScore === 'Visual' || m.arabicDarjaScore === 'Video') return false;
+      const score = parseInt(m.arabicDarjaScore, 10);
+      if (isNaN(score) || score < 95) return false;
+    } else if (activeModelCategory !== 'all' && m.category !== activeModelCategory) {
+      return false;
+    }
+
+    // Query check
+    if (q) {
+      const matchName = m.name.toLowerCase().includes(q);
+      const matchProvider = m.provider.toLowerCase().includes(q);
+      const matchSuperpower = m.superpower.toLowerCase().includes(q);
+      const matchCaps = m.capabilities.some(c => c.toLowerCase().includes(q));
+      const matchDesc = (m.desc[currentLang] || m.desc.en).toLowerCase().includes(q);
+      const matchCategory = m.category.toLowerCase().includes(q);
+      return matchName || matchProvider || matchSuperpower || matchCaps || matchDesc || matchCategory;
+    }
+    return true;
+  });
+
+  // Update count
+  if (countEl) countEl.textContent = filtered.length;
+
+  // Toggle No Results
+  if (filtered.length === 0) {
+    container.innerHTML = '';
+    if (noBox) noBox.style.display = 'block';
+    return;
+  }
+
+  if (noBox) noBox.style.display = 'none';
+
+  // Render cards
+  container.innerHTML = filtered.map(model => {
+    const descText = model.desc[currentLang] || model.desc.en;
+    const badgeClass = `badge-${model.badgeType || 'popular'}`;
+    const badgeLabelKey = model.badgeType === 'hot' ? 'badgeHot' : (model.badgeType === 'trending' ? 'badgeTrending' : (model.badgeType === 'pro' ? 'badgePro' : 'badgePopular'));
+    const badgeLabel = dict[badgeLabelKey] || model.tag;
+
+    return `
+      <div class="model-card" style="--card-glow: ${model.color};">
+        <div>
+          <!-- Card Header -->
+          <div class="model-card-top">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div class="model-icon-box" style="background: ${model.bgGlow}; color: ${model.color}; border: 1px solid ${model.color}40;">
+                <i class="fa-solid ${model.icon}"></i>
+              </div>
+              <div>
+                <h3 class="model-name">${model.name}</h3>
+                <div class="model-provider">${model.provider}</div>
+              </div>
+            </div>
+            <span class="model-badge-pill ${badgeClass}">${badgeLabel}</span>
+          </div>
+
+          <!-- Superpower Tag -->
+          <div class="model-superpower" style="color: ${model.color}; border-color: ${model.color}30; background: ${model.color}12;">
+            <i class="fa-solid fa-sparkles"></i>
+            <span>${model.superpower}</span>
+          </div>
+
+          <!-- Description -->
+          <p class="model-desc-text">${descText}</p>
+
+          <!-- Specifications Row -->
+          <div class="model-specs-row">
+            <div class="model-spec-item">
+              <span class="model-spec-k">${dict.modelDetailContext || 'Context Window:'}</span>
+              <span class="model-spec-v mono-num">${model.contextWindow}</span>
+            </div>
+            <div class="model-spec-item">
+              <span class="model-spec-k">${dict.modelDetailDarja || 'Arabic/Darja:'}</span>
+              <span class="model-spec-v" style="color: var(--teal);">${model.arabicDarjaScore}</span>
+            </div>
+          </div>
+
+          <!-- Capabilities Tags -->
+          <div class="model-caps-list">
+            ${model.capabilities.map(cap => `<span class="model-cap-tag">${cap}</span>`).join('')}
+          </div>
+        </div>
+
+        <!-- Action Footer -->
+        <div class="model-card-actions">
+          <button class="btn-card-launch" onclick="window.launchModel('${model.id}')">
+            <i class="fa-solid fa-play"></i>
+            <span>${dict.btnLaunchModel || 'Launch Model'}</span>
+          </button>
+          <button class="btn-card-prompt" onclick="window.testSamplePrompt('${model.id}')" title="${dict.btnQuickPrompt || 'Try Sample Prompt'}">
+            <i class="fa-solid fa-terminal" style="margin-inline-end: 4px;"></i>
+            <span>${dict.btnQuickPrompt || 'Prompt'}</span>
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+};
+
+window.filterModels = function(category) {
+  activeModelCategory = category;
+
+  // Update tabs active state
+  document.querySelectorAll('.model-filter-tab').forEach(tab => {
+    if (tab.dataset.cat === category) {
+      tab.classList.add('active');
+    } else {
+      tab.classList.remove('active');
+    }
+  });
+
+  window.renderModelsGrid();
+};
+
+window.handleModelSearch = function(val) {
+  currentSearchQuery = val;
+  const clearBtn = document.getElementById('clear-search-btn');
+  if (clearBtn) {
+    clearBtn.style.display = val ? 'flex' : 'none';
+  }
+  window.renderModelsGrid();
+};
+
+window.clearModelSearch = function() {
+  const input = document.getElementById('model-search-input');
+  if (input) input.value = '';
+  currentSearchQuery = '';
+  activeModelCategory = 'all';
+  const clearBtn = document.getElementById('clear-search-btn');
+  if (clearBtn) clearBtn.style.display = 'none';
+
+  document.querySelectorAll('.model-filter-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.cat === 'all');
+  });
+
+  window.renderModelsGrid();
+};
+
+window.applyQuickTag = function(tag) {
+  const input = document.getElementById('model-search-input');
+  if (input) {
+    input.value = tag;
+    input.focus();
+  }
+  window.handleModelSearch(tag);
+};
+
+window.launchModel = function(modelId) {
+  const model = aiModels.find(m => m.id === modelId);
+  if (!model) return;
+
+  const dict = translations[currentLang] || translations.en;
+  
+  // Switch ledger to matching category
+  if (['chat', 'image', 'video'].includes(model.category)) {
+    window.switchLedgerCategory(model.category);
+  }
+
+  // Scroll smoothly to Interactive Ledger device
+  const ledgerEl = document.getElementById('interactive-ledger');
+  if (ledgerEl) {
+    ledgerEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    ledgerEl.classList.add('pulse-highlight');
+    setTimeout(() => ledgerEl.classList.remove('pulse-highlight'), 1600);
+  }
+
+  showToast(`${dict.btnLaunchModel || 'Activated:'} ${model.name}`);
+};
+
+window.testSamplePrompt = function(modelId) {
+  const model = aiModels.find(m => m.id === modelId);
+  if (!model) return;
+
+  // Set category
+  if (['chat', 'image', 'video'].includes(model.category)) {
+    window.switchLedgerCategory(model.category);
+  }
+
+  const promptEl = document.getElementById('ledger-sample-prompt');
+  if (promptEl) {
+    promptEl.textContent = `"${model.samplePrompt}"`;
+  }
+
+  const ledgerEl = document.getElementById('interactive-ledger');
+  if (ledgerEl) {
+    ledgerEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  showToast(`Sample prompt loaded for ${model.name}`);
 };
 
 // -----------------------------------------------------------------------------
@@ -219,183 +441,178 @@ window.switchLedgerCategory = function(cat) {
   const data = langData[cat];
   if (!data) return;
 
-  // Update UI Elements
-  const nameEl = document.getElementById('model-name-display');
-  const catEl = document.getElementById('model-category-display');
-  const costEl = document.getElementById('operation-cost');
-  const promptEl = document.getElementById('prompt-preview-text');
-  const btnTextEl = document.getElementById('btn-action-text');
-  const avatar = document.getElementById('model-avatar');
+  // Update UI Elements in device
+  const nameEl = document.getElementById('ledger-model-name');
+  const catEl = document.getElementById('ledger-model-category');
+  const costEl = document.getElementById('ledger-cost-num');
+  const promptEl = document.getElementById('ledger-sample-prompt');
+  const btnEl = document.getElementById('ledger-action-btn');
+  const unitEl = document.getElementById('ledger-cost-unit');
 
   if (nameEl) nameEl.textContent = data.name;
   if (catEl) catEl.textContent = data.category;
   if (costEl) costEl.textContent = data.cost;
   if (promptEl) promptEl.textContent = data.prompt;
-  if (btnTextEl) btnTextEl.textContent = data.btnText;
-  if (avatar) avatar.innerHTML = `<i class="fa-solid ${data.icon}"></i>`;
+  if (btnEl) btnEl.innerHTML = `<i class="fa-solid fa-bolt"></i> ${data.btnText}`;
+  if (unitEl) unitEl.textContent = data.unit;
 };
 
-window.executeSimulatedOperation = function() {
+window.simulateLedgerDeduction = function() {
   const langData = categoryDataByLang[currentLang] || categoryDataByLang.en;
-  const dict = translations[currentLang] || translations.en;
   const data = langData[activeCategory];
+  const dict = translations[currentLang] || translations.en;
   if (!data) return;
 
   if (currentBalance < data.cost) {
     showToast(dict.toastInsufficientBalance);
+    window.openTopupModal('starter');
     return;
   }
 
-  // Deduct
+  // Deduct points
   currentBalance -= data.cost;
-  updateBalanceDisplay();
+  const balanceEl = document.getElementById('ledger-balance-num');
+  if (balanceEl) {
+    balanceEl.textContent = currentBalance.toLocaleString();
+  }
 
   // Add Log Entry
   const logContainer = document.getElementById('ledger-log-container');
   if (logContainer) {
     const logItem = document.createElement('div');
     logItem.className = 'log-entry';
-    
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const ptsUnit = dict.pointsUnit || 'pts';
-
     logItem.innerHTML = `
-      <span class="log-op">[${timeStr}] ${data.opName}</span>
-      <span class="mono-num log-deduct">-${data.cost} ${ptsUnit}</span>
+      <span class="log-op">${data.opName}</span>
+      <span class="log-deduct mono-num">-${data.cost} ${dict.pointsUnit}</span>
     `;
-
     logContainer.insertBefore(logItem, logContainer.firstChild);
+
+    // Limit log size to 5
+    if (logContainer.children.length > 5) {
+      logContainer.removeChild(logContainer.lastChild);
+    }
   }
 
-  // Button micro-interaction feedback
-  const btn = document.getElementById('execute-sim-btn');
+  // Visual button feedback
+  const btn = document.getElementById('ledger-action-btn');
   if (btn) {
-    const originalText = btn.innerHTML;
-    const feedbackText = currentLang === 'ar' 
-      ? `تم استهلاك ${data.cost} نقطة بنجاح!` 
-      : (currentLang === 'fr' ? `${data.cost} points déduits avec succès !` : `Successfully used ${data.cost} pts!`);
-    
-    btn.innerHTML = `<i class="fa-solid fa-check"></i> <span>${feedbackText}</span>`;
-    btn.style.background = 'var(--teal-600)';
-
+    btn.style.transform = 'scale(0.97)';
     setTimeout(() => {
-      btn.innerHTML = originalText;
-      btn.style.background = '';
-    }, 1400);
+      btn.style.transform = 'scale(1)';
+    }, 150);
   }
 
   showToast(`${dict.logSuccessTransaction} (-${data.cost} ${dict.pointsUnit})`);
 };
 
-function updateBalanceDisplay() {
-  const balanceEl = document.getElementById('live-balance');
-  if (balanceEl) {
-    balanceEl.textContent = currentBalance.toLocaleString('en-US');
-    balanceEl.style.transform = 'scale(1.15)';
-    balanceEl.style.color = 'var(--gold-400)';
-    balanceEl.style.transition = 'transform 0.3s ease, color 0.3s ease';
-    setTimeout(() => {
-      balanceEl.style.transform = 'scale(1)';
-      balanceEl.style.color = 'var(--text-primary)';
-    }, 300);
-  }
-}
-
 // -----------------------------------------------------------------------------
-// Table Filter
+// Cost Table Category Filtering
 // -----------------------------------------------------------------------------
 
-window.filterTable = function(category) {
-  document.querySelectorAll('.filter-tab').forEach(tab => {
-    if (tab.dataset.filter === category) {
-      tab.classList.add('active');
+window.filterCostTable = function(category) {
+  document.querySelectorAll('.filter-pill').forEach(btn => {
+    if (btn.dataset.category === category) {
+      btn.classList.add('active');
     } else {
-      tab.classList.remove('active');
+      btn.classList.remove('active');
     }
   });
 
   const rows = document.querySelectorAll('#cost-table-body tr');
   rows.forEach(row => {
-    row.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
-    row.style.opacity = '0';
-    row.style.transform = 'translateY(8px)';
-    
-    setTimeout(() => {
-      if (category === 'all' || row.dataset.category === category) {
-        row.style.display = '';
-        setTimeout(() => {
-          row.style.opacity = '1';
-          row.style.transform = 'translateY(0)';
-        }, 30);
-      } else {
-        row.style.display = 'none';
-      }
-    }, 250);
+    const rowCategory = row.getAttribute('data-category');
+    if (category === 'all' || rowCategory === category) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
   });
 };
 
 // -----------------------------------------------------------------------------
-// FAQ Accordion
+// FAQ Accordion Engine
 // -----------------------------------------------------------------------------
 
-window.toggleFaq = function(btn) {
-  const item = btn.closest('.faq-item');
+window.toggleFaq = function(button) {
+  const item = button.closest('.faq-item');
   if (!item) return;
-  const isOpen = item.classList.contains('open');
 
-  document.querySelectorAll('.faq-item').forEach(el => {
-    el.classList.remove('open');
+  const isOpen = item.classList.contains('active');
+
+  // Close other items
+  document.querySelectorAll('.faq-item').forEach(other => {
+    if (other !== item) {
+      other.classList.remove('active');
+      const otherBtn = other.querySelector('.faq-question');
+      if (otherBtn) otherBtn.setAttribute('aria-expanded', 'false');
+    }
   });
 
-  if (!isOpen) {
-    item.classList.add('open');
+  // Toggle clicked item
+  if (isOpen) {
+    item.classList.remove('active');
+    button.setAttribute('aria-expanded', 'false');
+  } else {
+    item.classList.add('active');
+    button.setAttribute('aria-expanded', 'true');
   }
 };
 
 // -----------------------------------------------------------------------------
-// Modal & Payment Simulation
+// Top-Up & Payment Modal Handlers
 // -----------------------------------------------------------------------------
 
 window.openTopupModal = function(planKey = 'pro') {
   selectedPlanKey = planKey;
-  const plans = planDetailsByLang[currentLang] || planDetailsByLang.en;
-  const plan = plans[planKey] || plans.pro;
-
-  const titleEl = document.getElementById('modal-plan-name');
-  const priceEl = document.getElementById('modal-plan-price');
-  const pointsEl = document.getElementById('modal-plan-points');
-
-  if (titleEl) titleEl.textContent = plan.name;
-  if (priceEl) priceEl.textContent = plan.price;
-  if (pointsEl) pointsEl.textContent = plan.points;
-
   const modal = document.getElementById('topup-modal');
-  if (modal) modal.classList.add('active');
+  if (!modal) return;
+
+  const langPlans = planDetailsByLang[currentLang] || planDetailsByLang.en;
+  const plan = langPlans[planKey] || langPlans.pro;
+
+  const planNameEl = document.getElementById('modal-plan-name');
+  const planPointsEl = document.getElementById('modal-plan-points');
+  const planPriceEl = document.getElementById('modal-plan-price');
+
+  if (planNameEl) planNameEl.textContent = plan.name;
+  if (planPointsEl) planPointsEl.textContent = plan.points;
+  if (planPriceEl) planPriceEl.textContent = plan.price;
+
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
 };
 
 window.closeTopupModal = function() {
   const modal = document.getElementById('topup-modal');
-  if (modal) modal.classList.remove('active');
+  if (modal) {
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+  }
 };
 
-window.selectPaymentOption = function(cardEl, method) {
-  document.querySelectorAll('.payment-option-card').forEach(el => el.classList.remove('selected'));
-  cardEl.classList.add('selected');
+window.selectPaymentOption = function(element, method) {
+  document.querySelectorAll('.payment-option-card').forEach(card => {
+    card.classList.remove('selected');
+  });
+  element.classList.add('selected');
 };
 
 window.confirmSimulatedTopup = function() {
-  const plans = planDetailsByLang[currentLang] || planDetailsByLang.en;
+  const langPlans = planDetailsByLang[currentLang] || planDetailsByLang.en;
+  const plan = langPlans[selectedPlanKey] || langPlans.pro;
   const dict = translations[currentLang] || translations.en;
-  const plan = plans[selectedPlanKey] || plans.pro;
-  
+
   let addedPoints = 7500;
   if (selectedPlanKey === 'starter') addedPoints = 2500;
   if (selectedPlanKey === 'enterprise') addedPoints = 22000;
   if (selectedPlanKey === 'free') addedPoints = 150;
 
+  // Increment Balance
   currentBalance += addedPoints;
-  updateBalanceDisplay();
+  const balanceEl = document.getElementById('ledger-balance-num');
+  if (balanceEl) {
+    balanceEl.textContent = currentBalance.toLocaleString();
+  }
 
   // Add Log Entry
   const logContainer = document.getElementById('ledger-log-container');
@@ -412,6 +629,44 @@ window.confirmSimulatedTopup = function() {
 
   closeTopupModal();
   showToast(dict.toastTopupSuccess);
+};
+
+// -----------------------------------------------------------------------------
+// Model Request Modal Handlers
+// -----------------------------------------------------------------------------
+
+window.openModelRequestModal = function() {
+  const modal = document.getElementById('request-modal');
+  if (modal) {
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => {
+      document.getElementById('req-model-name')?.focus();
+    }, 100);
+  }
+};
+
+window.closeModelRequestModal = function() {
+  const modal = document.getElementById('request-modal');
+  if (modal) {
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+};
+
+window.submitModelRequest = function() {
+  const nameInput = document.getElementById('req-model-name');
+  const dict = translations[currentLang] || translations.en;
+  
+  if (nameInput && !nameInput.value.trim()) {
+    showToast(currentLang === 'ar' ? 'يرجى كتابة اسم النموذج المطلوب' : 'Please enter the model name');
+    nameInput.focus();
+    return;
+  }
+
+  closeModelRequestModal();
+  showToast(dict.modalRequestSuccess || 'Thank you! Your request has been registered.');
+  if (nameInput) nameInput.value = '';
 };
 
 // -----------------------------------------------------------------------------
@@ -456,6 +711,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const initialLang = detectInitialLanguage();
   window.setLanguage(initialLang);
 
+  // Render initial models
+  window.renderModelsGrid();
+
   // Scroll Event for Sticky Header & Scroll Spy
   window.addEventListener('scroll', () => {
     const header = document.getElementById('main-header');
@@ -486,10 +744,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Close modal on backdrop click
+  // Close modals on backdrop click
   document.getElementById('topup-modal')?.addEventListener('click', (e) => {
     if (e.target.id === 'topup-modal') {
       closeTopupModal();
+    }
+  });
+
+  document.getElementById('request-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'request-modal') {
+      closeModelRequestModal();
     }
   });
 
@@ -505,14 +769,14 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }, {
       root: null,
-      threshold: 0.1,
+      threshold: 0.08,
       rootMargin: '0px 0px -40px 0px'
     });
 
     document.querySelectorAll('.reveal-on-scroll').forEach(el => {
-      const cards = el.querySelectorAll('.feature-card, .step-card, .ticket-card');
+      const cards = el.querySelectorAll('.feature-card, .step-card, .ticket-card, .model-card');
       cards.forEach((card, index) => {
-        card.style.transitionDelay = `${(index % 4) * 0.12 + 0.1}s`;
+        card.style.transitionDelay = `${(index % 4) * 0.1 + 0.05}s`;
         card.classList.add('reveal-on-scroll');
         revealObserver.observe(card);
       });
