@@ -2,16 +2,18 @@
 
 import React, { useRef, useState } from 'react';
 
-export interface SpotlightCardProps {
+export interface SpotlightCardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   className?: string;
   spotlightColor?: string;
+  key?: React.Key | null;
 }
 
 export default function SpotlightCard({
   children,
   className = '',
   spotlightColor = 'rgba(31, 216, 184, 0.15)',
+  ...props
 }: SpotlightCardProps) {
   const divRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -30,6 +32,7 @@ export default function SpotlightCard({
       onMouseEnter={() => setOpacity(1)}
       onMouseLeave={() => setOpacity(0)}
       className={`relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0E1017] transition-all duration-300 ${className}`}
+      {...props}
     >
       <div
         className="pointer-events-none absolute -inset-px transition-opacity duration-300"
