@@ -7,6 +7,8 @@ import HeroSection from './components/HeroSection';
 import SpotlightCard from './components/SpotlightCard';
 import ShimmerButton from './components/ShimmerButton';
 import AuthModal from './components/AuthModal';
+import TopUpModal, { type TopUpPlan } from './components/TopUpModal';
+import useUser from './hooks/useUser';
 import { 
   CreditCard, 
   Cpu, 
@@ -15,15 +17,87 @@ import {
 } from 'lucide-react';
 import { aiModels } from './modelsData.js';
 
+const PRICING_TIERS: (TopUpPlan & { desc: string; features: string[]; highlight: boolean })[] = [
+  {
+    name: 'Starter Pack',
+    price: '1,500 DZD',
+    points: '10,000 Points',
+    ptsNum: 10000,
+    desc: 'Perfect for students, individual developers & exploring AI models.',
+    features: [
+      'Access to all Chat & Coding Models',
+      'Up to 400 Claude 3.5 Sonnet queries',
+      'Edahabia & CIB instant verification',
+      'Points never expire',
+    ],
+    highlight: false,
+  },
+  {
+    name: 'Pro Creator',
+    price: '4,500 DZD',
+    points: '35,000 Points',
+    ptsNum: 35000,
+    desc: 'Best for agencies, freelance designers, video creators & power users.',
+    features: [
+      'All AI Models (Chat, Flux 4K, Kling HD)',
+      'Priority GPU queue access',
+      'Dedicated BaridiMob & CIB fast gateway',
+      'Developer API Key access included',
+      'Trilingual support (EN, FR, AR)',
+    ],
+    highlight: true,
+  },
+  {
+    name: 'Enterprise / Agency',
+    price: '12,000 DZD',
+    points: '100,000 Points',
+    ptsNum: 10000,
+    desc: 'High-volume production teams requiring team seats and custom API tokens.',
+    features: [
+      'Maximum GPU throughput & concurrency',
+      'Multi-seat workspace management',
+      'Invoice & Tax Receipt for Algerian Companies',
+      'Dedicated Account Manager on WhatsApp',
+    ],
+    highlight: false,
+  },
+];
+
 export default function App() {
+  const { user } = useUser();
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Modals state
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [isTopUpOpen, setIsTopUpOpen] = useState(false);
+  const [selectedTopUpPlan, setSelectedTopUpPlan] = useState<TopUpPlan>(PRICING_TIERS[1]);
 
   const openAuth = (mode: 'signin' | 'signup' = 'signin') => {
     setAuthMode(mode);
     setIsAuthOpen(true);
+  };
+
+  React.useEffect(() => {
+    const handleOpenAuth = (e: any) => {
+      const mode = e.detail?.mode || 'signin';
+      openAuth(mode);
+    };
+    window.addEventListener('vantra-open-auth', handleOpenAuth);
+    return () => window.removeEventListener('vantra-open-auth', handleOpenAuth);
+  }, []);
+
+  const openTopUp = (plan?: TopUpPlan) => {
+    if (!user) {
+      // If user is not logged in, prompt sign up/sign in first
+      openAuth('signup');
+      return;
+    }
+    if (plan) {
+      setSelectedTopUpPlan(plan);
+    }
+    setIsTopUpOpen(true);
   };
 
   const filteredModels = aiModels.filter((model: any) => {
@@ -41,7 +115,7 @@ export default function App() {
       <AmbientMotionBackground />
 
       {/* 2. Navigation Header with Supabase Auth & Live Points */}
-      <Navbar onOpenAuth={openAuth} />
+      <Navbar onOpenAuth={openAuth} onOpenTopUp={() => openTopUp()} />
 
       {/* 3. Hero Section with Live Interactive Ledger */}
       <main>
@@ -136,7 +210,14 @@ export default function App() {
                     <span className="text-[rgba(245,246,248,0.4)]">Context: {model.contextWindow}</span>
                     <button
                       type="button"
-                      onClick={() => openAuth('signup')}
+                      onClick={() => {
+                        if (!user) {
+                          openAuth('signup');
+                        } else {
+                          const ledgerElem = document.getElementById('interactive-ledger') || document.getElementById('hero');
+                          if (ledgerElem) ledgerElem.scrollIntoView({ behavior: 'smooth' });
+                        }
+                      }}
                       className="flex items-center gap-1 font-medium text-[#1FD8B8] hover:underline"
                     >
                       <span>Run Model</span>
@@ -166,48 +247,7 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-9">
-              {[
-                {
-                  name: 'Starter Pack',
-                  price: '1,500 DZD',
-                  points: '10,000 Points',
-                  desc: 'Perfect for students, individual developers & exploring AI models.',
-                  features: [
-                    'Access to all Chat & Coding Models',
-                    'Up to 400 Claude 3.5 Sonnet queries',
-                    'Edahabia & CIB instant verification',
-                    'Points never expire',
-                  ],
-                  highlight: false,
-                },
-                {
-                  name: 'Pro Creator',
-                  price: '4,500 DZD',
-                  points: '35,000 Points',
-                  desc: 'Best for agencies, freelance designers, video creators & power users.',
-                  features: [
-                    'All AI Models (Chat, Flux 4K, Kling HD)',
-                    'Priority GPU queue access',
-                    'Dedicated BaridiMob & CIB fast gateway',
-                    'Developer API Key access included',
-                    'Trilingual support (EN, FR, AR)',
-                  ],
-                  highlight: true,
-                },
-                {
-                  name: 'Enterprise / Agency',
-                  price: '12,000 DZD',
-                  points: '100,000 Points',
-                  desc: 'High-volume production teams requiring team seats and custom API tokens.',
-                  features: [
-                    'Maximum GPU throughput & concurrency',
-                    'Multi-seat workspace management',
-                    'Invoice & Tax Receipt for Algerian Companies',
-                    'Dedicated Account Manager on WhatsApp',
-                  ],
-                  highlight: false,
-                },
-              ].map((tier, idx) => (
+              {PRICING_TIERS.map((tier, idx) => (
                 <SpotlightCard
                   key={idx}
                   className={`p-9 flex flex-col justify-between space-y-6 ${
@@ -245,7 +285,7 @@ export default function App() {
                   <ShimmerButton
                     text={`Top Up ${tier.price}`}
                     className={`w-full py-3 text-sm ${!tier.highlight ? '!bg-white/[0.05] !text-white' : ''}`}
-                    onClick={() => openAuth('signup')}
+                    onClick={() => openTopUp(tier)}
                   />
                 </SpotlightCard>
               ))}
@@ -272,6 +312,14 @@ export default function App() {
         onClose={() => setIsAuthOpen(false)}
         initialMode={authMode}
         onSuccess={() => setIsAuthOpen(false)}
+      />
+
+      {/* 7. Chargily Top-Up Payment Modal */}
+      <TopUpModal
+        isOpen={isTopUpOpen}
+        onClose={() => setIsTopUpOpen(false)}
+        plan={selectedTopUpPlan}
+        onSuccess={() => setIsTopUpOpen(false)}
       />
     </div>
   );

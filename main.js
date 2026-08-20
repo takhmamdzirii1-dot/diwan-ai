@@ -627,8 +627,18 @@ window.toggleFaq = function(button) {
 };
 
 // -----------------------------------------------------------------------------
-// Top-Up & Payment Modal Handlers
+// Top-Up & Auth Modal Handlers
 // -----------------------------------------------------------------------------
+
+window.openAuthModal = function(mode = 'signin') {
+  // If React AuthModal listener is registered
+  const event = new CustomEvent('vantra-open-auth', { detail: { mode } });
+  window.dispatchEvent(event);
+  
+  // Fallback: If on static page, smooth scroll to Hero / Login trigger
+  const heroElem = document.getElementById('hero');
+  if (heroElem) heroElem.scrollIntoView({ behavior: 'smooth' });
+};
 
 window.openTopupModal = function(planKey = 'pro') {
   selectedPlanKey = planKey;
@@ -670,10 +680,9 @@ window.confirmSimulatedTopup = function() {
   const plan = langPlans[selectedPlanKey] || langPlans.pro;
   const dict = translations[currentLang] || translations.en;
 
-  let addedPoints = 7500;
-  if (selectedPlanKey === 'starter') addedPoints = 2500;
-  if (selectedPlanKey === 'enterprise') addedPoints = 22000;
-  if (selectedPlanKey === 'free') addedPoints = 150;
+  let addedPoints = 35000;
+  if (selectedPlanKey === 'starter') addedPoints = 10000;
+  if (selectedPlanKey === 'enterprise') addedPoints = 100000;
 
   // Increment Balance
   currentBalance += addedPoints;

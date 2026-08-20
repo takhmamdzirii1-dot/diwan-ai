@@ -8,9 +8,10 @@ import ShimmerButton from './ShimmerButton';
 
 export interface NavbarProps {
   onOpenAuth: (mode?: 'signin' | 'signup') => void;
+  onOpenTopUp?: () => void;
 }
 
-export default function Navbar({ onOpenAuth }: NavbarProps) {
+export default function Navbar({ onOpenAuth, onOpenTopUp }: NavbarProps) {
   const { user, balance, signOut, isLoading } = useUser();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -126,14 +127,21 @@ export default function Navbar({ onOpenAuth }: NavbarProps) {
                       </div>
 
                       <div className="p-2 space-y-1">
-                        <a
-                          href="#pricing"
-                          onClick={() => setDropdownOpen(false)}
-                          className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-[rgba(245,246,248,0.8)] transition hover:bg-white/[0.06] hover:text-[#1FD8B8]"
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDropdownOpen(false);
+                            if (onOpenTopUp) onOpenTopUp();
+                            else {
+                              const pricingElem = document.getElementById('pricing');
+                              if (pricingElem) pricingElem.scrollIntoView({ behavior: 'smooth' });
+                            }
+                          }}
+                          className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-[rgba(245,246,248,0.8)] transition hover:bg-white/[0.06] hover:text-[#1FD8B8]"
                         >
                           <Wallet className="h-4 w-4 text-[#1FD8B8]" />
                           <span>Top Up DZD Points</span>
-                        </a>
+                        </button>
 
                         <button
                           type="button"

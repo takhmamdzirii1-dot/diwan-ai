@@ -60,10 +60,10 @@
         <li><a href="#faq" onclick="window.closeMobileMenu()" data-i18n="navFaq">FAQ</a></li>
       </ul>
       <div class="mobile-sheet-actions">
-        <button class="btn-ghost" onclick="window.closeMobileMenu(); window.openTopupModal('free')" data-i18n="btnLogin">Login</button>
-        <button class="btn-primary" onclick="window.closeMobileMenu(); window.openTopupModal('pro')">
-          <i class="fa-solid fa-wallet"></i>
-          <span data-i18n="btnTopup">Top Up Balance</span>
+        <button class="btn-ghost" onclick="window.closeMobileMenu(); window.openAuthModal('signin')" data-i18n="btnLogin">Login</button>
+        <button class="btn-primary" onclick="window.closeMobileMenu(); window.openAuthModal('signup')">
+          <i class="fa-solid fa-sparkles"></i>
+          <span data-i18n="btnGetStarted">Get Started</span>
         </button>
       </div>
     </div>
@@ -106,10 +106,10 @@
             <button type="button" class="lang-btn" data-lang="ar" onclick="window.setLanguage('ar')">عربي</button>
           </div>
 
-          <button class="btn-ghost" onclick="window.openTopupModal('free')" data-i18n="btnLogin">Login</button>
-          <button class="btn-primary" onclick="window.openTopupModal('pro')">
-            <i class="fa-solid fa-wallet"></i>
-            <span data-i18n="btnTopup">Top Up Balance</span>
+          <button class="btn-ghost" onclick="window.openAuthModal('signin')" data-i18n="btnLogin">Login</button>
+          <button class="btn-primary" onclick="window.openAuthModal('signup')">
+            <i class="fa-solid fa-sparkles"></i>
+            <span data-i18n="btnGetStarted">Get Started</span>
           </button>
           <button class="menu-toggle" id="menu-toggle-btn" aria-label="Open Menu" onclick="window.openMobileMenu()">
             <i class="fa-solid fa-bars"></i>
