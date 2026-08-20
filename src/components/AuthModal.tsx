@@ -92,7 +92,7 @@ export default function AuthModal({
         provider: 'google',
         options: {
           redirectTo:
-            typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
+            typeof window !== 'undefined' ? `${window.location.origin}/auth/callback?next=/studio` : undefined,
         },
       });
       if (error) throw error;
@@ -123,11 +123,14 @@ export default function AuthModal({
         if (error) throw error;
 
         if (data.user) {
-          setSuccessMsg('Successfully signed in! Welcome back.');
+          setSuccessMsg('Successfully signed in! Opening AI Studio...');
           setTimeout(() => {
             onSuccess?.();
             handleClose();
-          }, 600);
+            if (typeof window !== 'undefined') {
+              window.location.href = '/studio';
+            }
+          }, 400);
         }
       } else {
         const { data, error } = await supabase.auth.signUp({
@@ -143,11 +146,14 @@ export default function AuthModal({
         if (error) throw error;
 
         if (data.session) {
-          setSuccessMsg('Account created successfully!');
+          setSuccessMsg('Account created successfully! Opening AI Studio...');
           setTimeout(() => {
             onSuccess?.();
             handleClose();
-          }, 600);
+            if (typeof window !== 'undefined') {
+              window.location.href = '/studio';
+            }
+          }, 400);
         } else {
           setSuccessMsg('Verification link sent. Please check your inbox.');
         }
