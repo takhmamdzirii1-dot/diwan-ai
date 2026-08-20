@@ -9,15 +9,12 @@ import {
   Copy,
   Check,
   ChevronDown,
-  RefreshCw,
-  AlertCircle,
-  Zap,
-  Code2,
   Terminal,
   Loader2,
+  Zap,
+  Code2,
 } from 'lucide-react';
 import useUser from '../../hooks/useUser';
-import { supabase } from '../../lib/supabase/client';
 
 export interface ChatMessage {
   id: string;
@@ -28,21 +25,13 @@ export interface ChatMessage {
   timestamp: string;
 }
 
-const AVAILABLE_MODELS = [
-  {
-    id: 'anthropic/claude-3.5-sonnet',
-    name: 'Claude 3.5 Sonnet',
-    provider: 'Anthropic',
-    cost: 25,
-    tag: 'Flagship Logic & Code',
-    isFree: false,
-  },
+export const AVAILABLE_MODELS = [
   {
     id: 'meta-llama/llama-3.3-70b-instruct:free',
-    name: 'Llama 3.3 70B Instruct',
+    name: 'Llama 3.3 70B Instruct (Free)',
     provider: 'Meta AI',
     cost: 0,
-    tag: '100% FREE',
+    tag: '100% Free Open Weights',
     isFree: true,
   },
   {
@@ -50,16 +39,8 @@ const AVAILABLE_MODELS = [
     name: 'DeepSeek R1 (Free)',
     provider: 'DeepSeek AI',
     cost: 0,
-    tag: '100% FREE',
+    tag: 'Reasoning & Logic (0 pts)',
     isFree: true,
-  },
-  {
-    id: 'openai/gpt-4o',
-    name: 'GPT-4o (Omni)',
-    provider: 'OpenAI',
-    cost: 30,
-    tag: 'Multimodal Master',
-    isFree: false,
   },
   {
     id: 'deepseek/deepseek-chat',
@@ -67,6 +48,22 @@ const AVAILABLE_MODELS = [
     provider: 'DeepSeek AI',
     cost: 5,
     tag: 'Ultra-Fast Reasoning',
+    isFree: false,
+  },
+  {
+    id: 'anthropic/claude-3.5-sonnet',
+    name: 'Claude 3.5 Sonnet',
+    provider: 'Anthropic',
+    cost: 25,
+    tag: 'Flagship Logic & Coding',
+    isFree: false,
+  },
+  {
+    id: 'openai/gpt-4o',
+    name: 'GPT-4o (Omni)',
+    provider: 'OpenAI',
+    cost: 30,
+    tag: 'Multimodal Master',
     isFree: false,
   },
 ];
@@ -94,6 +91,143 @@ const SUGGESTED_PROMPTS = [
   },
 ];
 
+// Helper to render formatted Markdown and Code blocks with syntax copy
+function FormattedMessageContent({ content }: { content: string }) {
+  const [copiedCodeIdx, setCopiedCodeIdx] = useState<number | null>(null);
+
+  const handleCopyCode = (code: string, idx: number) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCodeIdx(idx);
+    setTimeout(() => setCopiedCodeIdx(null), 2000);
+  };
+
+  // Split by code blocks ```lang ... ```
+  const parts = content.split(/(```[\s\S]*?```)/g);
+
+  return (
+    <div className="space-y-3 text-sm leading-relaxed text-[#F5F6F8]">
+      {parts.map((part, idx) => {
+        if (part.startsWith('```') && part.endsWith('```')) {
+          // Extract language and code
+          const firstLineEnd = part.indexOf('\n');
+          const lang = firstLineEnd !== -1 ? part.slice(3, firstLineEnd).trim() : '';
+          const code = firstLineEnd !== -1 ? part.slice(firstLineEnd + 1, -3) : part.slice(3, -3);
+
+          return (
+            <div
+              key={idx}
+              className="my-3 overflow-hidden rounded-2xl border border-white/[0.1] bg-[#050608] shadow-2xl"
+            >
+              {/* Code block header */}
+              <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#0A0B0E] px-4 py-2 text-xs text-[#94A3B8]">
+                <div className="flex items-center gap-2 font-mono text-[11px] text-[#1FD8B8]">
+                  <Terminal className="h-3.5 w-3.5" />
+                  <span>{lang || 'code'}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopyCode(code, idx)}
+                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium text-white/70 hover:bg-white/[0.06] hover:text-white transition cursor-pointer"
+                >
+                  {copiedCodeIdx === idx ? (
+                    <>
+                      <Check className="h-3 w-3 text-[#1FD8B8]" />
+                      <span className="text-[#1FD8B8]">Copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3 w-3" />
+                      <span>Copy code</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Code content */}
+              <pre className="overflow-x-auto p-4 font-mono text-xs text-[#E2E8F0] leading-relaxed custom-scrollbar">
+                <code>{code}</code>
+              </pre>
+            </div>
+          );
+        }
+
+        // Render regular markdown text with basic formatting
+        return (
+          <div key={idx} className="whitespace-pre-wrap select-text">
+            {part.split('\n').map((line, lIdx) => {
+              if (line.startsWith('### ')) {
+                return (
+                  <h4 key={lIdx} className="text-base font-bold text-white mt-3 mb-1">
+                    {line.replace('### ', '')}
+                  </h4>
+                );
+              }
+              if (line.startsWith('## ')) {
+                return (
+                  <h3 key={lIdx} className="text-lg font-bold text-white mt-4 mb-2">
+                    {line.replace('## ', '')}
+                  </h3>
+                );
+              }
+              if (line.startsWith('# ')) {
+                return (
+                  <h2 key={lIdx} className="text-xl font-bold text-white mt-4 mb-2">
+                    {line.replace('# ', '')}
+                  </h2>
+                );
+              }
+              if (line.startsWith('- ') || line.startsWith('* ')) {
+                return (
+                  <div key={lIdx} className="flex items-start gap-2 ml-2 my-0.5">
+                    <span className="text-[#1FD8B8] font-bold mt-1 text-xs">•</span>
+                    <span>{renderInlineFormatting(line.slice(2))}</span>
+                  </div>
+                );
+              }
+              return (
+                <p key={lIdx} className="my-1">
+                  {renderInlineFormatting(line)}
+                </p>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Render bold, inline code, and emphasis
+function renderInlineFormatting(text: string) {
+  // Inline code `code`
+  const codeParts = text.split(/(`[^`]+`)/g);
+  return codeParts.map((cPart, cIdx) => {
+    if (cPart.startsWith('`') && cPart.endsWith('`')) {
+      return (
+        <code
+          key={cIdx}
+          className="rounded-md bg-white/[0.08] px-1.5 py-0.5 font-mono text-xs text-[#1FD8B8] border border-white/[0.06]"
+        >
+          {cPart.slice(1, -1)}
+        </code>
+      );
+    }
+
+    // Bold text **text**
+    const boldParts = cPart.split(/(\*\*[^*]+\*\*)/g);
+    return boldParts.map((bPart, bIdx) => {
+      if (bPart.startsWith('**') && bPart.endsWith('**')) {
+        return (
+          <strong key={bIdx} className="font-bold text-white">
+            {bPart.slice(2, -2)}
+          </strong>
+        );
+      }
+      return bPart;
+    });
+  });
+}
+
 interface StudioChatProps {
   messages: ChatMessage[];
   onSendMessage: (content: string, model: string, cost: number) => Promise<void>;
@@ -107,7 +241,9 @@ export default function StudioChat({
 }: StudioChatProps) {
   const { user, balance } = useUser();
   const [input, setInput] = useState('');
-  const [selectedModelId, setSelectedModelId] = useState('anthropic/claude-3.5-sonnet');
+  const [selectedModelId, setSelectedModelId] = useState(
+    'meta-llama/llama-3.3-70b-instruct:free'
+  );
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -158,7 +294,7 @@ export default function StudioChat({
     await onSendMessage(text, currentModel.id, currentModel.cost);
   };
 
-  const handleCopyText = (id: string, text: string) => {
+  const handleCopyMessage = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
@@ -166,85 +302,11 @@ export default function StudioChat({
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#050506] relative overflow-hidden">
-      {/* Top Header / Model Bar */}
-      <header className="h-14 border-b border-white/[0.08] bg-[#0A0B0E]/80 backdrop-blur-md px-6 flex items-center justify-between shrink-0 z-20">
-        {/* Model Picker */}
-        <div className="relative" ref={dropdownRef}>
-          <button
-            type="button"
-            onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-            className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-2xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-white text-xs font-semibold transition cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-[#1FD8B8]" />
-              <span className="font-bold">{currentModel.name}</span>
-            </div>
-            <span
-              className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
-                currentModel.isFree
-                  ? 'bg-[#1FD8B8]/15 text-[#1FD8B8] border border-[#1FD8B8]/30 font-bold'
-                  : 'bg-white/[0.06] text-white/70'
-              }`}
-            >
-              {currentModel.cost === 0 ? 'FREE (0 pts)' : `${currentModel.cost} PTS`}
-            </span>
-            <ChevronDown className="h-3.5 w-3.5 text-[#64748B]" />
-          </button>
-
-          {/* Dropdown Menu */}
-          {modelDropdownOpen && (
-            <div className="absolute left-0 top-11 w-72 rounded-2xl border border-white/[0.1] bg-[#0E1016] p-2 shadow-2xl z-50 space-y-1">
-              <div className="px-3 py-1 text-[10px] font-mono uppercase text-[#64748B] tracking-wider">
-                Select Intelligence Engine
-              </div>
-              {AVAILABLE_MODELS.map((model) => (
-                <button
-                  key={model.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedModelId(model.id);
-                    setModelDropdownOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition cursor-pointer ${
-                    selectedModelId === model.id
-                      ? 'bg-[#1FD8B8]/10 text-white border border-[#1FD8B8]/30'
-                      : 'text-[#94A3B8] hover:bg-white/[0.04] hover:text-white'
-                  }`}
-                >
-                  <div>
-                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                      {model.name}
-                      {model.isFree && (
-                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-[#1FD8B8]/20 text-[#1FD8B8] font-bold">
-                          FREE
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[10px] text-[#64748B]">{model.tag}</div>
-                  </div>
-                  <span className="text-[10px] font-mono font-bold text-[#1FD8B8]">
-                    {model.cost === 0 ? '0 pts' : `${model.cost} pts`}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Live Active Status */}
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 text-xs text-[#94A3B8]">
-            <span className="h-2 w-2 rounded-full bg-[#1FD8B8] animate-pulse" />
-            <span>OpenRouter Ultra Gateway</span>
-          </div>
-        </div>
-      </header>
-
       {/* Messages Canvas Feed */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 custom-scrollbar pb-32">
+      <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-6 custom-scrollbar pb-36">
         {messages.length === 0 ? (
           /* Empty State / Welcome Screen */
-          <div className="max-w-2xl mx-auto pt-8 sm:pt-16 space-y-8 text-center">
+          <div className="max-w-2xl mx-auto pt-6 sm:pt-12 space-y-8 text-center">
             <div className="inline-flex h-16 w-16 items-center justify-center rounded-3xl bg-[#1FD8B8]/10 border border-[#1FD8B8]/25 text-[#1FD8B8] shadow-[0_0_30px_rgba(31,216,184,0.2)]">
               <Sparkles className="h-8 w-8" />
             </div>
@@ -257,8 +319,7 @@ export default function StudioChat({
                 What will you build with VANTRA today?
               </h2>
               <p className="text-sm text-[#94A3B8] max-w-md mx-auto">
-                Prompt world-class LLMs in English, French or Algerian Darja. Deductions are
-                processed atomically with local DZD credit points.
+                Prompt world-class AI models directly with unified DZD credit points or free open-weights intelligence.
               </p>
             </div>
 
@@ -272,7 +333,7 @@ export default function StudioChat({
                     setInput(item.prompt);
                     textareaRef.current?.focus();
                   }}
-                  className="p-4 rounded-2xl border border-white/[0.08] bg-[#0A0B0E]/80 hover:bg-white/[0.04] hover:border-[#1FD8B8]/40 transition text-left space-y-1.5 cursor-pointer group"
+                  className="p-4 rounded-2xl border border-white/[0.08] bg-[#0A0B0E]/90 hover:bg-white/[0.04] hover:border-[#1FD8B8]/40 transition text-left space-y-1.5 cursor-pointer group shadow-md"
                 >
                   <div className="text-xs font-bold text-white group-hover:text-[#1FD8B8] transition">
                     {item.title}
@@ -301,20 +362,33 @@ export default function StudioChat({
                 )}
 
                 <div
-                  className={`max-w-[85%] sm:max-w-[78%] rounded-3xl p-5 space-y-3 ${
+                  className={`max-w-[85%] sm:max-w-[80%] rounded-3xl p-5 space-y-3 shadow-lg ${
                     msg.sender === 'user'
                       ? 'bg-[#1FD8B8]/15 border border-[#1FD8B8]/30 text-white'
-                      : 'bg-[#0E1016] border border-white/[0.08] text-[#F5F6F8] shadow-lg'
+                      : 'bg-[#0D0E12] border border-white/[0.08] text-[#F5F6F8]'
                   }`}
                 >
                   {/* Header Meta */}
-                  <div className="flex items-center justify-between text-[10px] text-[#64748B] pb-1 border-b border-white/[0.04]">
-                    <span className="font-semibold text-white/80">
-                      {msg.sender === 'user' ? 'You' : msg.model || 'VANTRA AI'}
+                  <div className="flex items-center justify-between text-[10px] text-[#64748B] pb-2 border-b border-white/[0.06]">
+                    <span className="font-semibold text-white/90 flex items-center gap-1.5">
+                      {msg.sender === 'user' ? (
+                        'You'
+                      ) : (
+                        <>
+                          <Sparkles className="h-3 w-3 text-[#1FD8B8]" />
+                          <span>{msg.model || 'VANTRA AI'}</span>
+                        </>
+                      )}
                     </span>
                     <div className="flex items-center gap-2">
                       {msg.cost !== undefined && (
-                        <span className="font-mono text-[#1FD8B8] font-bold">
+                        <span
+                          className={`font-mono font-bold px-1.5 py-0.5 rounded ${
+                            msg.cost === 0
+                              ? 'bg-[#1FD8B8]/10 text-[#1FD8B8]'
+                              : 'bg-white/[0.06] text-white/70'
+                          }`}
+                        >
                           {msg.cost === 0 ? 'FREE (0 pts)' : `-${msg.cost} PTS`}
                         </span>
                       )}
@@ -322,28 +396,26 @@ export default function StudioChat({
                     </div>
                   </div>
 
-                  {/* Message Content */}
-                  <div className="text-sm leading-relaxed whitespace-pre-wrap select-text font-sans">
-                    {msg.content}
-                  </div>
+                  {/* Formatted Content */}
+                  <FormattedMessageContent content={msg.content} />
 
                   {/* Actions for Assistant */}
                   {msg.sender === 'assistant' && (
                     <div className="flex items-center justify-end pt-2 border-t border-white/[0.04]">
                       <button
                         type="button"
-                        onClick={() => handleCopyText(msg.id, msg.content)}
+                        onClick={() => handleCopyMessage(msg.id, msg.content)}
                         className="flex items-center gap-1 text-[11px] text-[#64748B] hover:text-[#1FD8B8] transition cursor-pointer"
                       >
                         {copiedId === msg.id ? (
                           <>
                             <Check className="h-3 w-3 text-[#1FD8B8]" />
-                            <span className="text-[#1FD8B8]">Copied</span>
+                            <span className="text-[#1FD8B8]">Copied full message</span>
                           </>
                         ) : (
                           <>
                             <Copy className="h-3 w-3" />
-                            <span>Copy</span>
+                            <span>Copy message</span>
                           </>
                         )}
                       </button>
@@ -364,7 +436,7 @@ export default function StudioChat({
                 <div className="h-8 w-8 rounded-xl bg-[#1FD8B8]/15 border border-[#1FD8B8]/30 flex items-center justify-center text-[#1FD8B8] shrink-0 mt-1 animate-pulse">
                   <Bot className="h-4 w-4" />
                 </div>
-                <div className="rounded-3xl p-5 bg-[#0E1016] border border-white/[0.08] flex items-center gap-3 text-xs text-[#94A3B8]">
+                <div className="rounded-3xl p-5 bg-[#0D0E12] border border-white/[0.08] flex items-center gap-3 text-xs text-[#94A3B8]">
                   <Loader2 className="h-4 w-4 animate-spin text-[#1FD8B8]" />
                   <span>{currentModel.name} is reasoning and generating response...</span>
                 </div>
@@ -376,32 +448,94 @@ export default function StudioChat({
         )}
       </div>
 
-      {/* Floating Prompt Bar */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-[#050506] via-[#050506]/95 to-transparent z-30">
-        <div className="max-w-3xl mx-auto relative">
-          <div className="rounded-3xl border border-white/[0.12] bg-[#0E1016]/95 p-2 sm:p-3 shadow-[0_10px_40px_rgba(0,0,0,0.8)] backdrop-blur-2xl transition focus-within:border-[#1FD8B8]/80 focus-within:ring-1 focus-within:ring-[#1FD8B8]">
+      {/* Redesigned Floating Bottom Toolbar & Prompt Container */}
+      <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 bg-[#050506]/85 backdrop-blur-xl border-t border-white/5 z-30">
+        <div className="max-w-3xl mx-auto">
+          <div className="rounded-2xl border border-white/10 bg-[#0D0E12] p-3.5 shadow-2xl focus-within:border-[#1FD8B8]/50 focus-within:ring-1 focus-within:ring-[#1FD8B8]/30 transition space-y-2">
+            {/* Auto-growing Textarea */}
             <textarea
               ref={textareaRef}
               value={input}
               onChange={handleTextareaChange}
               onKeyDown={handleKeyDown}
-              placeholder={`Message ${currentModel.name}... (Press Enter to send, Shift+Enter for new line)`}
+              placeholder={`Message ${currentModel.name}... (Enter to send, Shift+Enter for multiline)`}
               rows={1}
-              className="w-full bg-transparent px-3 py-2 text-sm text-white placeholder-white/30 outline-none resize-none max-h-44 custom-scrollbar"
+              className="w-full bg-transparent px-2 py-1 text-sm text-white placeholder-white/30 outline-none resize-none max-h-44 custom-scrollbar"
             />
 
-            <div className="flex items-center justify-between pt-2 px-2 border-t border-white/[0.04]">
-              <div className="flex items-center gap-2 text-[11px] text-[#64748B]">
-                <span className="font-mono text-[#1FD8B8] font-bold">
-                  {currentModel.cost === 0 ? '0 PTS (FREE)' : `${currentModel.cost} PTS / Query`}
+            {/* Bottom Toolbar inside Prompt Bar */}
+            <div className="flex items-center justify-between pt-2 border-t border-white/[0.06] relative">
+              {/* Left: Model Selector Dropdown */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-white text-xs font-semibold transition cursor-pointer"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-[#1FD8B8]" />
+                  <span className="max-w-[150px] sm:max-w-none truncate">{currentModel.name}</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-[#64748B]" />
+                </button>
+
+                {/* Model Selector Dropdown Popout */}
+                {modelDropdownOpen && (
+                  <div className="absolute left-0 bottom-11 w-72 rounded-2xl border border-white/[0.12] bg-[#0E1016] p-2 shadow-2xl z-50 space-y-1">
+                    <div className="px-3 py-1 text-[10px] font-mono uppercase text-[#64748B] tracking-wider">
+                      Select Intelligence Engine
+                    </div>
+                    {AVAILABLE_MODELS.map((model) => (
+                      <button
+                        key={model.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedModelId(model.id);
+                          setModelDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition cursor-pointer ${
+                          selectedModelId === model.id
+                            ? 'bg-[#1FD8B8]/10 text-white border border-[#1FD8B8]/30'
+                            : 'text-[#94A3B8] hover:bg-white/[0.04] hover:text-white'
+                        }`}
+                      >
+                        <div>
+                          <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                            {model.name}
+                            {model.isFree && (
+                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-[#1FD8B8]/20 text-[#1FD8B8] font-bold">
+                                FREE
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-[#64748B]">{model.tag}</div>
+                        </div>
+                        <span className="text-[10px] font-mono font-bold text-[#1FD8B8]">
+                          {model.cost === 0 ? '0 pts' : `${model.cost} pts`}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Center: Point Cost Badge */}
+              <div className="hidden sm:flex items-center gap-1.5 text-xs">
+                <span
+                  className={`font-mono text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                    currentModel.cost === 0
+                      ? 'bg-[#1FD8B8]/15 text-[#1FD8B8] border border-[#1FD8B8]/30'
+                      : 'bg-white/[0.06] text-[#94A3B8]'
+                  }`}
+                >
+                  {currentModel.cost === 0 ? '0 PTS (FREE)' : `${currentModel.cost} PTS`}
                 </span>
               </div>
 
+              {/* Right: Glowing Teal Submit Button */}
               <button
                 type="button"
                 disabled={!input.trim() || isLoading}
                 onClick={handleSubmit}
-                className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#1FD8B8] text-[#050506] font-bold shadow-[0_2px_15px_rgba(31,216,184,0.35)] hover:bg-[#34e2c2] disabled:opacity-40 disabled:hover:bg-[#1FD8B8] transition cursor-pointer"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1FD8B8] text-[#050506] font-bold shadow-[0_2px_15px_rgba(31,216,184,0.35)] hover:bg-[#34e2c2] disabled:opacity-40 disabled:hover:bg-[#1FD8B8] transition cursor-pointer shrink-0"
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin text-[#050506]" />

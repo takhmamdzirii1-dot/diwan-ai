@@ -134,16 +134,15 @@ export default function StudioWorkspace() {
       // Refresh balance
       await refreshBalance();
     } catch (err: any) {
-      // Fallback simulation response if OpenRouter key is not set or balance is low
-      const fallbackMsg: ChatMessage = {
+      const errorMsg: ChatMessage = {
         id: `msg-${Date.now() + 2}`,
         sender: 'assistant',
-        content: `I processed your request using **${model}**.\n\nHere is the tailored response for Algerian developers:\n\n\`\`\`typescript\n// VANTRA AI Gateway Response\nexport const response = {\n  status: "success",\n  timestamp: "${new Date().toISOString()}",\n  model: "${model}",\n  cost: ${cost},\n  execution: "verified via SATIM / Chargily"\n};\n\`\`\`\n\n${err?.message ? `*Note: ${err.message}*` : ''}`,
+        content: `⚠️ **Request Notice (${model})**\n\n${err?.message || 'An error occurred while communicating with the AI gateway.'}\n\n*Tip: You can switch to **Llama 3.3 70B (Free)** or **DeepSeek R1 (Free)** in the model selector below to generate without deduction.*`,
         model: model,
-        cost: cost,
+        cost: 0,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
-      setMessages((prev) => [...prev, fallbackMsg]);
+      setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setIsGenerating(false);
     }

@@ -62,7 +62,7 @@ export default function StudioSidebar({
       {isMobileOpen && (
         <div
           onClick={onCloseMobile}
-          className="fixed inset-0 z-40 bg-black/80 backdrop-blur-md lg:hidden"
+          className="fixed inset-0 z-40 bg-black/80 backdrop-blur-md lg:hidden cursor-pointer"
         />
       )}
 
@@ -84,7 +84,7 @@ export default function StudioSidebar({
                 <span className="font-heading font-bold text-sm text-white tracking-wider">
                   VANTRA
                 </span>
-                <span className="text-[10px] font-mono text-[#1FD8B8] ml-1.5 px-1.5 py-0.5 rounded bg-[#1FD8B8]/10 border border-[#1FD8B8]/20">
+                <span className="text-[10px] font-mono text-[#1FD8B8] ml-1.5 px-1.5 py-0.5 rounded bg-[#1FD8B8]/10 border border-[#1FD8B8]/20 font-bold">
                   STUDIO
                 </span>
               </div>
@@ -92,7 +92,7 @@ export default function StudioSidebar({
 
             <Link
               href="/"
-              className="h-7 px-2 rounded-lg border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.06] text-[11px] text-[#94A3B8] hover:text-white flex items-center gap-1 transition"
+              className="h-7 px-2.5 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.06] text-[11px] text-[#94A3B8] hover:text-white flex items-center gap-1 transition"
               title="Return to Landing Page"
             >
               <ArrowLeft className="h-3 w-3" />
@@ -101,21 +101,25 @@ export default function StudioSidebar({
           </div>
 
           {/* Mode Switcher Tabs */}
-          <div className="grid grid-cols-3 gap-1 bg-[#050608] p-1 rounded-2xl border border-white/[0.06]">
+          <div className="grid grid-cols-3 gap-1.5 bg-[#050608] p-1.5 rounded-2xl border border-white/[0.08]">
             <button
               type="button"
               onClick={() => {
                 onSelectMode('chat');
                 onCloseMobile?.();
               }}
-              className={`flex flex-col items-center justify-center py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
+              className={`flex flex-col items-center justify-center py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                 currentMode === 'chat'
-                  ? 'bg-[#1FD8B8] text-[#050506] font-bold shadow-[0_2px_10px_rgba(31,216,184,0.3)]'
-                  : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.03]'
+                  ? 'bg-[#1FD8B8] text-[#050506] font-bold shadow-[0_2px_12px_rgba(31,216,184,0.35)]'
+                  : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.04]'
               }`}
             >
-              <MessageSquare className="h-4 w-4 mb-0.5" />
-              <span className="text-[10px]">Chat</span>
+              <MessageSquare
+                className={`h-4 w-4 mb-1 ${
+                  currentMode === 'chat' ? 'text-[#050506]' : 'text-[#1FD8B8]'
+                }`}
+              />
+              <span className="text-[11px]">Chat</span>
             </button>
 
             <button
@@ -124,14 +128,18 @@ export default function StudioSidebar({
                 onSelectMode('image');
                 onCloseMobile?.();
               }}
-              className={`flex flex-col items-center justify-center py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
+              className={`flex flex-col items-center justify-center py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                 currentMode === 'image'
-                  ? 'bg-[#1FD8B8] text-[#050506] font-bold shadow-[0_2px_10px_rgba(31,216,184,0.3)]'
-                  : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.03]'
+                  ? 'bg-[#1FD8B8] text-[#050506] font-bold shadow-[0_2px_12px_rgba(31,216,184,0.35)]'
+                  : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.04]'
               }`}
             >
-              <ImageIcon className="h-4 w-4 mb-0.5" />
-              <span className="text-[10px]">Image</span>
+              <ImageIcon
+                className={`h-4 w-4 mb-1 ${
+                  currentMode === 'image' ? 'text-[#050506]' : 'text-[#1FD8B8]'
+                }`}
+              />
+              <span className="text-[11px]">Image</span>
             </button>
 
             <button
@@ -140,14 +148,18 @@ export default function StudioSidebar({
                 onSelectMode('video');
                 onCloseMobile?.();
               }}
-              className={`flex flex-col items-center justify-center py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
+              className={`flex flex-col items-center justify-center py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                 currentMode === 'video'
-                  ? 'bg-[#1FD8B8] text-[#050506] font-bold shadow-[0_2px_10px_rgba(31,216,184,0.3)]'
-                  : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.03]'
+                  ? 'bg-[#1FD8B8] text-[#050506] font-bold shadow-[0_2px_12px_rgba(31,216,184,0.35)]'
+                  : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.04]'
               }`}
             >
-              <Video className="h-4 w-4 mb-0.5" />
-              <span className="text-[10px]">Video</span>
+              <Video
+                className={`h-4 w-4 mb-1 ${
+                  currentMode === 'video' ? 'text-[#050506]' : 'text-[#1FD8B8]'
+                }`}
+              />
+              <span className="text-[11px]">Video</span>
             </button>
           </div>
 
