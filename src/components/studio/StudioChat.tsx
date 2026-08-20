@@ -148,68 +148,50 @@ export default function StudioChat({
   };
 
   return (
-    <div className="flex-1 flex flex-col relative h-full min-w-0 bg-[#050506] text-white overflow-hidden font-sans">
-      {/* Ambient Background Glows */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-[#6E6BFF]/10 rounded-full blur-[140px] pointer-events-none -z-10" />
-      <div className="absolute bottom-10 right-10 w-[450px] h-[350px] bg-[#1FD8B8]/10 rounded-full blur-[120px] pointer-events-none -z-10" />
-
-      {/* Unobtrusive Top Alert Banner */}
-      {error && (
-        <div className="mx-4 md:mx-8 mt-4 p-3 rounded-2xl bg-red-500/10 border border-red-500/25 flex items-center justify-between text-xs text-red-300 shadow-lg z-20">
-          <div className="flex items-center gap-2">
-            <span className="font-bold">⚠️ Notice:</span>
-            <span>{error.message}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Top Controls when messages exist */}
-      {messages.length > 0 && (
-        <div className="absolute top-4 right-4 md:right-8 z-30">
-          <button
-            onClick={() => {
-              setMessages([]);
-              localStorage.removeItem('vantra_chat_history');
-              if (onClearChat) onClearChat();
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white/50 hover:text-white bg-white/[0.02] hover:bg-white/[0.08] border border-white/5 rounded-full transition-all backdrop-blur-md cursor-pointer"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>New Session</span>
-          </button>
-        </div>
-      )}
-
-      {/* 3. SCROLLABLE MESSAGE STREAM */}
-      <div className="flex-1 overflow-y-auto scroll-smooth custom-scrollbar w-full">
-        {/* CENTERED CONTAINER FOR MESSAGES */}
-        <div className="max-w-3xl mx-auto w-full px-4 pt-8 pb-48 flex flex-col gap-6">
+    <div className="flex-1 flex flex-col relative min-w-0 h-full bg-[#050506] text-white font-sans overflow-hidden">
+      
+      {/* 3. SCROLLABLE MESSAGES CONTAINER */}
+      <div className="flex-1 overflow-y-auto w-full custom-scrollbar">
+        
+        {/* THIS IS THE CENTERED WRAPPER FOR MESSAGES */}
+        <div className="max-w-3xl mx-auto w-full px-4 pt-12 pb-48 flex flex-col gap-8">
+          
           {messages.length === 0 ? (
-            /* EMPTY STATE HERO */
-            <div className="flex flex-col items-center justify-center h-full mt-32 text-center">
-              <h1 className="text-3xl md:text-4xl font-semibold text-white/90 mb-2">How can I help today?</h1>
-              <p className="text-sm text-white/40 max-w-md">Choose an AI engine below and start asking questions, coding, or translating in Darja & Arabic.</p>
-            </div>
+             <div className="flex flex-col items-center justify-center h-64 opacity-50">
+                <p>Start a conversation...</p>
+             </div>
           ) : (
-            /* MESSAGE MAP */
-            messages.map((msg, index) => (
-              <MessageBubble 
-                key={msg.id || index} 
-                message={msg} 
-                isLatest={index === messages.length - 1} 
-                isStreaming={isLoading} 
-              />
+            messages.map((msg, idx) => (
+              <div key={msg.id || idx} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                
+                {/* FIXED BUBBLE STYLING */}
+                <div className={`relative px-5 py-3.5 text-[15px] leading-relaxed max-w-[80%] ${
+                  msg.role === 'user'
+                    ? 'bg-[#1FD8B8]/15 text-white border border-[#1FD8B8]/20 rounded-2xl rounded-br-sm'
+                    : 'bg-transparent text-white/90'
+                }`}>
+                  {msg.role === 'user' ? (
+                    msg.content
+                  ) : (
+                    <MessageBubble 
+                      message={msg} 
+                      isLatest={idx === messages.length - 1} 
+                      isStreaming={isLoading} 
+                    />
+                  )}
+                </div>
+
+              </div>
             ))
           )}
-
-          {/* INVISIBLE ELEMENT FOR AUTO-SCROLL */}
           <div ref={messagesEndRef} className="h-4 w-full shrink-0" />
         </div>
       </div>
 
-      {/* 4. FLOATING INPUT DOCK (With Fade Background to prevent overlap) */}
-      <div className="absolute bottom-0 left-0 right-0 pt-16 pb-6 px-4 bg-gradient-to-t from-[#050506] via-[#050506]/95 to-transparent z-50 pointer-events-none">
-        <div className="max-w-3xl mx-auto w-full pointer-events-auto">
+      {/* 4. PERFECTLY CENTERED FLOATING INPUT DOCK */}
+      <div className="absolute bottom-0 left-0 w-full pt-20 pb-8 px-4 flex justify-center bg-gradient-to-t from-[#050506] via-[#050506]/95 to-transparent z-50 pointer-events-none">
+        <div className="w-full max-w-3xl pointer-events-auto shadow-2xl">
+          {/* YOUR INPUT COMPONENT */}
           <AnimatedAIChat
             onSendMessage={handleSendFromChatComponent}
             isLoading={isLoading}
@@ -217,10 +199,11 @@ export default function StudioChat({
             selectedModelId={selectedModelId}
             onSelectModel={setSelectedModelId}
             initialValue={stagedPrompt}
-            isExpanded={false}
+            isExpanded={messages.length === 0}
           />
         </div>
       </div>
+
     </div>
   );
 }

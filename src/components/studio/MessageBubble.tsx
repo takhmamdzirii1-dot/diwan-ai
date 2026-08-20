@@ -24,25 +24,14 @@ export default function MessageBubble({ message, isLatest, isStreaming }: Messag
   const isUser = message.role === 'user';
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className={`flex gap-3 sm:gap-4 w-full ${isUser ? 'justify-end' : 'justify-start'}`}
-    >
-      {!isUser && (
-        <div className="h-8 w-8 rounded-xl bg-[#1FD8B8]/15 border border-[#1FD8B8]/30 flex items-center justify-center text-[#1FD8B8] shrink-0 mt-1 shadow-[0_0_12px_rgba(31,216,184,0.15)]">
-          <Bot className="h-4 w-4" />
-        </div>
-      )}
+    <div className="flex gap-4">
+      {/* AI Avatar */}
+      <div className="h-8 w-8 rounded-xl bg-[#1FD8B8]/15 border border-[#1FD8B8]/30 flex items-center justify-center text-[#1FD8B8] shrink-0 mt-1 shadow-[0_0_12px_rgba(31,216,184,0.15)]">
+        <Bot className="h-4 w-4" />
+      </div>
 
-      <div
-        className={`${
-          isUser
-            ? 'max-w-[80%] ml-auto bg-[#1FD8B8]/15 text-white border border-[#1FD8B8]/30 px-6 py-4 rounded-2xl rounded-tr-sm flex items-center'
-            : 'max-w-3xl mr-auto bg-transparent text-white/90 px-6 py-4'
-        }`}
-      >
+      <div className="flex-1 min-w-0">
+
         {/* Header Meta */}
         <div className="flex flex-wrap items-center justify-between text-[10px] text-[#64748B] pb-2 mb-3 border-b border-white/[0.06] gap-y-2 gap-x-4">
           <span className="font-semibold text-white/90 flex items-center gap-1.5 truncate min-w-0 max-w-full">
@@ -141,6 +130,6 @@ export default function MessageBubble({ message, isLatest, isStreaming }: Messag
           <User className="h-4 w-4" />
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }
