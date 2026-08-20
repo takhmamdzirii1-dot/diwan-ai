@@ -167,7 +167,7 @@ export default function AuthModal({
     <AnimatePresence>
       <div
         id="vantra-auth-modal-root"
-        className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+        className="vantra-modal-overlay"
         role="dialog"
         aria-modal="true"
       >
@@ -178,7 +178,7 @@ export default function AuthModal({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
           onClick={handleClose}
-          className="fixed inset-0 bg-black/80 backdrop-blur-xl cursor-pointer"
+          className="vantra-modal-backdrop"
         />
 
         {/* Modal Card Container */}
@@ -187,22 +187,22 @@ export default function AuthModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-          className="relative w-full max-w-[440px] overflow-hidden rounded-3xl border border-white/10 bg-[#0E1015] p-6 sm:p-8 space-y-6 shadow-[0_20px_70px_rgba(0,0,0,0.85)] z-10 my-auto"
+          className="vantra-modal-card"
         >
-          {/* Top Subtle Emerald Accent Beam */}
-          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#1FD8B8] to-transparent opacity-80" />
+          {/* Top Emerald Accent Beam */}
+          <div className="vantra-modal-beam" />
 
           {/* Modal Header */}
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-3.5">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#1FD8B8]/15 border border-[#1FD8B8]/30 text-[#1FD8B8] shadow-[0_0_20px_rgba(31,216,184,0.15)]">
                 <Sparkles className="h-5 w-5" />
               </div>
-              <div className="space-y-0.5">
+              <div>
                 <h3 className="text-xl font-bold text-white tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>
                   {mode === 'signin' ? 'Sign in to VANTRA' : 'Create VANTRA Account'}
                 </h3>
-                <p className="text-xs text-[#94A3B8]">
+                <p className="text-xs text-[#94A3B8] mt-0.5">
                   {mode === 'signin'
                     ? 'Access your unified Algerian AI balance'
                     : 'Get started with free models & credit packs'}
@@ -213,7 +213,7 @@ export default function AuthModal({
             <button
               type="button"
               onClick={handleClose}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/70 transition-all hover:bg-white/10 hover:border-white/20 hover:text-white"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/70 transition-all hover:bg-white/10 hover:border-white/20 hover:text-white cursor-pointer"
               aria-label="Close"
             >
               <X className="h-4 w-4" />
@@ -221,7 +221,7 @@ export default function AuthModal({
           </div>
 
           {/* Segmented Control Pill Switcher */}
-          <div className="grid grid-cols-2 gap-1 rounded-2xl bg-[#050608] p-1 border border-white/[0.08]">
+          <div className="vantra-tab-track mb-5">
             <button
               type="button"
               onClick={() => {
@@ -229,11 +229,7 @@ export default function AuthModal({
                 setError(null);
                 setSuccessMsg(null);
               }}
-              className={`rounded-xl py-2.5 text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                mode === 'signin'
-                  ? 'bg-[#1FD8B8] text-[#050506] font-bold shadow-[0_2px_10px_rgba(31,216,184,0.3)]'
-                  : 'text-white/60 hover:text-white'
-              }`}
+              className={`vantra-tab-btn ${mode === 'signin' ? 'active' : 'inactive'}`}
             >
               Sign In
             </button>
@@ -244,11 +240,7 @@ export default function AuthModal({
                 setError(null);
                 setSuccessMsg(null);
               }}
-              className={`rounded-xl py-2.5 text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                mode === 'signup'
-                  ? 'bg-[#1FD8B8] text-[#050506] font-bold shadow-[0_2px_10px_rgba(31,216,184,0.3)]'
-                  : 'text-white/60 hover:text-white'
-              }`}
+              className={`vantra-tab-btn ${mode === 'signup' ? 'active' : 'inactive'}`}
             >
               Create Account
             </button>
@@ -259,7 +251,7 @@ export default function AuthModal({
             <motion.div
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-2.5 rounded-2xl border border-red-500/25 bg-red-500/10 p-3.5 text-xs text-red-400"
+              className="flex items-center gap-2.5 rounded-2xl border border-red-500/25 bg-red-500/10 p-3.5 text-xs text-red-400 mb-4"
             >
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
@@ -270,7 +262,7 @@ export default function AuthModal({
             <motion.div
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-2.5 rounded-2xl border border-[#1FD8B8]/30 bg-[#1FD8B8]/10 p-3.5 text-xs text-[#1FD8B8]"
+              className="flex items-center gap-2.5 rounded-2xl border border-[#1FD8B8]/30 bg-[#1FD8B8]/10 p-3.5 text-xs text-[#1FD8B8] mb-4"
             >
               <CheckCircle2 className="h-4 w-4 shrink-0" />
               <span>{successMsg}</span>
@@ -282,7 +274,7 @@ export default function AuthModal({
             type="button"
             disabled={googleLoading || loading}
             onClick={handleGoogleSignIn}
-            className="w-full flex items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] h-12 text-sm font-semibold text-white transition-all duration-200 hover:bg-white/[0.08] hover:border-white/20 disabled:opacity-60 cursor-pointer"
+            className="vantra-google-btn mb-4"
           >
             {googleLoading ? (
               <Loader2 className="h-5 w-5 animate-spin text-[#1FD8B8]" />
@@ -310,9 +302,9 @@ export default function AuthModal({
           </button>
 
           {/* Clean Horizontal Divider */}
-          <div className="flex items-center gap-4 my-1">
+          <div className="flex items-center gap-4 my-4">
             <div className="flex-1 h-px bg-white/10" />
-            <span className="text-[11px] font-medium text-white/40 uppercase tracking-wider">
+            <span className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider">
               or email
             </span>
             <div className="flex-1 h-px bg-white/10" />
@@ -321,46 +313,46 @@ export default function AuthModal({
           {/* Email & Password Form */}
           <form onSubmit={handleEmailAuth} className="space-y-4">
             {mode === 'signup' && (
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-[#CBD5E1] block">
+              <div>
+                <label className="text-xs font-semibold text-[#CBD5E1] block mb-1.5">
                   Full Name
                 </label>
-                <div className="relative flex items-center">
-                  <User className="absolute left-4 h-4 w-4 text-[#94A3B8] pointer-events-none" />
+                <div className="vantra-input-wrap">
+                  <User className="vantra-input-icon" />
                   <input
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Karim Meziani"
-                    className="w-full h-12 rounded-2xl border border-white/10 bg-[#050608] pl-11 pr-4 text-sm text-white placeholder-white/30 outline-none transition-all duration-200 focus:border-[#1FD8B8] focus:ring-1 focus:ring-[#1FD8B8]"
+                    className="vantra-input-field"
                   />
                 </div>
               </div>
             )}
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-[#CBD5E1] block">
+            <div>
+              <label className="text-xs font-semibold text-[#CBD5E1] block mb-1.5">
                 Email Address
               </label>
-              <div className="relative flex items-center">
-                <Mail className="absolute left-4 h-4 w-4 text-[#94A3B8] pointer-events-none" />
+              <div className="vantra-input-wrap">
+                <Mail className="vantra-input-icon" />
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="developer@vantra.dz"
-                  className="w-full h-12 rounded-2xl border border-white/10 bg-[#050608] pl-11 pr-4 text-sm text-white placeholder-white/30 outline-none transition-all duration-200 focus:border-[#1FD8B8] focus:ring-1 focus:ring-[#1FD8B8]"
+                  className="vantra-input-field"
                 />
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-[#CBD5E1] block">
+            <div>
+              <label className="text-xs font-semibold text-[#CBD5E1] block mb-1.5">
                 Password
               </label>
-              <div className="relative flex items-center">
-                <Lock className="absolute left-4 h-4 w-4 text-[#94A3B8] pointer-events-none" />
+              <div className="vantra-input-wrap">
+                <Lock className="vantra-input-icon" />
                 <input
                   type="password"
                   required
@@ -368,7 +360,7 @@ export default function AuthModal({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full h-12 rounded-2xl border border-white/10 bg-[#050608] pl-11 pr-4 text-sm text-white placeholder-white/30 outline-none transition-all duration-200 focus:border-[#1FD8B8] focus:ring-1 focus:ring-[#1FD8B8]"
+                  className="vantra-input-field"
                 />
               </div>
             </div>
@@ -377,7 +369,7 @@ export default function AuthModal({
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 w-full flex items-center justify-center gap-2 rounded-2xl bg-[#1FD8B8] h-12 text-sm font-bold text-[#050506] shadow-[0_4px_20px_rgba(31,216,184,0.35)] transition-all duration-200 hover:bg-[#34e2c2] disabled:opacity-60 cursor-pointer"
+              className="vantra-btn-submit mt-2"
             >
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin text-[#050506]" />
@@ -391,8 +383,8 @@ export default function AuthModal({
           </form>
 
           {/* Bottom Switch Note */}
-          <div className="text-center pt-2 border-t border-white/[0.06]">
-            <p className="text-xs text-white/50">
+          <div className="text-center pt-4 mt-4 border-t border-white/[0.08]">
+            <p className="text-xs text-[#64748B]">
               {mode === 'signin' ? "Don't have an account yet?" : 'Already have an account?'}
               <button
                 type="button"

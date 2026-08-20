@@ -1,6 +1,182 @@
 @import "tailwindcss";
 
-@charset "UTF-8";
+@theme {
+  --color-vantra-teal: #1FD8B8;
+  --color-vantra-teal-hover: #34E2C2;
+  --color-vantra-bg: #050506;
+  --color-vantra-surface: #0E1016;
+  --color-vantra-card: #0A0B0D;
+}
+
+/* ==========================================================================
+   VANTRA LUXURY MODAL STYLES (GUARANTEED HIGH-FIDELITY RENDERING)
+   ========================================================================== */
+.vantra-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.vantra-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.vantra-modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  background-color: #0E1016 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 24px !important;
+  padding: 32px 28px !important;
+  box-shadow: 0 25px 70px -10px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+  z-index: 10;
+  margin: auto;
+  overflow: hidden;
+}
+
+.vantra-modal-beam {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #1FD8B8, transparent);
+  opacity: 0.9;
+}
+
+.vantra-tab-track {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  background: #050608;
+  padding: 4px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.vantra-tab-btn {
+  height: 38px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vantra-tab-btn.active {
+  background: #1FD8B8 !important;
+  color: #050506 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 12px rgba(31, 216, 184, 0.35) !important;
+}
+
+.vantra-tab-btn.inactive {
+  background: transparent !important;
+  color: #94A3B8 !important;
+}
+
+.vantra-tab-btn.inactive:hover {
+  color: #FFFFFF !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+.vantra-google-btn {
+  width: 100%;
+  height: 48px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vantra-google-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.vantra-input-wrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.vantra-input-icon {
+  position: absolute;
+  left: 16px;
+  width: 18px;
+  height: 18px;
+  color: #64748B;
+  pointer-events: none;
+}
+
+.vantra-input-field {
+  width: 100%;
+  height: 48px;
+  padding-left: 48px !important;
+  padding-right: 16px !important;
+  background: #050608 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 14px !important;
+  color: #FFFFFF !important;
+  font-size: 14px !important;
+  outline: none !important;
+  transition: all 0.2s ease;
+}
+
+.vantra-input-field:focus {
+  border-color: #1FD8B8 !important;
+  box-shadow: 0 0 0 1px #1FD8B8 !important;
+}
+
+.vantra-input-field::placeholder {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.vantra-btn-submit {
+  width: 100%;
+  height: 48px;
+  border-radius: 14px;
+  background: #1FD8B8 !important;
+  color: #050506 !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 20px rgba(31, 216, 184, 0.4) !important;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vantra-btn-submit:hover {
+  background: #34E2C2 !important;
+  box-shadow: 0 6px 24px rgba(31, 216, 184, 0.5) !important;
+}
 
 /* ==========================================================================
    VANTRA (فانترا) - REFINED PREMIUM MINIMALIST DESIGN SYSTEM
