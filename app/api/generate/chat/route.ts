@@ -4,12 +4,14 @@ import { createClient } from '../../../../src/lib/supabase/server';
 // Point Cost Mapping
 const MODEL_COSTS: Record<string, number> = {
   'openrouter/free': 0,
-  'meta-llama/llama-3.2-3b-instruct:free': 0,
-  'google/gemini-2.0-flash-exp:free': 0,
+  'nvidia/nemotron-3.5-lightning:free': 0,
+  'google/gemma-4-26b-a4b-it:free': 0,
+  'liquid/lfm-2.5-2.6b:free': 0,
+  'nvidia/nemotron-3-nano-30b-a3b:free': 0,
   'deepseek/deepseek-r1:free': 0,
+  'google/gemini-2.0-flash-exp:free': 0,
+  'meta-llama/llama-3.2-3b-instruct:free': 0,
   'mistralai/mistral-7b-instruct:free': 0,
-  'deepseek/deepseek-chat:free': 0,
-  'meta-llama/llama-3.1-8b-instruct:free': 0,
   'anthropic/claude-3.5-sonnet': 25,
   'openai/gpt-4o': 30,
   'deepseek/deepseek-chat': 5,
@@ -17,13 +19,15 @@ const MODEL_COSTS: Record<string, number> = {
   'kling-ai-1-5': 240,
 };
 
-// Resilient Pool of Free Fallback Models
+// Resilient Pool of Free Fallback Models (Verified Live on OpenRouter)
 const FREE_MODELS_POOL = [
+  'nvidia/nemotron-3.5-lightning:free',
+  'google/gemma-4-26b-a4b-it:free',
+  'liquid/lfm-2.5-2.6b:free',
+  'nvidia/nemotron-3-nano-30b-a3b:free',
   'openrouter/free',
-  'meta-llama/llama-3.2-3b-instruct:free',
-  'google/gemini-2.0-flash-exp:free',
   'deepseek/deepseek-r1:free',
-  'mistralai/mistral-7b-instruct:free',
+  'google/gemini-2.0-flash-exp:free',
 ];
 
 async function callOpenRouter(

@@ -27,11 +27,27 @@ export interface ChatMessage {
 
 export const AVAILABLE_MODELS = [
   {
-    id: 'openrouter/free',
-    name: 'Auto-Routing Free Engine',
-    provider: 'OpenRouter High Availability',
+    id: 'nvidia/nemotron-3.5-lightning:free',
+    name: 'Nemotron 3.5 Lightning (Free)',
+    provider: 'NVIDIA AI',
     cost: 0,
-    tag: '100% Free Auto-Routing (0 pts)',
+    tag: 'Ultra-Fast Reasoning (0 pts)',
+    isFree: true,
+  },
+  {
+    id: 'google/gemma-4-26b-a4b-it:free',
+    name: 'Google Gemma 4 26B (Free)',
+    provider: 'Google DeepMind',
+    cost: 0,
+    tag: 'Advanced Instruction (0 pts)',
+    isFree: true,
+  },
+  {
+    id: 'liquid/lfm-2.5-2.6b:free',
+    name: 'Liquid LFM 2.5 (Free)',
+    provider: 'Liquid AI',
+    cost: 0,
+    tag: 'High Throughput Logic (0 pts)',
     isFree: true,
   },
   {
@@ -40,22 +56,6 @@ export const AVAILABLE_MODELS = [
     provider: 'DeepSeek AI',
     cost: 0,
     tag: 'Deep Reasoning & Logic (0 pts)',
-    isFree: true,
-  },
-  {
-    id: 'google/gemini-2.0-flash-exp:free',
-    name: 'Gemini 2.0 Flash (Free)',
-    provider: 'Google DeepMind',
-    cost: 0,
-    tag: 'High Speed Multimodal (0 pts)',
-    isFree: true,
-  },
-  {
-    id: 'meta-llama/llama-3.2-3b-instruct:free',
-    name: 'Llama 3.2 3B (Free)',
-    provider: 'Meta AI',
-    cost: 0,
-    tag: 'Fast Lightweight (0 pts)',
     isFree: true,
   },
   {
@@ -254,7 +254,7 @@ export default function StudioChat({
   const { user, balance } = useUser();
   const [input, setInput] = useState('');
   const [selectedModelId, setSelectedModelId] = useState(
-    'openrouter/free'
+    'nvidia/nemotron-3.5-lightning:free'
   );
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
