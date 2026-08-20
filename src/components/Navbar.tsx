@@ -19,6 +19,11 @@ export default function Navbar({ onOpenAuth, onOpenTopUp }: NavbarProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleOpenAuth = (mode: 'signin' | 'signup' = 'signin') => {
+    console.log('Button clicked: opening auth modal', mode);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('open-auth-modal', { detail: { mode } }));
+      window.dispatchEvent(new CustomEvent('vantra-open-auth', { detail: { mode } }));
+    }
     if (onOpenAuth) {
       onOpenAuth(mode);
     } else {
@@ -27,6 +32,10 @@ export default function Navbar({ onOpenAuth, onOpenTopUp }: NavbarProps) {
   };
 
   const handleOpenTopUp = () => {
+    console.log('Button clicked: opening top-up modal');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('open-topup-modal'));
+    }
     if (onOpenTopUp) {
       onOpenTopUp();
     } else {

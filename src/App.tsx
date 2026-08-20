@@ -70,7 +70,11 @@ function AppContent() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const handlePricingTopUp = (tier: (typeof PRICING_TIERS)[0]) => {
+    console.log('Pricing button clicked:', tier.name);
     if (!user) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('open-auth-modal', { detail: { mode: 'signup' } }));
+      }
       openAuthModal('signup');
     } else {
       openTopUpModal(tier);

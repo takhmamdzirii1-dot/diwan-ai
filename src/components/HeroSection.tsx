@@ -52,6 +52,11 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
   const { openAuthModal } = useModal();
 
   const handleGetStarted = () => {
+    console.log('Button clicked: opening modal (Hero Get Started)');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('open-auth-modal', { detail: { mode: 'signup' } }));
+      window.dispatchEvent(new CustomEvent('vantra-open-auth', { detail: { mode: 'signup' } }));
+    }
     if (onOpenAuth) {
       onOpenAuth('signup');
     } else {

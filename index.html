@@ -60,8 +60,8 @@
         <li><a href="#faq" onclick="window.closeMobileMenu()" data-i18n="navFaq">FAQ</a></li>
       </ul>
       <div class="mobile-sheet-actions">
-        <button class="btn-ghost" onclick="window.closeMobileMenu(); window.openAuthModal('signin')" data-i18n="btnLogin">Login</button>
-        <button class="btn-primary" onclick="window.closeMobileMenu(); window.openAuthModal('signup')">
+        <button class="btn-ghost" data-auth-trigger="signin" onclick="window.closeMobileMenu(); window.openAuthModal('signin')" data-i18n="btnLogin">Login</button>
+        <button class="btn-primary" data-auth-trigger="signup" onclick="window.closeMobileMenu(); window.openAuthModal('signup')">
           <i class="fa-solid fa-sparkles"></i>
           <span data-i18n="btnGetStarted">Get Started</span>
         </button>
@@ -106,8 +106,8 @@
             <button type="button" class="lang-btn" data-lang="ar" onclick="window.setLanguage('ar')">عربي</button>
           </div>
 
-          <button class="btn-ghost" onclick="window.openAuthModal('signin')" data-i18n="btnLogin">Login</button>
-          <button class="btn-primary" onclick="window.openAuthModal('signup')">
+          <button class="btn-ghost" data-auth-trigger="signin" onclick="window.openAuthModal('signin')" data-i18n="btnLogin">Login</button>
+          <button class="btn-primary" data-auth-trigger="signup" onclick="window.openAuthModal('signup')">
             <i class="fa-solid fa-sparkles"></i>
             <span data-i18n="btnGetStarted">Get Started</span>
           </button>

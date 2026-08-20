@@ -631,13 +631,24 @@ window.toggleFaq = function(button) {
 // -----------------------------------------------------------------------------
 
 window.openAuthModal = function(mode = 'signin') {
-  // If React AuthModal listener is registered
-  const event = new CustomEvent('vantra-open-auth', { detail: { mode } });
-  window.dispatchEvent(event);
+  console.log('window.openAuthModal triggered:', mode);
+  window.dispatchEvent(new CustomEvent('open-auth-modal', { detail: { mode } }));
+  window.dispatchEvent(new CustomEvent('vantra-open-auth', { detail: { mode } }));
   
-  // Fallback: If on static page, smooth scroll to Hero / Login trigger
-  const heroElem = document.getElementById('hero');
-  if (heroElem) heroElem.scrollIntoView({ behavior: 'smooth' });
+  const authModal = document.getElementById('auth-modal');
+  if (authModal) {
+    authModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+};
+
+window.closeAuthModal = function() {
+  window.dispatchEvent(new CustomEvent('close-auth-modal'));
+  const authModal = document.getElementById('auth-modal');
+  if (authModal) {
+    authModal.classList.remove('active');
+    document.body.style.overflow = '';
+  }
 };
 
 window.openTopupModal = function(planKey = 'pro') {
@@ -1007,4 +1018,13 @@ document.addEventListener('DOMContentLoaded', () => {
       revealObserver.observe(el);
     });
   }
+
+  // Global delegation for any auth trigger button
+  document.addEventListener('click', (e) => {
+    const trigger = e.target.closest('[data-auth-trigger]');
+    if (trigger) {
+      const mode = trigger.getAttribute('data-auth-trigger') || 'signin';
+      window.openAuthModal(mode);
+    }
+  });
 });
