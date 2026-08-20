@@ -4,58 +4,75 @@ import { createClient } from '../../../../src/lib/supabase/server';
 // Point Cost Mapping
 const MODEL_COSTS: Record<string, number> = {
   'deepseek/deepseek-r1:free': 0,
-  'deepseek-r1:free': 0,
   'google/gemini-2.0-flash-exp:free': 0,
-  'gemini-2.0-flash:free': 0,
-  'qwen/qwen-2.5-coder-32b-instruct:free': 0,
-  'qwen-2.5-coder:free': 0,
+  'google/gemini-2.0-flash-thinking-exp:free': 0,
+  'meta-llama/llama-3.1-8b-instruct:free': 0,
+  'mistralai/mistral-7b-instruct:free': 0,
+  'deepseek/deepseek-chat:free': 0,
   'anthropic/claude-3.5-sonnet': 25,
-  'claude-3-5-sonnet': 25,
   'openai/gpt-4o': 30,
-  'gpt-4o': 30,
-  'meta-llama/llama-3.3-70b-instruct:free': 0,
-  'deepseek/deepseek-chat': 5,
   'flux-1-pro': 65,
   'kling-ai-1-5': 240,
 };
 
-// OpenRouter Model Mapping
-const OPENROUTER_MODEL_MAP: Record<string, string> = {
-  'deepseek-r1:free': 'deepseek/deepseek-r1:free',
-  'gemini-2.0-flash:free': 'google/gemini-2.0-flash-exp:free',
-  'qwen-2.5-coder:free': 'qwen/qwen-2.5-coder-32b-instruct:free',
-  'claude-3-5-sonnet': 'anthropic/claude-3.5-sonnet',
-  'gpt-4o': 'openai/gpt-4o',
-};
-
-// Fallback Chain for high availability
-const FALLBACK_MODELS = [
+// Resilient Pool of Active Free Models for Cascade Fallback
+const FREE_MODELS_POOL = [
   'deepseek/deepseek-r1:free',
   'google/gemini-2.0-flash-exp:free',
-  'qwen/qwen-2.5-coder-32b-instruct:free',
+  'google/gemini-2.0-flash-thinking-exp:free',
+  'meta-llama/llama-3.1-8b-instruct:free',
+  'mistralai/mistral-7b-instruct:free',
+  'deepseek/deepseek-chat:free',
 ];
 
 async function callOpenRouter(modelId: string, prompt: string, apiKey: string) {
-  return await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://diwan-ai.vercel.app',
-      'X-Title': 'VANTRA AI',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: modelId,
-      messages: [
-        {
-          role: 'system',
-          content:
-            'You are an expert AI assistant hosted on VANTRA, the premier unified AI gateway for Algeria. Provide detailed, well-structured, and helpful answers with clean markdown formatting. You are fully fluent in English, French, and Algerian Darja.',
-        },
-        { role: 'user', content: prompt },
-      ],
-    }),
-  });
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://diwan-ai.vercel.app',
+        'X-Title': 'VANTRA AI',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: modelId,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are an expert AI assistant hosted on VANTRA, the premier unified AI gateway for Algeria. Provide well-structured, helpful, and insightful answers with clean markdown formatting. You are fully fluent in English, French, and Algerian Darja.',
+          },
+          { role: 'user', content: prompt },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      return { ok: false, status: response.status, data: null };
+    }
+
+    const data = await response.json().catch(() => null);
+    const content = data?.choices?.[0]?.message?.content;
+
+    // Validate that response contains actual generated content
+    if (!content || typeof content !== 'string' || content.trim().length === 0) {
+      return { ok: false, status: 204, data: null };
+    }
+
+    // Check for rate limit or unavailable text in content
+    if (
+      content.includes('unavailable for free') ||
+      content.includes('No endpoints found') ||
+      content.includes('temporarily unavailable')
+    ) {
+      return { ok: false, status: 503, data: null };
+    }
+
+    return { ok: true, status: 200, data, content };
+  } catch (err: any) {
+    return { ok: false, status: 500, error: err?.message || 'Network error' };
+  }
 }
 
 export async function POST(request: Request) {
@@ -85,15 +102,15 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}));
     const { prompt, model = 'deepseek/deepseek-r1:free' } = body;
 
-    if (!prompt || typeof prompt !== 'string') {
+    if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
       return NextResponse.json(
         { error: 'Prompt is required' },
         { status: 400 }
       );
     }
 
-    const requestedModel = OPENROUTER_MODEL_MAP[model] || model;
-    const cost = MODEL_COSTS[model] ?? MODEL_COSTS[requestedModel] ?? 0;
+    const requestedModel = model.trim();
+    const cost = MODEL_COSTS[requestedModel] ?? 0;
 
     // 3. Atomic Point Deduction (0 cost models bypass deduction)
     let deductSuccess = cost === 0;
@@ -157,44 +174,42 @@ export async function POST(request: Request) {
       }
     }
 
-    // 4. OpenRouter API Execution with Automatic Resilient Fallback
-    let aiResponseText = '';
-    let usedModel = requestedModel;
-    let tokensUsed = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+    // 4. Multi-Model Cascade Execution
     const openRouterApiKey = process.env.OPENROUTER_API_KEY;
 
     if (!openRouterApiKey) {
       return NextResponse.json(
-        { error: 'OpenRouter API key is not configured in the server environment.' },
+        { error: 'OpenRouter API key is not configured in server environment.' },
         { status: 500 }
       );
     }
 
-    // Attempt primary model first
-    let res = await callOpenRouter(requestedModel, prompt, openRouterApiKey);
+    let finalContent = '';
+    let finalModel = requestedModel;
+    let tokensUsed = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
 
-    if (!res.ok) {
-      // If primary model failed, try fallback chain
-      console.warn(`Primary model ${requestedModel} failed with status ${res.status}. Trying fallback models...`);
-      for (const fallbackModel of FALLBACK_MODELS) {
-        if (fallbackModel !== requestedModel) {
-          try {
-            const fallbackRes = await callOpenRouter(fallbackModel, prompt, openRouterApiKey);
-            if (fallbackRes.ok) {
-              res = fallbackRes;
-              usedModel = fallbackModel;
-              break;
-            }
-          } catch {}
-        }
+    // Build candidate execution sequence: requested model first, then the free pool
+    const candidates = [
+      requestedModel,
+      ...FREE_MODELS_POOL.filter((m) => m !== requestedModel),
+    ];
+
+    let success = false;
+
+    for (const candidateModel of candidates) {
+      const callRes = await callOpenRouter(candidateModel, prompt, openRouterApiKey);
+
+      if (callRes.ok && callRes.content) {
+        finalContent = callRes.content;
+        finalModel = candidateModel;
+        tokensUsed = callRes.data?.usage || tokensUsed;
+        success = true;
+        break;
       }
     }
 
-    if (!res.ok) {
-      // If all fallbacks failed
-      const errData = await res.json().catch(() => ({}));
-      const errMsg = errData?.error?.message || `OpenRouter returned status ${res.status}`;
-
+    if (!success) {
+      // Refund if all candidates failed
       if (cost > 0) {
         try {
           await supabase.rpc('refund_user_points', {
@@ -206,20 +221,19 @@ export async function POST(request: Request) {
       }
 
       return NextResponse.json(
-        { error: `AI Gateway Error (${requestedModel}): ${errMsg}` },
-        { status: 502 }
+        {
+          error:
+            'All AI engine endpoints are currently busy. Please try again in a few seconds.',
+        },
+        { status: 503 }
       );
     }
-
-    const data = await res.json();
-    aiResponseText = data.choices?.[0]?.message?.content || 'No response generated from the model.';
-    tokensUsed = data.usage || tokensUsed;
 
     // 5. Success Response
     return NextResponse.json({
       success: true,
-      response: aiResponseText,
-      model: usedModel,
+      response: finalContent,
+      model: finalModel,
       requestedModel: requestedModel,
       costDeducted: cost,
       remainingBalance: newBalance,

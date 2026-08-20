@@ -43,11 +43,11 @@ export const AVAILABLE_MODELS = [
     isFree: true,
   },
   {
-    id: 'qwen/qwen-2.5-coder-32b-instruct:free',
-    name: 'Qwen 2.5 Coder 32B (Free)',
-    provider: 'Alibaba Cloud',
+    id: 'meta-llama/llama-3.1-8b-instruct:free',
+    name: 'Llama 3.1 8B (Free)',
+    provider: 'Meta AI',
     cost: 0,
-    tag: 'Code Synthesis (0 pts)',
+    tag: 'Fast Multilingual (0 pts)',
     isFree: true,
   },
   {

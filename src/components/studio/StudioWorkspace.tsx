@@ -137,7 +137,7 @@ export default function StudioWorkspace() {
       const errorMsg: ChatMessage = {
         id: `msg-${Date.now() + 2}`,
         sender: 'assistant',
-        content: `⚠️ **Request Notice (${model})**\n\n${err?.message || 'An error occurred while communicating with the AI gateway.'}\n\n*Tip: You can switch to **Llama 3.3 70B (Free)** or **DeepSeek R1 (Free)** in the model selector below to generate without deduction.*`,
+        content: `⚠️ **Request Notice (${model})**\n\n${err?.message || 'An error occurred while communicating with the AI gateway.'}\n\n*Tip: You can switch to **DeepSeek R1 (Free)** or **Gemini 2.0 Flash (Free)** in the model selector below to generate without deduction.*`,
         model: model,
         cost: 0,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
