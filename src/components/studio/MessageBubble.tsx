@@ -36,25 +36,25 @@ export default function MessageBubble({ message, isLatest, isStreaming }: Messag
       )}
 
       <div
-        className={`max-w-[88%] sm:max-w-[80%] rounded-3xl p-4 sm:p-5 shadow-lg ${
+        className={`max-w-[92%] sm:max-w-[85%] rounded-3xl p-4 sm:p-5 shadow-lg ${
           isUser
-            ? 'bg-[#0D0E12] border border-white/10 text-white rounded-br-md'
-            : 'bg-transparent text-[#F5F6F8]'
+            ? 'bg-[#1FD8B8]/15 border border-[#1FD8B8]/30 text-white rounded-tr-md'
+            : 'bg-[#0D0E12]/95 border border-white/[0.08] text-[#F5F6F8] backdrop-blur-xl rounded-tl-md'
         }`}
       >
         {/* Header Meta */}
-        <div className="flex items-center justify-between text-[10px] text-[#64748B] pb-2 mb-3 border-b border-white/[0.06]">
-          <span className="font-semibold text-white/90 flex items-center gap-1.5">
+        <div className="flex items-center justify-between text-[10px] text-[#64748B] pb-2 mb-3 border-b border-white/[0.06] gap-3">
+          <span className="font-semibold text-white/90 flex items-center gap-1.5 truncate min-w-0">
             {isUser ? (
               'You'
             ) : (
               <>
-                <Sparkles className="h-3 w-3 text-[#1FD8B8]" />
-                <span>{message.model || 'VANTRA AI'}</span>
+                <Sparkles className="h-3 w-3 text-[#1FD8B8] shrink-0" />
+                <span className="truncate">{message.model || 'VANTRA AI'}</span>
               </>
             )}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {message.cost !== undefined && (
               <span
                 className={`font-mono font-bold px-1.5 py-0.5 rounded ${

@@ -184,7 +184,7 @@ export default function StudioChat({
       ) : (
         /* Active Session State */
         <>
-          <div className="flex-1 overflow-y-auto px-4 md:px-12 py-8 pb-40 scroll-smooth custom-scrollbar">
+          <div className="flex-1 overflow-y-auto px-4 md:px-12 py-8 pb-48 scroll-smooth custom-scrollbar">
             <div className="max-w-3xl mx-auto space-y-6">
               {messages.map((msg, idx) => (
                 <MessageBubble 
@@ -199,8 +199,8 @@ export default function StudioChat({
             </div>
           </div>
 
-          <div className="absolute bottom-6 left-0 right-0 z-50 px-4 max-w-3xl mx-auto flex justify-center">
-            <div className="w-full">
+          <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 bg-gradient-to-t from-[#050506] via-[#050506]/95 to-transparent backdrop-blur-xl z-30 flex justify-center pb-6">
+            <div className="w-full max-w-3xl mx-auto">
               <AnimatedAIChat
                 onSendMessage={handleSendFromChatComponent}
                 isLoading={isLoading}
