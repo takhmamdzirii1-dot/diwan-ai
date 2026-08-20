@@ -10,7 +10,8 @@ import {
   Terminal,
 } from 'lucide-react';
 import useUser from '../../hooks/useUser';
-import AnimatedAIChat, {
+import {
+  AnimatedAIChat,
   type ModelOption,
   type AttachedFile,
 } from '../ui/animated-ai-chat';
@@ -305,44 +306,15 @@ export default function StudioChat({
       )}
 
       {messages.length === 0 ? (
-        /* Empty State / Welcome Screen */
-        <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 relative z-10 w-full h-full space-y-8">
-          <div className="space-y-4 text-center mt-[-8vh]">
-            <h2
-              className="text-3xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-br from-white via-white/90 to-white/50 tracking-tight font-heading"
-              style={{ fontFamily: 'var(--font-heading)' }}
-            >
-              What will you create today?
-            </h2>
-            <p className="text-sm md:text-base text-[#94A3B8] max-w-xl mx-auto">
-              Prompt world-class AI models directly with unified credits.
-            </p>
-          </div>
-
-          <div className="w-full max-w-3xl">
-            <AnimatedAIChat
-              onSendMessage={handleSendFromChatComponent}
-              isLoading={isLoading}
-              models={AVAILABLE_MODELS}
-              selectedModelId={selectedModelId}
-              onSelectModel={setSelectedModelId}
-              initialValue={stagedPrompt}
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-2 max-w-2xl mt-4">
-            {SUGGESTED_PROMPTS.map((item, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => setStagedPrompt(item.prompt)}
-                className="px-4 py-2 rounded-full border border-white/[0.08] bg-[#0A0B0E]/60 backdrop-blur-md hover:bg-white/[0.04] hover:border-[#1FD8B8]/40 transition text-xs font-medium text-[#94A3B8] hover:text-white cursor-pointer shadow-md"
-              >
-                {item.title}
-              </button>
-            ))}
-          </div>
-        </div>
+        <AnimatedAIChat
+          onSendMessage={handleSendFromChatComponent}
+          isLoading={isLoading}
+          models={AVAILABLE_MODELS}
+          selectedModelId={selectedModelId}
+          onSelectModel={setSelectedModelId}
+          initialValue={stagedPrompt}
+          isExpanded={true}
+        />
       ) : (
         /* Active Session State */
         <>
@@ -444,6 +416,7 @@ export default function StudioChat({
                 selectedModelId={selectedModelId}
                 onSelectModel={setSelectedModelId}
                 initialValue={stagedPrompt}
+                isExpanded={false}
               />
             </div>
           </div>
