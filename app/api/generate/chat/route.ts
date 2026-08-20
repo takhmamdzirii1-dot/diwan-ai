@@ -6,6 +6,11 @@ import { createOpenAI } from '@ai-sdk/openai';
 const openrouter = createOpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
   apiKey: process.env.OPENROUTER_API_KEY,
+  compatibility: 'compatible',
+  headers: {
+    'HTTP-Referer': 'https://diwan-ai.vercel.app',
+    'X-Title': 'VANTRA AI',
+  }
 });
 
 // Point Cost Mapping

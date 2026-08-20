@@ -58,7 +58,7 @@ export default function MessageBubble({ message, isLatest, isStreaming }: Messag
         </div>
 
         {/* Content */}
-        <div className="text-[15px] leading-relaxed" dir="auto">
+        <div className="text-[16px] leading-[1.7]" dir="auto">
           {(!isUser && isLatest && isStreaming) ? (
              <Typewriter 
                words={[message.content]} 
@@ -69,7 +69,7 @@ export default function MessageBubble({ message, isLatest, isStreaming }: Messag
                cursorChar=""
              />
           ) : (
-            <div className="prose prose-invert prose-p:leading-relaxed prose-pre:bg-[#050506] prose-pre:border prose-pre:border-white/10 max-w-none">
+            <div className="prose prose-invert prose-p:leading-[1.7] prose-pre:bg-[#050506] prose-pre:border prose-pre:border-white/10 max-w-none">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
