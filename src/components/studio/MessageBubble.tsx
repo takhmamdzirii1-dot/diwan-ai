@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Bot, User, Copy, Check, Terminal, Sparkles } from 'lucide-react';
 import type { ChatMessage } from './StudioChat';
+import { Typewriter } from '../ui/typewriter';
 
 export interface MessageBubbleProps {
   message: ChatMessage;
@@ -71,104 +72,80 @@ export default function MessageBubble({ message, isLatest, isStreaming }: Messag
         </div>
 
         {/* Content */}
-        <div className="prose prose-invert prose-p:leading-relaxed prose-pre:bg-[#050506] prose-pre:border prose-pre:border-white/10 max-w-none text-base leading-relaxed" dir="auto">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              a: ({ node, ...props }) => (
-                <a {...props} className="text-[#1FD8B8] hover:underline" target="_blank" rel="noopener noreferrer" />
-              ),
-              p: ({ node, children, ...props }) => (
-                <p className="mb-3 last:mb-0 text-white/90" {...props}>{children}</p>
-              ),
-              strong: ({ node, ...props }) => (
-                <strong className="font-bold text-white" {...props} />
-              ),
-              ul: ({ node, ...props }) => (
-                <ul className="list-disc pl-5 mb-3 text-white/90 marker:text-[#1FD8B8]" {...props} />
-              ),
-              ol: ({ node, ...props }) => (
-                <ol className="list-decimal pl-5 mb-3 text-white/90 marker:text-[#1FD8B8]" {...props} />
-              ),
-              li: ({ node, ...props }) => (
-                <li className="mb-1" {...props} />
-              ),
-              h1: ({ node, ...props }) => <h1 className="text-xl font-bold text-white mt-5 mb-3" {...props} />,
-              h2: ({ node, ...props }) => <h2 className="text-lg font-bold text-white mt-4 mb-2" {...props} />,
-              h3: ({ node, ...props }) => <h3 className="text-base font-bold text-white mt-3 mb-2" {...props} />,
-              table: ({ node, ...props }) => (
-                <div className="overflow-x-auto mb-4 rounded-xl border border-white/10">
-                  <table className="w-full text-left text-sm text-white/80" {...props} />
-                </div>
-              ),
-              th: ({ node, ...props }) => (
-                <th className="bg-[#050608] px-4 py-2 font-bold text-white border-b border-white/10" {...props} />
-              ),
-              td: ({ node, ...props }) => (
-                <td className="bg-[#0A0B0E] px-4 py-2 border-b border-white/5" {...props} />
-              ),
-              code: ({ node, inline, className, children, ...props }: any) => {
-                const match = /language-(\w+)/.exec(className || '');
-                const isInline = inline || !match;
-                
-                if (isInline) {
-                  return (
-                    <code className="rounded-md bg-white/[0.08] px-1.5 py-0.5 font-mono text-[13px] text-[#1FD8B8] border border-white/[0.06]" {...props}>
-                      {children}
-                    </code>
-                  );
-                }
-
-                const lang = match ? match[1] : '';
-                const codeString = String(children).replace(/\n$/, '');
-                const blockId = Math.random().toString(36).substring(7);
-
-                return (
-                  <div className="my-4 overflow-hidden rounded-xl border border-white/10 bg-[#050506] shadow-2xl">
-                    <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#0A0B0E] px-4 py-2 text-xs text-[#94A3B8]">
-                      <div className="flex items-center gap-2 font-mono text-[11px] text-[#1FD8B8]">
-                        <Terminal className="h-3.5 w-3.5" />
-                        <span>{lang || 'code'}</span>
+        <div className="text-base leading-relaxed" dir="auto">
+          {(!isUser && isLatest && isStreaming) ? (
+             <Typewriter 
+               words={[message.content]} 
+               speed={15} 
+               cursor={true} 
+               loop={false}
+               asMarkdown={true}
+               cursorChar=""
+             />
+          ) : (
+            <div className="prose prose-invert prose-p:leading-relaxed prose-pre:bg-[#050506] prose-pre:border prose-pre:border-white/10 max-w-none">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  a: ({ node, ...props }) => <a {...props} className="text-[#1FD8B8] hover:underline" target="_blank" rel="noopener noreferrer" />,
+                  p: ({ node, children, ...props }) => <p className="mb-3 last:mb-0 text-white/90" {...props}>{children}</p>,
+                  strong: ({ node, ...props }) => <strong className="font-bold text-white" {...props} />,
+                  ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-3 text-white/90 marker:text-[#1FD8B8]" {...props} />,
+                  ol: ({ node, ...props }) => <ol className="list-decimal pl-5 mb-3 text-white/90 marker:text-[#1FD8B8]" {...props} />,
+                  li: ({ node, ...props }) => <li className="mb-1" {...props} />,
+                  h1: ({ node, ...props }) => <h1 className="text-xl font-bold text-white mt-5 mb-3" {...props} />,
+                  h2: ({ node, ...props }) => <h2 className="text-lg font-bold text-white mt-4 mb-2" {...props} />,
+                  h3: ({ node, ...props }) => <h3 className="text-base font-bold text-white mt-3 mb-2" {...props} />,
+                  table: ({ node, ...props }) => <div className="overflow-x-auto mb-4 rounded-xl border border-white/10"><table className="w-full text-left text-sm text-white/80" {...props} /></div>,
+                  th: ({ node, ...props }) => <th className="bg-[#050608] px-4 py-2 font-bold text-white border-b border-white/10" {...props} />,
+                  td: ({ node, ...props }) => <td className="bg-[#0A0B0E] px-4 py-2 border-b border-white/5" {...props} />,
+                  code: ({ node, inline, className, children, ...props }: any) => {
+                    const match = /language-(\w+)/.exec(className || '');
+                    const isInline = inline || !match;
+                    if (isInline) {
+                      return <code className="rounded-md bg-white/[0.08] px-1.5 py-0.5 font-mono text-[13px] text-[#1FD8B8] border border-white/[0.06]" {...props}>{children}</code>;
+                    }
+                    const lang = match ? match[1] : '';
+                    const codeString = String(children).replace(/\n$/, '');
+                    const blockId = Math.random().toString(36).substring(7);
+                    return (
+                      <div className="my-4 overflow-hidden rounded-xl border border-white/10 bg-[#050506] shadow-2xl">
+                        <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#0A0B0E] px-4 py-2 text-xs text-[#94A3B8]">
+                          <div className="flex items-center gap-2 font-mono text-[11px] text-[#1FD8B8]">
+                            <Terminal className="h-3.5 w-3.5" />
+                            <span>{lang || 'code'}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyCode(codeString, blockId)}
+                            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium text-white/70 hover:bg-white/[0.06] hover:text-white transition cursor-pointer"
+                          >
+                            {copiedId === blockId ? (
+                              <>
+                                <Check className="h-3 w-3 text-[#1FD8B8]" />
+                                <span className="text-[#1FD8B8]">Copied</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-3 w-3" />
+                                <span>Copy code</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                        <div className="p-4 overflow-x-auto custom-scrollbar">
+                          <pre className="!bg-transparent !p-0 !m-0 text-[13px] leading-relaxed text-[#E2E8F0]">
+                            <code className={className} {...props}>{children}</code>
+                          </pre>
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyCode(codeString, blockId)}
-                        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium text-white/70 hover:bg-white/[0.06] hover:text-white transition cursor-pointer"
-                      >
-                        {copiedId === blockId ? (
-                          <>
-                            <Check className="h-3 w-3 text-[#1FD8B8]" />
-                            <span className="text-[#1FD8B8]">Copied</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-3 w-3" />
-                            <span>Copy code</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                    <div className="p-4 overflow-x-auto custom-scrollbar">
-                      <pre className="!bg-transparent !p-0 !m-0 text-[13px] leading-relaxed text-[#E2E8F0]">
-                        <code className={className} {...props}>
-                          {children}
-                        </code>
-                      </pre>
-                    </div>
-                  </div>
-                );
-              }
-            }}
-          >
-            {message.content}
-          </ReactMarkdown>
-          
-          {isLatest && !isUser && isStreaming && (
-            <motion.span
-              animate={{ opacity: [1, 0, 1] }}
-              transition={{ repeat: Infinity, duration: 0.8 }}
-              className="inline-block w-2 h-4 bg-[#1FD8B8] ml-1 align-middle translate-y-[-2px]"
-            />
+                    );
+                  }
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
+            </div>
           )}
         </div>
       </div>

@@ -30,6 +30,9 @@ const FREE_MODELS_POOL = [
   'google/gemini-2.0-flash-exp:free',
 ];
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
