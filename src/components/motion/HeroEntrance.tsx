@@ -68,7 +68,7 @@ export const HeroEntrance: React.FC<HeroEntranceProps> = ({
       {/* 2. Main Hero Heading */}
       <motion.h1
         variants={childVariants}
-        className="max-w-4xl font-sans text-4xl font-extrabold tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl"
+        className="max-w-4xl font-sans text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl"
       >
         {heading}
       </motion.h1>
@@ -76,7 +76,7 @@ export const HeroEntrance: React.FC<HeroEntranceProps> = ({
       {/* 3. Subtitle Description */}
       <motion.p
         variants={childVariants}
-        className="mt-6 max-w-2xl text-base text-gray-400 sm:text-lg md:text-xl"
+        className="mt-6 max-w-2xl text-base text-[rgba(245,246,248,0.6)] sm:text-lg md:text-xl font-normal"
       >
         {subtitle}
       </motion.p>

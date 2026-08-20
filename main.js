@@ -300,12 +300,12 @@ window.renderModelsGrid = function() {
     const badgeLabel = dict[badgeLabelKey] || model.tag;
 
     return `
-      <div class="model-card" style="--card-glow: ${model.color};">
+      <div class="model-card">
         <div>
           <!-- Card Header -->
           <div class="model-card-top">
             <div style="display: flex; align-items: center; gap: 12px;">
-              <div class="model-icon-box" style="background: ${model.bgGlow}; color: ${model.color}; border: 1px solid ${model.color}40;">
+              <div class="model-icon-box">
                 <i class="fa-solid ${model.icon}"></i>
               </div>
               <div>
@@ -317,7 +317,7 @@ window.renderModelsGrid = function() {
           </div>
 
           <!-- Superpower Tag -->
-          <div class="model-superpower" style="color: ${model.color}; border-color: ${model.color}30; background: ${model.color}12;">
+          <div class="model-superpower">
             <i class="fa-solid fa-sparkles"></i>
             <span>${model.superpower}</span>
           </div>
@@ -431,9 +431,9 @@ window.launchModel = function(modelId) {
   if (promptEl) promptEl.textContent = `"${model.samplePrompt}"`;
   if (avatarEl) {
     avatarEl.innerHTML = `<i class="fa-solid ${model.icon}"></i>`;
-    avatarEl.style.color = model.color;
-    avatarEl.style.borderColor = `${model.color}40`;
-    avatarEl.style.background = model.bgGlow;
+    avatarEl.style.color = 'var(--teal)';
+    avatarEl.style.borderColor = 'rgba(31, 216, 184, 0.25)';
+    avatarEl.style.background = 'rgba(31, 216, 184, 0.08)';
   }
   if (btnTextEl) {
     const launchActionText = currentLang === 'ar' 
@@ -454,7 +454,7 @@ window.launchModel = function(modelId) {
   const ledgerEl = document.getElementById('interactive-ledger');
   if (ledgerEl) {
     ledgerEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    ledgerEl.style.boxShadow = `0 0 35px ${model.color}40, 0 16px 40px rgba(0,0,0,0.6)`;
+    ledgerEl.style.boxShadow = `0 0 30px rgba(31, 216, 184, 0.15), 0 16px 40px rgba(0,0,0,0.7)`;
     setTimeout(() => {
       ledgerEl.style.boxShadow = '';
     }, 1800);
@@ -507,9 +507,10 @@ window.switchLedgerCategory = function(cat) {
 
   if (avatarEl) {
     const iconClass = cat === 'chat' ? 'fa-brain' : (cat === 'image' ? 'fa-palette' : 'fa-film');
-    const color = cat === 'chat' ? 'var(--teal)' : (cat === 'image' ? 'var(--violet)' : 'var(--gold)');
     avatarEl.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
-    avatarEl.style.color = color;
+    avatarEl.style.color = 'var(--teal)';
+    avatarEl.style.borderColor = 'rgba(31, 216, 184, 0.25)';
+    avatarEl.style.background = 'rgba(31, 216, 184, 0.08)';
   }
 };
 
@@ -545,7 +546,7 @@ window.executeSimulatedOperation = function() {
     const opPrefix = currentLang === 'ar' ? 'طلب تشغيل' : (currentLang === 'fr' ? 'Exécution' : 'Query');
     logItem.innerHTML = `
       <span class="log-op">${opPrefix}: ${modelName}</span>
-      <span class="log-deduct mono-num" style="color: #FF5A5F; font-weight: 700;">-${cost} ${dict.pointsUnit || 'pts'}</span>
+      <span class="log-deduct mono-num">-${cost} ${dict.pointsUnit || 'pts'}</span>
     `;
     logContainer.insertBefore(logItem, logContainer.firstChild);
 
@@ -806,41 +807,40 @@ function initHeroCinematicCanvas() {
   resize();
 
   const waveColors = [
-    { r: 31, g: 216, b: 184, alpha: 0.65 },
-    { r: 110, g: 107, b: 255, alpha: 0.58 },
-    { r: 0, g: 240, b: 255, alpha: 0.48 },
-    { r: 245, g: 185, b: 66, alpha: 0.35 },
-    { r: 31, g: 216, b: 184, alpha: 0.55 },
+    { r: 31, g: 216, b: 184, alpha: 0.45 },
+    { r: 110, g: 107, b: 255, alpha: 0.38 },
+    { r: 31, g: 216, b: 184, alpha: 0.30 },
+    { r: 110, g: 107, b: 255, alpha: 0.25 },
   ];
 
-  const flecks = Array.from({ length: 42 }, () => ({
+  const flecks = Array.from({ length: 30 }, () => ({
     x: Math.random() * (width || 1200),
     y: Math.random() * (height || 700),
-    size: Math.random() * 2.2 + 0.8,
-    vx: (Math.random() - 0.5) * 0.4,
-    vy: (Math.random() - 0.5) * 0.4,
-    alpha: Math.random() * 0.7 + 0.3,
-    pulseSpeed: Math.random() * 0.04 + 0.015,
+    size: Math.random() * 2.0 + 0.6,
+    vx: (Math.random() - 0.5) * 0.35,
+    vy: (Math.random() - 0.5) * 0.35,
+    alpha: Math.random() * 0.5 + 0.2,
+    pulseSpeed: Math.random() * 0.03 + 0.01,
     phase: Math.random() * Math.PI * 2,
   }));
 
   function render() {
-    time += 0.01;
-    mouseX += (targetMouseX - mouseX) * 0.05;
-    mouseY += (targetMouseY - mouseY) * 0.05;
+    time += 0.008;
+    mouseX += (targetMouseX - mouseX) * 0.04;
+    mouseY += (targetMouseY - mouseY) * 0.04;
 
     ctx.clearRect(0, 0, width, height);
 
     // 1. Top Aurora Beam Cone
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    const beamX = width * 0.5 + mouseX * 120;
-    const beamRadius = Math.max(width * 0.7, 520);
+    const beamX = width * 0.5 + mouseX * 100;
+    const beamRadius = Math.max(width * 0.65, 480);
     const beamGrad = ctx.createRadialGradient(beamX, -20, 15, beamX, -20, beamRadius);
-    beamGrad.addColorStop(0, 'rgba(31, 216, 184, 0.65)');
-    beamGrad.addColorStop(0.25, 'rgba(110, 107, 255, 0.45)');
-    beamGrad.addColorStop(0.55, 'rgba(31, 216, 184, 0.18)');
-    beamGrad.addColorStop(1, 'rgba(10, 11, 15, 0)');
+    beamGrad.addColorStop(0, 'rgba(31, 216, 184, 0.45)');
+    beamGrad.addColorStop(0.3, 'rgba(110, 107, 255, 0.30)');
+    beamGrad.addColorStop(0.65, 'rgba(31, 216, 184, 0.10)');
+    beamGrad.addColorStop(1, 'rgba(5, 5, 6, 0)');
     ctx.fillStyle = beamGrad;
     ctx.beginPath();
     ctx.arc(beamX, -20, beamRadius, 0, Math.PI * 2);
@@ -850,20 +850,20 @@ function initHeroCinematicCanvas() {
     // 2. Multi-layer Flowing Waves
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < waveColors.length; i++) {
       const color = waveColors[i];
-      const freq1 = 0.0022 + i * 0.0007;
-      const freq2 = 0.0016 - i * 0.0003;
-      const amp1 = 65 + i * 22;
-      const amp2 = 42 + i * 15;
-      const phaseOffset = i * 1.4;
-      const baselineY = height * 0.44 + i * 26 + mouseY * 70;
+      const freq1 = 0.002 + i * 0.0006;
+      const freq2 = 0.0014 - i * 0.0002;
+      const amp1 = 50 + i * 18;
+      const amp2 = 32 + i * 12;
+      const phaseOffset = i * 1.5;
+      const baselineY = height * 0.46 + i * 28 + mouseY * 50;
 
       ctx.beginPath();
       ctx.moveTo(-40, height + 60);
-      for (let x = -40; x <= width + 40; x += 10) {
-        const normalizedX = x + mouseX * 90;
-        const y = baselineY + Math.sin(normalizedX * freq1 + time + phaseOffset) * amp1 + Math.cos(normalizedX * freq2 - time * 0.75 + phaseOffset) * amp2;
+      for (let x = -40; x <= width + 40; x += 12) {
+        const normalizedX = x + mouseX * 70;
+        const y = baselineY + Math.sin(normalizedX * freq1 + time + phaseOffset) * amp1 + Math.cos(normalizedX * freq2 - time * 0.7 + phaseOffset) * amp2;
         ctx.lineTo(x, y);
       }
       ctx.lineTo(width + 40, height + 80);
@@ -871,16 +871,16 @@ function initHeroCinematicCanvas() {
       ctx.closePath();
 
       const waveGrad = ctx.createLinearGradient(0, baselineY - amp1, 0, height);
-      waveGrad.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, ${Math.min(color.alpha, 0.7)})`);
-      waveGrad.addColorStop(0.4, `rgba(${color.r}, ${color.g}, ${color.b}, ${color.alpha * 0.4})`);
-      waveGrad.addColorStop(1, 'rgba(10, 11, 15, 0)');
+      waveGrad.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, ${Math.min(color.alpha, 0.5)})`);
+      waveGrad.addColorStop(0.4, `rgba(${color.r}, ${color.g}, ${color.b}, ${color.alpha * 0.3})`);
+      waveGrad.addColorStop(1, 'rgba(5, 5, 6, 0)');
       ctx.fillStyle = waveGrad;
       ctx.fill();
 
-      ctx.shadowColor = `rgba(${color.r}, ${color.g}, ${color.b}, 0.9)`;
-      ctx.shadowBlur = 16;
-      ctx.lineWidth = 2.4;
-      ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${Math.min(color.alpha * 1.5, 0.95)})`;
+      ctx.shadowColor = `rgba(${color.r}, ${color.g}, ${color.b}, 0.6)`;
+      ctx.shadowBlur = 10;
+      ctx.lineWidth = 1.8;
+      ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${Math.min(color.alpha * 1.3, 0.75)})`;
       ctx.stroke();
     }
     ctx.restore();
