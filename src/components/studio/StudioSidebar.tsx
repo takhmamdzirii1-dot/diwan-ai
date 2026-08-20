@@ -202,10 +202,10 @@ export default function StudioSidebar({
                       onSelectSession(session.id);
                       onCloseMobile?.();
                     }}
-                    className={`group flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition cursor-pointer ${
+                    className={`group flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all duration-300 cursor-pointer ${
                       activeSessionId === session.id
-                        ? 'bg-[#1FD8B8]/10 text-white font-semibold border-l-2 border-[#1FD8B8]'
-                        : 'text-[#94A3B8] hover:bg-white/5 hover:text-white border-l-2 border-transparent'
+                        ? 'bg-gradient-to-r from-[#1FD8B8]/20 to-transparent text-white font-bold border-l-[3px] border-[#1FD8B8] shadow-[inset_2px_0_10px_rgba(31,216,184,0.15)]'
+                        : 'text-[#94A3B8] hover:bg-white/5 hover:text-white border-l-[3px] border-transparent'
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate max-w-[190px]">

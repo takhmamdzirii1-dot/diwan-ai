@@ -43,8 +43,8 @@ export default function MessageBubble({ message, isLatest, isStreaming }: Messag
         }`}
       >
         {/* Header Meta */}
-        <div className="flex items-center justify-between text-[10px] text-[#64748B] pb-2 mb-3 border-b border-white/[0.06] gap-3">
-          <span className="font-semibold text-white/90 flex items-center gap-1.5 truncate min-w-0">
+        <div className="flex flex-wrap items-center justify-between text-[10px] text-[#64748B] pb-2 mb-3 border-b border-white/[0.06] gap-y-2 gap-x-4">
+          <span className="font-semibold text-white/90 flex items-center gap-1.5 truncate min-w-0 max-w-full">
             {isUser ? (
               'You'
             ) : (
@@ -54,7 +54,7 @@ export default function MessageBubble({ message, isLatest, isStreaming }: Messag
               </>
             )}
           </span>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 ml-auto">
             {message.cost !== undefined && (
               <span
                 className={`font-mono font-bold px-1.5 py-0.5 rounded ${
@@ -71,7 +71,7 @@ export default function MessageBubble({ message, isLatest, isStreaming }: Messag
         </div>
 
         {/* Content */}
-        <div className="prose prose-invert prose-sm max-w-none text-[15px] leading-relaxed">
+        <div className="prose prose-invert prose-sm max-w-none text-[15px] leading-relaxed" dir="auto">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
