@@ -65,23 +65,23 @@ function WorkspaceSwitcher() {
   const [isOpen, setIsOpen] = useState(false);
   
   return (
-    <div className="relative">
+    <div className="relative px-3 pt-3 mb-2">
       <div 
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between px-2 py-2 mb-4 rounded-lg hover:bg-white/5 cursor-pointer transition-colors select-none group"
+        className="flex items-center justify-between px-2 py-2 rounded-lg hover:bg-white/[0.04] cursor-pointer transition-colors select-none group"
       >
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-[6px] bg-[#1FD8B8] text-[#050506] flex items-center justify-center font-bold text-[14px] shadow-sm">
-            <img src="/brandmark.svg" alt="V" className="h-4 w-4 mix-blend-difference" />
+          <div className="w-7 h-7 rounded-[6px] bg-white/[0.08] border border-white/5 flex items-center justify-center font-bold shadow-sm text-white">
+            <img src="/brandmark.svg" alt="V" className="h-3.5 w-3.5" />
           </div>
           <div className="flex flex-col overflow-hidden">
             <span className="text-[13px] font-medium leading-none mb-1 text-white truncate max-w-[120px]">
               VANTRA STUDIO
             </span>
-            <span className="text-[11px] text-[#94A3B8] leading-none">Pro Plan</span>
+            <span className="text-[11px] text-white/40 leading-none">Pro Plan</span>
           </div>
         </div>
-        <ChevronDown className="w-4 h-4 text-[#64748B] group-hover:text-white/70 transition-colors shrink-0" strokeWidth={1.5} />
+        <ChevronDown className="w-4 h-4 text-white/40 group-hover:text-white/70 transition-colors shrink-0" strokeWidth={1.5} />
       </div>
 
       {isOpen && (
@@ -130,21 +130,21 @@ function NavItem({
   };
 
   return (
-    <div className="flex flex-col w-full">
+    <div className="flex flex-col w-full px-3">
       <div 
-        className={`group flex items-center justify-between px-2.5 py-[7px] rounded-[6px] cursor-pointer transition-all duration-200 select-none
+        className={`group flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors select-none
           ${isActive 
-            ? 'bg-[#1FD8B8]/10 text-[#1FD8B8] font-medium' 
-            : 'text-[#94A3B8] hover:bg-white/5 hover:text-white/90'
+            ? 'bg-white/[0.08] text-white font-medium' 
+            : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
           }
         `}
-        style={{ paddingLeft: `${level * 12 + 10}px` }}
+        style={{ paddingLeft: `${level * 12 + 12}px` }}
         onClick={handleClick}
       >
-        <div className="flex items-center gap-2.5 truncate">
+        <div className="flex items-center gap-2 truncate">
           <item.icon 
-            className={`w-[16px] h-[16px] transition-colors shrink-0
-              ${isActive ? 'text-[#1FD8B8]' : 'text-[#64748B] group-hover:text-white/70'}
+            className={`w-4 h-4 shrink-0 transition-colors
+              ${isActive ? 'text-white' : 'text-white/40 group-hover:text-white/70'}
             `} 
             strokeWidth={1.5} 
           />
@@ -160,7 +160,7 @@ function NavItem({
              </kbd>
           )}
           {item.badge !== undefined && (
-            <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-medium rounded-full bg-[#1FD8B8]/10 text-[#1FD8B8]">
+            <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-medium rounded-full bg-white/10 text-white/80">
               {item.badge}
             </span>
           )}
@@ -331,7 +331,6 @@ export default function StudioSidebar({
 
   const mockBottomItems: NavItemData[] = [
     { id: 'settings', title: 'Settings', icon: Settings, shortcut: '⌘,', onSelect: () => {} },
-    { id: 'logout', title: 'Log out', icon: LogOut, onSelect: () => signOut() },
   ];
 
   return (
@@ -343,16 +342,16 @@ export default function StudioSidebar({
         />
       )}
 
-      <aside className={`flex flex-col fixed lg:static top-0 bottom-0 left-0 z-50 w-[260px] h-full bg-[#050506] border-r border-white/5 p-3 font-sans transition-transform duration-300 ${
+      <aside className={`flex flex-col fixed lg:static top-0 bottom-0 left-0 z-50 w-[260px] h-full bg-[#050506] border-r border-white/5 font-sans transition-transform duration-300 ${
         isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
         <WorkspaceSwitcher />
 
-        <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex flex-col gap-4 mt-2">
+        <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex flex-col gap-5 mt-4">
           {mockNavGroups.map((group, idx) => (
             <div key={idx} className="flex flex-col gap-0.5">
               {group.heading && (
-                <span className="px-2.5 mb-1 text-[11px] font-semibold tracking-wider text-[#64748B] uppercase">
+                <span className="text-[11px] font-semibold tracking-wider text-white/30 mb-1.5 px-6 uppercase">
                   {group.heading}
                 </span>
               )}
@@ -372,14 +371,40 @@ export default function StudioSidebar({
           ))}
         </div>
 
-        <div className="mt-auto pt-4 border-t border-white/5 flex flex-col gap-0.5">
-          {mockBottomItems.map(item => (
-            <NavItem 
-              key={item.id} 
-              item={item} 
-              activeId={null} 
-            />
-          ))}
+        <div className="mt-auto m-3 p-3 bg-white/[0.02] border border-white/5 rounded-xl flex flex-col gap-3">
+          <div className="flex items-center justify-between pb-3 border-b border-white/5">
+             <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#1FD8B8] to-[#0EA98E] flex items-center justify-center font-bold text-[#050506] shadow-inner text-sm">
+                  {user?.user_metadata?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[12px] font-medium text-white/90 truncate max-w-[90px]">
+                    {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
+                  </span>
+                  <span className="text-[10px] text-white/40">Free Plan</span>
+                </div>
+             </div>
+             <button
+               onClick={() => signOut()}
+               className="p-1.5 text-white/40 hover:text-white/90 hover:bg-white/10 rounded-md transition-colors"
+               title="Log Out"
+             >
+               <LogOut className="h-3.5 w-3.5" />
+             </button>
+          </div>
+
+          <div className="flex items-center justify-between">
+             <div className="flex flex-col">
+               <span className="text-[10px] text-white/40 font-medium">Balance</span>
+               <span className="text-[13px] font-mono font-medium text-white">{balance.toLocaleString()} <span className="text-[10px] text-[#1FD8B8]">PTS</span></span>
+             </div>
+             <button 
+               onClick={() => openTopUpModal()}
+               className="px-2.5 py-1.5 rounded-md bg-[#1FD8B8]/10 text-[#1FD8B8] text-[11px] font-medium hover:bg-[#1FD8B8]/20 transition-colors"
+             >
+               Top up
+             </button>
+          </div>
         </div>
       </aside>
     </>

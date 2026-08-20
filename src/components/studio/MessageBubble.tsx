@@ -36,10 +36,10 @@ export default function MessageBubble({ message, isLatest, isStreaming }: Messag
       )}
 
       <div
-        className={`max-w-[92%] sm:max-w-[85%] rounded-3xl p-4 sm:p-5 shadow-lg ${
+        className={`max-w-[92%] sm:max-w-[85%] rounded-2xl px-5 py-3.5 shadow-lg ${
           isUser
-            ? 'bg-[#1FD8B8]/15 border border-[#1FD8B8]/30 text-white rounded-tr-md'
-            : 'bg-[#0D0E12]/95 border border-white/[0.08] text-[#F5F6F8] backdrop-blur-xl rounded-tl-md'
+            ? 'bg-[#1FD8B8]/10 text-white border border-[#1FD8B8]/20 rounded-br-sm'
+            : 'bg-[#0A0B0D]/80 backdrop-blur-md border border-white/5 text-white/90 rounded-bl-sm'
         }`}
       >
         {/* Header Meta */}
@@ -71,7 +71,7 @@ export default function MessageBubble({ message, isLatest, isStreaming }: Messag
         </div>
 
         {/* Content */}
-        <div className="prose prose-invert prose-sm max-w-none text-[15px] leading-relaxed" dir="auto">
+        <div className="prose prose-invert prose-p:leading-relaxed prose-pre:bg-[#050506] prose-pre:border prose-pre:border-white/10 max-w-none text-base leading-relaxed" dir="auto">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
