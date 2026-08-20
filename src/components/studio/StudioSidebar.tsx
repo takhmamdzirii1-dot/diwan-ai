@@ -130,12 +130,12 @@ function NavItem({
   };
 
   return (
-    <div className="flex flex-col w-full px-3">
+    <div className="flex flex-col w-full px-2">
       <div 
-        className={`group flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors select-none
+        className={`group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all select-none overflow-hidden w-full
           ${isActive 
             ? 'bg-white/[0.08] text-white font-medium' 
-            : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
+            : 'text-sm text-white/70 hover:text-white hover:bg-white/5'
           }
         `}
         style={{ paddingLeft: `${level * 12 + 12}px` }}
@@ -148,7 +148,7 @@ function NavItem({
             `} 
             strokeWidth={1.5} 
           />
-          <span className="text-[13px] tracking-wide truncate">
+          <span className="truncate" dir="auto">
             {item.title}
           </span>
         </div>
@@ -342,7 +342,7 @@ export default function StudioSidebar({
         />
       )}
 
-      <aside className={`flex flex-col fixed lg:static top-0 bottom-0 left-0 z-50 w-[260px] h-full bg-[#050506] border-r border-white/5 font-sans transition-transform duration-300 ${
+      <aside className={`flex flex-col fixed lg:static top-0 bottom-0 left-0 z-50 w-[280px] h-full bg-[#0A0B0D] border-r border-white/5 font-sans transition-transform duration-300 ${
         isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
         <WorkspaceSwitcher />

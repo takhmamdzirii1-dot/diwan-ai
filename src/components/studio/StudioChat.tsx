@@ -189,7 +189,7 @@ export default function StudioChat({
               <span>New Session</span>
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto px-4 md:px-12 py-8 pb-48 scroll-smooth custom-scrollbar">
+          <div className="flex-1 overflow-y-auto w-full custom-scrollbar pb-48 px-4 md:px-12 pt-8">
             <div className="max-w-3xl mx-auto space-y-6">
               {messages.map((msg, idx) => (
                 <MessageBubble 
@@ -204,18 +204,20 @@ export default function StudioChat({
             </div>
           </div>
 
-          <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 bg-gradient-to-t from-[#050506] via-[#050506]/95 to-transparent backdrop-blur-xl z-30 flex justify-center pb-6">
-            <div className="w-full max-w-3xl mx-auto">
-              <AnimatedAIChat
-                onSendMessage={handleSendFromChatComponent}
-                isLoading={isLoading}
-                models={AVAILABLE_MODELS}
-                selectedModelId={selectedModelId}
-                onSelectModel={setSelectedModelId}
-                initialValue={stagedPrompt}
-                isExpanded={false}
-              />
-            </div>
+          {/* Masking Gradient */}
+          <div className="absolute bottom-0 w-full h-40 bg-gradient-to-t from-[#050506] via-[#050506]/90 to-transparent z-40 pointer-events-none" />
+
+          {/* Floating Input Dock */}
+          <div className="absolute bottom-6 left-0 right-0 max-w-4xl mx-auto px-4 z-50">
+            <AnimatedAIChat
+              onSendMessage={handleSendFromChatComponent}
+              isLoading={isLoading}
+              models={AVAILABLE_MODELS}
+              selectedModelId={selectedModelId}
+              onSelectModel={setSelectedModelId}
+              initialValue={stagedPrompt}
+              isExpanded={false}
+            />
           </div>
         </>
       )}

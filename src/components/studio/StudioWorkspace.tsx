@@ -91,7 +91,7 @@ export default function StudioWorkspace() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#050506] text-[#F5F6F8]">
+    <div className="flex h-screen w-full overflow-hidden bg-[#050506] text-white">
       {/* Mobile Top Navbar with Drawer Toggle */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-[#0A0B0E] border-b border-white/[0.08] px-4 flex items-center justify-between z-30">
         <button
@@ -126,7 +126,7 @@ export default function StudioWorkspace() {
       />
 
       {/* Main Mode Canvas */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden pt-14 lg:pt-0">
+      <main className="flex-1 flex flex-col relative h-full pt-14 lg:pt-0">
         {mode === 'chat' && (
           <StudioChat
             onClearChat={handleClearChat}
