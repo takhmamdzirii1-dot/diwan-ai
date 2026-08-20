@@ -3,25 +3,60 @@ import { createClient } from '../../../../src/lib/supabase/server';
 
 // Point Cost Mapping
 const MODEL_COSTS: Record<string, number> = {
-  'meta-llama/llama-3.3-70b-instruct:free': 0,
-  'llama-3-3-70b:free': 0,
   'deepseek/deepseek-r1:free': 0,
   'deepseek-r1:free': 0,
-  'deepseek/deepseek-chat': 5,
+  'google/gemini-2.0-flash-exp:free': 0,
+  'gemini-2.0-flash:free': 0,
+  'qwen/qwen-2.5-coder-32b-instruct:free': 0,
+  'qwen-2.5-coder:free': 0,
   'anthropic/claude-3.5-sonnet': 25,
+  'claude-3-5-sonnet': 25,
   'openai/gpt-4o': 30,
+  'gpt-4o': 30,
+  'meta-llama/llama-3.3-70b-instruct:free': 0,
+  'deepseek/deepseek-chat': 5,
   'flux-1-pro': 65,
   'kling-ai-1-5': 240,
 };
 
-// Exact OpenRouter Model Slugs
+// OpenRouter Model Mapping
 const OPENROUTER_MODEL_MAP: Record<string, string> = {
-  'llama-3-3-70b:free': 'meta-llama/llama-3.3-70b-instruct:free',
   'deepseek-r1:free': 'deepseek/deepseek-r1:free',
+  'gemini-2.0-flash:free': 'google/gemini-2.0-flash-exp:free',
+  'qwen-2.5-coder:free': 'qwen/qwen-2.5-coder-32b-instruct:free',
   'claude-3-5-sonnet': 'anthropic/claude-3.5-sonnet',
   'gpt-4o': 'openai/gpt-4o',
-  'deepseek-chat': 'deepseek/deepseek-chat',
 };
+
+// Fallback Chain for high availability
+const FALLBACK_MODELS = [
+  'deepseek/deepseek-r1:free',
+  'google/gemini-2.0-flash-exp:free',
+  'qwen/qwen-2.5-coder-32b-instruct:free',
+];
+
+async function callOpenRouter(modelId: string, prompt: string, apiKey: string) {
+  return await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': 'https://diwan-ai.vercel.app',
+      'X-Title': 'VANTRA AI',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are an expert AI assistant hosted on VANTRA, the premier unified AI gateway for Algeria. Provide detailed, well-structured, and helpful answers with clean markdown formatting. You are fully fluent in English, French, and Algerian Darja.',
+        },
+        { role: 'user', content: prompt },
+      ],
+    }),
+  });
+}
 
 export async function POST(request: Request) {
   try {
@@ -48,7 +83,7 @@ export async function POST(request: Request) {
 
     // 2. Parse Request Body
     const body = await request.json().catch(() => ({}));
-    const { prompt, model = 'meta-llama/llama-3.3-70b-instruct:free' } = body;
+    const { prompt, model = 'deepseek/deepseek-r1:free' } = body;
 
     if (!prompt || typeof prompt !== 'string') {
       return NextResponse.json(
@@ -57,8 +92,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const targetModel = OPENROUTER_MODEL_MAP[model] || model;
-    const cost = MODEL_COSTS[model] ?? MODEL_COSTS[targetModel] ?? 0;
+    const requestedModel = OPENROUTER_MODEL_MAP[model] || model;
+    const cost = MODEL_COSTS[model] ?? MODEL_COSTS[requestedModel] ?? 0;
 
     // 3. Atomic Point Deduction (0 cost models bypass deduction)
     let deductSuccess = cost === 0;
@@ -71,16 +106,14 @@ export async function POST(request: Request) {
           user_id: user.id,
           cost: cost,
           action: 'CHAT_QUERY',
-          model: targetModel,
+          model: requestedModel,
         });
 
         if (!rpcError && rpcResult) {
           deductSuccess = true;
           newBalance = typeof rpcResult === 'number' ? rpcResult : (rpcResult.balance ?? 10000);
         }
-      } catch {
-        // RPC may not be deployed yet in Supabase SQL editor
-      }
+      } catch {}
 
       // Fallback: Check profile table balance if RPC is not deployed
       if (!deductSuccess) {
@@ -108,13 +141,12 @@ export async function POST(request: Request) {
           deductSuccess = true;
           newBalance = updated;
 
-          // Log transaction
           try {
             await supabase.from('points_ledger').insert({
               user_id: user.id,
               amount: -cost,
               operation: 'CHAT_QUERY',
-              model: targetModel,
+              model: requestedModel,
               created_at: new Date().toISOString(),
             });
           } catch {}
@@ -125,8 +157,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // 4. OpenRouter API Execution
+    // 4. OpenRouter API Execution with Automatic Resilient Fallback
     let aiResponseText = '';
+    let usedModel = requestedModel;
     let tokensUsed = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
     const openRouterApiKey = process.env.OPENROUTER_API_KEY;
 
@@ -137,38 +170,31 @@ export async function POST(request: Request) {
       );
     }
 
-    try {
-      const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openRouterApiKey}`,
-          'HTTP-Referer': 'https://diwan-ai.vercel.app',
-          'X-Title': 'VANTRA AI',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: targetModel,
-          messages: [
-            {
-              role: 'system',
-              content:
-                'You are an expert, highly intelligent AI assistant hosted on VANTRA, the premier unified AI gateway for Algeria. Provide detailed, well-structured, and helpful answers with clean markdown formatting. You are fully fluent in English, French, and Algerian Darja.',
-            },
-            { role: 'user', content: prompt },
-          ],
-        }),
-      });
+    // Attempt primary model first
+    let res = await callOpenRouter(requestedModel, prompt, openRouterApiKey);
 
-      if (!openRouterResponse.ok) {
-        const errData = await openRouterResponse.json().catch(() => ({}));
-        throw new Error(errData?.error?.message || `OpenRouter returned status ${openRouterResponse.status}`);
+    if (!res.ok) {
+      // If primary model failed, try fallback chain
+      console.warn(`Primary model ${requestedModel} failed with status ${res.status}. Trying fallback models...`);
+      for (const fallbackModel of FALLBACK_MODELS) {
+        if (fallbackModel !== requestedModel) {
+          try {
+            const fallbackRes = await callOpenRouter(fallbackModel, prompt, openRouterApiKey);
+            if (fallbackRes.ok) {
+              res = fallbackRes;
+              usedModel = fallbackModel;
+              break;
+            }
+          } catch {}
+        }
       }
+    }
 
-      const data = await openRouterResponse.json();
-      aiResponseText = data.choices?.[0]?.message?.content || 'No response generated from the model.';
-      tokensUsed = data.usage || tokensUsed;
-    } catch (err: any) {
-      // Rollback / Refund on fatal provider error
+    if (!res.ok) {
+      // If all fallbacks failed
+      const errData = await res.json().catch(() => ({}));
+      const errMsg = errData?.error?.message || `OpenRouter returned status ${res.status}`;
+
       if (cost > 0) {
         try {
           await supabase.rpc('refund_user_points', {
@@ -180,16 +206,21 @@ export async function POST(request: Request) {
       }
 
       return NextResponse.json(
-        { error: `AI Provider Error (${targetModel}): ${err.message}` },
+        { error: `AI Gateway Error (${requestedModel}): ${errMsg}` },
         { status: 502 }
       );
     }
+
+    const data = await res.json();
+    aiResponseText = data.choices?.[0]?.message?.content || 'No response generated from the model.';
+    tokensUsed = data.usage || tokensUsed;
 
     // 5. Success Response
     return NextResponse.json({
       success: true,
       response: aiResponseText,
-      model: targetModel,
+      model: usedModel,
+      requestedModel: requestedModel,
       costDeducted: cost,
       remainingBalance: newBalance,
       usage: tokensUsed,

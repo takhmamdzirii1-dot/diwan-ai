@@ -27,35 +27,35 @@ export interface ChatMessage {
 
 export const AVAILABLE_MODELS = [
   {
-    id: 'meta-llama/llama-3.3-70b-instruct:free',
-    name: 'Llama 3.3 70B Instruct (Free)',
-    provider: 'Meta AI',
-    cost: 0,
-    tag: '100% Free Open Weights',
-    isFree: true,
-  },
-  {
     id: 'deepseek/deepseek-r1:free',
     name: 'DeepSeek R1 (Free)',
     provider: 'DeepSeek AI',
     cost: 0,
-    tag: 'Reasoning & Logic (0 pts)',
+    tag: 'Deep Reasoning & Logic (0 pts)',
     isFree: true,
   },
   {
-    id: 'deepseek/deepseek-chat',
-    name: 'DeepSeek V3 Chat',
-    provider: 'DeepSeek AI',
-    cost: 5,
-    tag: 'Ultra-Fast Reasoning',
-    isFree: false,
+    id: 'google/gemini-2.0-flash-exp:free',
+    name: 'Gemini 2.0 Flash (Free)',
+    provider: 'Google DeepMind',
+    cost: 0,
+    tag: 'High Speed Multimodal (0 pts)',
+    isFree: true,
+  },
+  {
+    id: 'qwen/qwen-2.5-coder-32b-instruct:free',
+    name: 'Qwen 2.5 Coder 32B (Free)',
+    provider: 'Alibaba Cloud',
+    cost: 0,
+    tag: 'Code Synthesis (0 pts)',
+    isFree: true,
   },
   {
     id: 'anthropic/claude-3.5-sonnet',
     name: 'Claude 3.5 Sonnet',
     provider: 'Anthropic',
     cost: 25,
-    tag: 'Flagship Logic & Coding',
+    tag: 'Flagship Coding & Reasoning',
     isFree: false,
   },
   {
@@ -242,7 +242,7 @@ export default function StudioChat({
   const { user, balance } = useUser();
   const [input, setInput] = useState('');
   const [selectedModelId, setSelectedModelId] = useState(
-    'meta-llama/llama-3.3-70b-instruct:free'
+    'deepseek/deepseek-r1:free'
   );
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
