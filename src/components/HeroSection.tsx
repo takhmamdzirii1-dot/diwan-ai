@@ -6,6 +6,7 @@ import { Sparkles, ArrowRight, ShieldCheck, Zap, Layers, MessageSquare, Image as
 import LiveLedgerCard from './LiveLedgerCard';
 import ShimmerButton from './ShimmerButton';
 import HeroCinematicBackground from './HeroCinematicBackground';
+import { useModal } from '../context/ModalContext';
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -48,6 +49,16 @@ export interface HeroSectionProps {
 }
 
 export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
+  const { openAuthModal } = useModal();
+
+  const handleGetStarted = () => {
+    if (onOpenAuth) {
+      onOpenAuth('signup');
+    } else {
+      openAuthModal('signup');
+    }
+  };
+
   return (
     <section className="relative min-h-[92vh] flex items-center justify-center pt-32 pb-20 px-4 md:px-8 overflow-hidden">
       {/* Dynamic Cinematic Canvas & Quantum Beam Shader */}
@@ -104,15 +115,7 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
             >
               <ShimmerButton
                 text="Get Started & Top Up"
-                onClick={() => {
-                  if (onOpenAuth) {
-                    onOpenAuth('signup');
-                  } else {
-                    const pricingElem = document.getElementById('pricing');
-                    if (pricingElem) pricingElem.scrollIntoView({ behavior: 'smooth' });
-                    else if (window.location) window.location.href = '#pricing';
-                  }
-                }}
+                onClick={handleGetStarted}
                 className="w-full sm:w-auto"
               />
 

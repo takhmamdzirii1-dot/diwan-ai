@@ -6,9 +6,9 @@ import Navbar from './components/Navbar';
 import HeroSection from './components/HeroSection';
 import SpotlightCard from './components/SpotlightCard';
 import ShimmerButton from './components/ShimmerButton';
-import AuthModal from './components/AuthModal';
-import TopUpModal, { type TopUpPlan } from './components/TopUpModal';
+import { ModalProvider, useModal } from './context/ModalContext';
 import useUser from './hooks/useUser';
+import type { TopUpPlan } from './components/TopUpModal';
 import { 
   CreditCard, 
   Cpu, 
@@ -51,7 +51,7 @@ const PRICING_TIERS: (TopUpPlan & { desc: string; features: string[]; highlight:
     name: 'Enterprise / Agency',
     price: '12,000 DZD',
     points: '100,000 Points',
-    ptsNum: 10000,
+    ptsNum: 100000,
     desc: 'High-volume production teams requiring team seats and custom API tokens.',
     features: [
       'Maximum GPU throughput & concurrency',
@@ -63,41 +63,18 @@ const PRICING_TIERS: (TopUpPlan & { desc: string; features: string[]; highlight:
   },
 ];
 
-export default function App() {
+function AppContent() {
   const { user } = useUser();
+  const { openAuthModal, openTopUpModal } = useModal();
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // Modals state
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
-  const [isTopUpOpen, setIsTopUpOpen] = useState(false);
-  const [selectedTopUpPlan, setSelectedTopUpPlan] = useState<TopUpPlan>(PRICING_TIERS[1]);
 
-  const openAuth = (mode: 'signin' | 'signup' = 'signin') => {
-    setAuthMode(mode);
-    setIsAuthOpen(true);
-  };
-
-  React.useEffect(() => {
-    const handleOpenAuth = (e: any) => {
-      const mode = e.detail?.mode || 'signin';
-      openAuth(mode);
-    };
-    window.addEventListener('vantra-open-auth', handleOpenAuth);
-    return () => window.removeEventListener('vantra-open-auth', handleOpenAuth);
-  }, []);
-
-  const openTopUp = (plan?: TopUpPlan) => {
+  const handlePricingTopUp = (tier: (typeof PRICING_TIERS)[0]) => {
     if (!user) {
-      // If user is not logged in, prompt sign up/sign in first
-      openAuth('signup');
-      return;
+      openAuthModal('signup');
+    } else {
+      openTopUpModal(tier);
     }
-    if (plan) {
-      setSelectedTopUpPlan(plan);
-    }
-    setIsTopUpOpen(true);
   };
 
   const filteredModels = aiModels.filter((model: any) => {
@@ -115,11 +92,14 @@ export default function App() {
       <AmbientMotionBackground />
 
       {/* 2. Navigation Header with Supabase Auth & Live Points */}
-      <Navbar onOpenAuth={openAuth} onOpenTopUp={() => openTopUp()} />
+      <Navbar
+        onOpenAuth={(mode) => openAuthModal(mode)}
+        onOpenTopUp={() => openTopUpModal(PRICING_TIERS[1])}
+      />
 
       {/* 3. Hero Section with Live Interactive Ledger */}
       <main>
-        <HeroSection onOpenAuth={openAuth} />
+        <HeroSection onOpenAuth={(mode) => openAuthModal(mode)} />
 
         {/* 4. AI Models Hub Section */}
         <section id="models" className="py-28 px-4 md:px-8 border-t border-white/[0.06]">
@@ -212,7 +192,7 @@ export default function App() {
                       type="button"
                       onClick={() => {
                         if (!user) {
-                          openAuth('signup');
+                          openAuthModal('signup');
                         } else {
                           const ledgerElem = document.getElementById('interactive-ledger') || document.getElementById('hero');
                           if (ledgerElem) ledgerElem.scrollIntoView({ behavior: 'smooth' });
@@ -285,7 +265,7 @@ export default function App() {
                   <ShimmerButton
                     text={`Top Up ${tier.price}`}
                     className={`w-full py-3 text-sm ${!tier.highlight ? '!bg-white/[0.05] !text-white' : ''}`}
-                    onClick={() => openTopUp(tier)}
+                    onClick={() => handlePricingTopUp(tier)}
                   />
                 </SpotlightCard>
               ))}
@@ -305,22 +285,14 @@ export default function App() {
           </div>
         </div>
       </footer>
-
-      {/* 6. Supabase Authentication Modal */}
-      <AuthModal
-        isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
-        initialMode={authMode}
-        onSuccess={() => setIsAuthOpen(false)}
-      />
-
-      {/* 7. Chargily Top-Up Payment Modal */}
-      <TopUpModal
-        isOpen={isTopUpOpen}
-        onClose={() => setIsTopUpOpen(false)}
-        plan={selectedTopUpPlan}
-        onSuccess={() => setIsTopUpOpen(false)}
-      />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ModalProvider>
+      <AppContent />
+    </ModalProvider>
   );
 }

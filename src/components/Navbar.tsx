@@ -4,17 +4,35 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, LogOut, Wallet, User as UserIcon, ChevronDown } from 'lucide-react';
 import useUser from '../hooks/useUser';
+import { useModal } from '../context/ModalContext';
 import ShimmerButton from './ShimmerButton';
 
 export interface NavbarProps {
-  onOpenAuth: (mode?: 'signin' | 'signup') => void;
+  onOpenAuth?: (mode?: 'signin' | 'signup') => void;
   onOpenTopUp?: () => void;
 }
 
 export default function Navbar({ onOpenAuth, onOpenTopUp }: NavbarProps) {
   const { user, balance, signOut, isLoading } = useUser();
+  const { openAuthModal, openTopUpModal } = useModal();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleOpenAuth = (mode: 'signin' | 'signup' = 'signin') => {
+    if (onOpenAuth) {
+      onOpenAuth(mode);
+    } else {
+      openAuthModal(mode);
+    }
+  };
+
+  const handleOpenTopUp = () => {
+    if (onOpenTopUp) {
+      onOpenTopUp();
+    } else {
+      openTopUpModal();
+    }
+  };
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -131,11 +149,7 @@ export default function Navbar({ onOpenAuth, onOpenTopUp }: NavbarProps) {
                           type="button"
                           onClick={() => {
                             setDropdownOpen(false);
-                            if (onOpenTopUp) onOpenTopUp();
-                            else {
-                              const pricingElem = document.getElementById('pricing');
-                              if (pricingElem) pricingElem.scrollIntoView({ behavior: 'smooth' });
-                            }
+                            handleOpenTopUp();
                           }}
                           className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-[rgba(245,246,248,0.8)] transition hover:bg-white/[0.06] hover:text-[#1FD8B8]"
                         >
@@ -165,7 +179,7 @@ export default function Navbar({ onOpenAuth, onOpenTopUp }: NavbarProps) {
             <>
               <button
                 type="button"
-                onClick={() => onOpenAuth('signin')}
+                onClick={() => handleOpenAuth('signin')}
                 className="hidden sm:inline-flex items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.035] px-4 py-2.5 text-xs font-medium text-[#F5F6F8] hover:bg-white/[0.065] transition duration-[250ms]"
               >
                 <UserIcon className="h-3.5 w-3.5 mr-1.5 text-[#1FD8B8]" />
@@ -174,7 +188,7 @@ export default function Navbar({ onOpenAuth, onOpenTopUp }: NavbarProps) {
 
               <ShimmerButton
                 text="Get Started & Top Up"
-                onClick={() => onOpenAuth('signup')}
+                onClick={() => handleOpenAuth('signup')}
                 className="text-xs px-4 py-2"
               />
             </>
