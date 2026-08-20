@@ -108,6 +108,7 @@ interface StudioChatProps {
   isLoading: boolean;
   errorMessage?: string | null;
   onDismissError?: () => void;
+  onClearChat?: () => void;
 }
 
 export default function StudioChat({
@@ -116,6 +117,7 @@ export default function StudioChat({
   isLoading,
   errorMessage,
   onDismissError,
+  onClearChat,
 }: StudioChatProps) {
   const { user } = useUser();
   const [selectedModelId, setSelectedModelId] = useState(
@@ -184,6 +186,17 @@ export default function StudioChat({
       ) : (
         /* Active Session State */
         <>
+          <div className="absolute top-4 right-4 md:right-8 z-30">
+            {onClearChat && (
+              <button
+                onClick={onClearChat}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white/50 hover:text-white bg-white/[0.02] hover:bg-white/[0.08] border border-white/5 rounded-full transition-all backdrop-blur-md"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>New Session</span>
+              </button>
+            )}
+          </div>
           <div className="flex-1 overflow-y-auto px-4 md:px-12 py-8 pb-48 scroll-smooth custom-scrollbar">
             <div className="max-w-3xl mx-auto space-y-6">
               {messages.map((msg, idx) => (

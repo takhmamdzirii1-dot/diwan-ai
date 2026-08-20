@@ -30,77 +30,6 @@ const FREE_MODELS_POOL = [
   'google/gemini-2.0-flash-exp:free',
 ];
 
-async function callOpenRouter(
-  modelId: string,
-  prompt: string,
-  apiKey: string,
-  messagesHistory?: any[]
-) {
-  try {
-    const messagesPayload =
-      messagesHistory && Array.isArray(messagesHistory) && messagesHistory.length > 0
-        ? messagesHistory.map((m: any) => ({
-            role: m.role === 'user' ? 'user' : 'assistant',
-            content: m.content,
-          }))
-        : [
-            {
-              role: 'system',
-              content:
-                'You are an expert AI assistant hosted on VANTRA, the premier unified AI gateway for Algeria. Provide well-structured, helpful, and insightful answers with clean markdown formatting. You are fully fluent in English, French, and Algerian Darja.',
-            },
-            { role: 'user', content: prompt },
-          ];
-
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://diwan-ai.vercel.app',
-        'X-Title': 'VANTRA AI',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: modelId,
-        messages: messagesPayload,
-      }),
-    });
-
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      console.error(`[OpenRouter Error] model=${modelId} status=${response.status}:`, errData);
-      return {
-        ok: false,
-        status: response.status,
-        error: errData?.error?.message || `HTTP ${response.status}`,
-      };
-    }
-
-    const data = await response.json().catch(() => null);
-    const content = data?.choices?.[0]?.message?.content;
-
-    if (!content || typeof content !== 'string' || content.trim().length === 0) {
-      console.error(`[OpenRouter Empty Content] model=${modelId}:`, data);
-      return { ok: false, status: 204, error: 'Empty response choices' };
-    }
-
-    // Check for rate limit or unavailable text in content
-    if (
-      content.includes('unavailable for free') ||
-      content.includes('No endpoints found') ||
-      content.includes('temporarily unavailable')
-    ) {
-      console.warn(`[OpenRouter Content Notice] model=${modelId}:`, content);
-      return { ok: false, status: 503, error: content };
-    }
-
-    return { ok: true, status: 200, data, content };
-  } catch (err: any) {
-    console.error(`[OpenRouter Exception] model=${modelId}:`, err);
-    return { ok: false, status: 500, error: err?.message || 'Network exception' };
-  }
-}
-
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
@@ -126,13 +55,39 @@ export async function POST(request: Request) {
 
     // 2. Parse Request Body
     const body = await request.json().catch(() => ({}));
+    
+    // Support standard format (`messages`) or our legacy format (`prompt` + `messagesHistory`)
     const { prompt, model = 'openrouter/free', messages } = body;
-
-    if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
-      return NextResponse.json(
-        { error: 'Prompt is required' },
-        { status: 400 }
-      );
+    
+    let messagesPayload = messages;
+    if (!messagesPayload || !Array.isArray(messagesPayload) || messagesPayload.length === 0) {
+       if (prompt) {
+          messagesPayload = [
+            {
+              role: 'system',
+              content:
+                'You are an expert AI assistant hosted on VANTRA, the premier unified AI gateway for Algeria. Provide well-structured, helpful, and insightful answers with clean markdown formatting. You are fully fluent in English, French, and Algerian Darja.',
+            },
+            { role: 'user', content: prompt }
+          ];
+       } else {
+         return NextResponse.json(
+          { error: 'Messages or prompt is required' },
+          { status: 400 }
+         );
+       }
+    } else {
+       // Ensure there's a system prompt if it's a new conversation
+       if (messagesPayload[0].role !== 'system') {
+          messagesPayload = [
+            {
+              role: 'system',
+              content:
+                'You are an expert AI assistant hosted on VANTRA, the premier unified AI gateway for Algeria. Provide well-structured, helpful, and insightful answers with clean markdown formatting. You are fully fluent in English, French, and Algerian Darja.',
+            },
+            ...messagesPayload
+          ];
+       }
     }
 
     const requestedModel = model.trim();
@@ -200,7 +155,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 4. Multi-Model Cascade Execution
+    // 4. Multi-Model Cascade Execution (Streaming)
     const openRouterApiKey = process.env.OPENROUTER_API_KEY?.trim();
 
     if (!openRouterApiKey) {
@@ -211,35 +166,50 @@ export async function POST(request: Request) {
       );
     }
 
-    let finalContent = '';
-    let finalModel = requestedModel;
-    let tokensUsed = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
-    let primaryErrorMsg = '';
-
-    // Build candidate execution sequence: requested model first, then the free pool
     const candidates = [
       requestedModel,
       ...FREE_MODELS_POOL.filter((m) => m !== requestedModel),
     ];
 
-    let success = false;
+    let primaryErrorMsg = '';
+    let successfulResponse: Response | null = null;
+    let finalModel = requestedModel;
 
     for (let i = 0; i < candidates.length; i++) {
       const candidateModel = candidates[i];
-      const callRes = await callOpenRouter(candidateModel, prompt, openRouterApiKey, messages);
+      
+      try {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openRouterApiKey}`,
+            'HTTP-Referer': 'https://diwan-ai.vercel.app',
+            'X-Title': 'VANTRA AI',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: candidateModel,
+            messages: messagesPayload,
+            stream: true, // Request a stream
+          }),
+        });
 
-      if (callRes.ok && callRes.content) {
-        finalContent = callRes.content;
-        finalModel = candidateModel;
-        tokensUsed = callRes.data?.usage || tokensUsed;
-        success = true;
-        break;
-      } else if (i === 0) {
-        primaryErrorMsg = callRes.error || `HTTP ${callRes.status}`;
+        if (response.ok) {
+           successfulResponse = response;
+           finalModel = candidateModel;
+           break;
+        } else if (i === 0) {
+           const errData = await response.json().catch(() => ({}));
+           primaryErrorMsg = errData?.error?.message || `HTTP ${response.status}`;
+        }
+      } catch (err: any) {
+        if (i === 0) {
+          primaryErrorMsg = err?.message || 'Network exception';
+        }
       }
     }
 
-    if (!success) {
+    if (!successfulResponse) {
       // Refund if all candidates failed
       if (cost > 0) {
         try {
@@ -259,17 +229,34 @@ export async function POST(request: Request) {
       );
     }
 
-    // 5. Success Response
-    return NextResponse.json({
-      success: true,
-      response: finalContent,
-      model: finalModel,
-      requestedModel: requestedModel,
-      costDeducted: cost,
-      remainingBalance: newBalance,
-      usage: tokensUsed,
-      timestamp: new Date().toISOString(),
+    // 5. Stream the response directly to the client as plain text
+    const transformStream = new TransformStream({
+      transform(chunk, controller) {
+        const text = new TextDecoder().decode(chunk);
+        const lines = text.split('\n');
+        for (const line of lines) {
+           if (line.startsWith('data: ') && !line.includes('[DONE]')) {
+             try {
+               const data = JSON.parse(line.slice(6));
+               const content = data.choices?.[0]?.delta?.content;
+               if (content) {
+                 controller.enqueue(new TextEncoder().encode(content));
+               }
+             } catch (e) {}
+           }
+        }
+      }
     });
+    
+    // We pass balance and model in custom headers so the client can update its state
+    return new Response(successfulResponse.body?.pipeThrough(transformStream), {
+      headers: {
+        'X-Vantra-Balance': newBalance.toString(),
+        'X-Vantra-Model': finalModel,
+        'X-Vantra-Cost': cost.toString(),
+      }
+    });
+
   } catch (error: any) {
     return NextResponse.json(
       { error: error?.message || 'Internal Server Error' },

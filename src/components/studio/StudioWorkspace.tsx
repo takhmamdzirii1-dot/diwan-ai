@@ -41,6 +41,44 @@ export default function StudioWorkspace() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>('session-1');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
+  // Load from local storage on mount
+  useEffect(() => {
+    try {
+      const storedSessions = localStorage.getItem('vantra_sessions');
+      const storedMessages = localStorage.getItem('vantra_messages');
+      if (storedSessions) {
+        setSessions(JSON.parse(storedSessions));
+      }
+      if (storedMessages) {
+        setMessages(JSON.parse(storedMessages));
+      }
+    } catch (e) {
+      console.error('Failed to load local storage:', e);
+    }
+  }, []);
+
+  // Save to local storage on change
+  useEffect(() => {
+    if (sessions.length > 0) {
+      localStorage.setItem('vantra_sessions', JSON.stringify(sessions));
+    }
+  }, [sessions]);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem('vantra_messages', JSON.stringify(messages));
+    } else {
+      localStorage.removeItem('vantra_messages');
+    }
+  }, [messages]);
+
+  // Clear chat helper
+  const handleClearChat = () => {
+    localStorage.removeItem('vantra_messages');
+    setMessages([]);
+    setApiError(null);
+  };
+
   // Create new session
   const handleNewSession = () => {
     const newId = `session-${Date.now()}`;
@@ -116,18 +154,37 @@ export default function StudioWorkspace() {
         throw new Error(errJson.error || `Generation failed (${response.status})`);
       }
 
-      const data = await response.json();
+      const returnedModel = response.headers.get('X-Vantra-Model') || model;
+      const returnedCost = parseInt(response.headers.get('X-Vantra-Cost') || '0');
 
       const assistantMessage: ChatMessage = {
         id: `msg-${Date.now() + 1}`,
         sender: 'assistant',
-        content: data.response || data.content || 'Response generated successfully.',
-        model: data.model || model,
-        cost: data.costDeducted ?? cost,
+        content: '',
+        model: returnedModel,
+        cost: returnedCost,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (reader) {
+        let streamedContent = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          streamedContent += decoder.decode(value, { stream: true });
+          
+          setMessages((prev) => {
+            const newMessages = [...prev];
+            newMessages[newMessages.length - 1].content = streamedContent;
+            return newMessages;
+          });
+        }
+      }
 
       // Update session title if first message
       if (messages.length === 0 && activeSessionId) {
@@ -193,6 +250,7 @@ export default function StudioWorkspace() {
             isLoading={isGenerating}
             errorMessage={apiError}
             onDismissError={() => setApiError(null)}
+            onClearChat={handleClearChat}
           />
         )}
 
