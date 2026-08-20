@@ -3,30 +3,51 @@ import { createClient } from '../../../../src/lib/supabase/server';
 
 // Point Cost Mapping
 const MODEL_COSTS: Record<string, number> = {
-  'deepseek/deepseek-r1:free': 0,
+  'openrouter/free': 0,
+  'meta-llama/llama-3.2-3b-instruct:free': 0,
   'google/gemini-2.0-flash-exp:free': 0,
-  'google/gemini-2.0-flash-thinking-exp:free': 0,
-  'meta-llama/llama-3.1-8b-instruct:free': 0,
+  'deepseek/deepseek-r1:free': 0,
   'mistralai/mistral-7b-instruct:free': 0,
   'deepseek/deepseek-chat:free': 0,
+  'meta-llama/llama-3.1-8b-instruct:free': 0,
   'anthropic/claude-3.5-sonnet': 25,
   'openai/gpt-4o': 30,
+  'deepseek/deepseek-chat': 5,
   'flux-1-pro': 65,
   'kling-ai-1-5': 240,
 };
 
-// Resilient Pool of Active Free Models for Cascade Fallback
+// Resilient Pool of Free Fallback Models
 const FREE_MODELS_POOL = [
-  'deepseek/deepseek-r1:free',
+  'openrouter/free',
+  'meta-llama/llama-3.2-3b-instruct:free',
   'google/gemini-2.0-flash-exp:free',
-  'google/gemini-2.0-flash-thinking-exp:free',
-  'meta-llama/llama-3.1-8b-instruct:free',
+  'deepseek/deepseek-r1:free',
   'mistralai/mistral-7b-instruct:free',
-  'deepseek/deepseek-chat:free',
 ];
 
-async function callOpenRouter(modelId: string, prompt: string, apiKey: string) {
+async function callOpenRouter(
+  modelId: string,
+  prompt: string,
+  apiKey: string,
+  messagesHistory?: any[]
+) {
   try {
+    const messagesPayload =
+      messagesHistory && Array.isArray(messagesHistory) && messagesHistory.length > 0
+        ? messagesHistory.map((m: any) => ({
+            role: m.role === 'user' ? 'user' : 'assistant',
+            content: m.content,
+          }))
+        : [
+            {
+              role: 'system',
+              content:
+                'You are an expert AI assistant hosted on VANTRA, the premier unified AI gateway for Algeria. Provide well-structured, helpful, and insightful answers with clean markdown formatting. You are fully fluent in English, French, and Algerian Darja.',
+            },
+            { role: 'user', content: prompt },
+          ];
+
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -37,27 +58,26 @@ async function callOpenRouter(modelId: string, prompt: string, apiKey: string) {
       },
       body: JSON.stringify({
         model: modelId,
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are an expert AI assistant hosted on VANTRA, the premier unified AI gateway for Algeria. Provide well-structured, helpful, and insightful answers with clean markdown formatting. You are fully fluent in English, French, and Algerian Darja.',
-          },
-          { role: 'user', content: prompt },
-        ],
+        messages: messagesPayload,
       }),
     });
 
     if (!response.ok) {
-      return { ok: false, status: response.status, data: null };
+      const errData = await response.json().catch(() => ({}));
+      console.error(`[OpenRouter Error] model=${modelId} status=${response.status}:`, errData);
+      return {
+        ok: false,
+        status: response.status,
+        error: errData?.error?.message || `HTTP ${response.status}`,
+      };
     }
 
     const data = await response.json().catch(() => null);
     const content = data?.choices?.[0]?.message?.content;
 
-    // Validate that response contains actual generated content
     if (!content || typeof content !== 'string' || content.trim().length === 0) {
-      return { ok: false, status: 204, data: null };
+      console.error(`[OpenRouter Empty Content] model=${modelId}:`, data);
+      return { ok: false, status: 204, error: 'Empty response choices' };
     }
 
     // Check for rate limit or unavailable text in content
@@ -66,12 +86,14 @@ async function callOpenRouter(modelId: string, prompt: string, apiKey: string) {
       content.includes('No endpoints found') ||
       content.includes('temporarily unavailable')
     ) {
-      return { ok: false, status: 503, data: null };
+      console.warn(`[OpenRouter Content Notice] model=${modelId}:`, content);
+      return { ok: false, status: 503, error: content };
     }
 
     return { ok: true, status: 200, data, content };
   } catch (err: any) {
-    return { ok: false, status: 500, error: err?.message || 'Network error' };
+    console.error(`[OpenRouter Exception] model=${modelId}:`, err);
+    return { ok: false, status: 500, error: err?.message || 'Network exception' };
   }
 }
 
@@ -100,7 +122,7 @@ export async function POST(request: Request) {
 
     // 2. Parse Request Body
     const body = await request.json().catch(() => ({}));
-    const { prompt, model = 'deepseek/deepseek-r1:free' } = body;
+    const { prompt, model = 'openrouter/free', messages } = body;
 
     if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
       return NextResponse.json(
@@ -175,11 +197,12 @@ export async function POST(request: Request) {
     }
 
     // 4. Multi-Model Cascade Execution
-    const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+    const openRouterApiKey = process.env.OPENROUTER_API_KEY?.trim();
 
     if (!openRouterApiKey) {
+      console.error('OPENROUTER_API_KEY is not defined in environment variables');
       return NextResponse.json(
-        { error: 'OpenRouter API key is not configured in server environment.' },
+        { error: 'OPENROUTER_API_KEY is not defined in environment variables.' },
         { status: 500 }
       );
     }
@@ -187,6 +210,7 @@ export async function POST(request: Request) {
     let finalContent = '';
     let finalModel = requestedModel;
     let tokensUsed = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+    let primaryErrorMsg = '';
 
     // Build candidate execution sequence: requested model first, then the free pool
     const candidates = [
@@ -196,8 +220,9 @@ export async function POST(request: Request) {
 
     let success = false;
 
-    for (const candidateModel of candidates) {
-      const callRes = await callOpenRouter(candidateModel, prompt, openRouterApiKey);
+    for (let i = 0; i < candidates.length; i++) {
+      const candidateModel = candidates[i];
+      const callRes = await callOpenRouter(candidateModel, prompt, openRouterApiKey, messages);
 
       if (callRes.ok && callRes.content) {
         finalContent = callRes.content;
@@ -205,6 +230,8 @@ export async function POST(request: Request) {
         tokensUsed = callRes.data?.usage || tokensUsed;
         success = true;
         break;
+      } else if (i === 0) {
+        primaryErrorMsg = callRes.error || `HTTP ${callRes.status}`;
       }
     }
 
@@ -222,10 +249,9 @@ export async function POST(request: Request) {
 
       return NextResponse.json(
         {
-          error:
-            'All AI engine endpoints are currently busy. Please try again in a few seconds.',
+          error: `OpenRouter Error (${requestedModel}): ${primaryErrorMsg || 'Endpoints unavailable'}`,
         },
-        { status: 503 }
+        { status: 502 }
       );
     }
 

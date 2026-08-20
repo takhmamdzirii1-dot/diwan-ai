@@ -27,6 +27,14 @@ export interface ChatMessage {
 
 export const AVAILABLE_MODELS = [
   {
+    id: 'openrouter/free',
+    name: 'Auto-Routing Free Engine',
+    provider: 'OpenRouter High Availability',
+    cost: 0,
+    tag: '100% Free Auto-Routing (0 pts)',
+    isFree: true,
+  },
+  {
     id: 'deepseek/deepseek-r1:free',
     name: 'DeepSeek R1 (Free)',
     provider: 'DeepSeek AI',
@@ -43,11 +51,11 @@ export const AVAILABLE_MODELS = [
     isFree: true,
   },
   {
-    id: 'meta-llama/llama-3.1-8b-instruct:free',
-    name: 'Llama 3.1 8B (Free)',
+    id: 'meta-llama/llama-3.2-3b-instruct:free',
+    name: 'Llama 3.2 3B (Free)',
     provider: 'Meta AI',
     cost: 0,
-    tag: 'Fast Multilingual (0 pts)',
+    tag: 'Fast Lightweight (0 pts)',
     isFree: true,
   },
   {
@@ -232,17 +240,21 @@ interface StudioChatProps {
   messages: ChatMessage[];
   onSendMessage: (content: string, model: string, cost: number) => Promise<void>;
   isLoading: boolean;
+  errorMessage?: string | null;
+  onDismissError?: () => void;
 }
 
 export default function StudioChat({
   messages,
   onSendMessage,
   isLoading,
+  errorMessage,
+  onDismissError,
 }: StudioChatProps) {
   const { user, balance } = useUser();
   const [input, setInput] = useState('');
   const [selectedModelId, setSelectedModelId] = useState(
-    'deepseek/deepseek-r1:free'
+    'openrouter/free'
   );
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -302,6 +314,25 @@ export default function StudioChat({
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#050506] relative overflow-hidden">
+      {/* Unobtrusive Top Alert Banner */}
+      {errorMessage && (
+        <div className="mx-4 md:mx-8 mt-4 p-3 rounded-2xl bg-red-500/10 border border-red-500/25 flex items-center justify-between text-xs text-red-300 shadow-lg z-20">
+          <div className="flex items-center gap-2">
+            <span className="font-bold">⚠️ Notice:</span>
+            <span>{errorMessage}</span>
+          </div>
+          {onDismissError && (
+            <button
+              type="button"
+              onClick={onDismissError}
+              className="text-red-400 hover:text-white p-1 transition cursor-pointer text-sm font-bold"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Messages Canvas Feed */}
       <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-6 custom-scrollbar pb-36">
         {messages.length === 0 ? (

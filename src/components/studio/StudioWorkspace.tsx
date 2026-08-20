@@ -2,59 +2,59 @@
 
 import React, { useState, useEffect } from 'react';
 import { Menu } from 'lucide-react';
-import StudioSidebar, { StudioMode, ChatSession } from './StudioSidebar';
-import StudioChat, { ChatMessage } from './StudioChat';
+import StudioSidebar, { type StudioMode, type ChatSession } from './StudioSidebar';
+import StudioChat, { type ChatMessage } from './StudioChat';
 import StudioImage from './StudioImage';
 import StudioVideo from './StudioVideo';
 import useUser from '../../hooks/useUser';
 import { useModal } from '../../context/ModalContext';
-import { supabase } from '../../lib/supabase/client';
+import { createClient } from '../../lib/supabase/client';
 
 export default function StudioWorkspace() {
   const { user, balance, refreshBalance } = useUser();
   const { openAuthModal } = useModal();
+  const supabase = createClient();
 
   const [mode, setMode] = useState<StudioMode>('chat');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
-  // Sessions state
+  // Active Sessions
   const [sessions, setSessions] = useState<ChatSession[]>([
     {
-      id: 'session-default-1',
-      title: '🇩🇿 Darja Marketing Plan',
+      id: 'session-1',
+      title: 'Algerian Darja E-Commerce',
       mode: 'chat',
       timestamp: 'Today',
-      model: 'Claude 3.5 Sonnet',
+      model: 'Auto-Routing Free Engine',
     },
     {
-      id: 'session-default-2',
-      title: 'Casbah Dusk 4K Render',
-      mode: 'image',
+      id: 'session-2',
+      title: 'Next.js Chargily Webhook',
+      mode: 'chat',
       timestamp: 'Yesterday',
-      model: 'Flux.1 Pro',
+      model: 'Claude 3.5 Sonnet',
     },
   ]);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>('session-default-1');
 
-  // Messages state for current chat session
+  const [activeSessionId, setActiveSessionId] = useState<string | null>('session-1');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
 
-  // Handle new session creation
+  // Create new session
   const handleNewSession = () => {
     const newId = `session-${Date.now()}`;
     const newSession: ChatSession = {
       id: newId,
-      title: mode === 'chat' ? 'New Conversation' : mode === 'image' ? 'New Image Session' : 'New Video Session',
+      title: 'New Chat Session',
       mode: mode,
       timestamp: 'Just now',
-      model: mode === 'chat' ? 'Claude 3.5 Sonnet' : mode === 'image' ? 'Flux.1 Pro' : 'Kling AI 1.5',
+      model: 'Auto-Routing Free Engine',
     };
     setSessions((prev) => [newSession, ...prev]);
     setActiveSessionId(newId);
-    if (mode === 'chat') {
-      setMessages([]);
-    }
+    setMessages([]);
+    setApiError(null);
   };
 
   // Delete session
@@ -64,6 +64,7 @@ export default function StudioWorkspace() {
     if (activeSessionId === id) {
       setActiveSessionId(null);
       setMessages([]);
+      setApiError(null);
     }
   };
 
@@ -74,6 +75,8 @@ export default function StudioWorkspace() {
       openAuthModal('signin');
       return;
     }
+
+    setApiError(null);
 
     const userMessage: ChatMessage = {
       id: `msg-${Date.now()}`,
@@ -90,6 +93,11 @@ export default function StudioWorkspace() {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
 
+      const historyPayload = [...messages, userMessage].map((m) => ({
+        role: m.sender === 'user' ? 'user' : 'assistant',
+        content: m.content,
+      }));
+
       const response = await fetch('/api/generate/chat', {
         method: 'POST',
         headers: {
@@ -99,6 +107,7 @@ export default function StudioWorkspace() {
         body: JSON.stringify({
           prompt: content,
           model: model,
+          messages: historyPayload,
         }),
       });
 
@@ -114,7 +123,7 @@ export default function StudioWorkspace() {
         sender: 'assistant',
         content: data.response || data.content || 'Response generated successfully.',
         model: data.model || model,
-        cost: data.cost ?? cost,
+        cost: data.costDeducted ?? cost,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
@@ -134,15 +143,7 @@ export default function StudioWorkspace() {
       // Refresh balance
       await refreshBalance();
     } catch (err: any) {
-      const errorMsg: ChatMessage = {
-        id: `msg-${Date.now() + 2}`,
-        sender: 'assistant',
-        content: `⚠️ **Request Notice (${model})**\n\n${err?.message || 'An error occurred while communicating with the AI gateway.'}\n\n*Tip: You can switch to **DeepSeek R1 (Free)** or **Gemini 2.0 Flash (Free)** in the model selector below to generate without deduction.*`,
-        model: model,
-        cost: 0,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages((prev) => [...prev, errorMsg]);
+      setApiError(err?.message || 'An error occurred while communicating with the AI gateway.');
     } finally {
       setIsGenerating(false);
     }
@@ -190,6 +191,8 @@ export default function StudioWorkspace() {
             messages={messages}
             onSendMessage={handleSendMessage}
             isLoading={isGenerating}
+            errorMessage={apiError}
+            onDismissError={() => setApiError(null)}
           />
         )}
 
