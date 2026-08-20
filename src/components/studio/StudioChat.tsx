@@ -34,12 +34,12 @@ export const AVAILABLE_MODELS: ModelOption[] = [
     isFree: true,
   },
   {
-    id: 'google/gemma-4-26b-a4b-it:free',
-    name: 'Google Gemma 4 26B (Free)',
+    id: 'google/gemini-3.1-pro',
+    name: 'Gemini 3.1 Pro',
     provider: 'Google DeepMind',
-    cost: 0,
-    tag: 'Advanced Instruction (0 pts)',
-    isFree: true,
+    cost: 15,
+    tag: 'Advanced Multimodal',
+    isFree: false,
   },
   {
     id: 'liquid/lfm-2.5-2.6b:free',
@@ -252,7 +252,7 @@ export default function StudioChat({
 }: StudioChatProps) {
   const { user } = useUser();
   const [selectedModelId, setSelectedModelId] = useState(
-    'nvidia/nemotron-3.5-lightning:free'
+    'google/gemini-3.1-pro'
   );
   const [stagedPrompt, setStagedPrompt] = useState<string>('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -304,151 +304,151 @@ export default function StudioChat({
         </div>
       )}
 
-      {/* Messages Canvas Feed */}
-      <div className="flex-1 overflow-y-auto px-3 sm:px-6 md:px-8 py-6 space-y-6 custom-scrollbar pb-44 md:pb-48">
-        {messages.length === 0 ? (
-          /* Empty State / Welcome Screen */
-          <div className="max-w-2xl mx-auto pt-4 sm:pt-10 space-y-8 text-center">
-            <div className="inline-flex h-16 w-16 items-center justify-center rounded-3xl bg-[#1FD8B8]/10 border border-[#1FD8B8]/25 text-[#1FD8B8] shadow-[0_0_30px_rgba(31,216,184,0.2)]">
-              <Sparkles className="h-8 w-8" />
-            </div>
-
-            <div className="space-y-2">
-              <h2
-                className="text-2xl sm:text-3xl font-bold text-white tracking-tight font-heading"
-                style={{ fontFamily: 'var(--font-heading)' }}
-              >
-                What will you build with VANTRA today?
-              </h2>
-              <p className="text-sm text-[#94A3B8] max-w-md mx-auto">
-                Prompt world-class AI models directly with unified DZD credit points or free open-weights intelligence.
-              </p>
-            </div>
-
-            {/* Starter Prompt Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
-              {SUGGESTED_PROMPTS.map((item, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => {
-                    setStagedPrompt(item.prompt);
-                  }}
-                  className="p-4 rounded-2xl border border-white/[0.08] bg-[#0A0B0E]/90 backdrop-blur-xl hover:bg-white/[0.04] hover:border-[#1FD8B8]/40 transition text-left space-y-1.5 cursor-pointer group shadow-md"
-                >
-                  <div className="text-xs font-bold text-white group-hover:text-[#1FD8B8] transition">
-                    {item.title}
-                  </div>
-                  <div className="text-[11px] text-[#64748B] line-clamp-2 leading-relaxed">
-                    {item.prompt}
-                  </div>
-                </button>
-              ))}
-            </div>
+      {messages.length === 0 ? (
+        /* Empty State / Welcome Screen */
+        <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 relative z-10 w-full h-full space-y-8">
+          <div className="space-y-4 text-center mt-[-8vh]">
+            <h2
+              className="text-3xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-br from-white via-white/90 to-white/50 tracking-tight font-heading"
+              style={{ fontFamily: 'var(--font-heading)' }}
+            >
+              What will you create today?
+            </h2>
+            <p className="text-sm md:text-base text-[#94A3B8] max-w-xl mx-auto">
+              Prompt world-class AI models directly with unified credits.
+            </p>
           </div>
-        ) : (
-          /* Conversation Feed */
-          <div className="max-w-3xl mx-auto space-y-6">
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex gap-3 sm:gap-4 ${
-                  msg.sender === 'user' ? 'justify-end' : 'justify-start'
-                }`}
-              >
-                {msg.sender === 'assistant' && (
-                  <div className="h-8 w-8 rounded-xl bg-[#1FD8B8]/15 border border-[#1FD8B8]/30 flex items-center justify-center text-[#1FD8B8] shrink-0 mt-1 shadow-[0_0_12px_rgba(31,216,184,0.15)]">
-                    <Bot className="h-4 w-4" />
-                  </div>
-                )}
 
+          <div className="w-full max-w-3xl">
+            <AnimatedAIChat
+              onSendMessage={handleSendFromChatComponent}
+              isLoading={isLoading}
+              models={AVAILABLE_MODELS}
+              selectedModelId={selectedModelId}
+              onSelectModel={setSelectedModelId}
+              initialValue={stagedPrompt}
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-2 max-w-2xl mt-4">
+            {SUGGESTED_PROMPTS.map((item, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setStagedPrompt(item.prompt)}
+                className="px-4 py-2 rounded-full border border-white/[0.08] bg-[#0A0B0E]/60 backdrop-blur-md hover:bg-white/[0.04] hover:border-[#1FD8B8]/40 transition text-xs font-medium text-[#94A3B8] hover:text-white cursor-pointer shadow-md"
+              >
+                {item.title}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        /* Active Session State */
+        <>
+          <div className="flex-1 overflow-y-auto px-3 sm:px-6 md:px-8 py-6 space-y-6 custom-scrollbar pb-44 md:pb-48">
+            <div className="max-w-3xl mx-auto space-y-6">
+              {messages.map((msg) => (
                 <div
-                  className={`max-w-[88%] sm:max-w-[80%] rounded-3xl p-4 sm:p-5 space-y-3 shadow-lg ${
-                    msg.sender === 'user'
-                      ? 'bg-[#1FD8B8]/15 border border-[#1FD8B8]/30 text-white'
-                      : 'bg-[#0D0E12]/95 border border-white/[0.08] text-[#F5F6F8] backdrop-blur-xl'
+                  key={msg.id}
+                  className={`flex gap-3 sm:gap-4 ${
+                    msg.sender === 'user' ? 'justify-end' : 'justify-start'
                   }`}
                 >
-                  {/* Header Meta */}
-                  <div className="flex items-center justify-between text-[10px] text-[#64748B] pb-2 border-b border-white/[0.06]">
-                    <span className="font-semibold text-white/90 flex items-center gap-1.5">
-                      {msg.sender === 'user' ? (
-                        'You'
-                      ) : (
-                        <>
-                          <Sparkles className="h-3 w-3 text-[#1FD8B8]" />
-                          <span>{msg.model || 'VANTRA AI'}</span>
-                        </>
-                      )}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      {msg.cost !== undefined && (
-                        <span
-                          className={`font-mono font-bold px-1.5 py-0.5 rounded ${
-                            msg.cost === 0
-                              ? 'bg-[#1FD8B8]/10 text-[#1FD8B8]'
-                              : 'bg-white/[0.06] text-white/70'
-                          }`}
-                        >
-                          {msg.cost === 0 ? 'FREE (0 pts)' : `-${msg.cost} PTS`}
-                        </span>
-                      )}
-                      <span>{msg.timestamp}</span>
-                    </div>
-                  </div>
-
-                  {/* Formatted Content */}
-                  <FormattedMessageContent content={msg.content} />
-
-                  {/* Actions for Assistant */}
                   {msg.sender === 'assistant' && (
-                    <div className="flex items-center justify-end pt-2 border-t border-white/[0.04]">
-                      <button
-                        type="button"
-                        onClick={() => handleCopyMessage(msg.id, msg.content)}
-                        className="flex items-center gap-1 text-[11px] text-[#64748B] hover:text-[#1FD8B8] transition cursor-pointer"
-                      >
-                        {copiedId === msg.id ? (
-                          <>
-                            <Check className="h-3 w-3 text-[#1FD8B8]" />
-                            <span className="text-[#1FD8B8]">Copied full message</span>
-                          </>
+                    <div className="h-8 w-8 rounded-xl bg-[#1FD8B8]/15 border border-[#1FD8B8]/30 flex items-center justify-center text-[#1FD8B8] shrink-0 mt-1 shadow-[0_0_12px_rgba(31,216,184,0.15)]">
+                      <Bot className="h-4 w-4" />
+                    </div>
+                  )}
+
+                  <div
+                    className={`max-w-[88%] sm:max-w-[80%] rounded-3xl p-4 sm:p-5 space-y-3 shadow-lg ${
+                      msg.sender === 'user'
+                        ? 'bg-[#1FD8B8]/15 border border-[#1FD8B8]/30 text-white'
+                        : 'bg-[#0D0E12]/95 border border-white/[0.08] text-[#F5F6F8] backdrop-blur-xl'
+                    }`}
+                  >
+                    {/* Header Meta */}
+                    <div className="flex items-center justify-between text-[10px] text-[#64748B] pb-2 border-b border-white/[0.06]">
+                      <span className="font-semibold text-white/90 flex items-center gap-1.5">
+                        {msg.sender === 'user' ? (
+                          'You'
                         ) : (
                           <>
-                            <Copy className="h-3 w-3" />
-                            <span>Copy message</span>
+                            <Sparkles className="h-3 w-3 text-[#1FD8B8]" />
+                            <span>{msg.model || 'VANTRA AI'}</span>
                           </>
                         )}
-                      </button>
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {msg.cost !== undefined && (
+                          <span
+                            className={`font-mono font-bold px-1.5 py-0.5 rounded ${
+                              msg.cost === 0
+                                ? 'bg-[#1FD8B8]/10 text-[#1FD8B8]'
+                                : 'bg-white/[0.06] text-white/70'
+                            }`}
+                          >
+                            {msg.cost === 0 ? 'FREE (0 pts)' : `-${msg.cost} PTS`}
+                          </span>
+                        )}
+                        <span>{msg.timestamp}</span>
+                      </div>
+                    </div>
+
+                    {/* Formatted Content */}
+                    <FormattedMessageContent content={msg.content} />
+
+                    {/* Actions for Assistant */}
+                    {msg.sender === 'assistant' && (
+                      <div className="flex items-center justify-end pt-2 border-t border-white/[0.04]">
+                        <button
+                          type="button"
+                          onClick={() => handleCopyMessage(msg.id, msg.content)}
+                          className="flex items-center gap-1 text-[11px] text-[#64748B] hover:text-[#1FD8B8] transition cursor-pointer"
+                        >
+                          {copiedId === msg.id ? (
+                            <>
+                              <Check className="h-3 w-3 text-[#1FD8B8]" />
+                              <span className="text-[#1FD8B8]">Copied full message</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3 w-3" />
+                              <span>Copy message</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {msg.sender === 'user' && (
+                    <div className="h-8 w-8 rounded-xl bg-white/[0.08] border border-white/[0.1] flex items-center justify-center text-white shrink-0 mt-1">
+                      <User className="h-4 w-4" />
                     </div>
                   )}
                 </div>
+              ))}
 
-                {msg.sender === 'user' && (
-                  <div className="h-8 w-8 rounded-xl bg-white/[0.08] border border-white/[0.1] flex items-center justify-center text-white shrink-0 mt-1">
-                    <User className="h-4 w-4" />
-                  </div>
-                )}
-              </div>
-            ))}
-
-            <div ref={messagesEndRef} />
+              <div ref={messagesEndRef} />
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* Floating Glassmorphic Bottom Bar with Animated AI Chat */}
-      <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-5 md:p-6 bg-gradient-to-t from-[#050506] via-[#050506]/95 to-transparent backdrop-blur-xl border-t border-white/[0.04] z-30">
-        <AnimatedAIChat
-          onSendMessage={handleSendFromChatComponent}
-          isLoading={isLoading}
-          models={AVAILABLE_MODELS}
-          selectedModelId={selectedModelId}
-          onSelectModel={setSelectedModelId}
-          initialValue={stagedPrompt}
-        />
-      </div>
+          <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-5 md:p-6 bg-gradient-to-t from-[#050506] via-[#050506]/95 to-transparent backdrop-blur-xl border-t border-white/[0.04] z-30 flex justify-center">
+            <div className="w-full max-w-3xl">
+              <AnimatedAIChat
+                onSendMessage={handleSendFromChatComponent}
+                isLoading={isLoading}
+                models={AVAILABLE_MODELS}
+                selectedModelId={selectedModelId}
+                onSelectModel={setSelectedModelId}
+                initialValue={stagedPrompt}
+              />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
-
