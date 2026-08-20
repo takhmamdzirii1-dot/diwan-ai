@@ -10,6 +10,51 @@ const openrouter = createOpenAI({
   headers: {
     'HTTP-Referer': 'https://diwan-ai.vercel.app',
     'X-Title': 'VANTRA AI',
+  },
+  fetch: async (url, options) => {
+    const response = await fetch(url, options);
+    if (!response.body) return response;
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    const encoder = new TextEncoder();
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        let buffer = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+              try {
+                // Validate JSON. If it fails, silently ignore OpenRouter safety metadata
+                JSON.parse(line.slice(6));
+                controller.enqueue(encoder.encode(line + '\n'));
+              } catch (e) {
+                // Silently ignore invalid JSON chunks
+              }
+            } else {
+              controller.enqueue(encoder.encode(line + '\n'));
+            }
+          }
+        }
+        if (buffer) {
+          controller.enqueue(encoder.encode(buffer));
+        }
+        controller.close();
+      }
+    });
+
+    return new Response(stream, {
+      status: response.status,
+      headers: response.headers,
+    });
   }
 });
 
