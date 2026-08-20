@@ -9,6 +9,7 @@ import {
   Check,
   Terminal,
 } from 'lucide-react';
+import { useChat } from '@ai-sdk/react';
 import useUser from '../../hooks/useUser';
 import {
   AnimatedAIChat,
@@ -16,15 +17,6 @@ import {
   type AttachedFile,
 } from '../ui/animated-ai-chat';
 import MessageBubble from './MessageBubble';
-
-export interface ChatMessage {
-  id: string;
-  sender: 'user' | 'assistant';
-  content: string;
-  model?: string;
-  cost?: number;
-  timestamp: string;
-}
 
 export const AVAILABLE_MODELS: ModelOption[] = [
   {
@@ -103,40 +95,47 @@ const SUGGESTED_PROMPTS = [
 
 
 interface StudioChatProps {
-  messages: ChatMessage[];
-  onSendMessage: (content: string, model: string, cost: number) => Promise<void>;
-  isLoading: boolean;
-  errorMessage?: string | null;
-  onDismissError?: () => void;
   onClearChat?: () => void;
 }
 
 export default function StudioChat({
-  messages,
-  onSendMessage,
-  isLoading,
-  errorMessage,
-  onDismissError,
   onClearChat,
 }: StudioChatProps) {
-  const { user } = useUser();
+  const { user, refreshBalance } = useUser();
   const [selectedModelId, setSelectedModelId] = useState(
     'google/gemini-3.1-pro'
   );
   const [stagedPrompt, setStagedPrompt] = useState<string>('');
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  
+  const { messages, setMessages, append, isLoading, error } = useChat({
+    api: '/api/generate/chat',
+    onFinish: () => {
+      refreshBalance();
+    }
+  });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Persistence: Load on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('vantra_chat_history');
+      if (saved) {
+        setMessages(JSON.parse(saved));
+      }
+    } catch (e) {}
+  }, [setMessages]);
+
+  // Persistence: Save on change
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem('vantra_chat_history', JSON.stringify(messages));
+    }
+  }, [messages]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
-
-  const handleCopyMessage = (id: string, text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
 
   const handleSendFromChatComponent = async (
     content: string,
@@ -145,7 +144,7 @@ export default function StudioChat({
     _attachments?: AttachedFile[]
   ) => {
     setStagedPrompt('');
-    await onSendMessage(content, modelId, cost);
+    await append({ role: 'user', content }, { data: { model: modelId } });
   };
 
   return (
@@ -155,21 +154,12 @@ export default function StudioChat({
       <div className="absolute bottom-10 right-10 w-[450px] h-[350px] bg-[#1FD8B8]/10 rounded-full blur-[120px] pointer-events-none -z-10" />
 
       {/* Unobtrusive Top Alert Banner */}
-      {errorMessage && (
+      {error && (
         <div className="mx-4 md:mx-8 mt-4 p-3 rounded-2xl bg-red-500/10 border border-red-500/25 flex items-center justify-between text-xs text-red-300 shadow-lg z-20">
           <div className="flex items-center gap-2">
             <span className="font-bold">⚠️ Notice:</span>
-            <span>{errorMessage}</span>
+            <span>{error.message}</span>
           </div>
-          {onDismissError && (
-            <button
-              type="button"
-              onClick={onDismissError}
-              className="text-red-400 hover:text-white p-1 transition cursor-pointer text-sm font-bold"
-            >
-              ✕
-            </button>
-          )}
         </div>
       )}
 
@@ -187,15 +177,17 @@ export default function StudioChat({
         /* Active Session State */
         <>
           <div className="absolute top-4 right-4 md:right-8 z-30">
-            {onClearChat && (
-              <button
-                onClick={onClearChat}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white/50 hover:text-white bg-white/[0.02] hover:bg-white/[0.08] border border-white/5 rounded-full transition-all backdrop-blur-md"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>New Session</span>
-              </button>
-            )}
+            <button
+              onClick={() => {
+                setMessages([]);
+                localStorage.removeItem('vantra_chat_history');
+                if (onClearChat) onClearChat();
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white/50 hover:text-white bg-white/[0.02] hover:bg-white/[0.08] border border-white/5 rounded-full transition-all backdrop-blur-md cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>New Session</span>
+            </button>
           </div>
           <div className="flex-1 overflow-y-auto px-4 md:px-12 py-8 pb-48 scroll-smooth custom-scrollbar">
             <div className="max-w-3xl mx-auto space-y-6">

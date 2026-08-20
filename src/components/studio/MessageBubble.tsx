@@ -3,11 +3,11 @@ import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Bot, User, Copy, Check, Terminal, Sparkles } from 'lucide-react';
-import type { ChatMessage } from './StudioChat';
+import type { Message } from '@ai-sdk/react';
 import { Typewriter } from '../ui/typewriter';
 
 export interface MessageBubbleProps {
-  message: ChatMessage;
+  message: Message;
   isLatest: boolean;
   isStreaming?: boolean;
 }
@@ -21,7 +21,7 @@ export default function MessageBubble({ message, isLatest, isStreaming }: Messag
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const isUser = message.sender === 'user';
+  const isUser = message.role === 'user';
 
   return (
     <motion.div
@@ -37,10 +37,10 @@ export default function MessageBubble({ message, isLatest, isStreaming }: Messag
       )}
 
       <div
-        className={`max-w-[92%] sm:max-w-[85%] rounded-2xl px-5 py-3.5 shadow-lg ${
+        className={`max-w-[92%] sm:max-w-[85%] rounded-2xl px-5 py-4 shadow-lg ${
           isUser
             ? 'bg-[#1FD8B8]/10 text-white border border-[#1FD8B8]/20 rounded-br-sm'
-            : 'bg-[#0A0B0D]/80 backdrop-blur-md border border-white/5 text-white/90 rounded-bl-sm'
+            : 'bg-[#0A0B0D]/80 backdrop-blur-xl border border-white/5 text-white/90 rounded-bl-sm'
         }`}
       >
         {/* Header Meta */}
@@ -51,28 +51,14 @@ export default function MessageBubble({ message, isLatest, isStreaming }: Messag
             ) : (
               <>
                 <Sparkles className="h-3 w-3 text-[#1FD8B8] shrink-0" />
-                <span className="truncate">{message.model || 'VANTRA AI'}</span>
+                <span className="truncate">VANTRA AI</span>
               </>
             )}
           </span>
-          <div className="flex items-center gap-2 shrink-0 ml-auto">
-            {message.cost !== undefined && (
-              <span
-                className={`font-mono font-bold px-1.5 py-0.5 rounded ${
-                  message.cost === 0
-                    ? 'bg-[#1FD8B8]/10 text-[#1FD8B8]'
-                    : 'bg-white/[0.06] text-white/70'
-                }`}
-              >
-                {message.cost === 0 ? 'FREE (0 pts)' : `-${message.cost} PTS`}
-              </span>
-            )}
-            <span>{message.timestamp}</span>
-          </div>
         </div>
 
         {/* Content */}
-        <div className="text-base leading-relaxed" dir="auto">
+        <div className="text-[15px] leading-relaxed" dir="auto">
           {(!isUser && isLatest && isStreaming) ? (
              <Typewriter 
                words={[message.content]} 

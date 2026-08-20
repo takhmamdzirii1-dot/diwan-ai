@@ -82,7 +82,7 @@ export function Typewriter({
   if (asMarkdown) {
     return (
       <div className="inline-block w-full">
-        <div className="prose prose-invert prose-p:leading-relaxed prose-pre:bg-[#050506] prose-pre:border prose-pre:border-white/10 max-w-none text-base leading-relaxed" dir="auto">
+        <div className="prose prose-invert prose-p:leading-relaxed prose-pre:bg-[#050506] prose-pre:border prose-pre:border-white/10 max-w-none" dir="auto">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
