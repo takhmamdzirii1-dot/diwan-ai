@@ -3,20 +3,24 @@ import { createClient } from '../../../../src/lib/supabase/server';
 
 // Point Cost Mapping
 const MODEL_COSTS: Record<string, number> = {
+  'meta-llama/llama-3.3-70b-instruct:free': 0,
+  'llama-3-3-70b:free': 0,
+  'deepseek/deepseek-r1:free': 0,
+  'deepseek-r1:free': 0,
   'anthropic/claude-3.5-sonnet': 25,
   'claude-3-5-sonnet': 25,
   'openai/gpt-4o': 30,
   'gpt-4o': 30,
   'deepseek/deepseek-chat': 5,
   'deepseek-r1': 5,
-  'deepseek/deepseek-r1': 5,
-  'meta-llama/llama-3.3-70b-instruct:free': 2,
   'flux-1-pro': 65,
   'kling-ai-1-5': 240,
 };
 
 // Model Name Mapping for OpenRouter
 const OPENROUTER_MODEL_MAP: Record<string, string> = {
+  'llama-3-3-70b:free': 'meta-llama/llama-3.3-70b-instruct:free',
+  'deepseek-r1:free': 'deepseek/deepseek-r1:free',
   'claude-3-5-sonnet': 'anthropic/claude-3.5-sonnet',
   'gpt-4o': 'openai/gpt-4o',
   'deepseek-r1': 'deepseek/deepseek-r1',
@@ -61,7 +65,7 @@ export async function POST(request: Request) {
     const targetModel = OPENROUTER_MODEL_MAP[model] || model;
 
     // 3. Atomic Point Deduction via Supabase RPC or Table Update
-    let deductSuccess = false;
+    let deductSuccess = cost === 0;
     let newBalance = 10000;
 
     // Try RPC deduct_user_points

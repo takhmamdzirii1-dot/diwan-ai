@@ -1,5 +1,49 @@
 export const aiModels = [
   {
+    id: "llama-3-3-70b:free",
+    name: "Llama 3.3 70B Instruct (Free)",
+    provider: "Meta AI",
+    category: "chat",
+    superpower: "100% Free Open-Weights Intelligence",
+    icon: "fa-bolt",
+    color: "#1FD8B8",
+    bgGlow: "rgba(31, 216, 184, 0.08)",
+    tag: "100% FREE",
+    badgeType: "free",
+    arabicDarjaScore: "96%",
+    contextWindow: "128,000 Tokens",
+    desc: {
+      en: "Meta's flagship open-weights model delivering near-GPT-4o performance on general reasoning, coding, and multilingual conversation at 0 cost.",
+      fr: "Le modèle phare de Meta offrant des performances proches de GPT-4o pour le raisonnement, le code et les conversations, 100% gratuit.",
+      ar: "النموذج المجاني الرائد من Meta، يقدم أداءً فائقاً يقارع GPT-4o في البرمجة، التفكير المنطقي، ودعم اللغة العربية مجاناً بالكامل."
+    },
+    capabilities: ["100% Free (0 pts)", "Coding & Logic", "128k Context", "Fast Latency"],
+    samplePrompt: "Explain how to build a Next.js server action with Supabase authentication.",
+    costPts: "0 pts (FREE)"
+  },
+  {
+    id: "deepseek-r1:free",
+    name: "DeepSeek R1 (Free Tier)",
+    provider: "DeepSeek AI",
+    category: "chat",
+    superpower: "Mathematical Reasoning & Logic",
+    icon: "fa-network-wired",
+    color: "#1FD8B8",
+    bgGlow: "rgba(31, 216, 184, 0.08)",
+    tag: "100% FREE",
+    badgeType: "free",
+    arabicDarjaScore: "97%",
+    contextWindow: "64,000 Tokens",
+    desc: {
+      en: "State-of-the-art open reasoning engine outperforming proprietary models on complex math, science, and algorithmic problem solving at 0 cost.",
+      fr: "Moteur de raisonnement ouvert d'élite surpassant les modèles propriétaires sur les mathématiques et le code, 100% gratuit.",
+      ar: "عملاق التفكير المنطقي والرياضيات المتقدمة وحل المسائل البرمجية المعقدة، متاح مجاناً لجميع المستخدمين."
+    },
+    capabilities: ["100% Free (0 pts)", "Math Olympiad", "Chain-of-Thought", "Algorithm Design"],
+    samplePrompt: "Write a high-performance sorting algorithm in Python with asymptotic analysis.",
+    costPts: "0 pts (FREE)"
+  },
+  {
     id: "claude-3-5-sonnet",
     name: "Claude 3.5 Sonnet",
     provider: "Anthropic",
