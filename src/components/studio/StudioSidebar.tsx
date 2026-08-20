@@ -68,7 +68,7 @@ export default function StudioSidebar({
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed lg:static top-0 bottom-0 left-0 z-50 w-72 flex flex-col justify-between border-r border-white/[0.08] bg-[#0A0B0E] p-4 transition-transform duration-300 ${
+        className={`fixed lg:static top-0 bottom-0 left-0 z-50 w-72 flex flex-col justify-between border-r border-white/5 bg-[#0A0B0D]/80 backdrop-blur-xl p-4 transition-transform duration-300 ${
           isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
@@ -204,12 +204,12 @@ export default function StudioSidebar({
                     }}
                     className={`group flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition cursor-pointer ${
                       activeSessionId === session.id
-                        ? 'bg-white/[0.08] text-white font-semibold border border-white/[0.08]'
-                        : 'text-[#94A3B8] hover:bg-white/[0.03] hover:text-white'
+                        ? 'bg-[#1FD8B8]/10 text-white font-semibold border-l-2 border-[#1FD8B8]'
+                        : 'text-[#94A3B8] hover:bg-white/5 hover:text-white border-l-2 border-transparent'
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate max-w-[190px]">
-                      <Sparkles className="h-3 w-3 shrink-0 text-[#1FD8B8]" />
+                      <Sparkles className={`h-3 w-3 shrink-0 ${activeSessionId === session.id ? 'text-[#1FD8B8]' : 'text-white/30 group-hover:text-[#1FD8B8]'}`} />
                       <span className="truncate">{session.title}</span>
                     </div>
 
@@ -229,44 +229,45 @@ export default function StudioSidebar({
         </div>
 
         {/* Bottom Profile & Top-Up Card */}
-        <div className="pt-3 border-t border-white/[0.08] space-y-3">
+        <div className="pt-3 space-y-2 relative z-10">
           {/* Balance Pill */}
-          <div className="flex items-center justify-between p-3 rounded-2xl bg-[#050608] border border-white/[0.06]">
-            <div>
-              <span className="text-[10px] text-[#64748B] uppercase font-mono block">
-                Available Credits
-              </span>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#1FD8B8] opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#1FD8B8]" />
+          <div className="flex items-center justify-between p-3 rounded-2xl bg-black/40 border border-white/5 backdrop-blur-md shadow-[0_0_15px_rgba(0,0,0,0.5)]">
+            <div className="flex items-center gap-3">
+              <div className="relative flex h-3 w-3">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#1FD8B8] opacity-75" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-[#1FD8B8]" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[9px] text-[#64748B] uppercase font-mono leading-none tracking-wider mb-1">
+                  Credits
                 </span>
-                <span className="font-mono font-bold text-sm text-[#1FD8B8]">
-                  {balance.toLocaleString()}
-                </span>
-                <span className="text-[10px] text-white/50">PTS</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="font-mono font-bold text-sm text-white leading-none">
+                    {balance.toLocaleString()}
+                  </span>
+                  <span className="text-[10px] text-[#1FD8B8] font-bold">PTS</span>
+                </div>
               </div>
             </div>
 
             <button
               type="button"
               onClick={() => openTopUpModal()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1FD8B8] text-[#050506] font-bold text-xs hover:bg-[#34e2c2] transition shadow-[0_0_12px_rgba(31,216,184,0.3)] cursor-pointer"
+              className="flex items-center justify-center h-8 w-8 rounded-full bg-[#1FD8B8]/10 hover:bg-[#1FD8B8]/20 border border-[#1FD8B8]/30 text-[#1FD8B8] transition cursor-pointer"
             >
-              <Wallet className="h-3.5 w-3.5" />
-              <span>Top Up</span>
+              <Plus className="h-4 w-4" />
             </button>
           </div>
 
           {/* User Details */}
           {user && (
-            <div className="flex items-center justify-between px-1">
+            <div className="flex items-center justify-between p-2 rounded-2xl hover:bg-white/5 transition border border-transparent hover:border-white/5 cursor-pointer group">
               <div className="flex items-center gap-2.5 truncate max-w-[180px]">
-                <div className="h-7 w-7 rounded-full bg-[#1FD8B8] text-[#050506] font-bold text-xs flex items-center justify-center shrink-0">
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#1FD8B8] to-[#0EA98E] text-[#050506] font-bold text-sm flex items-center justify-center shrink-0 shadow-inner">
                   {(user.user_metadata?.full_name?.[0] || user.email?.[0] || 'U').toUpperCase()}
                 </div>
                 <div className="truncate">
-                  <p className="text-xs font-semibold text-white truncate">
+                  <p className="text-xs font-semibold text-white/90 group-hover:text-white truncate transition">
                     {user.user_metadata?.full_name || user.email?.split('@')[0]}
                   </p>
                   <p className="text-[10px] text-[#64748B] truncate">{user.email}</p>
@@ -276,10 +277,10 @@ export default function StudioSidebar({
               <button
                 type="button"
                 onClick={() => signOut()}
-                className="text-[#64748B] hover:text-red-400 p-1.5 transition rounded-lg hover:bg-white/[0.04]"
+                className="text-[#64748B] hover:text-white/90 p-1.5 transition rounded-full hover:bg-white/10"
                 title="Sign out"
               >
-                <LogOut className="h-4 w-4" />
+                <LogOut className="h-3.5 w-3.5" />
               </button>
             </div>
           )}
