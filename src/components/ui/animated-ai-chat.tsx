@@ -163,6 +163,8 @@ export interface AnimatedAIChatProps {
     onSelectModel?: (modelId: string) => void;
     initialValue?: string;
     isExpanded?: boolean; // Controls hero section visibility
+    placeholder?: string;
+    aiName?: string;
 }
 
 export function AnimatedAIChat({
@@ -173,6 +175,8 @@ export function AnimatedAIChat({
     onSelectModel,
     initialValue = "",
     isExpanded = true,
+    placeholder = "Ask any model or describe your task...",
+    aiName = "VANTRA",
 }: AnimatedAIChatProps) {
     const [value, setValue] = useState(initialValue);
     const [attachments, setAttachments] = useState<AttachedFile[]>([]);
@@ -510,7 +514,7 @@ export function AnimatedAIChat({
                                 onKeyDown={handleKeyDown}
                                 onFocus={() => setInputFocused(true)}
                                 onBlur={() => setInputFocused(false)}
-                                placeholder="Ask zap a question..."
+                                placeholder={placeholder}
                                 containerClassName="w-full"
                                 className={cn(
                                     "w-full px-4 py-3",
@@ -618,7 +622,7 @@ export function AnimatedAIChat({
                                                 >
                                                     <div className="px-3 py-2 text-[10px] font-mono uppercase text-white/40 border-b border-white/[0.05] mb-1 flex items-center justify-between">
                                                         <span>Select Model</span>
-                                                        <Zap className="w-3 h-3 text-violet-400" />
+                                                        <Sparkles className="w-3 h-3 text-violet-400" />
                                                     </div>
                                                     <div className="max-h-48 overflow-y-auto space-y-0.5 custom-scrollbar">
                                                         {models.map((model) => (
@@ -708,7 +712,7 @@ export function AnimatedAIChat({
                     >
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-7 rounded-full bg-white/[0.05] flex items-center justify-center text-center">
-                                <span className="text-xs font-medium text-white/90 mb-0.5">zap</span>
+                                <span className="text-xs font-medium text-white/90 mb-0.5">{aiName}</span>
                             </div>
                             <div className="flex items-center gap-2 text-sm text-white/70">
                                 <span>Thinking</span>

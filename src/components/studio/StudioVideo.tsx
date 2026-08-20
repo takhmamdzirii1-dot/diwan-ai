@@ -48,18 +48,7 @@ export default function StudioVideo() {
 
   const cost = (model === 'kling-ai-1-5' ? 450 : 520) * (duration === '10s' ? 2 : 1);
 
-  const [videos, setVideos] = useState<GeneratedVideo[]>([
-    {
-      id: 'vid-1',
-      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-      posterUrl: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=80',
-      prompt: 'Cinematic drone shot flying over ancient Tassili n\'Ajjer rock arches in Algeria at sunrise with soft golden rays.',
-      duration: '5s (1080p)',
-      model: 'Kling AI 1.5 HD',
-      cost: 450,
-      timestamp: '10 mins ago',
-    },
-  ]);
+  const [videos, setVideos] = useState<GeneratedVideo[]>([]);
 
   const handleGenerate = async () => {
     if (!prompt.trim() || isGenerating) return;
@@ -232,7 +221,16 @@ export default function StudioVideo() {
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {videos.map((vid) => (
+          {videos.length === 0 ? (
+            <div className="col-span-1 md:col-span-2 flex flex-col items-center justify-center py-20 border border-white/5 bg-white/[0.02] rounded-3xl border-dashed">
+              <div className="w-12 h-12 rounded-full bg-white/[0.05] flex items-center justify-center mb-4">
+                <Video className="w-6 h-6 text-white/30" />
+              </div>
+              <p className="text-sm font-medium text-white/70">No videos generated yet</p>
+              <p className="text-xs text-white/40 mt-1">Your cinematic scenes will appear here.</p>
+            </div>
+          ) : (
+            videos.map((vid) => (
             <div
               key={vid.id}
               className="rounded-3xl overflow-hidden border border-white/[0.1] bg-[#0E1016] shadow-xl space-y-3 p-3"
@@ -258,7 +256,7 @@ export default function StudioVideo() {
                     download="vantra-video.mp4"
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-1 text-[#1FD8B8] hover:underline"
+                    className="flex items-center gap-1 text-[#1FD8B8] hover:underline cursor-pointer"
                   >
                     <Download className="h-3 w-3" />
                     <span>Download MP4</span>
@@ -266,7 +264,7 @@ export default function StudioVideo() {
                 </div>
               </div>
             </div>
-          ))}
+          )))}
         </div>
       </div>
     </div>

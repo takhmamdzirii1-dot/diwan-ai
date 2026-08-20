@@ -107,8 +107,8 @@ export default function CostTableSection() {
         </div>
 
         {/* Table Container */}
-        <div className="overflow-x-auto rounded-2xl border border-white/[0.06] bg-[#0A0B0D]/75 backdrop-blur-xl shadow-2xl">
-          <table className="w-full text-left border-collapse text-xs sm:text-sm">
+        <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0A0B0D]/75 backdrop-blur-xl shadow-2xl">
+          <table className="hidden md:table w-full text-left border-collapse text-sm">
             <thead>
               <tr className="border-b border-white/[0.06] bg-white/[0.02] text-[11px] uppercase tracking-wider text-[rgba(245,246,248,0.5)]">
                 <th className="py-4 px-6 font-semibold">AI Model</th>
@@ -163,6 +163,54 @@ export default function CostTableSection() {
               ))}
             </tbody>
           </table>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden flex flex-col divide-y divide-white/[0.04]">
+            {filteredRows.map((row, idx) => (
+              <div key={idx} className="p-4 space-y-3 hover:bg-white/[0.025] transition duration-150">
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-[#1FD8B8]" />
+                    <span className="font-bold text-white text-sm">{row.model}</span>
+                  </div>
+                  <span className="rounded-full bg-white/[0.04] px-2 py-0.5 text-[10px] text-[rgba(245,246,248,0.6)]">
+                    {row.provider}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between text-xs">
+                  <span className="text-[rgba(245,246,248,0.5)]">Category</span>
+                  <span className="text-[rgba(245,246,248,0.8)]">{row.category}</span>
+                </div>
+                
+                <div className="flex justify-between text-xs">
+                  <span className="text-[rgba(245,246,248,0.5)]">Point Cost</span>
+                  <span className="font-mono font-bold text-[#1FD8B8]">{row.ptsCost}</span>
+                </div>
+
+                <div className="flex justify-between text-xs">
+                  <span className="text-[rgba(245,246,248,0.5)]">Est. DZD Cost</span>
+                  <span className="font-mono text-[rgba(245,246,248,0.8)]">{row.dzdEquiv}</span>
+                </div>
+
+                <div className="flex justify-between text-xs">
+                  <span className="text-[rgba(245,246,248,0.5)] text-[#1FD8B8]/70">Yield / 1000 DZD</span>
+                  <span className="font-medium text-[#1FD8B8] text-right max-w-[150px]">{row.yieldPer1000DZD}</span>
+                </div>
+
+                <div className="pt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => openAuthModal('signup')}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-[#1FD8B8] hover:underline"
+                  >
+                    <span>Try Now</span>
+                    <ArrowRight className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </section>

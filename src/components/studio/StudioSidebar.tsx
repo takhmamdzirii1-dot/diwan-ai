@@ -277,12 +277,18 @@ export default function StudioSidebar({
       ]
     },
     {
-      heading: 'Studios',
+      heading: 'Create',
       items: [
         { 
           id: 'chat', 
           title: 'AI Chat', 
           icon: MessageSquare,
+          onSelect: () => { onSelectMode('chat'); onCloseMobile?.(); }
+        },
+        { 
+          id: 'coding', 
+          title: 'Coding & Analysis', 
+          icon: Terminal,
           onSelect: () => { onSelectMode('chat'); onCloseMobile?.(); }
         },
         { 
@@ -300,8 +306,31 @@ export default function StudioSidebar({
       ]
     },
     {
+      heading: 'Build',
+      items: [
+        { 
+          id: 'clone', 
+          title: 'Clone UI', 
+          icon: ImageIcon,
+          onSelect: () => {} 
+        },
+        { 
+          id: 'figma', 
+          title: 'Import Figma', 
+          icon: Blocks,
+          onSelect: () => {} 
+        },
+      ]
+    },
+    {
       heading: 'Workspace',
       items: [
+        { 
+          id: 'models', 
+          title: 'Models', 
+          icon: Command,
+          onSelect: () => {}
+        },
         { 
           id: 'projects', 
           title: 'Recent Sessions', 
@@ -326,12 +355,16 @@ export default function StudioSidebar({
         { id: 'api', title: 'API Keys', icon: Terminal, onSelect: () => {} },
         { id: 'webhooks', title: 'Webhooks', icon: Blocks, onSelect: () => {} },
       ]
+    },
+    {
+      heading: 'Settings',
+      items: [
+        { id: 'settings', title: 'Settings', icon: Settings, shortcut: '⌘,', onSelect: () => {} },
+      ]
     }
   ];
 
-  const mockBottomItems: NavItemData[] = [
-    { id: 'settings', title: 'Settings', icon: Settings, shortcut: '⌘,', onSelect: () => {} },
-  ];
+  const mockBottomItems: NavItemData[] = [];
 
   return (
     <>

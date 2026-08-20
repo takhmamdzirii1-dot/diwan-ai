@@ -21,24 +21,9 @@ export default function StudioWorkspace() {
   const [apiError, setApiError] = useState<string | null>(null);
 
   // Active Sessions
-  const [sessions, setSessions] = useState<ChatSession[]>([
-    {
-      id: 'session-1',
-      title: 'Algerian Darja E-Commerce',
-      mode: 'chat',
-      timestamp: 'Today',
-      model: 'Auto-Routing Free Engine',
-    },
-    {
-      id: 'session-2',
-      title: 'Next.js Chargily Webhook',
-      mode: 'chat',
-      timestamp: 'Yesterday',
-      model: 'Claude 3.5 Sonnet',
-    },
-  ]);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
 
-  const [activeSessionId, setActiveSessionId] = useState<string | null>('session-1');
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
   // Load from local storage on mount
   useEffect(() => {
@@ -129,6 +114,7 @@ export default function StudioWorkspace() {
       <main className="flex-1 flex flex-col relative h-full min-w-0 pt-14 lg:pt-0">
         {mode === 'chat' && (
           <StudioChat
+            activeSessionId={activeSessionId}
             onClearChat={handleClearChat}
           />
         )}

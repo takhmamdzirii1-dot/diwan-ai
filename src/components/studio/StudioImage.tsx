@@ -53,26 +53,7 @@ export default function StudioImage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const [gallery, setGallery] = useState<GeneratedImage[]>([
-    {
-      id: 'img-1',
-      url: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=80',
-      prompt: 'Cinematic 8K render of Algiers coastal architecture with Mediterranean sunset glow and dramatic clouds.',
-      aspectRatio: '16:9',
-      style: 'Photorealistic 8K',
-      cost: 65,
-      timestamp: 'Just now',
-    },
-    {
-      id: 'img-2',
-      url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80',
-      prompt: 'Futuristic solar-powered desert transport vehicle speeding across the Algerian Sahara dunes, golden dusk.',
-      aspectRatio: '16:9',
-      style: 'Cinematic Concept Art',
-      cost: 65,
-      timestamp: '5 mins ago',
-    },
-  ]);
+  const [gallery, setGallery] = useState<GeneratedImage[]>([]);
 
   const cost = model === 'flux-1-pro' ? 65 : 80;
 
@@ -268,7 +249,16 @@ export default function StudioImage() {
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {gallery.map((img) => (
+          {gallery.length === 0 ? (
+            <div className="col-span-1 md:col-span-2 flex flex-col items-center justify-center py-20 border border-white/5 bg-white/[0.02] rounded-3xl border-dashed">
+              <div className="w-12 h-12 rounded-full bg-white/[0.05] flex items-center justify-center mb-4">
+                <ImageIcon className="w-6 h-6 text-white/30" />
+              </div>
+              <p className="text-sm font-medium text-white/70">No images generated yet</p>
+              <p className="text-xs text-white/40 mt-1">Your generated images will appear here.</p>
+            </div>
+          ) : (
+            gallery.map((img) => (
             <div
               key={img.id}
               className="group relative rounded-3xl overflow-hidden border border-white/[0.1] bg-[#0E1016] shadow-xl space-y-3"
@@ -328,7 +318,7 @@ export default function StudioImage() {
                 </div>
               </div>
             </div>
-          ))}
+          )))}
         </div>
       </div>
     </div>

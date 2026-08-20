@@ -96,18 +96,41 @@ const SUGGESTED_PROMPTS = [
 
 interface StudioChatProps {
   onClearChat?: () => void;
+  activeSessionId: string | null;
 }
 
 export default function StudioChat({
   onClearChat,
+  activeSessionId,
 }: StudioChatProps) {
   const { user, refreshBalance } = useUser();
   const [selectedModelId, setSelectedModelId] = useState(
     'google/gemini-3.1-pro'
   );
   const [stagedPrompt, setStagedPrompt] = useState<string>('');
+  const [lang, setLang] = useState('en');
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      setLang(document.documentElement.lang || 'en');
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.attributeName === 'lang') {
+            setLang(document.documentElement.lang || 'en');
+          }
+        });
+      });
+      observer.observe(document.documentElement, { attributes: true });
+      return () => observer.disconnect();
+    }
+  }, []);
+
+  const placeholderText = lang === 'ar' ? 'اسأل أي نموذج أو اكتب مهمتك هنا...' :
+                          lang === 'fr' ? 'Demandez à un modèle ou décrivez votre tâche...' :
+                          'Ask any model or describe your task...';
   
   const { messages, setMessages, append, isLoading, error } = useChat({
+    id: activeSessionId || 'default-session',
     api: '/api/generate/chat',
     onFinish: () => {
       refreshBalance();
@@ -119,22 +142,32 @@ export default function StudioChat({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Persistence: Load on mount
+  // Persistence: Load on mount or session change
   useEffect(() => {
+    if (!activeSessionId) {
+      setMessages([]);
+      return;
+    }
     try {
-      const saved = localStorage.getItem('vantra_chat_history');
+      const saved = localStorage.getItem(`vantra_chat_${activeSessionId}`);
       if (saved) {
         setMessages(JSON.parse(saved));
+      } else {
+        setMessages([]);
       }
     } catch (e) {}
-  }, [setMessages]);
+  }, [setMessages, activeSessionId]);
 
   // Persistence: Save on change
   useEffect(() => {
-    if (messages.length > 0) {
-      localStorage.setItem('vantra_chat_history', JSON.stringify(messages));
+    if (activeSessionId) {
+      if (messages.length > 0) {
+        localStorage.setItem(`vantra_chat_${activeSessionId}`, JSON.stringify(messages));
+      } else {
+        localStorage.removeItem(`vantra_chat_${activeSessionId}`);
+      }
     }
-  }, [messages]);
+  }, [messages, activeSessionId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -160,8 +193,26 @@ export default function StudioChat({
         <div className="max-w-3xl mx-auto w-full px-4 pt-12 pb-48 flex flex-col gap-8">
           
           {messages.length === 0 ? (
-             <div className="flex flex-col items-center justify-center h-64 opacity-50">
-                <p>Start a conversation...</p>
+             <div className="flex flex-col items-center justify-center min-h-[50vh] px-4 w-full">
+                <div className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-center mb-6 shadow-xl">
+                  <Bot className="w-6 h-6 text-[#1FD8B8]" />
+                </div>
+                <h3 className="text-xl font-medium text-white mb-2">Welcome to VANTRA Studio</h3>
+                <p className="text-sm text-white/40 mb-8 text-center max-w-md">
+                  Select a model below and start your conversation, or try one of these examples:
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl">
+                  {SUGGESTED_PROMPTS.map((suggestion, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setStagedPrompt(suggestion.prompt)}
+                      className="flex flex-col text-left p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] hover:border-white/10 transition-all cursor-pointer"
+                    >
+                      <span className="text-sm font-semibold text-white/90 mb-1">{suggestion.title}</span>
+                      <span className="text-xs text-white/40 line-clamp-2">{suggestion.prompt}</span>
+                    </button>
+                  ))}
+                </div>
              </div>
           ) : (
             messages.map((msg, idx) => (
@@ -215,6 +266,8 @@ export default function StudioChat({
             onSelectModel={setSelectedModelId}
             initialValue={stagedPrompt}
             isExpanded={messages.length === 0}
+            placeholder={placeholderText}
+            aiName="VANTRA"
           />
         </div>
       </div>

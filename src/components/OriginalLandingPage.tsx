@@ -207,10 +207,8 @@ export default function OriginalLandingPage() {
 
   return (
     <div className="vantra-app-root">
-      {/* Ambient Glowing Orbs Background */}
-      <div className="ambient-bg">
-        <div className="orb orb-teal" />
-        <div className="orb orb-violet" />
+      {/* Ambient glowing removed to keep design clean */}
+      <div className="ambient-bg-clean">
         <div className="noise-overlay" />
       </div>
 
@@ -522,8 +520,8 @@ export default function OriginalLandingPage() {
          2. HERO SECTION & LIVE INTERACTIVE LEDGER
          ========================================================================== */}
       <section className="hero" id="hero">
-        {/* Dynamic Cinematic Quantum Wave & Laser Beam Canvas */}
-        <HeroCinematicBackground speed={1.0} beamIntensity={0.95} />
+        {/* Clean Background instead of Cinematic Quantum Wave */}
+        <div className="absolute inset-0 bg-[#050506] pointer-events-none z-0" />
 
         <div className="container hero-grid relative z-10">
           {/* Hero Text Content */}
