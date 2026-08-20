@@ -2,11 +2,12 @@
 
 import React, { useState } from 'react';
 import AmbientMotionBackground from './components/AmbientMotionBackground';
+import Navbar from './components/Navbar';
 import HeroSection from './components/HeroSection';
 import SpotlightCard from './components/SpotlightCard';
 import ShimmerButton from './components/ShimmerButton';
+import AuthModal from './components/AuthModal';
 import { 
-  Sparkles, 
   CreditCard, 
   Cpu, 
   Check, 
@@ -17,6 +18,13 @@ import { aiModels } from './modelsData.js';
 export default function App() {
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+
+  const openAuth = (mode: 'signin' | 'signup' = 'signin') => {
+    setAuthMode(mode);
+    setIsAuthOpen(true);
+  };
 
   const filteredModels = aiModels.filter((model: any) => {
     const matchesFilter = activeFilter === 'all' || model.category === activeFilter;
@@ -32,55 +40,14 @@ export default function App() {
       {/* 1. Ambient Background Layer */}
       <AmbientMotionBackground />
 
-      {/* 2. Navigation Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-[#050506]/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto flex h-20 items-center justify-between px-4 md:px-8">
-          {/* Logo */}
-          <a href="#" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1FD8B8] p-2">
-              <Sparkles className="h-5 w-5 text-[#050506]" />
-            </div>
-            <div>
-              <span className="text-xl font-bold tracking-wider text-white font-heading">VANTRA</span>
-              <span className="block text-[10px] uppercase font-semibold tracking-widest text-[#1FD8B8]">
-                Algerian AI Gateway
-              </span>
-            </div>
-          </a>
-
-          {/* Nav Links */}
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-[rgba(245,246,248,0.6)]">
-            <a href="#hero" className="transition hover:text-white">Home</a>
-            <a href="#models" className="transition hover:text-white">AI Models</a>
-            <a href="#pricing" className="transition hover:text-white">Pricing & DZD</a>
-            <a href="#faq" className="transition hover:text-white">FAQ</a>
-          </nav>
-
-          {/* Action CTAs */}
-          <div className="flex items-center gap-3">
-            <a
-              href="#pricing"
-              className="hidden sm:inline-flex items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.035] px-4 py-2.5 text-xs font-medium text-[#F5F6F8] hover:bg-white/[0.065] transition duration-[250ms]"
-            >
-              Sign In
-            </a>
-            <ShimmerButton
-              text="Top Up Balance"
-              onClick={() => {
-                const pricingElem = document.getElementById('pricing');
-                if (pricingElem) pricingElem.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="text-xs px-4 py-2"
-            />
-          </div>
-        </div>
-      </header>
+      {/* 2. Navigation Header with Supabase Auth & Live Points */}
+      <Navbar onOpenAuth={openAuth} />
 
       {/* 3. Hero Section with Live Interactive Ledger */}
       <main>
-        <HeroSection />
+        <HeroSection onOpenAuth={openAuth} />
 
-        {/* 4. AI Models Hub Section (5: py-28 increased whitespace) */}
+        {/* 4. AI Models Hub Section */}
         <section id="models" className="py-28 px-4 md:px-8 border-t border-white/[0.06]">
           <div className="max-w-7xl mx-auto space-y-14">
             <div className="text-center max-w-3xl mx-auto space-y-4">
@@ -128,7 +95,7 @@ export default function App() {
               />
             </div>
 
-            {/* Models Grid (5: gap-8, p-7) */}
+            {/* Models Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredModels.map((model: any) => (
                 <SpotlightCard
@@ -167,13 +134,14 @@ export default function App() {
 
                   <div className="border-t border-white/[0.06] pt-4 flex items-center justify-between text-xs">
                     <span className="text-[rgba(245,246,248,0.4)]">Context: {model.contextWindow}</span>
-                    <a
-                      href="#pricing"
+                    <button
+                      type="button"
+                      onClick={() => openAuth('signup')}
                       className="flex items-center gap-1 font-medium text-[#1FD8B8] hover:underline"
                     >
                       <span>Run Model</span>
                       <ArrowUpRight className="h-3.5 w-3.5" />
-                    </a>
+                    </button>
                   </div>
                 </SpotlightCard>
               ))}
@@ -181,7 +149,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* 5. Pricing & DZD Top-Up Section (5: py-28, gap-9, p-9) */}
+        {/* 5. Pricing & DZD Top-Up Section */}
         <section id="pricing" className="py-28 px-4 md:px-8 border-t border-white/[0.06]">
           <div className="max-w-7xl mx-auto space-y-14">
             <div className="text-center max-w-2xl mx-auto space-y-4">
@@ -277,7 +245,7 @@ export default function App() {
                   <ShimmerButton
                     text={`Top Up ${tier.price}`}
                     className={`w-full py-3 text-sm ${!tier.highlight ? '!bg-white/[0.05] !text-white' : ''}`}
-                    onClick={() => alert(`Starting DZD payment checkout for ${tier.name}...`)}
+                    onClick={() => openAuth('signup')}
                   />
                 </SpotlightCard>
               ))}
@@ -297,6 +265,14 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* 6. Supabase Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        initialMode={authMode}
+        onSuccess={() => setIsAuthOpen(false)}
+      />
     </div>
   );
 }
