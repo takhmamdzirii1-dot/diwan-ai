@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Mail, Lock, User, ArrowRight, Loader2, AlertCircle, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { X, Sparkles, Mail, Lock, User, ArrowRight, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabase/client';
 
 export interface AuthModalProps {
@@ -178,31 +178,31 @@ export default function AuthModal({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
           onClick={handleClose}
-          className="fixed inset-0 bg-black/85 backdrop-blur-md cursor-pointer"
+          className="fixed inset-0 bg-black/80 backdrop-blur-xl cursor-pointer"
         />
 
-        {/* Modal Card */}
+        {/* Modal Card Container */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/[0.08] bg-[#0A0B0D]/95 shadow-[0_25px_60px_rgba(0,0,0,0.95)] backdrop-blur-2xl p-7 sm:p-8 space-y-6 z-10 my-auto"
+          transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+          className="relative w-full max-w-[440px] overflow-hidden rounded-3xl border border-white/10 bg-[#0E1015] p-6 sm:p-8 space-y-6 shadow-[0_20px_70px_rgba(0,0,0,0.85)] z-10 my-auto"
         >
-          {/* Top Subtle Emerald Ambient Beam */}
-          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#1FD8B8] to-transparent opacity-85" />
+          {/* Top Subtle Emerald Accent Beam */}
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#1FD8B8] to-transparent opacity-80" />
 
           {/* Modal Header */}
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3.5">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#1FD8B8]/10 border border-[#1FD8B8]/25 text-[#1FD8B8] shadow-[0_0_20px_rgba(31,216,184,0.15)]">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#1FD8B8]/15 border border-[#1FD8B8]/30 text-[#1FD8B8] shadow-[0_0_20px_rgba(31,216,184,0.15)]">
                 <Sparkles className="h-5 w-5" />
               </div>
               <div className="space-y-0.5">
-                <h3 className="text-lg font-bold text-white font-heading tracking-tight">
-                  {mode === 'signin' ? 'Sign In to VANTRA' : 'Create VANTRA Account'}
+                <h3 className="text-xl font-bold text-white tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>
+                  {mode === 'signin' ? 'Sign in to VANTRA' : 'Create VANTRA Account'}
                 </h3>
-                <p className="text-xs text-[rgba(245,246,248,0.55)]">
+                <p className="text-xs text-[#94A3B8]">
                   {mode === 'signin'
                     ? 'Access your unified Algerian AI balance'
                     : 'Get started with free models & credit packs'}
@@ -213,15 +213,15 @@ export default function AuthModal({
             <button
               type="button"
               onClick={handleClose}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.035] text-[rgba(245,246,248,0.6)] transition-all hover:border-white/[0.15] hover:bg-white/[0.08] hover:text-white"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/70 transition-all hover:bg-white/10 hover:border-white/20 hover:text-white"
               aria-label="Close"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
 
-          {/* Distinct Centered Pill-Switch / Tabs */}
-          <div className="grid grid-cols-2 gap-1 rounded-2xl bg-[#050506] p-1.5 border border-white/[0.06]">
+          {/* Segmented Control Pill Switcher */}
+          <div className="grid grid-cols-2 gap-1 rounded-2xl bg-[#050608] p-1 border border-white/[0.08]">
             <button
               type="button"
               onClick={() => {
@@ -229,10 +229,10 @@ export default function AuthModal({
                 setError(null);
                 setSuccessMsg(null);
               }}
-              className={`rounded-xl py-2.5 text-xs font-semibold transition-all duration-200 ${
+              className={`rounded-xl py-2.5 text-xs font-semibold transition-all duration-200 cursor-pointer ${
                 mode === 'signin'
-                  ? 'bg-[#1FD8B8] text-[#050506] font-bold shadow-[0_2px_12px_rgba(31,216,184,0.25)]'
-                  : 'text-[rgba(245,246,248,0.6)] hover:text-white hover:bg-white/[0.02]'
+                  ? 'bg-[#1FD8B8] text-[#050506] font-bold shadow-[0_2px_10px_rgba(31,216,184,0.3)]'
+                  : 'text-white/60 hover:text-white'
               }`}
             >
               Sign In
@@ -244,17 +244,17 @@ export default function AuthModal({
                 setError(null);
                 setSuccessMsg(null);
               }}
-              className={`rounded-xl py-2.5 text-xs font-semibold transition-all duration-200 ${
+              className={`rounded-xl py-2.5 text-xs font-semibold transition-all duration-200 cursor-pointer ${
                 mode === 'signup'
-                  ? 'bg-[#1FD8B8] text-[#050506] font-bold shadow-[0_2px_12px_rgba(31,216,184,0.25)]'
-                  : 'text-[rgba(245,246,248,0.6)] hover:text-white hover:bg-white/[0.02]'
+                  ? 'bg-[#1FD8B8] text-[#050506] font-bold shadow-[0_2px_10px_rgba(31,216,184,0.3)]'
+                  : 'text-white/60 hover:text-white'
               }`}
             >
               Create Account
             </button>
           </div>
 
-          {/* Alerts */}
+          {/* Error / Success Feedback Alerts */}
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -6 }}
@@ -282,12 +282,12 @@ export default function AuthModal({
             type="button"
             disabled={googleLoading || loading}
             onClick={handleGoogleSignIn}
-            className="w-full flex items-center justify-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.035] h-12 text-xs font-semibold text-white transition-all duration-200 hover:bg-white/[0.07] hover:border-white/[0.15] disabled:opacity-60"
+            className="w-full flex items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] h-12 text-sm font-semibold text-white transition-all duration-200 hover:bg-white/[0.08] hover:border-white/20 disabled:opacity-60 cursor-pointer"
           >
             {googleLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-[#1FD8B8]" />
+              <Loader2 className="h-5 w-5 animate-spin text-[#1FD8B8]" />
             ) : (
-              <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
+              <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
                 <path
                   fill="#4285F4"
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -309,57 +309,58 @@ export default function AuthModal({
             <span>Continue with Google</span>
           </button>
 
-          {/* Elegant Horizontal Divider */}
-          <div className="relative flex items-center justify-center my-1">
-            <div className="w-full h-px bg-white/[0.08]" />
-            <span className="absolute bg-[#0A0B0D] px-3 text-[10px] font-mono uppercase tracking-widest text-[rgba(245,246,248,0.4)]">
-              or with email
+          {/* Clean Horizontal Divider */}
+          <div className="flex items-center gap-4 my-1">
+            <div className="flex-1 h-px bg-white/10" />
+            <span className="text-[11px] font-medium text-white/40 uppercase tracking-wider">
+              or email
             </span>
+            <div className="flex-1 h-px bg-white/10" />
           </div>
 
           {/* Email & Password Form */}
           <form onSubmit={handleEmailAuth} className="space-y-4">
             {mode === 'signup' && (
               <div className="space-y-1.5">
-                <label className="text-[11px] font-medium text-[rgba(245,246,248,0.7)]">
+                <label className="text-xs font-medium text-[#CBD5E1] block">
                   Full Name
                 </label>
                 <div className="relative flex items-center">
-                  <User className="absolute left-3.5 h-4 w-4 text-[rgba(245,246,248,0.4)] pointer-events-none" />
+                  <User className="absolute left-4 h-4 w-4 text-[#94A3B8] pointer-events-none" />
                   <input
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Karim Meziani"
-                    className="w-full rounded-2xl border border-white/[0.08] bg-[#050506] py-3 pl-10 pr-4 text-xs sm:text-sm text-white placeholder-[rgba(245,246,248,0.35)] outline-none transition-all duration-200 focus:border-[#1FD8B8] focus:bg-[#050506]"
+                    className="w-full h-12 rounded-2xl border border-white/10 bg-[#050608] pl-11 pr-4 text-sm text-white placeholder-white/30 outline-none transition-all duration-200 focus:border-[#1FD8B8] focus:ring-1 focus:ring-[#1FD8B8]"
                   />
                 </div>
               </div>
             )}
 
             <div className="space-y-1.5">
-              <label className="text-[11px] font-medium text-[rgba(245,246,248,0.7)]">
+              <label className="text-xs font-medium text-[#CBD5E1] block">
                 Email Address
               </label>
               <div className="relative flex items-center">
-                <Mail className="absolute left-3.5 h-4 w-4 text-[rgba(245,246,248,0.4)] pointer-events-none" />
+                <Mail className="absolute left-4 h-4 w-4 text-[#94A3B8] pointer-events-none" />
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="developer@vantra.dz"
-                  className="w-full rounded-2xl border border-white/[0.08] bg-[#050506] py-3 pl-10 pr-4 text-xs sm:text-sm text-white placeholder-[rgba(245,246,248,0.35)] outline-none transition-all duration-200 focus:border-[#1FD8B8] focus:bg-[#050506]"
+                  className="w-full h-12 rounded-2xl border border-white/10 bg-[#050608] pl-11 pr-4 text-sm text-white placeholder-white/30 outline-none transition-all duration-200 focus:border-[#1FD8B8] focus:ring-1 focus:ring-[#1FD8B8]"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[11px] font-medium text-[rgba(245,246,248,0.7)]">
+              <label className="text-xs font-medium text-[#CBD5E1] block">
                 Password
               </label>
               <div className="relative flex items-center">
-                <Lock className="absolute left-3.5 h-4 w-4 text-[rgba(245,246,248,0.4)] pointer-events-none" />
+                <Lock className="absolute left-4 h-4 w-4 text-[#94A3B8] pointer-events-none" />
                 <input
                   type="password"
                   required
@@ -367,30 +368,31 @@ export default function AuthModal({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full rounded-2xl border border-white/[0.08] bg-[#050506] py-3 pl-10 pr-4 text-xs sm:text-sm text-white placeholder-[rgba(245,246,248,0.35)] outline-none transition-all duration-200 focus:border-[#1FD8B8] focus:bg-[#050506]"
+                  className="w-full h-12 rounded-2xl border border-white/10 bg-[#050608] pl-11 pr-4 text-sm text-white placeholder-white/30 outline-none transition-all duration-200 focus:border-[#1FD8B8] focus:ring-1 focus:ring-[#1FD8B8]"
                 />
               </div>
             </div>
 
+            {/* Primary Action Button */}
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 w-full flex items-center justify-center gap-2 rounded-2xl bg-[#1FD8B8] h-12 text-xs sm:text-sm font-bold text-[#050506] shadow-[0_4px_20px_rgba(31,216,184,0.3)] transition-all duration-200 hover:bg-[#34e2c2] disabled:opacity-60"
+              className="mt-2 w-full flex items-center justify-center gap-2 rounded-2xl bg-[#1FD8B8] h-12 text-sm font-bold text-[#050506] shadow-[0_4px_20px_rgba(31,216,184,0.35)] transition-all duration-200 hover:bg-[#34e2c2] disabled:opacity-60 cursor-pointer"
             >
               {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin text-[#050506]" />
+                <Loader2 className="h-5 w-5 animate-spin text-[#050506]" />
               ) : (
                 <>
                   <span>{mode === 'signin' ? 'Sign In to Account' : 'Create Free Account'}</span>
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-4 w-4 text-[#050506]" />
                 </>
               )}
             </button>
           </form>
 
           {/* Bottom Switch Note */}
-          <div className="text-center pt-1 border-t border-white/[0.06]">
-            <p className="text-[11px] text-[rgba(245,246,248,0.5)]">
+          <div className="text-center pt-2 border-t border-white/[0.06]">
+            <p className="text-xs text-white/50">
               {mode === 'signin' ? "Don't have an account yet?" : 'Already have an account?'}
               <button
                 type="button"
@@ -399,7 +401,7 @@ export default function AuthModal({
                   setError(null);
                   setSuccessMsg(null);
                 }}
-                className="ml-1.5 font-bold text-[#1FD8B8] hover:underline"
+                className="ml-1.5 font-bold text-[#1FD8B8] hover:underline cursor-pointer"
               >
                 {mode === 'signin' ? 'Create Account' : 'Sign In'}
               </button>
