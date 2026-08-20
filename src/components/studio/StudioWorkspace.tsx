@@ -126,7 +126,7 @@ export default function StudioWorkspace() {
       />
 
       {/* Main Mode Canvas */}
-      <main className="flex-1 flex flex-col relative h-full pt-14 lg:pt-0">
+      <main className="flex-1 flex flex-col relative h-full min-w-0 pt-14 lg:pt-0">
         {mode === 'chat' && (
           <StudioChat
             onClearChat={handleClearChat}
