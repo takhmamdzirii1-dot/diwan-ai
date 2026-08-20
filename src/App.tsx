@@ -4,6 +4,12 @@ import React, { useState } from 'react';
 import AmbientMotionBackground from './components/AmbientMotionBackground';
 import Navbar from './components/Navbar';
 import HeroSection from './components/HeroSection';
+import FeaturesSection from './components/FeaturesSection';
+import HowItWorksSection from './components/HowItWorksSection';
+import CostTableSection from './components/CostTableSection';
+import FaqSection from './components/FaqSection';
+import ClosingCtaSection from './components/ClosingCtaSection';
+import Footer from './components/Footer';
 import SpotlightCard from './components/SpotlightCard';
 import ShimmerButton from './components/ShimmerButton';
 import { ModalProvider, useModal } from './context/ModalContext';
@@ -13,7 +19,9 @@ import {
   CreditCard, 
   Cpu, 
   Check, 
-  ArrowUpRight
+  ArrowUpRight,
+  Sparkles,
+  Zap
 } from 'lucide-react';
 import { aiModels } from './modelsData.js';
 
@@ -101,12 +109,13 @@ function AppContent() {
         onOpenTopUp={() => openTopUpModal(PRICING_TIERS[1])}
       />
 
-      {/* 3. Hero Section with Live Interactive Ledger */}
+      {/* 3. Main Landing Content */}
       <main>
+        {/* Hero Section with Live Interactive Ledger */}
         <HeroSection onOpenAuth={(mode) => openAuthModal(mode)} />
 
         {/* 4. AI Models Hub Section */}
-        <section id="models" className="py-28 px-4 md:px-8 border-t border-white/[0.06]">
+        <section id="models" className="py-28 px-4 md:px-8 border-t border-white/[0.06] relative">
           <div className="max-w-7xl mx-auto space-y-14">
             <div className="text-center max-w-3xl mx-auto space-y-4">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.035] px-3.5 py-1 text-xs font-medium text-[#1FD8B8]">
@@ -176,7 +185,7 @@ function AppContent() {
                   </div>
 
                   <p className="text-xs text-[rgba(245,246,248,0.6)] leading-relaxed">
-                    {model.desc.en}
+                    {model.desc?.en || model.desc}
                   </p>
 
                   <div className="flex flex-wrap gap-1.5 pt-1">
@@ -214,8 +223,14 @@ function AppContent() {
           </div>
         </section>
 
-        {/* 5. Pricing & DZD Top-Up Section */}
-        <section id="pricing" className="py-28 px-4 md:px-8 border-t border-white/[0.06]">
+        {/* 5. Key Features Section */}
+        <FeaturesSection />
+
+        {/* 6. How It Works (3 Steps) */}
+        <HowItWorksSection />
+
+        {/* 7. Pricing & DZD Top-Up Section */}
+        <section id="pricing" className="py-28 px-4 md:px-8 border-t border-white/[0.06] relative">
           <div className="max-w-7xl mx-auto space-y-14">
             <div className="text-center max-w-2xl mx-auto space-y-4">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.035] px-3.5 py-1 text-xs font-medium text-[#1FD8B8]">
@@ -276,19 +291,19 @@ function AppContent() {
             </div>
           </div>
         </section>
+
+        {/* 8. Interactive Cost Comparison Table */}
+        <CostTableSection />
+
+        {/* 9. FAQ Accordion Section */}
+        <FaqSection />
+
+        {/* 10. Closing Call to Action Banner */}
+        <ClosingCtaSection />
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-white/[0.06] bg-[#050506] py-14 px-4 md:px-8 text-center text-xs text-[rgba(245,246,248,0.4)]">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <p>© 2026 VANTRA. All rights reserved. Unified AI Platform for Algeria.</p>
-          <div className="flex items-center gap-6">
-            <a href="#models" className="hover:text-white transition">Models Hub</a>
-            <a href="#pricing" className="hover:text-white transition">Pricing</a>
-            <a href="#" className="hover:text-white transition">Terms & Privacy</a>
-          </div>
-        </div>
-      </footer>
+      {/* 11. Full Footer */}
+      <Footer />
     </div>
   );
 }
