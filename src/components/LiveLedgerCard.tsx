@@ -2,12 +2,28 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, MessageSquare, Image as ImageIcon, Video, Play, ArrowDownRight, RefreshCw, CheckCircle2, ShieldCheck } from 'lucide-react';
+import {
+  Sparkles,
+  MessageSquare,
+  Image as ImageIcon,
+  Video,
+  Play,
+  ArrowDownRight,
+  RefreshCw,
+  CheckCircle2,
+  ShieldCheck,
+  Terminal,
+  ChevronDown,
+  ChevronUp,
+  AlertCircle,
+} from 'lucide-react';
 import SpotlightCard from './SpotlightCard';
+import useUser from '../hooks/useUser';
 
 export type CategoryType = 'chat' | 'image' | 'video';
 
 interface ModelInfo {
+  id: string;
   name: string;
   provider: string;
   category: string;
@@ -20,32 +36,35 @@ interface ModelInfo {
 
 const LEDGER_MODELS: Record<CategoryType, ModelInfo> = {
   chat: {
+    id: 'claude-3-5-sonnet',
     name: 'Claude 3.5 Sonnet',
     provider: 'Anthropic',
     category: 'Advanced Reasoning, Coding & Document Analysis',
     cost: 25,
     icon: MessageSquare,
-    prompt: '"Write a marketing launch plan for an e-commerce store in Algeria with ad budget allocation."',
+    prompt: 'Write a high-converting marketing plan for an Algerian e-commerce shop with BaridiMob checkout flow.',
     unit: 'pts / query',
     tag: 'Flagship LLM',
   },
   image: {
+    id: 'flux-1-pro',
     name: 'Flux.1 Pro',
     provider: 'Black Forest Labs',
     category: 'Photorealistic & Commercial Image Generation',
     cost: 65,
     icon: ImageIcon,
-    prompt: '"Cinematic 4K photograph of Algiers Casbah at sunset with dramatic warm golden lighting."',
+    prompt: 'Cinematic 4K photograph of Algiers Casbah at sunset with dramatic warm golden lighting.',
     unit: 'pts / image',
     tag: 'Ultra-HD Image',
   },
   video: {
+    id: 'kling-ai-1-5',
     name: 'Kling AI 1.5 HD',
     provider: 'Kuaishou',
     category: 'Photorealistic & Cinematic AI Video Generation (1080p)',
-    cost: 450,
+    cost: 240,
     icon: Video,
-    prompt: '"Cinematic drone shot soaring over Jijel coastal cliffs with realistic ocean waves."',
+    prompt: 'Cinematic drone shot soaring over Jijel coastal cliffs with realistic ocean waves.',
     unit: 'pts / 5s',
     tag: 'Cinematic Video',
   },
@@ -56,12 +75,24 @@ interface LogItem {
   opName: string;
   cost: number;
   time: string;
+  responsePreview?: string;
 }
 
-export default function LiveLedgerCard() {
-  const [balance, setBalance] = useState<number>(10000);
+export interface LiveLedgerCardProps {
+  onOpenAuth?: (mode?: 'signin' | 'signup') => void;
+}
+
+export default function LiveLedgerCard({ onOpenAuth }: LiveLedgerCardProps) {
+  const { user, session, balance: userBalance, refreshBalance } = useUser();
+  const [localBalance, setLocalBalance] = useState<number>(10000);
   const [activeTab, setActiveTab] = useState<CategoryType>('chat');
   const [isDeducting, setIsDeducting] = useState<boolean>(false);
+  const [lastDeduction, setLastDeduction] = useState<number | null>(null);
+  const [aiOutput, setAiOutput] = useState<string | null>(null);
+  const [showOutput, setShowOutput] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [customPrompt, setCustomPrompt] = useState<string>('');
+
   const [logs, setLogs] = useState<LogItem[]>([
     {
       id: 'init-1',
@@ -70,38 +101,104 @@ export default function LiveLedgerCard() {
       time: 'Just now',
     },
   ]);
-  const [lastDeduction, setLastDeduction] = useState<number | null>(null);
 
+  const activeBalance = user ? userBalance : localBalance;
   const currentModel = LEDGER_MODELS[activeTab];
   const IconComponent = currentModel.icon;
 
-  const handleSimulate = () => {
-    if (balance < currentModel.cost) {
-      alert('Insufficient points for this operation. Resetting balance demo...');
-      setBalance(10000);
+  const handleExecute = async () => {
+    setError(null);
+    const promptToRun = customPrompt.trim() || currentModel.prompt;
+
+    if (activeBalance < currentModel.cost) {
+      setError('Insufficient points! Please top up your balance.');
+      if (onOpenAuth && !user) {
+        onOpenAuth('signup');
+      }
       return;
     }
 
     setIsDeducting(true);
     setLastDeduction(currentModel.cost);
 
-    setTimeout(() => {
-      setBalance((prev) => Math.max(0, prev - currentModel.cost));
-      setLogs((prev) => [
-        {
-          id: `${Date.now()}`,
-          opName: `${currentModel.name} Execution`,
-          cost: currentModel.cost,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        },
-        ...prev.slice(0, 4),
-      ]);
+    try {
+      // If user is logged in, call real API route
+      if (user && session?.access_token) {
+        const response = await fetch('/api/generate/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            prompt: promptToRun,
+            model: currentModel.id,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to generate response');
+        }
+
+        setAiOutput(data.response || 'Success');
+        setShowOutput(true);
+        await refreshBalance();
+
+        setLogs((prev) => [
+          {
+            id: `${Date.now()}`,
+            opName: `${currentModel.name} Live Query`,
+            cost: currentModel.cost,
+            time: new Date().toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            }),
+            responsePreview: data.response?.slice(0, 80) + '...',
+          },
+          ...prev.slice(0, 4),
+        ]);
+      } else {
+        // Instant simulated response for guest preview
+        await new Promise((r) => setTimeout(r, 600));
+        setLocalBalance((prev) => Math.max(0, prev - currentModel.cost));
+        const simOutput = `[${currentModel.name} Output]\n\nAnalysis for prompt: "${promptToRun}"\n\n✓ Verification: 200 OK\n✓ Context: Processed in 340ms\n✓ Deduction: -${currentModel.cost} PTS\n✓ Languages: English, French & Algerian Darja.`;
+        setAiOutput(simOutput);
+        setShowOutput(true);
+
+        setLogs((prev) => [
+          {
+            id: `${Date.now()}`,
+            opName: `${currentModel.name} Query`,
+            cost: currentModel.cost,
+            time: new Date().toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            }),
+            responsePreview: simOutput.slice(0, 80) + '...',
+          },
+          ...prev.slice(0, 4),
+        ]);
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Execution error');
+    } finally {
       setIsDeducting(false);
-    }, 450);
+    }
   };
 
   const handleReset = () => {
-    setBalance(10000);
+    if (user) {
+      refreshBalance();
+    } else {
+      setLocalBalance(10000);
+    }
+    setAiOutput(null);
+    setShowOutput(false);
+    setError(null);
     setLogs([
       {
         id: `reset-${Date.now()}`,
@@ -125,25 +222,27 @@ export default function LiveLedgerCard() {
               <h3 className="text-sm font-semibold tracking-wide uppercase text-[#F5F6F8]">
                 VANTRA Live Ledger
               </h3>
-              <p className="text-xs text-[rgba(245,246,248,0.6)] font-sans">Unified DZD Credit Engine</p>
+              <p className="text-xs text-[rgba(245,246,248,0.6)] font-sans">
+                Unified DZD Credit Engine
+              </p>
             </div>
           </div>
 
-          {/* Balance Pill (Single accent: --teal) */}
+          {/* Balance Pill */}
           <div className="flex items-center gap-2.5 rounded-full bg-[#050506] px-4 py-2 border border-white/[0.06]">
             <span className="text-xs text-[rgba(245,246,248,0.6)]">Available Balance:</span>
             <div className="relative flex items-center">
               <motion.span
-                key={balance}
+                key={activeBalance}
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="font-mono text-base font-bold text-[#1FD8B8]"
               >
-                {balance.toLocaleString()}
+                {activeBalance.toLocaleString()}
               </motion.span>
               <span className="ml-1 text-[11px] font-semibold text-[#1FD8B8] font-mono">PTS</span>
 
-              {/* Floating deduction animation indicator */}
+              {/* Floating deduction indicator */}
               <AnimatePresence>
                 {isDeducting && lastDeduction && (
                   <motion.span
@@ -161,7 +260,7 @@ export default function LiveLedgerCard() {
           </div>
         </div>
 
-        {/* Category Tabs: Glass Pills */}
+        {/* Category Tabs */}
         <div className="grid grid-cols-3 gap-2 rounded-full bg-[#050506]/80 p-1.5 border border-white/[0.06]">
           {(['chat', 'image', 'video'] as CategoryType[]).map((tab) => {
             const isActive = activeTab === tab;
@@ -170,7 +269,11 @@ export default function LiveLedgerCard() {
               <button
                 key={tab}
                 type="button"
-                onClick={() => setActiveTab(tab)}
+                onClick={() => {
+                  setActiveTab(tab);
+                  setCustomPrompt('');
+                  setShowOutput(false);
+                }}
                 className={`relative flex items-center justify-center gap-2 rounded-full py-2 text-xs md:text-sm font-medium transition-all duration-[250ms] ${
                   isActive
                     ? 'text-[#050506] font-bold'
@@ -195,7 +298,7 @@ export default function LiveLedgerCard() {
           })}
         </div>
 
-        {/* Active Model Preview Box */}
+        {/* Active Model Interactive Box */}
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, y: 8 }}
@@ -219,7 +322,7 @@ export default function LiveLedgerCard() {
               </div>
             </div>
 
-            {/* Cost Badge (Teal dominant, no gold) */}
+            {/* Cost Badge */}
             <div className="text-right">
               <div className="font-mono text-sm font-bold text-[#1FD8B8]">
                 {currentModel.cost} PTS
@@ -228,43 +331,84 @@ export default function LiveLedgerCard() {
             </div>
           </div>
 
-          {/* Sample Prompt Container */}
-          <div className="rounded-lg bg-black/40 p-3.5 border border-white/[0.03]">
-            <div className="flex items-center justify-between text-[11px] text-[rgba(245,246,248,0.4)] mb-1.5 font-medium">
-              <span>Simulated Execution Prompt:</span>
-              <span className="text-[#1FD8B8] font-mono text-[10px]">Instant API Gateway</span>
+          {/* Interactive Prompt Input */}
+          <div className="rounded-lg bg-black/40 p-3.5 border border-white/[0.03] space-y-2">
+            <div className="flex items-center justify-between text-[11px] text-[rgba(245,246,248,0.4)] font-medium">
+              <span>Interactive Live Prompt:</span>
+              <span className="text-[#1FD8B8] font-mono text-[10px]">
+                {user ? 'Authenticated Session' : 'Instant Preview'}
+              </span>
             </div>
-            <p className="text-xs text-[rgba(245,246,248,0.8)] font-mono leading-relaxed italic">
-              {currentModel.prompt}
-            </p>
+            <textarea
+              rows={2}
+              value={customPrompt || currentModel.prompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              className="w-full resize-none bg-transparent text-xs text-[rgba(245,246,248,0.85)] font-mono leading-relaxed outline-none focus:text-white"
+            />
           </div>
 
-          {/* Trigger Simulation Button: Solid --teal */}
+          {/* Error Message */}
+          {error && (
+            <div className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-2.5 text-xs text-red-400">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Trigger Button */}
           <motion.button
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.98 }}
             disabled={isDeducting}
-            onClick={handleSimulate}
+            onClick={handleExecute}
             className="w-full flex items-center justify-center gap-2.5 rounded-full bg-[#1FD8B8] h-12 text-sm font-bold text-[#050506] shadow-[0_4px_16px_rgba(31,216,184,0.25)] transition-all hover:bg-[#34e2c2] disabled:opacity-60"
           >
             {isDeducting ? (
               <>
                 <RefreshCw className="h-4 w-4 animate-spin text-[#050506]" />
-                <span>Executing API Call & Deducting Points...</span>
+                <span>Executing Model & Deducting Balance...</span>
               </>
             ) : (
               <>
                 <Play className="h-4 w-4 fill-current text-[#050506]" />
-                <span>Simulate Deduction (-{currentModel.cost} PTS)</span>
+                <span>Execute & Deduct (-{currentModel.cost} PTS)</span>
               </>
             )}
           </motion.button>
+
+          {/* AI Response Output Terminal */}
+          {aiOutput && (
+            <div className="rounded-xl border border-[#1FD8B8]/25 bg-black/60 p-4 space-y-2">
+              <div
+                className="flex items-center justify-between cursor-pointer text-xs font-semibold text-[#1FD8B8]"
+                onClick={() => setShowOutput(!showOutput)}
+              >
+                <div className="flex items-center gap-2">
+                  <Terminal className="h-4 w-4" />
+                  <span>Model Response ({currentModel.name})</span>
+                </div>
+                {showOutput ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </div>
+
+              {showOutput && (
+                <motion.pre
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="mt-2 whitespace-pre-wrap font-mono text-[11px] text-[rgba(245,246,248,0.9)] max-h-48 overflow-y-auto leading-relaxed border-t border-white/[0.06] pt-2"
+                >
+                  {aiOutput}
+                </motion.pre>
+              )}
+            </div>
+          )}
         </motion.div>
 
         {/* Real-time Ledger Log Feed */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-[rgba(245,246,248,0.6)] px-1">
-            <span className="font-semibold uppercase tracking-wider text-[11px]">Recent Ledger Events</span>
+            <span className="font-semibold uppercase tracking-wider text-[11px]">
+              Recent Ledger Events
+            </span>
             <button
               onClick={handleReset}
               className="text-[11px] text-[#1FD8B8] hover:underline flex items-center gap-1"
@@ -288,7 +432,9 @@ export default function LiveLedgerCard() {
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-[rgba(245,246,248,0.4)] font-mono">{log.time}</span>
                   <span className="font-mono font-bold text-[#1FD8B8]">
-                    {log.cost < 0 ? `+${Math.abs(log.cost).toLocaleString()} PTS` : `-${log.cost} PTS`}
+                    {log.cost < 0
+                      ? `+${Math.abs(log.cost).toLocaleString()} PTS`
+                      : `-${log.cost} PTS`}
                   </span>
                 </div>
               </motion.div>
@@ -296,7 +442,7 @@ export default function LiveLedgerCard() {
           </div>
         </div>
 
-        {/* Bottom Trust Badge */}
+        {/* Bottom Trust Badges */}
         <div className="flex items-center justify-between text-[11px] text-[rgba(245,246,248,0.4)] border-t border-white/[0.06] pt-3.5">
           <div className="flex items-center gap-1.5">
             <ShieldCheck className="h-3.5 w-3.5 text-[#1FD8B8]" />

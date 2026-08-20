@@ -209,7 +209,7 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
             variants={itemVariants}
             className="lg:col-span-5 flex justify-center lg:justify-end"
           >
-            <LiveLedgerCard />
+            <LiveLedgerCard onOpenAuth={onOpenAuth} />
           </motion.div>
         </motion.div>
       </div>
