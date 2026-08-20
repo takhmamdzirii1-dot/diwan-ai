@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import React from 'react';
 import AmbientMotionBackground from '../src/components/AmbientMotionBackground';
 import { ModalProvider } from '../src/context/ModalContext';
-import '../src/globals.css';
+import './globals.css';
 
 export const metadata: Metadata = {
   title: 'VANTRA — Algerian AI Gateway • Pay in DZD with Edahabia & CIB',
