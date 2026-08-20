@@ -16,6 +16,7 @@ import {
   Copy,
 } from 'lucide-react';
 import useUser from '../../hooks/useUser';
+import { getModelCost } from '../../config/pricing';
 
 const CAMERA_MOTIONS = [
   'Cinematic Drone Flyover',
@@ -46,7 +47,8 @@ export default function StudioVideo() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [activePlayId, setActivePlayId] = useState<string | null>(null);
 
-  const cost = (model === 'kling-ai-1-5' ? 450 : 520) * (duration === '10s' ? 2 : 1);
+  const baseCost = getModelCost(model) || 240;
+  const cost = baseCost * (duration === '10s' ? 2 : 1);
 
   const [videos, setVideos] = useState<GeneratedVideo[]>([]);
 

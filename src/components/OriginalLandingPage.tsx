@@ -6,6 +6,7 @@ import useUser from '../hooks/useUser';
 import HeroCinematicBackground from './HeroCinematicBackground';
 import { aiModels } from '../modelsData.js';
 import { translations } from '../translations.js';
+import { TOPUP_PLANS } from '../config/pricing';
 
 export default function OriginalLandingPage() {
   const { user, balance, signOut, refreshBalance } = useUser();
@@ -66,6 +67,10 @@ export default function OriginalLandingPage() {
     return () => window.removeEventListener('pointermove', handlePointerMove);
   }, []);
 
+  const claudeCost = 25;
+  const fluxCost = 65;
+  const klingCost = 240;
+
   // Ledger configuration by category & language
   const ledgerConfigs = {
     en: {
@@ -73,9 +78,9 @@ export default function OriginalLandingPage() {
         name: 'Claude 3.5 Sonnet',
         category: 'Advanced Reasoning, Coding & Document Analysis',
         icon: 'fa-brain',
-        cost: 25,
+        cost: claudeCost,
         prompt: '"Write a marketing launch plan for an e-commerce store in Algeria with ad budget allocation."',
-        btnText: 'Simulate Chat Query (-25 pts)',
+        btnText: `Simulate Chat Query (-${claudeCost} pts)`,
         opName: 'Claude 3.5 Query (Chat)',
         unit: 'pts / request',
       },
@@ -83,9 +88,9 @@ export default function OriginalLandingPage() {
         name: 'Flux.1 Pro (Black Forest Labs)',
         category: 'Photorealistic & Commercial Image Generation',
         icon: 'fa-image',
-        cost: 65,
+        cost: fluxCost,
         prompt: '"Cinematic 4K photograph of Algiers Casbah at sunset with dramatic warm lighting."',
-        btnText: 'Simulate Image Render (-65 pts)',
+        btnText: `Simulate Image Render (-${fluxCost} pts)`,
         opName: 'Flux.1 Pro Render (Image)',
         unit: 'pts / image',
       },
@@ -93,9 +98,9 @@ export default function OriginalLandingPage() {
         name: 'Kling AI 1.5 HD (1080p)',
         category: 'Photorealistic & Cinematic AI Video Generation',
         icon: 'fa-video',
-        cost: 450,
+        cost: klingCost,
         prompt: '"Cinematic drone shot soaring over Jijel coastal cliffs with realistic ocean waves."',
-        btnText: 'Simulate 5s Video Cut (-450 pts)',
+        btnText: `Simulate 5s Video Cut (-${klingCost} pts)`,
         opName: 'Kling AI Video (5s)',
         unit: 'pts / 5s',
       },
@@ -105,9 +110,9 @@ export default function OriginalLandingPage() {
         name: 'Claude 3.5 Sonnet',
         category: 'Raisonnement Avancé, Code & Analyse de Documents',
         icon: 'fa-brain',
-        cost: 25,
+        cost: claudeCost,
         prompt: '"Rédigez un plan de lancement marketing pour une boutique e-commerce en Algérie avec budget publicitaire."',
-        btnText: "Tester l'appel Chat (-25 pts)",
+        btnText: `Tester l'appel Chat (-${claudeCost} pts)`,
         opName: 'Appel Claude 3.5 (Chat)',
         unit: 'pts / requête',
       },
@@ -115,9 +120,9 @@ export default function OriginalLandingPage() {
         name: 'Flux.1 Pro (Black Forest Labs)',
         category: "Génération d'Images Photoréalistes et Commerciales",
         icon: 'fa-image',
-        cost: 65,
+        cost: fluxCost,
         prompt: '"Photographie 4K cinématique de la Casbah d\'Alger au coucher du soleil avec lumière dorée."',
-        btnText: 'Tester le rendu Image (-65 pts)',
+        btnText: `Tester le rendu Image (-${fluxCost} pts)`,
         opName: 'Rendu Flux.1 Pro (Image)',
         unit: 'pts / image',
       },
@@ -125,9 +130,9 @@ export default function OriginalLandingPage() {
         name: 'Kling AI 1.5 HD (1080p)',
         category: 'Génération Vidéo IA Photoréaliste et Cinématique',
         icon: 'fa-video',
-        cost: 450,
+        cost: klingCost,
         prompt: '"Prise de vue cinématique par drone au-dessus des falaises de Jijel avec vagues réalistes."',
-        btnText: 'Tester la vidéo 5s (-450 pts)',
+        btnText: `Tester la vidéo 5s (-${klingCost} pts)`,
         opName: 'Production Kling AI (5s)',
         unit: 'pts / 5s',
       },
@@ -137,9 +142,9 @@ export default function OriginalLandingPage() {
         name: 'Claude 3.5 Sonnet',
         category: 'محادثة فائقة الذكاء وتحليل المستندات',
         icon: 'fa-brain',
-        cost: 25,
+        cost: claudeCost,
         prompt: '"اكتب لي خطة تسويقية لمشروع متجر إلكتروني في الجزائر بالدارجة مع ميزانية الإعلانات."',
-        btnText: 'جرّب استدعاء نموذج المحادثة (-25 نقطة)',
+        btnText: `جرّب استدعاء نموذج المحادثة (-${claudeCost} نقطة)`,
         opName: 'استدعاء Claude 3.5 (محادثة)',
         unit: 'نقطة / طلب',
       },
@@ -147,9 +152,9 @@ export default function OriginalLandingPage() {
         name: 'Flux.1 Pro (Black Forest Labs)',
         category: 'توليد صور فوتوغرافية وإعلانية واقعية',
         icon: 'fa-image',
-        cost: 65,
+        cost: fluxCost,
         prompt: '"صورة فوتوغرافية احترافية لقصبة الجزائر وقت الغروب، إضاءة سينمائية دقيقة بدقة 4K."',
-        btnText: 'جرّب توليد صورة سينمائية (-65 نقطة)',
+        btnText: `جرّب توليد صورة سينمائية (-${fluxCost} نقطة)`,
         opName: 'توليد صورة Flux.1 Pro',
         unit: 'نقطة / صورة',
       },
@@ -157,9 +162,9 @@ export default function OriginalLandingPage() {
         name: 'Kling AI 1.5 HD (1080p)',
         category: 'توليد مقاطع فيديو واقعية وحركة سينمائية',
         icon: 'fa-video',
-        cost: 450,
+        cost: klingCost,
         prompt: '"مشهد درون سينمائي يحلق فوق شواطئ جيجل الخلابة مع حركة أمواج واقعية."',
-        btnText: 'جرّب إنتاج فيديو 5 ثوانٍ (-450 نقطة)',
+        btnText: `جرّب إنتاج فيديو 5 ثوانٍ (-${klingCost} نقطة)`,
         opName: 'إنتاج فيديو Kling AI (5s)',
         unit: 'نقطة / 5 ثوانٍ',
       },
@@ -1131,10 +1136,10 @@ export default function OriginalLandingPage() {
                   className="ticket-cta-btn"
                   onClick={() =>
                     openTopUpModal({
-                      name: 'Starter Pack • Beginner',
-                      price: '1,800 DZD',
-                      points: '2,500 Points',
-                      ptsNum: 2500,
+                      name: TOPUP_PLANS.starter.name,
+                      price: TOPUP_PLANS.starter.priceFormatted,
+                      points: TOPUP_PLANS.starter.pointsFormatted,
+                      ptsNum: TOPUP_PLANS.starter.points,
                     })
                   }
                 >
@@ -1202,10 +1207,10 @@ export default function OriginalLandingPage() {
                   className="ticket-cta-btn"
                   onClick={() =>
                     openTopUpModal({
-                      name: 'Creator Pack • Pro',
-                      price: '4,500 DZD',
-                      points: '7,500 Points',
-                      ptsNum: 7500,
+                      name: TOPUP_PLANS.creatorPro.name,
+                      price: TOPUP_PLANS.creatorPro.priceFormatted,
+                      points: TOPUP_PLANS.creatorPro.pointsFormatted,
+                      ptsNum: TOPUP_PLANS.creatorPro.points,
                     })
                   }
                 >
@@ -1270,10 +1275,10 @@ export default function OriginalLandingPage() {
                   className="ticket-cta-btn"
                   onClick={() =>
                     openTopUpModal({
-                      name: 'Studio Pack • Enterprise',
-                      price: '12,000 DZD',
-                      points: '22,000 Points',
-                      ptsNum: 22000,
+                      name: TOPUP_PLANS.enterprise.name,
+                      price: TOPUP_PLANS.enterprise.priceFormatted,
+                      points: TOPUP_PLANS.enterprise.pointsFormatted,
+                      ptsNum: TOPUP_PLANS.enterprise.points,
                     })
                   }
                 >

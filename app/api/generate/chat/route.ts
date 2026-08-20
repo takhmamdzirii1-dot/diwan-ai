@@ -58,23 +58,7 @@ const openrouter = createOpenAI({
   }
 });
 
-// Point Cost Mapping
-const MODEL_COSTS: Record<string, number> = {
-  'openrouter/free': 0,
-  'nvidia/nemotron-3.5-lightning:free': 0,
-  'google/gemma-4-26b-a4b-it:free': 0,
-  'liquid/lfm-2.5-2.6b:free': 0,
-  'nvidia/nemotron-3-nano-30b-a3b:free': 0,
-  'deepseek/deepseek-r1:free': 0,
-  'google/gemini-2.0-flash-exp:free': 0,
-  'meta-llama/llama-3.2-3b-instruct:free': 0,
-  'mistralai/mistral-7b-instruct:free': 0,
-  'anthropic/claude-3.5-sonnet': 25,
-  'openai/gpt-4o': 30,
-  'deepseek/deepseek-chat': 5,
-  'flux-1-pro': 65,
-  'kling-ai-1-5': 240,
-};
+import { getModelCost } from '../../../../src/config/pricing';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -140,7 +124,7 @@ export async function POST(request: Request) {
     }
 
     const requestedModel = model.trim();
-    const cost = MODEL_COSTS[requestedModel] ?? 0;
+    const cost = getModelCost(requestedModel);
 
     // 3. Atomic Point Deduction
     let deductSuccess = cost === 0;

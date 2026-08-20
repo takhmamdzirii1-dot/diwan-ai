@@ -13,7 +13,9 @@ import {
   Image as ImageIcon,
   Sliders,
   Layers,
+  X,
 } from 'lucide-react';
+import { getModelCost } from '../../config/pricing';
 import useUser from '../../hooks/useUser';
 import { useModal } from '../../context/ModalContext';
 
@@ -55,7 +57,7 @@ export default function StudioImage() {
 
   const [gallery, setGallery] = useState<GeneratedImage[]>([]);
 
-  const cost = model === 'flux-1-pro' ? 65 : 80;
+  const cost = getModelCost(model) || 65;
 
   const handleEnhancePrompt = () => {
     if (!prompt.trim()) {

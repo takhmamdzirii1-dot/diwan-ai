@@ -15,6 +15,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import useUser from '../hooks/useUser';
+import { TOPUP_PLANS } from '../config/pricing';
 
 export interface TopUpPlan {
   name: string;
@@ -31,10 +32,10 @@ export interface TopUpModalProps {
 }
 
 const DEFAULT_PLAN: TopUpPlan = {
-  name: 'Creator Pack • Pro',
-  price: '4,500 DZD',
-  points: '7,500 Points',
-  ptsNum: 7500,
+  name: TOPUP_PLANS.creatorPro.name,
+  price: TOPUP_PLANS.creatorPro.priceFormatted,
+  points: TOPUP_PLANS.creatorPro.pointsFormatted,
+  ptsNum: TOPUP_PLANS.creatorPro.points,
 };
 
 export default function TopUpModal({
