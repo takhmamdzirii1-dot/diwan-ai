@@ -56,7 +56,7 @@ export default function StudioImage() {
   const [gallery, setGallery] = useState<GeneratedImage[]>([
     {
       id: 'img-1',
-      url: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=1200&q=80',
+      url: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=80',
       prompt: 'Cinematic 8K render of Algiers coastal architecture with Mediterranean sunset glow and dramatic clouds.',
       aspectRatio: '16:9',
       style: 'Photorealistic 8K',
@@ -65,7 +65,7 @@ export default function StudioImage() {
     },
     {
       id: 'img-2',
-      url: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1200&q=80',
+      url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80',
       prompt: 'Futuristic solar-powered desert transport vehicle speeding across the Algerian Sahara dunes, golden dusk.',
       aspectRatio: '16:9',
       style: 'Cinematic Concept Art',

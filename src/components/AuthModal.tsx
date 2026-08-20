@@ -165,7 +165,7 @@ export default function AuthModal({
     }
   };
 
-  const isVisible = typeof propIsOpen === 'boolean' ? propIsOpen || internalIsOpen : internalIsOpen;
+  const isVisible = typeof propIsOpen === 'boolean' ? propIsOpen : internalIsOpen;
 
   if (!isVisible) return null;
 

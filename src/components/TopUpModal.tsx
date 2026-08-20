@@ -223,7 +223,8 @@ export default function TopUpModal({
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="06 XX XX XX XX"
-                      className="w-full h-12 rounded-2xl border border-white/10 bg-[#050608] pl-11 pr-4 text-sm font-mono text-white placeholder-white/30 outline-none transition-all duration-200 focus:border-[#1FD8B8] focus:ring-1 focus:ring-[#1FD8B8]"
+                      className="w-full h-12 rounded-2xl border border-white/10 bg-[#050608] pl-12 pr-4 text-sm font-mono text-white placeholder-white/30 outline-none transition-all duration-200 focus:border-[#1FD8B8] focus:ring-1 focus:ring-[#1FD8B8]"
+                      style={{ paddingLeft: '48px' }}
                     />
                   </div>
                 </div>
