@@ -130,25 +130,25 @@ function NavItem({
   };
 
   return (
-    <div className="flex flex-col w-full px-2">
+    <div className="flex flex-col w-full">
       <div 
-        className={`group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all select-none overflow-hidden w-full
+        className={`group flex items-center justify-between px-3 py-2.5 mx-2 rounded-xl cursor-pointer transition-all select-none overflow-hidden
           ${isActive 
-            ? 'bg-white/[0.08] text-white font-medium' 
-            : 'text-sm text-white/70 hover:text-white hover:bg-white/5'
+            ? 'bg-white/[0.08] text-white font-medium shadow-sm' 
+            : 'text-sm font-medium text-white/60 hover:text-white hover:bg-white/[0.04]'
           }
         `}
-        style={{ paddingLeft: `${level * 12 + 12}px` }}
+        style={{ paddingLeft: `${level === 0 ? 12 : level * 12 + 12}px` }}
         onClick={handleClick}
       >
-        <div className="flex items-center gap-2 truncate">
+        <div className="flex items-center gap-3 truncate w-full">
           <item.icon 
             className={`w-4 h-4 shrink-0 transition-colors
               ${isActive ? 'text-white' : 'text-white/40 group-hover:text-white/70'}
             `} 
             strokeWidth={1.5} 
           />
-          <span className="truncate" dir="auto">
+          <span className="truncate w-full text-left" dir="auto">
             {item.title}
           </span>
         </div>
@@ -342,7 +342,7 @@ export default function StudioSidebar({
         />
       )}
 
-      <aside className={`flex flex-col fixed lg:static top-0 bottom-0 left-0 z-50 w-[280px] h-full bg-[#0A0B0D] border-r border-white/5 font-sans transition-transform duration-300 ${
+      <aside className={`flex flex-col fixed lg:static top-0 bottom-0 left-0 z-50 w-[280px] h-full bg-[#050506] border-r border-white/5 font-sans transition-transform duration-300 ${
         isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
         <WorkspaceSwitcher />
@@ -351,7 +351,7 @@ export default function StudioSidebar({
           {mockNavGroups.map((group, idx) => (
             <div key={idx} className="flex flex-col gap-0.5">
               {group.heading && (
-                <span className="text-[11px] font-semibold tracking-wider text-white/30 mb-1.5 px-6 uppercase">
+                <span className="text-[11px] font-semibold text-white/30 uppercase tracking-widest px-3 mb-2 mt-6">
                   {group.heading}
                 </span>
               )}
