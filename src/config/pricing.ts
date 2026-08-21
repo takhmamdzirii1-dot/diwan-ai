@@ -62,11 +62,41 @@ export const MODEL_PRICES: Record<string, { name: string; cost: number; category
     category: 'High-Speed Chat',
     provider: 'Meta',
   },
-  'openrouter/free': {
-    name: 'Auto-Routing Free Engine',
+  'orcarouter/auto': {
+    name: 'OrcaRouter Auto',
     cost: 0,
     category: 'Chat',
-    provider: 'OpenRouter',
+    provider: 'OrcaRouter',
+  },
+  'orcarouter/free': {
+    name: 'OrcaRouter Free',
+    cost: 0,
+    category: 'Chat',
+    provider: 'OrcaRouter',
+  },
+  'qwen/qwen3.8-27b-free': {
+    name: 'Qwen3.8 27B',
+    cost: 0,
+    category: 'Chat',
+    provider: 'Qwen',
+  },
+  'deepseek/deepseek-v4-pro-free': {
+    name: 'DeepSeek V4 Pro',
+    cost: 0,
+    category: 'Chat & Reasoning',
+    provider: 'DeepSeek AI',
+  },
+  'deepseek/deepseek-v4-flash-free': {
+    name: 'DeepSeek V4 Flash',
+    cost: 0,
+    category: 'Chat & Reasoning',
+    provider: 'DeepSeek AI',
+  },
+  'tencent/hy3-free': {
+    name: 'Tencent HY3',
+    cost: 0,
+    category: 'Chat & Reasoning',
+    provider: 'Tencent',
   }
 };
 

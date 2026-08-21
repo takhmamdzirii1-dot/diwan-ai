@@ -3,59 +3,10 @@ import { createClient } from '../../../../src/lib/supabase/server';
 import { streamText } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 
-const openrouter = createOpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY,
+const orcaRouter = createOpenAI({
+  baseURL: 'https://api.orcarouter.ai/v1',
+  apiKey: process.env.apiKey,
   compatibility: 'compatible',
-  headers: {
-    'HTTP-Referer': 'https://diwan-ai.vercel.app',
-    'X-Title': 'VANTRA AI',
-  },
-  fetch: async (url, options) => {
-    const response = await fetch(url, options);
-    if (!response.body) return response;
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    const encoder = new TextEncoder();
-
-    const stream = new ReadableStream({
-      async start(controller) {
-        let buffer = '';
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-              try {
-                // Validate JSON. If it fails, silently ignore OpenRouter safety metadata
-                JSON.parse(line.slice(6));
-                controller.enqueue(encoder.encode(line + '\n'));
-              } catch (e) {
-                // Silently ignore invalid JSON chunks
-              }
-            } else {
-              controller.enqueue(encoder.encode(line + '\n'));
-            }
-          }
-        }
-        if (buffer) {
-          controller.enqueue(encoder.encode(buffer));
-        }
-        controller.close();
-      }
-    });
-
-    return new Response(stream, {
-      status: response.status,
-      headers: response.headers,
-    });
-  }
 });
 
 import { getModelCost } from '../../../../src/config/pricing';
@@ -90,7 +41,7 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}));
     
     // Support standard format (`messages`) or our legacy format (`prompt` + `messagesHistory`)
-    const { prompt, model = 'openrouter/free', messages } = body;
+    const { prompt, model = 'orcarouter/auto', messages } = body;
     
     let messagesPayload = messages;
     if (!messagesPayload || !Array.isArray(messagesPayload) || messagesPayload.length === 0) {
@@ -179,14 +130,14 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!process.env.OPENROUTER_API_KEY) {
-      return NextResponse.json({ error: 'OPENROUTER_API_KEY is not set' }, { status: 500 });
+    if (!process.env.apiKey) {
+      return NextResponse.json({ error: 'OrcaRouter API key is not set' }, { status: 500 });
     }
 
     // 4. Vercel AI SDK Streaming
     try {
       const result = await streamText({
-        model: openrouter(requestedModel),
+        model: orcaRouter(requestedModel),
         messages: messagesPayload,
       });
       

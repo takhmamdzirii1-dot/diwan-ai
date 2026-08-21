@@ -13,6 +13,54 @@ import MessageBubble from './MessageBubble';
 
 export const AVAILABLE_MODELS: ModelOption[] = [
   {
+    id: 'orcarouter/auto',
+    name: 'OrcaRouter Auto',
+    provider: 'OrcaRouter',
+    cost: 0,
+    tag: 'Smart routing across free models (0 pts)',
+    isFree: true,
+  },
+  {
+    id: 'orcarouter/free',
+    name: 'OrcaRouter Free',
+    provider: 'OrcaRouter',
+    cost: 0,
+    tag: 'Free model routing (0 pts)',
+    isFree: true,
+  },
+  {
+    id: 'qwen/qwen3.8-27b-free',
+    name: 'Qwen3.8 27B (Free)',
+    provider: 'Qwen',
+    cost: 0,
+    tag: 'Open-weight reasoning (0 pts)',
+    isFree: true,
+  },
+  {
+    id: 'deepseek/deepseek-v4-pro-free',
+    name: 'DeepSeek V4 Pro (Free)',
+    provider: 'DeepSeek AI',
+    cost: 0,
+    tag: 'Flagship MoE reasoning (0 pts)',
+    isFree: true,
+  },
+  {
+    id: 'deepseek/deepseek-v4-flash-free',
+    name: 'DeepSeek V4 Flash (Free)',
+    provider: 'DeepSeek AI',
+    cost: 0,
+    tag: 'Fast MoE reasoning (0 pts)',
+    isFree: true,
+  },
+  {
+    id: 'tencent/hy3-free',
+    name: 'Tencent HY3 (Free)',
+    provider: 'Tencent',
+    cost: 0,
+    tag: 'Production-grade reasoning (0 pts)',
+    isFree: true,
+  },
+  {
     id: 'nvidia/nemotron-3.5-lightning:free',
     name: 'Nemotron 3.5 Lightning (Free)',
     provider: 'NVIDIA AI',
@@ -97,9 +145,7 @@ export default function StudioChat({
   activeSessionId,
 }: StudioChatProps) {
   const { user, refreshBalance } = useUser();
-  const [selectedModelId, setSelectedModelId] = useState(
-    'google/gemini-3.1-pro'
-  );
+  const [selectedModelId, setSelectedModelId] = useState('orcarouter/auto');
   const [stagedPrompt, setStagedPrompt] = useState<string>('');
   const [lang, setLang] = useState('en');
 
