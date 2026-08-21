@@ -478,6 +478,93 @@ button {
   100% { transform: translate3d(-30px, 30px, 0) scale(1.1); }
 }
 
+/* Studio chat: quiet, centered, and intentionally more spacious than the marketing UI. */
+.studio-chat {
+  background:
+    radial-gradient(circle at 52% 26%, rgba(45, 29, 67, 0.24), transparent 30rem),
+    #07070a;
+}
+
+.studio-chat-surface {
+  background: linear-gradient(180deg, rgba(7, 7, 10, 0.2), rgba(7, 7, 10, 0.9));
+}
+
+.studio-empty-state {
+  gap: 0;
+  padding-top: clamp(2rem, 8vh, 6rem);
+}
+
+.studio-empty-kicker {
+  color: rgba(255,255,255,.28);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .22em;
+  margin-bottom: 1.2rem;
+}
+
+.studio-empty-title {
+  color: rgba(255,255,255,.9);
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 4.4vw, 3.5rem);
+  font-weight: 500;
+  letter-spacing: -.055em;
+  line-height: 1.05;
+  text-align: center;
+}
+
+.studio-empty-subtitle {
+  color: rgba(255,255,255,.42);
+  font-size: 15px;
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.studio-prompt-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .625rem;
+  margin-top: 3rem;
+  max-width: 48rem;
+}
+
+.studio-prompt-chip {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  min-height: 2.75rem;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 999px;
+  background: rgba(255,255,255,.025);
+  color: rgba(255,255,255,.7);
+  padding: .65rem 1rem;
+  text-align: left;
+  transition: border-color .2s ease, background .2s ease, transform .2s ease;
+}
+
+.studio-prompt-chip:hover {
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.18);
+  transform: translateY(-1px);
+}
+
+.studio-prompt-chip-title {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.studio-prompt-chip-copy {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .studio-empty-state { min-height: calc(100vh - 5rem); padding-top: 1rem; }
+  .studio-empty-title { font-size: 2.25rem; }
+  .studio-prompt-grid { margin-top: 2rem; }
+  .studio-prompt-chip { width: 100%; justify-content: center; }
+}
+
 /* ==========================================================================
    BUTTONS: SINGLE DOMINANT ACCENT & RESTRAINED HOVERS
    ========================================================================== */

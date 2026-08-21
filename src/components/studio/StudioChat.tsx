@@ -1,14 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import {
-  Sparkles,
-  Bot,
-  User,
-  Copy,
-  Check,
-  Terminal,
-} from 'lucide-react';
+import { Bot } from 'lucide-react';
 import { useChat } from '@ai-sdk/react';
 import useUser from '../../hooks/useUser';
 import {
@@ -184,37 +177,10 @@ export default function StudioChat({
   };
 
   return (
-    <div className="flex-1 flex flex-col relative min-w-0 h-full bg-[#050506] text-white font-sans overflow-hidden">
-      
-      {/* 3. SCROLLABLE MESSAGES CONTAINER */}
-      <div className="flex-1 overflow-y-auto w-full custom-scrollbar">
-        
-        {/* THIS IS THE CENTERED WRAPPER FOR MESSAGES */}
-        <div className="max-w-3xl mx-auto w-full px-4 pt-12 pb-48 flex flex-col gap-8">
-          
-          {messages.length === 0 ? (
-             <div className="flex flex-col items-center justify-center min-h-[50vh] px-4 w-full">
-                <div className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-center mb-6 shadow-xl">
-                  <Bot className="w-6 h-6 text-[#1FD8B8]" />
-                </div>
-                <h3 className="text-xl font-medium text-white mb-2">Welcome to VANTRA Studio</h3>
-                <p className="text-sm text-white/40 mb-8 text-center max-w-md">
-                  Select a model below and start your conversation, or try one of these examples:
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl">
-                  {SUGGESTED_PROMPTS.map((suggestion, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setStagedPrompt(suggestion.prompt)}
-                      className="flex flex-col text-left p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] hover:border-white/10 transition-all cursor-pointer"
-                    >
-                      <span className="text-sm font-semibold text-white/90 mb-1">{suggestion.title}</span>
-                      <span className="text-xs text-white/40 line-clamp-2">{suggestion.prompt}</span>
-                    </button>
-                  ))}
-                </div>
-             </div>
-          ) : (
+    <div className="studio-chat flex-1 flex flex-col relative min-w-0 h-full bg-[#050506] text-white font-sans overflow-hidden">
+      <div className="studio-chat-surface flex-1 overflow-y-auto w-full custom-scrollbar">
+        <div className="studio-chat-content max-w-3xl mx-auto w-full px-4 pt-8 pb-48 flex flex-col gap-8">
+          {messages.length === 0 ? null : (
             messages.map((msg, idx) => (
               <div key={msg.id || idx} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 

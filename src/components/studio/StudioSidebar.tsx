@@ -134,8 +134,8 @@ function NavItem({
       <div 
         className={`group flex items-center justify-between px-3 py-2.5 mx-2 rounded-xl cursor-pointer transition-all select-none overflow-hidden
           ${isActive 
-            ? 'bg-white/[0.08] text-white font-medium shadow-sm' 
-            : 'text-sm font-medium text-white/60 hover:text-white hover:bg-white/[0.04]'
+            ? 'bg-[#1FD8B8]/[0.09] text-white font-medium shadow-sm ring-1 ring-[#1FD8B8]/10' 
+            : 'text-sm font-medium text-white/55 hover:text-white hover:bg-white/[0.05]'
           }
         `}
         style={{ paddingLeft: `${level === 0 ? 12 : level * 12 + 12}px` }}
@@ -375,7 +375,7 @@ export default function StudioSidebar({
         />
       )}
 
-      <aside className={`studio-sidebar flex flex-col fixed lg:static top-0 bottom-0 left-0 z-50 w-[280px] h-full bg-[#050506] border-r border-white/5 font-sans transition-transform duration-300 ${
+      <aside className={`studio-sidebar flex flex-col fixed lg:static top-0 bottom-0 left-0 z-50 w-[292px] h-full bg-[#08080b] border-r border-white/[0.08] font-sans transition-transform duration-300 shadow-2xl shadow-black/20 ${
         isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
         <WorkspaceSwitcher />
