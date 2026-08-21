@@ -114,7 +114,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         
         {showRing && isFocused && (
           <motion.span 
-            className="absolute inset-0 rounded-md pointer-events-none ring-2 ring-offset-0 ring-violet-500/30"
+            className="absolute inset-0 rounded-md pointer-events-none ring-2 ring-offset-0 ring-[#1FD8B8]/30"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -313,6 +313,7 @@ export function AnimatedAIChat({
                 setShowCommandPalette(false);
             }
         } else if (e.key === "Enter" && !e.shiftKey) {
+            if (e.nativeEvent.isComposing || e.keyCode === 229) return;
             e.preventDefault();
             if (value.trim() || attachments.length > 0) {
                 handleSendMessage();
@@ -399,7 +400,7 @@ export function AnimatedAIChat({
 
     return (
         <div className={cn(
-            "flex flex-col w-full items-center justify-center bg-transparent text-white relative overflow-hidden",
+            "flex flex-col w-full items-center justify-center bg-transparent text-white relative overflow-visible",
             isExpanded ? "min-h-screen p-6" : "p-0"
         )}>
             <input
@@ -413,7 +414,7 @@ export function AnimatedAIChat({
 
             {isExpanded && (
                 <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
-                    <div className="absolute top-0 left-1/4 w-96 h-96 bg-violet-500/10 rounded-full mix-blend-normal filter blur-[128px] animate-pulse" />
+                    <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#1FD8B8]/10 rounded-full mix-blend-normal filter blur-[128px] animate-pulse" />
                     <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-500/10 rounded-full mix-blend-normal filter blur-[128px] animate-pulse delay-700" />
                     <div className="absolute top-1/4 right-1/3 w-64 h-64 bg-fuchsia-500/10 rounded-full mix-blend-normal filter blur-[96px] animate-pulse delay-1000" />
                 </div>
@@ -434,7 +435,7 @@ export function AnimatedAIChat({
                                 transition={{ delay: 0.2, duration: 0.5 }}
                                 className="inline-block"
                             >
-                                <h1 className="text-3xl font-medium tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white/90 to-white/40 pb-1">
+                                <h1 className="studio-hero-title text-3xl font-medium tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white/90 to-white/40 pb-1">
                                     How can I help today?
                                 </h1>
                                 <motion.div 
@@ -636,7 +637,7 @@ export function AnimatedAIChat({
                                                                 className={cn(
                                                                     "w-full flex flex-col px-3 py-2 rounded-lg text-left transition-colors",
                                                                     selectedModelId === model.id
-                                                                        ? "bg-violet-500/10 text-violet-100"
+                                                                        ? "bg-[#1FD8B8]/10 text-violet-100"
                                                                         : "text-white/60 hover:bg-white/5 hover:text-white"
                                                                 )}
                                                             >

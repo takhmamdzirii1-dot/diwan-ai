@@ -375,7 +375,7 @@ export default function StudioSidebar({
         />
       )}
 
-      <aside className={`flex flex-col fixed lg:static top-0 bottom-0 left-0 z-50 w-[280px] h-full bg-[#050506] border-r border-white/5 font-sans transition-transform duration-300 ${
+      <aside className={`studio-sidebar flex flex-col fixed lg:static top-0 bottom-0 left-0 z-50 w-[280px] h-full bg-[#050506] border-r border-white/5 font-sans transition-transform duration-300 ${
         isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
         <WorkspaceSwitcher />
