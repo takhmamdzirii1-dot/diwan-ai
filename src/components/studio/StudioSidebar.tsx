@@ -1,24 +1,20 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
-  FolderKanban,
-  Settings,
-  LogOut,
-  LogIn,
-  Hash,
-  ChevronDown,
-  ChevronRight,
-  CreditCard,
-  Terminal,
-  Command,
+  Plus,
+  Search,
   MessageSquare,
   Image as ImageIcon,
   Video,
   Trash2,
-  Plus,
+  LogOut,
+  LogIn,
+  CreditCard,
+  PanelLeftClose,
+  PanelLeftOpen,
   ArrowLeft,
-  X
+  MessagesSquare,
 } from 'lucide-react';
 import Link from 'next/link';
 import useUser from '../../hooks/useUser';
@@ -31,188 +27,10 @@ export interface ChatSession {
   title: string;
   mode: StudioMode;
   timestamp: string;
+  createdAt?: number;
   model: string;
 }
 
-export type NavItemData = {
-  id: string;
-  title: string;
-  icon: React.ElementType;
-  badge?: number | string;
-  shortcut?: string;
-  children?: NavItemData[];
-  onSelect?: () => void;
-  ActionIcon?: React.ElementType;
-  onActionClick?: (e: React.MouseEvent) => void;
-};
-
-export type NavGroupData = {
-  heading?: string;
-  items: NavItemData[];
-};
-
-// ---------------------------------------------------------------------------
-// Workspace Switcher (Mimicking Acme Corp exactly)
-// ---------------------------------------------------------------------------
-function WorkspaceSwitcher() {
-  const [isOpen, setIsOpen] = useState(false);
-  
-  return (
-    <div className="relative px-3 pt-3 mb-2">
-      <div 
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between px-2 py-2 rounded-lg hover:bg-white/[0.04] cursor-pointer transition-colors select-none group"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-[6px] bg-white/[0.08] border border-white/5 flex items-center justify-center font-bold shadow-sm text-white">
-            <img src="/brandmark.svg" alt="V" className="h-3.5 w-3.5" />
-          </div>
-          <div className="flex flex-col overflow-hidden">
-            <span className="text-[13px] font-medium leading-none mb-1 text-white truncate max-w-[120px]">
-              VANTRA STUDIO
-            </span>
-            <span className="text-[11px] text-white/40 leading-none">Unified AI Gateway</span>
-          </div>
-        </div>
-        <ChevronDown className="w-4 h-4 text-white/40 group-hover:text-white/70 transition-colors shrink-0" strokeWidth={1.5} />
-      </div>
-
-      {isOpen && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute top-[52px] left-0 w-full bg-[#0E1015] border border-white/10 rounded-lg shadow-xl z-50 py-1 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100">
-            <div 
-              onClick={() => setIsOpen(false)}
-              className="px-3 py-2 mx-1 text-[13px] rounded-md cursor-pointer transition-colors bg-[#1FD8B8]/10 text-[#1FD8B8] font-medium"
-            >
-              VANTRA STUDIO
-            </div>
-            <div className="h-px bg-white/10 my-1 mx-2" />
-            <Link href="/" className="px-3 py-2 mx-1 text-[13px] text-[#94A3B8] hover:bg-white/5 rounded-md cursor-pointer flex items-center gap-2 transition-colors">
-              <ArrowLeft className="h-3.5 w-3.5" /> Exit to Home
-            </Link>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Clean NavItem Component
-// ---------------------------------------------------------------------------
-function NavItem({ 
-  item, 
-  activeId, 
-  level = 0
-}: { 
-  item: NavItemData; 
-  activeId: string | null; 
-  level?: number;
-}) {
-  const isActive = activeId === item.id;
-  const hasChildren = !!item.children;
-  const [isOpen, setIsOpen] = useState(true); // Open by default for history
-
-  const handleClick = () => {
-    if (hasChildren) {
-      setIsOpen(!isOpen);
-    } else if (item.onSelect) {
-      item.onSelect();
-    }
-  };
-
-  return (
-    <div className="flex flex-col w-full">
-      <div 
-        className={`group flex items-center justify-between px-3 py-2.5 mx-2 rounded-xl cursor-pointer transition-all select-none overflow-hidden
-          ${isActive
-            ? 'lux-nav-active bg-gradient-to-r from-[#1FD8B8]/[0.11] to-transparent text-white font-medium ring-1 ring-[#1FD8B8]/15'
-            : 'text-sm font-medium text-white/55 hover:text-white hover:bg-white/[0.05]'
-          }
-        `}
-        style={{ paddingLeft: `${level === 0 ? 12 : level * 12 + 12}px` }}
-        onClick={handleClick}
-      >
-        <div className="flex items-center gap-3 truncate w-full">
-          <item.icon 
-            className={`w-4 h-4 shrink-0 transition-colors
-              ${isActive ? 'text-white' : 'text-white/40 group-hover:text-white/70'}
-            `} 
-            strokeWidth={1.5} 
-          />
-          <span className="truncate w-full text-left" dir="auto">
-            {item.title}
-          </span>
-        </div>
-        
-        <div className="flex items-center gap-2 shrink-0">
-          {item.shortcut && (
-             <kbd className="hidden group-hover:inline-flex items-center justify-center h-5 px-1.5 text-[10px] font-medium font-mono text-[#64748B] bg-white/[0.03] border border-white/10 rounded-[4px] shadow-xs">
-               {item.shortcut}
-             </kbd>
-          )}
-          {item.badge !== undefined && (
-            <span
-              className={`flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-medium rounded-full ${
-                item.badge === 'Soon'
-                  ? 'bg-[#1FD8B8]/10 text-[#1FD8B8]/70 border border-[#1FD8B8]/15'
-                  : 'bg-white/10 text-white/80'
-              }`}
-            >
-              {item.badge}
-            </span>
-          )}
-          {item.ActionIcon && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                item.onActionClick?.(e);
-              }}
-              className="opacity-0 group-hover:opacity-100 text-[#64748B] hover:text-red-400 p-1 transition"
-            >
-              <item.ActionIcon className="h-3.5 w-3.5" />
-            </button>
-          )}
-          {hasChildren && (
-            <ChevronRight 
-              className={`w-3.5 h-3.5 text-[#64748B] transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} 
-              strokeWidth={2}
-            />
-          )}
-        </div>
-      </div>
-
-      {hasChildren && (
-        <div 
-          className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${
-            isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-          }`}
-        >
-          <div className="overflow-hidden min-h-0 relative flex flex-col gap-0.5 mt-0.5">
-            <div 
-              className="absolute top-0 bottom-0 border-l border-white/5"
-              style={{ left: `${level * 12 + 17.5}px` }}
-            />
-            {item.children!.map(child => (
-              <NavItem 
-                key={child.id} 
-                item={child} 
-                activeId={activeId} 
-                level={level + 1} 
-              />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Main SidebarNav Component
-// ---------------------------------------------------------------------------
 interface StudioSidebarProps {
   currentMode: StudioMode;
   onSelectMode: (mode: StudioMode) => void;
@@ -224,6 +42,24 @@ interface StudioSidebarProps {
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
 }
+
+/* Date grouping — Claude style */
+function groupLabel(createdAt: number): string {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const day = 86400000;
+  if (createdAt >= startOfToday) return 'Today';
+  if (createdAt >= startOfToday - day) return 'Yesterday';
+  if (createdAt >= startOfToday - 7 * day) return 'Previous 7 days';
+  if (createdAt >= startOfToday - 30 * day) return 'Previous 30 days';
+  return 'Older';
+}
+
+const MODE_META: { id: StudioMode; label: string; icon: React.ElementType }[] = [
+  { id: 'chat', label: 'Chats', icon: MessageSquare },
+  { id: 'image', label: 'Image', icon: ImageIcon },
+  { id: 'video', label: 'Video', icon: Video },
+];
 
 export default function StudioSidebar({
   currentMode,
@@ -239,109 +75,49 @@ export default function StudioSidebar({
   const { user, balance, signOut } = useUser();
   const { openTopUpModal, openAuthModal } = useModal();
 
-  const filteredSessions = sessions.filter((s) => s.mode === currentMode);
+  const [collapsed, setCollapsed] = useState(false);
+  const [query, setQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
 
-  const historyItems: NavItemData[] = filteredSessions.map(session => ({
-    id: session.id,
-    title: session.title,
-    icon: Hash,
-    ActionIcon: Trash2,
-    onSelect: () => {
-      onSelectSession(session.id);
-      onCloseMobile?.();
-    },
-    onActionClick: (e) => onDeleteSession(session.id, e),
-  }));
+  useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem('vantra_sidebar_collapsed') === '1');
+    } catch {}
+  }, []);
 
-  const navGroups: NavGroupData[] = [
-    {
-      items: [
-        {
-          id: 'new',
-          title: 'New Session',
-          icon: Plus,
-          shortcut: '⌘N',
-          onSelect: () => {
-            onNewSession();
-            onCloseMobile?.();
-          }
-        },
-      ]
-    },
-    {
-      heading: 'Create',
-      items: [
-        {
-          id: 'chat',
-          title: 'AI Chat',
-          icon: MessageSquare,
-          onSelect: () => { onSelectMode('chat'); onCloseMobile?.(); }
-        },
-        {
-          id: 'coding',
-          title: 'Coding & Analysis',
-          icon: Terminal,
-          onSelect: () => { onSelectMode('chat'); onCloseMobile?.(); }
-        },
-        {
-          id: 'image',
-          title: 'Image Generator',
-          icon: ImageIcon,
-          onSelect: () => { onSelectMode('image'); onCloseMobile?.(); }
-        },
-        {
-          id: 'video',
-          title: 'Video Engine',
-          icon: Video,
-          onSelect: () => { onSelectMode('video'); onCloseMobile?.(); }
-        },
-      ]
-    },
-    {
-      heading: 'Workspace',
-      items: [
-        {
-          id: 'models',
-          title: 'Models',
-          icon: Command,
-          badge: 'Soon',
-          onSelect: () => {}
-        },
-        {
-          id: 'projects',
-          title: 'Recent Sessions',
-          icon: FolderKanban,
-          badge: filteredSessions.length || undefined,
-          children: historyItems.length > 0 ? historyItems : [
-            { id: 'empty', title: 'No recent activity', icon: Hash }
-          ]
-        },
-        {
-          id: 'wallet',
-          title: 'Credits Balance',
-          icon: CreditCard,
-          badge: balance > 999 ? `${(balance / 1000).toFixed(1)}k` : balance,
-          onSelect: () => openTopUpModal()
-        },
-      ]
-    },
-    {
-      heading: 'Settings',
-      items: [
-        {
-          id: 'settings',
-          title: 'Settings',
-          icon: Settings,
-          badge: 'Soon',
-          shortcut: '⌘,',
-          onSelect: () => {}
-        },
-      ]
-    }
-  ];
+  const toggleCollapse = () => {
+    setCollapsed((c) => {
+      try {
+        localStorage.setItem('vantra_sidebar_collapsed', c ? '0' : '1');
+      } catch {}
+      return !c;
+    });
+  };
+
+  const modeSessions = useMemo(
+    () =>
+      sessions
+        .filter((s) => s.mode === currentMode)
+        .filter((s) => !query.trim() || s.title.toLowerCase().includes(query.trim().toLowerCase()))
+        .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)),
+    [sessions, currentMode, query]
+  );
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, ChatSession[]>();
+    modeSessions.forEach((s) => {
+      const label = groupLabel(s.createdAt ?? Date.now());
+      if (!map.has(label)) map.set(label, []);
+      map.get(label)!.push(s);
+    });
+    return Array.from(map.entries());
+  }, [modeSessions]);
+
+  const isCollapsed = collapsed && !isMobileOpen;
 
   return (
     <>
+      {/* Mobile backdrop */}
       {isMobileOpen && (
         <div
           onClick={onCloseMobile}
@@ -349,97 +125,291 @@ export default function StudioSidebar({
         />
       )}
 
-      <aside className={`studio-sidebar flex flex-col fixed lg:static top-0 bottom-0 left-0 z-50 w-[292px] h-full bg-[#08080b] border-r border-white/[0.08] font-sans transition-transform duration-300 shadow-2xl shadow-black/20 ${
-        isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-      }`}>
-        {/* Mobile close button */}
-        {isMobileOpen && (
+      <aside
+        className={`studio-sidebar flex flex-col fixed lg:static top-0 bottom-0 left-0 z-50 h-full bg-[#070709]/95 backdrop-blur-xl border-r border-white/[0.06] font-sans transition-all duration-300 shadow-2xl shadow-black/30 ${
+          isCollapsed ? 'w-[72px]' : 'w-[264px]'
+        } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+      >
+        {/* ── Logo row ── */}
+        <div className={`flex items-center h-[60px] shrink-0 border-b border-white/[0.05] ${isCollapsed ? 'justify-center px-2' : 'justify-between px-4'}`}>
+          <Link href="/" className="flex items-center gap-2.5 group cursor-pointer" title="Back to home">
+            <div className="relative w-8 h-8 flex items-center justify-center">
+              <div className="absolute inset-0 bg-[#1FD8B8]/15 blur-lg rounded-full scale-110 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <img src="/brandmark.svg" alt="VANTRA" className="relative w-6 h-6 object-contain" />
+            </div>
+            {!isCollapsed && (
+              <span className="font-heading font-bold text-[13px] tracking-[0.18em] text-white/90 group-hover:text-white transition-colors">
+                VANTRA
+              </span>
+            )}
+          </Link>
+
+          {!isCollapsed && (
+            <button
+              type="button"
+              onClick={toggleCollapse}
+              className="hidden lg:flex p-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+              title="Collapse sidebar"
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Collapsed: expand button */}
+        {isCollapsed && (
           <button
             type="button"
-            onClick={onCloseMobile}
-            aria-label="Close menu"
-            className="absolute top-3 right-3 z-10 p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition lg:hidden cursor-pointer"
+            onClick={toggleCollapse}
+            className="hidden lg:flex mx-auto mt-3 p-2 rounded-lg text-white/40 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+            title="Expand sidebar"
           >
-            <X className="h-4 w-4" />
+            <PanelLeftOpen className="h-4 w-4" />
           </button>
         )}
 
-        <WorkspaceSwitcher />
+        {/* ── New chat (primary action) ── */}
+        <div className={`${isCollapsed ? 'px-2.5' : 'px-3'} pt-4`}>
+          <button
+            type="button"
+            onClick={() => {
+              onNewSession();
+              onCloseMobile?.();
+            }}
+            className={`group flex items-center gap-2.5 h-10 rounded-xl border border-white/[0.09] bg-white/[0.04] hover:bg-[#1FD8B8]/[0.1] hover:border-[#1FD8B8]/40 text-white/85 hover:text-white text-[13px] font-semibold transition-all duration-200 hover:-translate-y-px hover:shadow-[0_8px_24px_-12px_rgba(31,216,184,0.5)] cursor-pointer ${
+              isCollapsed ? 'w-10 justify-center mx-auto' : 'w-full px-3.5'
+            }`}
+            title="New chat"
+          >
+            <Plus className="h-4 w-4 text-[#1FD8B8] group-hover:rotate-90 transition-transform duration-300" />
+            {!isCollapsed && <span>New chat</span>}
+          </button>
+        </div>
 
-        <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex flex-col gap-5 mt-4">
-          {navGroups.map((group, idx) => (
-            <div key={idx} className="flex flex-col gap-0.5">
-              {group.heading && (
-                <span className="text-[11px] font-semibold text-white/30 uppercase tracking-widest px-3 mb-2 mt-6">
-                  {group.heading}
-                </span>
+        {/* ── Search ── */}
+        <div className={`${isCollapsed ? 'px-2.5' : 'px-3'} pt-2.5`}>
+          {isCollapsed ? (
+            <button
+              type="button"
+              onClick={() => {
+                setCollapsed(false);
+                setSearchOpen(true);
+              }}
+              className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl text-white/40 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+              title="Search chats"
+            >
+              <Search className="h-4 w-4" />
+            </button>
+          ) : (
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30 pointer-events-none" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onFocus={() => setSearchOpen(true)}
+                onBlur={() => setSearchOpen(false)}
+                placeholder="Search chats..."
+                className="w-full h-9 rounded-xl bg-white/[0.03] border border-white/[0.07] focus:border-[#1FD8B8]/40 pl-9 pr-3 text-[12.5px] text-white placeholder-white/25 outline-none transition-colors"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* ── Modes ── */}
+        <div className={`${isCollapsed ? 'px-2' : 'px-3'} pt-4`}>
+          {!isCollapsed && (
+            <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/25 px-1 mb-2">Studio</p>
+          )}
+          <div className={`flex ${isCollapsed ? 'flex-col items-center gap-1.5' : 'flex-row gap-1.5'}`}>
+            {MODE_META.map(({ id, label, icon: Icon }) => {
+              const active = currentMode === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => {
+                    onSelectMode(id);
+                    onCloseMobile?.();
+                  }}
+                  title={label}
+                  className={`flex items-center rounded-xl text-[12px] font-medium transition-all duration-200 cursor-pointer ${
+                    isCollapsed ? 'w-10 h-10 justify-center' : 'flex-1 h-9 justify-center gap-1.5'
+                  } ${
+                    active
+                      ? 'bg-[#1FD8B8]/[0.12] text-white ring-1 ring-[#1FD8B8]/25 shadow-[0_0_20px_-8px_rgba(31,216,184,0.5)]'
+                      : 'text-white/40 hover:text-white/85 hover:bg-white/[0.05]'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {!isCollapsed && <span>{label}</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Recents (grouped by date) ── */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar-thin mt-5 px-2 pb-4">
+          {!isCollapsed && (
+            <>
+              <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/25 px-2 mb-2 flex items-center gap-1.5">
+                <MessagesSquare className="h-3 w-3" />
+                Recents
+              </p>
+
+              {grouped.length === 0 && (
+                <p className="text-[12px] text-white/25 px-2 py-3 leading-relaxed">
+                  {query.trim() ? 'No chats match your search.' : 'No conversations yet — start one above.'}
+                </p>
               )}
-              {group.items.map(item => {
-                let isItemActive = false;
-                if (item.id === currentMode) isItemActive = true;
-                
+
+              {grouped.map(([label, items]) => (
+                <div key={label} className="mb-3">
+                  <p className="text-[10.5px] font-semibold text-white/30 px-2 mb-1">{label}</p>
+                  <div className="flex flex-col gap-0.5">
+                    {items.map((session) => {
+                      const active = activeSessionId === session.id;
+                      return (
+                        <div
+                          key={session.id}
+                          onClick={() => {
+                            onSelectSession(session.id);
+                            onCloseMobile?.();
+                          }}
+                          className={`group flex items-center gap-2.5 px-2.5 py-2 rounded-xl cursor-pointer transition-all duration-150 relative overflow-hidden ${
+                            active
+                              ? 'bg-white/[0.07] text-white'
+                              : 'text-white/50 hover:text-white/90 hover:bg-white/[0.04]'
+                          }`}
+                        >
+                          {active && (
+                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2.5px] h-5 rounded-full bg-gradient-to-b from-[#1FD8B8] to-transparent" />
+                          )}
+                          <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${active ? 'text-[#1FD8B8]' : 'text-white/30 group-hover:text-white/60'}`} />
+                          <span className="text-[12.5px] truncate flex-1">{session.title}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => onDeleteSession(session.id, e)}
+                            className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-white/30 hover:text-red-400 hover:bg-white/[0.06] transition-all cursor-pointer shrink-0"
+                            title="Delete chat"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+
+          {isCollapsed && (
+            <div className="flex flex-col items-center gap-1 pt-1">
+              {modeSessions.slice(0, 6).map((session) => {
+                const active = activeSessionId === session.id;
                 return (
-                  <NavItem 
-                    key={item.id} 
-                    item={item} 
-                    activeId={isItemActive ? item.id : activeSessionId} 
-                  />
+                  <button
+                    key={session.id}
+                    type="button"
+                    onClick={() => {
+                      onSelectSession(session.id);
+                      onCloseMobile?.();
+                    }}
+                    title={session.title}
+                    className={`w-10 h-10 flex items-center justify-center rounded-xl transition-colors cursor-pointer ${
+                      active ? 'bg-white/[0.08] text-[#1FD8B8]' : 'text-white/35 hover:text-white hover:bg-white/[0.05]'
+                    }`}
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                  </button>
                 );
               })}
             </div>
-          ))}
+          )}
         </div>
 
-        <div className="mt-auto m-3 p-3 bg-white/[0.02] border border-white/5 rounded-xl flex flex-col gap-3">
-          <div className="flex items-center justify-between pb-3 border-b border-white/5">
-             <div className="flex items-center gap-2 min-w-0">
-                {user ? (
+        {/* ── Bottom: balance + user ── */}
+        <div className={`${isCollapsed ? 'px-2' : 'px-3'} pb-3 shrink-0`}>
+          {user ? (
+            <>
+              {!isCollapsed ? (
+                <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-sm mb-2">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-white/30">Balance</span>
+                    <CreditCard className="h-3.5 w-3.5 text-white/25" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[15px] font-mono font-semibold text-white">
+                      {balance.toLocaleString()}
+                      <span className="text-[10px] text-[#1FD8B8] ms-1.5">PTS</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => openTopUpModal()}
+                      className="px-2.5 py-1.5 rounded-lg bg-[#1FD8B8]/10 border border-[#1FD8B8]/25 text-[#1FD8B8] text-[11px] font-semibold hover:bg-[#1FD8B8]/20 transition-colors cursor-pointer"
+                    >
+                      Top up
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => openTopUpModal()}
+                  title={`${balance.toLocaleString()} PTS — Top up`}
+                  className="w-10 h-10 mx-auto mb-2 flex items-center justify-center rounded-xl bg-[#1FD8B8]/10 text-[#1FD8B8] hover:bg-[#1FD8B8]/20 transition-colors cursor-pointer"
+                >
+                  <CreditCard className="h-4 w-4" />
+                </button>
+              )}
+
+              <div className={`flex items-center rounded-xl hover:bg-white/[0.04] transition-colors ${isCollapsed ? 'justify-center p-1' : 'gap-2.5 p-2'}`}>
+                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#1FD8B8] to-[#0EA98E] flex items-center justify-center font-bold text-[#050506] text-[13px] shrink-0 shadow-inner">
+                  {user?.user_metadata?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
+                </div>
+                {!isCollapsed && (
                   <>
-                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#1FD8B8] to-[#0EA98E] flex items-center justify-center font-bold text-[#050506] shadow-inner text-sm shrink-0">
-                      {user?.user_metadata?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-[12px] font-medium text-white/90 truncate max-w-[90px]">
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="text-[12px] font-medium text-white/90 truncate">
                         {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
                       </span>
-                      <span className="text-[10px] text-white/40">Pay-as-you-go</span>
+                      <span className="text-[10px] text-white/35">Pay-as-you-go</span>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => signOut()}
+                      className="p-1.5 text-white/30 hover:text-white hover:bg-white/[0.06] rounded-lg transition-colors cursor-pointer shrink-0"
+                      title="Log out"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                    </button>
                   </>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => openAuthModal('signin')}
-                    className="w-full flex items-center justify-center gap-2 h-9 rounded-lg bg-[#1FD8B8]/10 border border-[#1FD8B8]/25 text-[#1FD8B8] text-[12px] font-semibold hover:bg-[#1FD8B8]/20 transition-colors cursor-pointer"
-                  >
-                    <LogIn className="h-3.5 w-3.5" />
-                    Sign in to Studio
-                  </button>
                 )}
-             </div>
-             {user && (
-               <button
-                 onClick={() => signOut()}
-                 className="p-1.5 text-white/40 hover:text-white/90 hover:bg-white/10 rounded-md transition-colors shrink-0"
-                 title="Log Out"
-               >
-                 <LogOut className="h-3.5 w-3.5" />
-               </button>
-             )}
-          </div>
-
-          {user && (
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col">
-                <span className="text-[10px] text-white/40 font-medium">Balance</span>
-                <span className="text-[13px] font-mono font-medium text-white">{balance.toLocaleString()} <span className="text-[10px] text-[#1FD8B8]">PTS</span></span>
               </div>
-              <button
-                onClick={() => openTopUpModal()}
-                className="px-2.5 py-1.5 rounded-md bg-[#1FD8B8]/10 text-[#1FD8B8] text-[11px] font-medium hover:bg-[#1FD8B8]/20 transition-colors cursor-pointer"
-              >
-                Top up
-              </button>
-            </div>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => openAuthModal('signin')}
+              className={`flex items-center gap-2 h-10 rounded-xl bg-[#1FD8B8]/[0.08] border border-[#1FD8B8]/25 text-[#1FD8B8] text-[12.5px] font-semibold hover:bg-[#1FD8B8]/[0.15] transition-colors cursor-pointer ${
+                isCollapsed ? 'w-10 justify-center mx-auto' : 'w-full justify-center'
+              }`}
+              title="Sign in"
+            >
+              <LogIn className="h-4 w-4" />
+              {!isCollapsed && 'Sign in'}
+            </button>
+          )}
+
+          {isMobileOpen && (
+            <button
+              type="button"
+              onClick={onCloseMobile}
+              className="lg:hidden w-full mt-2 flex items-center justify-center gap-2 h-9 rounded-xl text-white/40 hover:text-white hover:bg-white/[0.05] text-[12px] transition-colors cursor-pointer"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" /> Close menu
+            </button>
           )}
         </div>
       </aside>

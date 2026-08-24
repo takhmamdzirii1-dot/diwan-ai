@@ -35,7 +35,7 @@ export default function MessageBubble({ message, isLatest, isStreaming }: Messag
     !isUser && isStreaming && isLatest && message.content.length > 0;
 
   return (
-    <div className="group/msg flex flex-col gap-2.5 w-full min-w-0">
+    <div className="group/msg flex flex-col gap-2.5 w-full min-w-0 animate-fade-in">
       {/* Header meta */}
       <div className={`flex items-center gap-3 w-full px-1 ${isUser ? 'justify-end' : 'justify-start'}`}>
         {isUser ? (

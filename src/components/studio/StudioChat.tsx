@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { PenLine, GraduationCap, Code2, BarChart3, LogIn } from 'lucide-react';
+import { PenLine, GraduationCap, Code2, BarChart3, LogIn, Sparkles } from 'lucide-react';
 import { useChat } from '@ai-sdk/react';
 import useUser from '../../hooks/useUser';
 import { useModal } from '../../context/ModalContext';
@@ -272,17 +272,13 @@ export default function StudioChat({
               </div>
             ))}
 
-            {/* Thinking indicator — golden wave */}
+            {/* Thinking indicator — Claude-style shimmer */}
             {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
               <div className={`flex w-full ${isRtl ? 'justify-end' : 'justify-start'}`}>
-                <div className="lux-msg-ai rounded-2xl px-5 py-4 inline-flex items-center gap-3">
-                  <span className="text-[11px] font-mono uppercase tracking-[0.18em] text-white/35 me-1">
-                    VANTRA
-                  </span>
-                  <span className="flex items-center gap-1.5 py-1">
-                    <span className="lux-dot-wave" />
-                    <span className="lux-dot-wave" />
-                    <span className="lux-dot-wave" />
+                <div className="inline-flex items-center gap-3 px-1 py-2 animate-fade-in">
+                  <Sparkles className="h-4 w-4 text-[#E8C87A] animate-pulse" />
+                  <span className="lux-shimmer-text text-[14px] font-medium tracking-wide">
+                    Thinking...
                   </span>
                 </div>
               </div>

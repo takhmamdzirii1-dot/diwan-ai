@@ -49,6 +49,7 @@ export default function StudioWorkspace() {
       title: `New ${modeLabel} Session`,
       mode: mode,
       timestamp: 'Just now',
+      createdAt: Date.now(),
       model: 'Free Auto-Route',
     };
     setSessions((prev) => [newSession, ...prev]);
