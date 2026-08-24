@@ -83,7 +83,7 @@ export default function DashboardSidebar({
               VANTRA
             </span>
             <span className="text-[9px] font-mono tracking-[0.3em] bronze-text mt-1 uppercase">
-              Studio
+              Studio v3.2
             </span>
           </div>
         </div>
@@ -91,7 +91,7 @@ export default function DashboardSidebar({
         {/* ── Nav ── */}
         <nav className="flex-1 overflow-y-auto custom-scrollbar-thin px-3 pt-5 space-y-1">
           {NAV_ITEMS.map((item) => {
-            const active = activeView === item.id && !item.action;
+            const active = item.action ? activeView === 'chat' : activeView === item.id;
             const Icon = item.icon;
             return (
               <button

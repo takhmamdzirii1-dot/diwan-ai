@@ -101,8 +101,19 @@ export default function StudioDashboard() {
   useEffect(() => {
     try {
       const s = localStorage.getItem('vantra_sessions_v2');
-      if (s) setSessions(JSON.parse(s));
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSessions(parsed);
+          setActiveSessionId(parsed[0].id);
+          return;
+        }
+      }
     } catch {}
+    // First visit: bootstrap a session so the composer is always live
+    const id = `session-${Date.now()}`;
+    setSessions([{ id, title: 'New Chat Session', createdAt: Date.now() }]);
+    setActiveSessionId(id);
   }, []);
 
   useEffect(() => {
@@ -179,7 +190,7 @@ export default function StudioDashboard() {
       if (data.isThinkingEnabled) {
         content = `Think through this step-by-step with careful reasoning before answering.\n\n${content}`;
       }
-      // Auto-title session
+      // Auto-title session from the first message
       if (activeSessionId) {
         setSessions((prev) =>
           prev.map((s) => {
@@ -230,7 +241,6 @@ export default function StudioDashboard() {
       <div className="lux-noise absolute inset-0 pointer-events-none" />
 
       {/* Mobile top bar */}
-      <div className="xl:fixed hidden"></div>
       <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-[#08090C]/95 backdrop-blur-xl border-b border-white/[0.06] px-4 flex items-center justify-between z-30">
         <button
           type="button"
