@@ -1,0 +1,6 @@
+{
+  "name": "VANTRA | AI Platform",
+  "description": "Unified Algerian AI Platform supporting English, French, and Arabic with local DZD payments via Edahabia and CIB.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,236 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Outer Squircle Metallic & Brushed Gradients -->
+    <radialGradient id="badge-bg" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#181B26" />
+      <stop offset="50%" stop-color="#0E1118" />
+      <stop offset="85%" stop-color="#07080D" />
+      <stop offset="100%" stop-color="#030407" />
+    </radialGradient>
+
+    <!-- Bronze / Gold Metallic Beveled Border -->
+    <linearGradient id="bronze-rim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#DEB887" stop-opacity="0.85" />
+      <stop offset="25%" stop-color="#8B6914" stop-opacity="0.6" />
+      <stop offset="50%" stop-color="#D4AF37" stop-opacity="0.9" />
+      <stop offset="75%" stop-color="#5C4018" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#B8860B" stop-opacity="0.8" />
+    </linearGradient>
+
+    <!-- Outer Rim Base Dark Stroke -->
+    <linearGradient id="rim-dark" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2A2D3A" />
+      <stop offset="100%" stop-color="#0B0D13" />
+    </linearGradient>
+
+    <!-- ================= LEFT WING (CYAN/TEAL FACETS) ================= -->
+    <!-- 1. Top Outer Facet (Mint Highlight) -->
+    <linearGradient id="l-facet-top" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6EFFF0" />
+      <stop offset="100%" stop-color="#00F5D4" />
+    </linearGradient>
+
+    <!-- 2. Left Outer Cut Facet -->
+    <linearGradient id="l-facet-outer" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00E5C0" />
+      <stop offset="100%" stop-color="#00A88F" />
+    </linearGradient>
+
+    <!-- 3. Left Mid Body Shard -->
+    <linearGradient id="l-facet-mid" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F7D8" />
+      <stop offset="60%" stop-color="#00D2B4" />
+      <stop offset="100%" stop-color="#009982" />
+    </linearGradient>
+
+    <!-- 4. Left Inner Crease / Dark Teal -->
+    <linearGradient id="l-facet-inner" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#004D40" />
+      <stop offset="100%" stop-color="#00796B" />
+    </linearGradient>
+
+    <!-- 5. Left Lower Stem / Vertex (Cyan to Deep Cyan) -->
+    <linearGradient id="l-facet-stem" x1="0%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#00F0FF" />
+      <stop offset="50%" stop-color="#00B8D9" />
+      <stop offset="100%" stop-color="#007A8C" />
+    </linearGradient>
+
+    <!-- ================= RIGHT WING (VIOLET/PURPLE/BLUE FACETS) ================= -->
+    <!-- 1. Top Outer Facet (Bright Violet) -->
+    <linearGradient id="r-facet-top" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#C4B5FD" />
+      <stop offset="100%" stop-color="#8B5CF6" />
+    </linearGradient>
+
+    <!-- 2. Right Outer Cut Facet -->
+    <linearGradient id="r-facet-outer" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7C3AED" />
+      <stop offset="100%" stop-color="#5B21B6" />
+    </linearGradient>
+
+    <!-- 3. Right Mid Body Shard (Electric Purple-Blue) -->
+    <linearGradient id="r-facet-mid" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818CF8" />
+      <stop offset="50%" stop-color="#6366F1" />
+      <stop offset="100%" stop-color="#4338CA" />
+    </linearGradient>
+
+    <!-- 4. Right Inner Crease / Deep Indigo -->
+    <linearGradient id="r-facet-inner" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#312E81" />
+      <stop offset="100%" stop-color="#1E1B4B" />
+    </linearGradient>
+
+    <!-- 5. Right Lower Stem / Vertex (Royal Blue to Sapphire) -->
+    <linearGradient id="r-facet-stem" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6" />
+      <stop offset="60%" stop-color="#2563EB" />
+      <stop offset="100%" stop-color="#1D4ED8" />
+    </linearGradient>
+
+    <!-- ================= CENTER RADIANT DIAMOND STAR ================= -->
+    <!-- Star Facet 1: Top-Left (Pure White-Cyan Glint) -->
+    <linearGradient id="star-tl" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="60%" stop-color="#E0FFFF" />
+      <stop offset="100%" stop-color="#A5F3FC" />
+    </linearGradient>
+
+    <!-- Star Facet 2: Top-Right (Ice Cyan) -->
+    <linearGradient id="star-tr" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E0F2FE" />
+      <stop offset="100%" stop-color="#67E8F9" />
+    </linearGradient>
+
+    <!-- Star Facet 3: Bottom-Left (Cyan Glow) -->
+    <linearGradient id="star-bl" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A5F3FC" />
+      <stop offset="100%" stop-color="#06B6D4" />
+    </linearGradient>
+
+    <!-- Star Facet 4: Bottom-Right (Deep Sky Cyan) -->
+    <linearGradient id="star-br" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#67E8F9" />
+      <stop offset="100%" stop-color="#0891B2" />
+    </linearGradient>
+
+    <!-- Star Radial Specular Core -->
+    <radialGradient id="star-flare" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="1" />
+      <stop offset="35%" stop-color="#C8FAFF" stop-opacity="0.8" />
+      <stop offset="70%" stop-color="#00F0FF" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#00F0FF" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Dynamic Glow Filters -->
+    <filter id="v-glow-epic" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#00F5D4" flood-opacity="0.35" />
+      <feDropShadow dx="0" dy="0" stdDeviation="16" flood-color="#8B5CF6" flood-opacity="0.25" />
+    </filter>
+
+    <filter id="star-burst-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#FFFFFF" flood-opacity="0.9" />
+      <feDropShadow dx="0" dy="0" stdDeviation="14" flood-color="#00F0FF" flood-opacity="0.6" />
+    </filter>
+
+    <filter id="drop-shadow-emblem" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.8" />
+    </filter>
+  </defs>
+
+  <!-- 1. OUTER SQUIRCLE BADGE BACKGROUND WITH METALLIC BEVEL -->
+  <g id="badge-container">
+    <!-- Outer Base Rim -->
+    <rect x="18" y="18" width="476" height="476" rx="114" ry="114" fill="url(#badge-bg)" stroke="url(#rim-dark)" stroke-width="6" />
+    
+    <!-- Bronze / Gold Accent Inner Rim -->
+    <rect x="23" y="23" width="466" height="466" rx="110" ry="110" fill="none" stroke="url(#bronze-rim)" stroke-width="2.5" opacity="0.85" />
+    
+    <!-- Subtle Brushed Texture Radial Ring Highlight -->
+    <circle cx="256" cy="256" r="180" fill="none" stroke="#FFFFFF" stroke-width="0.75" stroke-opacity="0.04" stroke-dasharray="8 6" />
+    <circle cx="256" cy="256" r="130" fill="none" stroke="#FFFFFF" stroke-width="0.5" stroke-opacity="0.03" />
+  </g>
+
+  <!-- 2. THE V-EMBLEM WITH FACETED CRYSTALS -->
+  <g id="v-emblem" filter="url(#drop-shadow-emblem)">
+    
+    <!-- DARK UNDERLAY / CARVED FRAME TO SEPARATE FACETS SHARPLY -->
+    <g id="dark-bevel-frame">
+      <!-- Left Shard Underlay -->
+      <path d="M 124 154 L 206 154 L 260 256 L 256 384 L 240 376 L 174 256 Z" fill="#04060A" />
+      <!-- Right Shard Underlay -->
+      <path d="M 306 154 L 388 154 L 338 256 L 272 376 L 256 384 L 252 256 Z" fill="#04060A" />
+    </g>
+
+    <!-- ================= LEFT WING FACETS (CYAN/TEAL) ================= -->
+    <g id="left-wing" filter="url(#v-glow-epic)">
+      <!-- Top Horizontal Upper Cap -->
+      <polygon points="126,156 204,156 182,192 126,156" fill="url(#l-facet-top)" />
+
+      <!-- Top Inner Shadow Crease -->
+      <polygon points="182,192 204,156 244,236 216,242" fill="url(#l-facet-inner)" />
+
+      <!-- Outer Triangle / Diamond Cut -->
+      <polygon points="126,156 182,192 176,254 126,156" fill="url(#l-facet-outer)" />
+
+      <!-- Mid Main Diagonal Shard -->
+      <polygon points="182,192 216,242 248,256 176,254" fill="url(#l-facet-mid)" />
+
+      <!-- Lower Outer Shard -->
+      <polygon points="176,254 248,256 256,380 242,370" fill="url(#l-facet-stem)" />
+
+      <!-- Lower Inner Crease -->
+      <polygon points="248,256 256,312 256,380" fill="#003D33" />
+    </g>
+
+    <!-- ================= RIGHT WING FACETS (VIOLET/PURPLE/BLUE) ================= -->
+    <g id="right-wing">
+      <!-- Top Horizontal Upper Cap -->
+      <polygon points="308,156 386,156 386,156 330,192" fill="url(#r-facet-top)" />
+
+      <!-- Top Inner Shadow Crease -->
+      <polygon points="308,156 330,192 296,242 268,236" fill="url(#r-facet-inner)" />
+
+      <!-- Outer Triangle / Diamond Cut -->
+      <polygon points="386,156 330,192 336,254 386,156" fill="url(#r-facet-outer)" />
+
+      <!-- Mid Main Diagonal Shard -->
+      <polygon points="330,192 296,242 264,256 336,254" fill="url(#r-facet-mid)" />
+
+      <!-- Lower Outer Shard -->
+      <polygon points="336,254 264,256 256,380 270,370" fill="url(#r-facet-stem)" />
+
+      <!-- Lower Inner Crease -->
+      <polygon points="264,256 256,312 256,380" fill="#1E1B4B" />
+    </g>
+
+    <!-- ================= CENTER RADIANT DIAMOND STAR ================= -->
+    <g id="center-star">
+      <!-- Star Dark Beveled Base Border -->
+      <path d="M 256 190 L 322 256 L 256 322 L 190 256 Z" fill="#05070D" />
+      <path d="M 256 192 L 320 256 L 256 320 L 192 256 Z" fill="#0A0F1D" stroke="#00F0FF" stroke-width="1.5" stroke-opacity="0.4" />
+
+      <!-- Star 4 Faceted Quadrants with Filter -->
+      <g filter="url(#star-burst-glow)">
+        <!-- Top-Left (Pure Diamond White Glint) -->
+        <polygon points="256,256 196,256 256,196" fill="url(#star-tl)" />
+
+        <!-- Top-Right (Ice Cyan) -->
+        <polygon points="256,256 256,196 316,256" fill="url(#star-tr)" />
+
+        <!-- Bottom-Left (Cyan-Green Radiant) -->
+        <polygon points="256,256 196,256 256,316" fill="url(#star-bl)" />
+
+        <!-- Bottom-Right (Deep Cyan/Sky Blue) -->
+        <polygon points="256,256 316,256 256,316" fill="url(#star-br)" />
+      </g>
+
+      <!-- Center Intense Specular Core Flares -->
+      <circle cx="256" cy="256" r="16" fill="url(#star-flare)" />
+      <ellipse cx="256" cy="256" rx="36" ry="3.5" fill="#FFFFFF" opacity="0.85" />
+      <ellipse cx="256" cy="256" rx="3.5" ry="36" fill="#FFFFFF" opacity="0.85" />
+      <circle cx="256" cy="256" r="4.5" fill="#FFFFFF" />
+    </g>
+  </g>
+</svg>
