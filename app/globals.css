@@ -2842,7 +2842,8 @@ html[dir="rtl"] .cost-table { text-align: right; }
    5) AI RESPONSE TYPOGRAPHY - the reading experience
    --------------------------------------------------------------- */
 .lux-prose {
-  color: #F2F4F7;
+  color: #FFFFFF;
+  text-rendering: optimizeLegibility;
   font-size: clamp(15.5px, 1vw + 12px, 16.5px);
   line-height: 1.85;
   letter-spacing: 0.001em;
@@ -2881,7 +2882,7 @@ html[lang="ar"] .lux-prose,
   display: flex;
   flex-direction: column;
   gap: 0.45em;
-  color: #EDF0F4;
+  color: #FBFCFE;
 }
 .lux-prose li::marker { color: var(--teal); }
 .lux-prose blockquote {

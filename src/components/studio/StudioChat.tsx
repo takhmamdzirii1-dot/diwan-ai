@@ -5,42 +5,38 @@ import { LogIn } from 'lucide-react';
 import { useChat } from '@ai-sdk/react';
 import useUser from '../../hooks/useUser';
 import { useModal } from '../../context/ModalContext';
-import {
-  AnimatedAIChat,
-  type ModelOption,
-  type AttachedFile,
-} from '../ui/animated-ai-chat';
+import { VercelV0Chat } from '@/components/ui/v0-ai-chat';
 import MessageBubble from './MessageBubble';
 
-export const AVAILABLE_MODELS: ModelOption[] = [
-  { id: 'z-ai/glm-5.2:free', name: 'Z.ai GLM 5.2', provider: 'Z.ai', cost: 0, tag: '0 PTS', isFree: true },
-  { id: 'nvidia/nemotron-3.5-lightning:free', name: 'Nemotron 3.5 Lightning', provider: 'Nvidia', cost: 0, tag: '0 PTS', isFree: true },
-  { id: 'liquid/lfm-2.5-2.6b:free', name: 'Liquid LFM 2.5', provider: 'Liquid', cost: 0, tag: '0 PTS', isFree: true },
-  { id: 'cohere/north-mini-code:free', name: 'Cohere North Mini', provider: 'Cohere', cost: 0, tag: '0 PTS', isFree: true }
+export const AVAILABLE_MODELS = [
+  { id: 'z-ai/glm-5.2:free', name: 'Z.ai GLM 5.2', provider: 'Z.ai', cost: 0, isFree: true },
+  { id: 'nvidia/nemotron-3.5-lightning:free', name: 'Nemotron 3.5 Lightning', provider: 'Nvidia', cost: 0, isFree: true },
+  { id: 'liquid/lfm-2.5-2.6b:free', name: 'Liquid LFM 2.5', provider: 'Liquid', cost: 0, isFree: true },
+  { id: 'cohere/north-mini-code:free', name: 'Cohere North Mini', provider: 'Cohere', cost: 0, isFree: true }
 ];
 
 const SUGGESTED_PROMPTS = [
   {
     icon: '🇩🇿',
-    title: 'Darja E-Commerce',
+    label: 'Darja E-Commerce',
     prompt:
       'Write a high-converting marketing launch campaign in Algerian Darja for an apparel brand, with BaridiMob payment instructions.',
   },
   {
     icon: '⚡',
-    title: 'Next.js + Chargily',
+    label: 'Next.js + Chargily',
     prompt:
       'Provide a complete TypeScript server route in Next.js App Router for verifying Chargily Pay Edahabia / CIB webhooks.',
   },
   {
     icon: '🧠',
-    title: 'Deep Logic & Algorithm',
+    label: 'Deep Logic & Algorithm',
     prompt:
       'Design a high-throughput cache algorithm in Python with asymptotic time and space complexity analysis.',
   },
   {
     icon: '📊',
-    title: 'Compare Models',
+    label: 'Compare Models',
     prompt:
       'Compare Claude 3.5 Sonnet vs DeepSeek R1 for coding complex full-stack web applications.',
   },
@@ -82,8 +78,8 @@ export default function StudioChat({
   const badgeText = lang === 'ar' ? 'بوابة الذكاء الموحدة' :
                     lang === 'fr' ? 'PASSERELLE IA UNIFIÉE' :
                     'UNIFIED AI GATEWAY';
-  const welcomeTitleA = lang === 'ar' ? 'كيف أساعدك' : lang === 'fr' ? 'Comment puis-je' : 'How can I help';
-  const welcomeTitleB = lang === 'ar' ? 'اليوم؟' : lang === 'fr' ? 'vous ?' : 'you today?';
+  const welcomeTitleA = lang === 'ar' ? 'كيف أساعدك' : lang === 'fr' ? 'Comment puis-je' : 'What can I help you';
+  const welcomeTitleB = lang === 'ar' ? 'اليوم؟' : lang === 'fr' ? 'vous ?' : 'ship today?';
   const welcomeSub = lang === 'ar'
     ? 'ابدأ المحادثة فوراً بدون حساب — سجّل الدخول فقط لفتح النماذج المتقدمة وحفظ سجلك.'
     : lang === 'fr'
@@ -137,7 +133,7 @@ export default function StudioChat({
     }
   }, [messages, activeSessionId]);
 
-  // Smart auto-scroll: only stick to bottom if user is near it
+  // Smart auto-scroll
   useEffect(() => {
     const el = messagesEndRef.current;
     if (!el) return;
@@ -149,31 +145,19 @@ export default function StudioChat({
     }
   }, [messages, isLoading]);
 
-  const handleSendFromChatComponent = useCallback(async (
-    content: string,
-    modelId: string,
-    _cost: number,
-    _attachments?: AttachedFile[]
-  ) => {
-    onSessionActivity?.(activeSessionId, content);
+  const handleSendText = useCallback(async (text: string) => {
+    onSessionActivity?.(activeSessionId, text);
     await append(
-      { role: 'user', content },
-      { body: { model: modelId || selectedModelId } }
+      { role: 'user', content: text },
+      { body: { model: selectedModelId } }
     );
   }, [append, selectedModelId, activeSessionId, onSessionActivity]);
-
-  // Spotlight tracking for suggestion cards
-  const handleCardMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    e.currentTarget.style.setProperty('--mx', `${e.clientX - rect.left}px`);
-    e.currentTarget.style.setProperty('--my', `${e.clientY - rect.top}px`);
-  };
 
   const isEmpty = messages.length === 0;
 
   return (
     <div className="studio-chat lux-chat-bg lux-noise flex-1 flex flex-col relative min-w-0 h-full text-white font-sans overflow-hidden" dir={isRtl ? 'rtl' : 'ltr'}>
-      {/* Ambient breathing orbs behind everything */}
+      {/* Ambient breathing orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="lux-orb lux-orb-teal" />
         <div className="lux-orb lux-orb-violet" />
@@ -185,57 +169,44 @@ export default function StudioChat({
         <div className="w-full flex justify-center px-4 pb-64 pt-6">
           <div className="w-full max-w-[700px] flex flex-col gap-7">
 
-            {/* ─── Welcome State ─── */}
+            {/* ─── Welcome State: composer carries the hero ─── */}
             {isEmpty && !isLoading && (
-              <div className="relative z-[2] flex flex-col items-center justify-center text-center pt-[9vh]">
-                <div className="inline-flex lux-welcome-badge mb-7">
-                  <span className="lux-welcome-badge-dot" />
-                  {badgeText}
-                </div>
-
-                <h1 className="lux-metallic-title text-[clamp(30px,5vw,44px)]">
-                  {welcomeTitleA}
-                  <br />
-                  {welcomeTitleB}
-                </h1>
-
-                <p className="lux-welcome-sub mt-5">{welcomeSub}</p>
+              <div className="pt-[7vh]">
+                <VercelV0Chat
+                  header={
+                    <span className="inline-flex lux-welcome-badge mb-6">
+                      <span className="lux-welcome-badge-dot" />
+                      {badgeText}
+                    </span>
+                  }
+                  title={`${welcomeTitleA} ${welcomeTitleB}`}
+                  subtitle={welcomeSub}
+                  placeholder={placeholderText}
+                  onSendMessage={handleSendText}
+                  isLoading={isLoading}
+                  onStop={stop}
+                  models={AVAILABLE_MODELS}
+                  selectedModelId={selectedModelId}
+                  onSelectModel={setSelectedModelId}
+                  actions={SUGGESTED_PROMPTS.map((sp) => ({
+                    icon: sp.icon,
+                    label: sp.label,
+                    onClick: () => handleSendText(sp.prompt),
+                  }))}
+                />
 
                 {!user && (
-                  <button
-                    type="button"
-                    onClick={() => openAuthModal('signin')}
-                    className="mt-7 inline-flex items-center gap-2 px-4 h-9 rounded-full border border-[#E8C87A]/25 bg-[#E8C87A]/[0.06] text-[#E8C87A]/90 text-xs font-semibold transition-all hover:bg-[#E8C87A]/[0.12] hover:-translate-y-0.5 cursor-pointer"
-                  >
-                    <LogIn className="h-3.5 w-3.5" />
-                    {signInOptional}
-                  </button>
-                )}
-
-                {/* Suggestion cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-12 w-full">
-                  {SUGGESTED_PROMPTS.map((sp) => (
+                  <div className="flex justify-center mt-8">
                     <button
-                      key={sp.title}
                       type="button"
-                      onMouseMove={handleCardMouseMove}
-                      onClick={() => handleSendFromChatComponent(sp.prompt, selectedModelId, 0)}
-                      disabled={!!isLoading}
-                      className="lux-suggest-card px-5 py-4 disabled:opacity-50"
+                      onClick={() => openAuthModal('signin')}
+                      className="inline-flex items-center gap-2 px-4 h-9 rounded-full border border-[#E8C87A]/25 bg-[#E8C87A]/[0.06] text-[#E8C87A]/90 text-xs font-semibold transition-all hover:bg-[#E8C87A]/[0.12] hover:-translate-y-0.5 cursor-pointer"
                     >
-                      <div className="flex items-center justify-between gap-2 relative z-[1]">
-                        <span className="text-base leading-none">{sp.icon}</span>
-                        <span className="lux-suggest-free">FREE</span>
-                      </div>
-                      <span className="block relative z-[1] mt-2.5 text-[13.5px] font-semibold text-white/90">
-                        {sp.title}
-                      </span>
-                      <span className="block relative z-[1] mt-1 text-[12px] text-white/40 line-clamp-2 leading-relaxed">
-                        {sp.prompt}
-                      </span>
+                      <LogIn className="h-3.5 w-3.5" />
+                      {signInOptional}
                     </button>
-                  ))}
-                </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -295,32 +266,28 @@ export default function StudioChat({
         </div>
       </div>
 
-      {/* ─── Floating Input Dock — luxury shell ─── */}
-      <div className="absolute bottom-0 left-0 w-full pb-6 px-4 flex justify-center z-40 pointer-events-none h-48 items-end"
-        style={{ background: 'linear-gradient(to top, #050506 22%, rgba(5,5,6,0.88) 52%, transparent)' }}
-      >
-        <div className="w-full max-w-[700px] pointer-events-auto">
-          <div className="lux-input-shell">
-            <div className="lux-input-shell-inner">
-              <AnimatedAIChat
-                variant="lux"
-                onSendMessage={handleSendFromChatComponent}
-                isLoading={isLoading}
-                models={AVAILABLE_MODELS}
-                selectedModelId={selectedModelId}
-                onSelectModel={setSelectedModelId}
-                onStop={stop}
-                isExpanded={false}
-                placeholder={placeholderText}
-                aiName="VANTRA"
-              />
-            </div>
+      {/* ─── Floating Composer Dock (mid-conversation) ─── */}
+      {!isEmpty && (
+        <div className="absolute bottom-0 left-0 w-full pb-6 px-4 flex justify-center z-40 pointer-events-none h-48 items-end"
+          style={{ background: 'linear-gradient(to top, #050506 22%, rgba(5,5,6,0.88) 52%, transparent)' }}
+        >
+          <div className="w-full max-w-[700px] pointer-events-auto">
+            <VercelV0Chat
+              title={null}
+              placeholder={placeholderText}
+              onSendMessage={handleSendText}
+              isLoading={isLoading}
+              onStop={stop}
+              models={AVAILABLE_MODELS}
+              selectedModelId={selectedModelId}
+              onSelectModel={setSelectedModelId}
+            />
+            <p className="text-center text-[10px] font-mono tracking-[0.14em] text-white/25 mt-3 uppercase">
+              VANTRA can make mistakes · Free models cost 0 pts
+            </p>
           </div>
-          <p className="text-center text-[10px] font-mono tracking-[0.14em] text-white/25 mt-3 uppercase">
-            VANTRA can make mistakes · Free models cost 0 pts
-          </p>
         </div>
-      </div>
+      )}
 
     </div>
   );
