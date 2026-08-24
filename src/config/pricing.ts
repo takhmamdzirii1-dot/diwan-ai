@@ -26,6 +26,18 @@ export const TOPUP_PLANS = {
 };
 
 export const MODEL_PRICES: Record<string, { name: string; cost: number; category: string; provider?: string }> = {
+  'anthropic/claude-opus-5': {
+    name: 'Claude Opus 5',
+    cost: 60,
+    category: 'Flagship Reasoning',
+    provider: 'Anthropic',
+  },
+  'openai/gpt-5.6-sol': {
+    name: 'GPT-5.6 Sol',
+    cost: 50,
+    category: 'Flagship Multimodal',
+    provider: 'OpenAI',
+  },
   'anthropic/claude-3.5-sonnet': {
     name: 'Claude 3.5 Sonnet',
     cost: 25,

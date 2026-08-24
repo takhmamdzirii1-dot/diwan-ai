@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Plus, ChevronDown, ArrowUp, X, FileText, Loader2, Check, Archive } from "lucide-react";
+import { Plus, ChevronDown, ArrowUp, X, FileText, Loader2, Check, Archive, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------
@@ -22,6 +22,7 @@ export interface ChatModelOption {
     description?: string;
     badge?: string;
     isFree?: boolean;
+    requiresAuth?: boolean;
 }
 
 export interface ClaudeSendPayload {
@@ -129,7 +130,7 @@ const PastedContentCard: React.FC<{ content: { id: string; content: string }; on
     );
 };
 
-/* --- Model Selector (Claude-style, glass) --- */
+/* --- Model Selector (Claude-style, glass, grouped) --- */
 const ModelSelector: React.FC<{
     models: ChatModelOption[];
     selectedModel: string;
@@ -140,6 +141,8 @@ const ModelSelector: React.FC<{
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     const currentModel = models.find(m => m.id === selectedModel) || models[0];
+    const freeModels = models.filter(m => m.isFree);
+    const premiumModels = models.filter(m => !m.isFree);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -151,74 +154,98 @@ const ModelSelector: React.FC<{
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    const handlePick = (model: ChatModelOption) => {
+        if (model.requiresAuth && onSignInClick) {
+            setIsOpen(false);
+            onSignInClick();
+            return;
+        }
+        onSelect(model.id);
+        setIsOpen(false);
+    };
+
+    const renderItem = (model: ChatModelOption, locked: boolean) => (
+        <button
+            key={model.id}
+            type="button"
+            onClick={() => handlePick(model)}
+            className={cn(
+                "w-full text-left px-3 py-2.5 rounded-xl flex items-start justify-between transition-colors group/item",
+                locked
+                    ? "hover:bg-[#E8C87A]/[0.05]"
+                    : "hover:bg-white/[0.06]",
+                selectedModel === model.id && "bg-white/[0.05]"
+            )}
+        >
+            <div className="flex flex-col gap-0.5 min-w-0">
+                <div className="flex items-center gap-2">
+                    <span className={cn(
+                        "text-[13px] font-semibold truncate",
+                        locked ? "text-[#E8C87A]/90" : "text-white/95"
+                    )}>
+                        {model.name}
+                    </span>
+                    {model.badge && (
+                        <span className={cn(
+                            "px-1.5 py-[1px] rounded-full text-[9px] font-semibold border shrink-0",
+                            model.isFree
+                                ? "border-[#1FD8B8]/25 text-[#1FD8B8]/90 bg-[#1FD8B8]/[0.06]"
+                                : "border-[#E8C87A]/30 text-[#E8C87A]/90 bg-[#E8C87A]/[0.07]"
+                        )}>
+                            {locked ? "PRO" : model.badge}
+                        </span>
+                    )}
+                </div>
+                <span className="text-[11px] text-white/40 truncate">
+                    {locked ? "Sign in to unlock" : model.description}
+                </span>
+            </div>
+            {selectedModel === model.id ? (
+                <Check className="w-4 h-4 text-[#1FD8B8] mt-1 shrink-0" />
+            ) : locked ? (
+                <svg className="w-3.5 h-3.5 text-[#E8C87A]/50 mt-1 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+            ) : null}
+        </button>
+    );
+
     return (
         <div className="relative" ref={dropdownRef}>
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
-                    "inline-flex items-center relative shrink-0 transition-all duration-300 ease-[cubic-bezier(0.165,0.85,0.45,1)] h-8 rounded-xl px-2.5 active:scale-[0.98] whitespace-nowrap text-xs gap-1 cursor-pointer",
+                    "inline-flex items-center relative shrink-0 transition-all duration-300 ease-[cubic-bezier(0.165,0.85,0.45,1)] h-8 rounded-xl px-2.5 active:scale-[0.98] whitespace-nowrap text-xs gap-1 cursor-pointer max-w-[200px]",
                     isOpen
                         ? "bg-white/[0.08] text-white"
                         : "text-white/55 hover:text-white hover:bg-white/[0.06]"
                 )}
             >
-                <span className="font-medium select-none">{currentModel?.name ?? "Model"}</span>
-                <ChevronDown className={cn("w-3.5 h-3.5 opacity-70 transition-transform duration-200", isOpen && "rotate-180")} />
+                {!currentModel?.isFree && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#E8C87A] shadow-[0_0_6px_rgba(232,200,122,0.7)] shrink-0" />
+                )}
+                <span className="font-medium select-none truncate">{currentModel?.name ?? "Model"}</span>
+                <ChevronDown className={cn("w-3.5 h-3.5 opacity-70 shrink-0 transition-transform duration-200", isOpen && "rotate-180")} />
             </button>
 
             {isOpen && (
-                <div className="absolute bottom-full right-0 mb-2 w-[270px] glass-pop rounded-2xl overflow-hidden z-50 flex flex-col p-1.5 animate-fade-in origin-bottom-right">
-                    {models.map(model => (
-                        <button
-                            key={model.id}
-                            type="button"
-                            onClick={() => {
-                                onSelect(model.id);
-                                setIsOpen(false);
-                            }}
-                            className="w-full text-left px-3 py-2.5 rounded-xl flex items-start justify-between transition-colors hover:bg-white/[0.06] cursor-pointer"
-                        >
-                            <div className="flex flex-col gap-0.5 min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[13px] font-semibold text-white/95">
-                                        {model.name}
-                                    </span>
-                                    {model.badge && (
-                                        <span className={cn(
-                                            "px-1.5 py-[1px] rounded-full text-[9px] font-semibold border",
-                                            model.isFree
-                                                ? "border-[#E8C87A]/25 text-[#E8C87A]/90 bg-[#E8C87A]/[0.06]"
-                                                : "border-white/15 text-white/45"
-                                        )}>
-                                            {model.badge}
-                                        </span>
-                                    )}
-                                </div>
-                                <span className="text-[11px] text-white/40 truncate">
-                                    {model.description}
-                                </span>
-                            </div>
-                            {selectedModel === model.id && (
-                                <Check className="w-4 h-4 text-[#1FD8B8] mt-1 shrink-0" />
-                            )}
-                        </button>
-                    ))}
+                <div className="absolute bottom-full right-0 mb-2 w-[290px] glass-pop rounded-2xl overflow-hidden z-50 flex flex-col p-1.5 animate-fade-in origin-bottom-right max-h-[420px] overflow-y-auto custom-scrollbar-thin">
+                    <div className="px-3 pt-2 pb-1.5 text-[9px] font-mono uppercase tracking-[0.22em] text-white/30 flex items-center justify-between">
+                        <span>Free models</span>
+                        <span className="text-[#1FD8B8]/60">0 pts</span>
+                    </div>
+                    {freeModels.map(m => renderItem(m, false))}
 
-                    {onSignInClick && (
+                    {premiumModels.length > 0 && (
                         <>
-                            <div className="h-px bg-white/[0.07] my-1 mx-2" />
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setIsOpen(false);
-                                    onSignInClick();
-                                }}
-                                className="w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between transition-colors hover:bg-white/[0.06] text-[#E8C87A]/90 hover:text-[#E8C87A] cursor-pointer"
-                            >
-                                <span className="text-[13px] font-semibold">Sign in for premium models</span>
-                                <ChevronDown className="w-4 h-4 -rotate-90 opacity-60" />
-                            </button>
+                            <div className="h-px bg-white/[0.07] my-1.5 mx-2" />
+                            <div className="px-3 pb-1.5 text-[9px] font-mono uppercase tracking-[0.22em] text-[#E8C87A]/50 flex items-center justify-between">
+                                <span>Premium · Sign in</span>
+                                <Sparkles className="h-3 w-3" />
+                            </div>
+                            {premiumModels.map(m => renderItem(m, !!(m.requiresAuth && onSignInClick)))}
                         </>
                     )}
                 </div>
@@ -471,7 +498,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                     className={cn(
                                         "inline-flex items-center justify-center h-8 w-8 rounded-xl transition-all duration-300 active:scale-95",
                                         hasContent
-                                            ? 'bg-gradient-to-br from-[#1FD8B8] to-[#34E2C2] text-[#050506] shadow-[0_0_22px_-4px_rgba(31,216,184,0.6)] hover:shadow-[0_0_30px_-2px_rgba(31,216,184,0.75)] hover:-translate-y-0.5 ring-1 ring-transparent hover:ring-[#E8C87A]/45 cursor-pointer'
+                                            ? 'send-ready bg-gradient-to-br from-[#1FD8B8] to-[#34E2C2] text-[#050506] hover:-translate-y-0.5 ring-1 ring-transparent hover:ring-[#E8C87A]/45 cursor-pointer'
                                             : 'bg-white/[0.07] text-white/25 cursor-default'
                                     )}
                                     aria-label="Send message"

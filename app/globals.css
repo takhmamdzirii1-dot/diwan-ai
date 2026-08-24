@@ -3033,9 +3033,9 @@ html[lang="ar"] .lux-prose table,
 }
 
 .claude-glass-inner {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
-  backdrop-filter: blur(26px);
-  -webkit-backdrop-filter: blur(26px);
+  background: linear-gradient(180deg, rgba(17, 19, 27, 0.94), rgba(9, 10, 15, 0.97));
+  backdrop-filter: blur(30px) saturate(1.4);
+  -webkit-backdrop-filter: blur(30px) saturate(1.4);
 }
 
 .glass-pill {
@@ -3084,3 +3084,33 @@ html[lang="ar"] .lux-prose table,
 .custom-scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.07); border-radius: 999px; }
 .custom-scrollbar-thin { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent; }
+/* Staggered welcome entrance */
+.stagger-1 { animation: lux-rise 0.55s cubic-bezier(0.32, 0.72, 0, 1) both; animation-delay: 0.05s; }
+.stagger-2 { animation: lux-rise 0.55s cubic-bezier(0.32, 0.72, 0, 1) both; animation-delay: 0.14s; }
+.stagger-3 { animation: lux-rise 0.55s cubic-bezier(0.32, 0.72, 0, 1) both; animation-delay: 0.24s; }
+.stagger-4 { animation: lux-rise 0.55s cubic-bezier(0.32, 0.72, 0, 1) both; animation-delay: 0.34s; }
+.stagger-5 { animation: lux-rise 0.55s cubic-bezier(0.32, 0.72, 0, 1) both; animation-delay: 0.44s; }
+@keyframes lux-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stagger-1, .stagger-2, .stagger-3, .stagger-4, .stagger-5 { animation: none; }
+}
+
+/* Composer entrance */
+.composer-in { animation: lux-composer 0.6s cubic-bezier(0.32, 0.72, 0, 1) both; animation-delay: 0.2s; }
+@keyframes lux-composer {
+  from { opacity: 0; transform: translateY(18px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Ready send-button gentle beacon */
+.send-ready { animation: send-beacon 2.4s ease-in-out infinite; }
+@keyframes send-beacon {
+  0%, 100% { box-shadow: 0 0 22px -4px rgba(31, 216, 184, 0.55); }
+  50% { box-shadow: 0 0 30px -2px rgba(31, 216, 184, 0.8); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .send-ready { animation: none; }
+}

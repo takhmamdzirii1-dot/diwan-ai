@@ -9,10 +9,14 @@ import { ClaudeChatInput } from '@/components/ui/claude-style-chat-input';
 import MessageBubble from './MessageBubble';
 
 export const AVAILABLE_MODELS = [
+  { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', name: 'Nemotron 3 Ultra', description: '550B flagship — strongest free model', badge: 'FREE', isFree: true },
   { id: 'z-ai/glm-5.2:free', name: 'GLM 5.2', description: 'Balanced everyday intelligence', badge: 'FREE', isFree: true },
   { id: 'nvidia/nemotron-3.5-lightning:free', name: 'Nemotron Lightning', description: 'Fastest for quick answers', badge: 'FREE', isFree: true },
-  { id: 'liquid/lfm-2.5-2.6b:free', name: 'Liquid LFM 2.5', description: 'Lightweight & responsive', badge: 'FREE', isFree: true },
+  { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4 31B', description: "Google's efficient open model", badge: 'FREE', isFree: true },
+  { id: 'liquid/lfm-2.5-2.6b:free', name: 'Liquid LFM 2.5', description: 'Featherlight & responsive', badge: 'FREE', isFree: true },
   { id: 'cohere/north-mini-code:free', name: 'Cohere North Mini', description: 'Tuned for code & analysis', badge: 'FREE', isFree: true },
+  { id: 'anthropic/claude-opus-5', name: 'Claude Opus 5', description: 'Anthropic flagship — deepest reasoning', badge: 'PRO · 60 pts', isFree: false, requiresAuth: true },
+  { id: 'openai/gpt-5.6-sol', name: 'GPT-5.6 Sol', description: 'OpenAI flagship multimodal', badge: 'PRO · 50 pts', isFree: false, requiresAuth: true },
 ];
 
 const SUGGESTED_PROMPTS = [
@@ -53,7 +57,7 @@ export default function StudioChat({
 }: StudioChatProps) {
   const { user, refreshBalance } = useUser();
   const { openAuthModal } = useModal();
-  const [selectedModelId, setSelectedModelId] = useState(AVAILABLE_MODELS[1].id);
+  const [selectedModelId, setSelectedModelId] = useState(AVAILABLE_MODELS[0].id);
   const [lang, setLang] = useState('en');
   const [greeting, setGreeting] = useState('');
 
@@ -98,7 +102,7 @@ export default function StudioChat({
     id: activeSessionId || 'default-session',
     api: '/api/generate/chat',
     body: {
-      model: selectedModelId || AVAILABLE_MODELS[1].id
+      model: selectedModelId || AVAILABLE_MODELS[0].id
     },
     onFinish: () => {
       refreshBalance();
@@ -177,14 +181,14 @@ export default function StudioChat({
       </div>
 
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto w-full custom-scrollbar relative z-[2]">
-        <div className="w-full flex justify-center px-4 pb-64 pt-6">
+        <div className="w-full flex justify-center px-4 pb-80 pt-6">
           <div className="w-full max-w-[700px] flex flex-col gap-7">
 
             {/* ─── Claude-style Welcome ─── */}
             {isEmpty && !isLoading && (
-              <div className="flex flex-col items-center text-center pt-[6vh] animate-fade-in">
+              <div className="flex flex-col items-center text-center pt-[6vh]">
                 {/* Brandmark with soft glow */}
-                <div className="relative w-16 h-16 mb-6 flex items-center justify-center">
+                <div className="relative w-16 h-16 mb-6 flex items-center justify-center stagger-1">
                   <div className="absolute inset-0 bg-[#1FD8B8]/15 blur-2xl rounded-full scale-125" />
                   <img
                     src="/brandmark.svg"
@@ -194,7 +198,7 @@ export default function StudioChat({
                 </div>
 
                 {/* Serif greeting with hand-drawn underline */}
-                <h1 className="font-serif-lux text-[clamp(30px,4.5vw,42px)] font-normal text-white/95 tracking-tight mb-10" dir="ltr">
+                <h1 className="stagger-2 font-serif-lux text-[clamp(30px,4.5vw,42px)] font-normal text-white/95 tracking-tight mb-10" dir="ltr">
                   {greeting}
                   {lang !== 'ar' && ', '}
                   <span className="relative inline-block">
@@ -218,18 +222,20 @@ export default function StudioChat({
                 </h1>
 
                 {/* Composer */}
-                <ClaudeChatInput
-                  onSendMessage={handleSend}
-                  models={AVAILABLE_MODELS}
-                  selectedModelId={selectedModelId}
-                  onSelectModel={setSelectedModelId}
-                  placeholder={placeholderText}
-                  autoFocus
-                  onSignInClick={user ? undefined : () => openAuthModal('signin')}
-                />
+                <div className="w-full composer-in">
+                  <ClaudeChatInput
+                    onSendMessage={handleSend}
+                    models={AVAILABLE_MODELS}
+                    selectedModelId={selectedModelId}
+                    onSelectModel={setSelectedModelId}
+                    placeholder={placeholderText}
+                    autoFocus
+                    onSignInClick={user ? undefined : () => openAuthModal('signin')}
+                  />
+                </div>
 
                 {/* Glass action pills */}
-                <div className="flex flex-wrap justify-center gap-2.5 mt-6 max-w-[700px] px-2">
+                <div className="flex flex-wrap justify-center gap-2.5 mt-6 max-w-[700px] px-2 stagger-3">
                   {SUGGESTED_PROMPTS.map((sp) => (
                     <button
                       key={sp.label}
@@ -248,14 +254,14 @@ export default function StudioChat({
                   <button
                     type="button"
                     onClick={() => openAuthModal('signin')}
-                    className="mt-7 inline-flex items-center gap-2 px-4 h-9 rounded-full border border-[#E8C87A]/25 bg-[#E8C87A]/[0.06] text-[#E8C87A]/90 text-xs font-semibold transition-all hover:bg-[#E8C87A]/[0.12] hover:-translate-y-0.5 cursor-pointer"
+                    className="stagger-4 mt-7 inline-flex items-center gap-2 px-4 h-9 rounded-full border border-[#E8C87A]/25 bg-[#E8C87A]/[0.06] text-[#E8C87A]/90 text-xs font-semibold transition-all hover:bg-[#E8C87A]/[0.12] hover:-translate-y-0.5 cursor-pointer"
                   >
                     <LogIn className="h-3.5 w-3.5" />
                     Sign in to unlock premium models
                   </button>
                 )}
 
-                <p className="text-[11px] text-white/30 mt-6">
+                <p className="stagger-5 text-[11px] text-white/30 mt-6">
                   VANTRA can make mistakes. Please check important information.
                 </p>
               </div>
@@ -315,8 +321,8 @@ export default function StudioChat({
 
       {/* ─── Floating Composer Dock (mid-conversation) ─── */}
       {!isEmpty && (
-        <div className="absolute bottom-0 left-0 w-full pb-5 px-4 flex justify-center z-40 pointer-events-none h-48 items-end"
-          style={{ background: 'linear-gradient(to top, #050506 22%, rgba(5,5,6,0.88) 52%, transparent)' }}
+        <div className="absolute bottom-0 left-0 w-full pb-5 px-4 flex justify-center z-40 pointer-events-none h-52 items-end"
+          style={{ background: 'linear-gradient(to top, #050506 38%, rgba(5,5,6,0.94) 58%, rgba(5,5,6,0.6) 78%, transparent)' }}
         >
           <div className="w-full max-w-[700px] pointer-events-auto">
             <ClaudeChatInput
