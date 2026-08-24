@@ -2,13 +2,13 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, Gauge, Zap, Swords, Database, Settings, Sparkles, LayoutGrid, MessageSquare, Image as ImageIcon, Video } from 'lucide-react';
+import { Menu, Gauge, Zap, Swords, Database, Settings, Sparkles, LayoutGrid, MessageSquare, Image as ImageIcon, Video, PenLine, Code2, Lightbulb, BarChart3 } from 'lucide-react';
 import { useChat } from '@ai-sdk/react';
 import useUser from '../../hooks/useUser';
 import { useModal } from '../../context/ModalContext';
 import { ClaudeChatInput } from '@/components/ui/claude-style-chat-input';
 import DashboardSidebar, { type DashboardView } from './DashboardSidebar';
-import ControlDrawer, { SYSTEM_PRESETS, type GenerationParams } from './ControlDrawer';
+import ControlDrawer, { type GenerationParams } from './ControlDrawer';
 import MessageBubble from './MessageBubble';
 import StudioImage from './StudioImage';
 import StudioVideo from './StudioVideo';
@@ -52,6 +52,33 @@ const SOON_VIEWS: Record<string, { icon: React.ElementType; title: string; desc:
   },
 };
 
+const SUGGESTIONS = [
+  {
+    icon: PenLine,
+    label: 'Write',
+    prompt:
+      'Write a punchy launch announcement in Algerian Darja for a new Algerian coffee brand, with 3 call-to-action options.',
+  },
+  {
+    icon: Code2,
+    label: 'Code',
+    prompt:
+      'Build a production-ready Next.js App Router API route that verifies Chargily Pay Edahabia webhooks, with zod validation.',
+  },
+  {
+    icon: Lightbulb,
+    label: 'Ideate',
+    prompt:
+      'Give me 10 SaaS startup ideas tailored for the Algerian market in 2026, each with a one-line monetization model.',
+  },
+  {
+    icon: BarChart3,
+    label: 'Compare',
+    prompt:
+      'Compare Claude Opus 5 vs GPT-5.6 Sol for long-context research and coding. End with a clear recommendation table.',
+  },
+];
+
 export default function StudioDashboard() {
   const { user, refreshBalance } = useUser();
   const { openAuthModal } = useModal();
@@ -63,8 +90,6 @@ export default function StudioDashboard() {
 
   const [selectedModelId, setSelectedModelId] = useState(MODELS[0].id);
   const [params, setParams] = useState<GenerationParams>({ temperature: 0.7, max_tokens: 2048, top_p: 0.95 });
-  const [systemPreset, setSystemPreset] = useState('default');
-  const [customSystem, setCustomSystem] = useState('');
   const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null);
   const sendStartRef = useRef<number>(0);
 
@@ -85,18 +110,6 @@ export default function StudioDashboard() {
       localStorage.setItem('vantra_sessions_v2', JSON.stringify(sessions));
     } catch {}
   }, [sessions]);
-
-  // Listen for custom system instruction from drawer
-  useEffect(() => {
-    const handler = (e: Event) => setCustomSystem((e as CustomEvent).detail || '');
-    window.addEventListener('vantra-custom-system', handler);
-    return () => window.removeEventListener('vantra-custom-system', handler);
-  }, []);
-
-  const systemPrompt = useMemo(() => {
-    if (systemPreset === 'custom') return customSystem;
-    return SYSTEM_PRESETS.find((p) => p.id === systemPreset)?.prompt || '';
-  }, [systemPreset, customSystem]);
 
   const {
     messages,
@@ -186,12 +199,11 @@ export default function StudioDashboard() {
             temperature: params.temperature,
             max_tokens: params.max_tokens,
             top_p: params.top_p,
-            system: systemPrompt || undefined,
           },
         }
       );
     },
-    [append, selectedModelId, params, systemPrompt, activeSessionId, activeModel.isFree, user, openAuthModal]
+    [append, selectedModelId, params, activeSessionId, activeModel.isFree, user, openAuthModal]
   );
 
   const handleNewChat = useCallback(() => {
@@ -364,9 +376,24 @@ export default function StudioDashboard() {
                               autoFocus
                               onSignInClick={user ? undefined : () => openAuthModal('signin')}
                             />
-                            <p className="text-center text-[11px] text-white/30 mt-5">
-                              VANTRA can make mistakes. Please check important information.
-                            </p>
+                          {/* Suggestion pills */}
+                          <div className="flex flex-wrap justify-center gap-2.5 mt-7 stagger-4">
+                            {SUGGESTIONS.map((s) => (
+                              <button
+                                key={s.label}
+                                type="button"
+                                onClick={() => handleSend({ message: s.prompt, isThinkingEnabled: false })}
+                                className="glass-pill inline-flex items-center gap-2 px-4 py-2 rounded-full text-[12.5px] text-white/55 cursor-pointer"
+                              >
+                                <s.icon className="h-3.5 w-3.5 text-[#00F5D4]/80" />
+                                {s.label}
+                              </button>
+                            ))}
+                          </div>
+
+                          <p className="text-center text-[11px] text-white/30 mt-6">
+                            VANTRA can make mistakes. Please check important information.
+                          </p>
                           </div>
                         </div>
                       )}
@@ -549,8 +576,6 @@ export default function StudioDashboard() {
           onClose={() => setDrawerOpen(false)}
           params={params}
           onParamsChange={setParams}
-          systemPreset={systemPreset}
-          onSystemPresetChange={setSystemPreset}
           stats={{
             totalTokens,
             lastLatencyMs,

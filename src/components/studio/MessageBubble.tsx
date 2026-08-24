@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Copy, Check, Terminal, Share, RefreshCw, Sparkles, User } from 'lucide-react';
 import type { Message } from '@ai-sdk/react';
+import { useSmoothText } from '../../hooks/useSmoothText';
 
 export interface MessageBubbleProps {
   message: Message;
@@ -18,6 +19,14 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
   const [shared, setShared] = useState(false);
   const codeBlockCounter = useRef(0);
   codeBlockCounter.current = 0;
+
+  const isUser = message.role === 'user';
+
+  // Fluid typewriter reveal while the assistant is streaming
+  const smoothActive = !isUser && isStreaming && isLatest;
+  const smoothContent = useSmoothText(message.content, smoothActive);
+  const displayContent = smoothActive ? smoothContent : message.content;
+  const showStreamingCursor = smoothActive && displayContent.length > 0;
 
   const handleCopyCode = (code: string, id: string) => {
     navigator.clipboard.writeText(code);
@@ -42,9 +51,6 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
       }
     } catch {}
   };
-
-  const isUser = message.role === 'user';
-  const showStreamingCursor = !isUser && isStreaming && isLatest && message.content.length > 0;
 
   return (
     <motion.div
@@ -166,7 +172,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
                   }
                 }}
               >
-                {message.content}
+                {displayContent}
               </ReactMarkdown>
 
               {showStreamingCursor && (

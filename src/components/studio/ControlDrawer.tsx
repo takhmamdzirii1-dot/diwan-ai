@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { ChevronDown, Info, Gauge, Coins, Zap, Terminal } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import React from 'react';
+import { Gauge, Coins, Zap, Terminal, RotateCcw, Info } from 'lucide-react';
 
 export interface GenerationParams {
   temperature: number;
@@ -15,8 +14,6 @@ export interface ControlDrawerProps {
   onClose: () => void;
   params: GenerationParams;
   onParamsChange: (p: GenerationParams) => void;
-  systemPreset: string;
-  onSystemPresetChange: (id: string) => void;
   stats: {
     totalTokens: number;
     lastLatencyMs: number | null;
@@ -25,32 +22,7 @@ export interface ControlDrawerProps {
   };
 }
 
-export const SYSTEM_PRESETS: { id: string; label: string; prompt: string }[] = [
-  { id: 'default', label: 'Default', prompt: '' },
-  {
-    id: 'developer',
-    label: 'Senior Developer',
-    prompt:
-      'You are a senior software architect. Give production-grade code with brief explanations, edge cases, and performance notes. Prefer TypeScript.',
-  },
-  {
-    id: 'marketer',
-    label: 'Growth Marketer',
-    prompt:
-      'You are a world-class growth marketer. Write persuasive, high-converting copy adapted to Algerian and MENA audiences.',
-  },
-  {
-    id: 'darja',
-    label: 'Darja Tutor',
-    prompt:
-      'You are a patient Algerian Darja tutor. Reply bilingually: first in Algerian Darja (Latin or Arabic script), then a clear English explanation.',
-  },
-  {
-    id: 'custom',
-    label: 'Custom',
-    prompt: '',
-  },
-];
+const DEFAULT_PARAMS: GenerationParams = { temperature: 0.7, max_tokens: 2048, top_p: 0.95 };
 
 function Slider({
   label,
@@ -101,15 +73,8 @@ export default function ControlDrawer({
   onClose,
   params,
   onParamsChange,
-  systemPreset,
-  onSystemPresetChange,
   stats,
 }: ControlDrawerProps) {
-  const [presetsOpen, setPresetsOpen] = useState(true);
-  const [customPrompt, setCustomPrompt] = useState('');
-
-  const preset = SYSTEM_PRESETS.find((p) => p.id === systemPreset) || SYSTEM_PRESETS[0];
-
   const body = (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -131,9 +96,20 @@ export default function ControlDrawer({
       <div className="flex-1 overflow-y-auto custom-scrollbar-thin px-5 py-5 space-y-7">
         {/* ── Model Parameters ── */}
         <section className="space-y-4">
-          <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/30">
-            Model Parameters
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/30">
+              Model Parameters
+            </p>
+            <button
+              type="button"
+              onClick={() => onParamsChange(DEFAULT_PARAMS)}
+              className="flex items-center gap-1 text-[10px] font-mono text-white/30 hover:text-[#00F5D4] transition-colors cursor-pointer"
+              title="Reset to defaults"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Reset
+            </button>
+          </div>
           <Slider
             label="Temperature"
             hint="Higher = more creative, lower = more precise"
@@ -164,68 +140,6 @@ export default function ControlDrawer({
             onChange={(v) => onParamsChange({ ...params, top_p: v })}
             format={(v) => v.toFixed(2)}
           />
-        </section>
-
-        {/* ── System Instructions ── */}
-        <section className="space-y-2.5">
-          <button
-            type="button"
-            onClick={() => setPresetsOpen((o) => !o)}
-            className="w-full flex items-center justify-between group cursor-pointer"
-          >
-            <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/30 group-hover:text-white/50 transition-colors">
-              System Instructions
-            </span>
-            <ChevronDown
-              className={cn(
-                'h-3.5 w-3.5 text-white/30 transition-transform duration-300',
-                presetsOpen && 'rotate-180'
-              )}
-            />
-          </button>
-
-          {presetsOpen && (
-            <div className="space-y-1.5 animate-fade-in">
-              {SYSTEM_PRESETS.map((p) => {
-                const active = systemPreset === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => onSystemPresetChange(p.id)}
-                    className={cn(
-                      'w-full text-start px-3 py-2 rounded-xl text-[12px] font-medium transition-all duration-200 cursor-pointer active:scale-[0.98]',
-                      active
-                        ? 'nav-pill-active text-white'
-                        : 'text-white/45 hover:text-white/85 hover:bg-white/[0.04] border border-transparent'
-                    )}
-                  >
-                    {p.label}
-                  </button>
-                );
-              })}
-
-              {systemPreset === 'custom' && (
-                <textarea
-                  value={customPrompt}
-                  onChange={(e) => setCustomPrompt(e.target.value)}
-                  onBlur={() => {
-                    const evt = new CustomEvent('vantra-custom-system', { detail: customPrompt });
-                    window.dispatchEvent(evt);
-                  }}
-                  placeholder="Write your custom system instruction..."
-                  rows={4}
-                  className="w-full mt-1 rounded-xl bg-white/[0.03] border border-white/[0.08] focus:border-[#00F5D4]/40 p-3 text-[12px] text-white placeholder-white/25 outline-none resize-none transition-colors"
-                />
-              )}
-
-              {preset.prompt && systemPreset !== 'custom' && (
-                <p className="text-[10.5px] leading-relaxed text-white/30 bg-white/[0.02] border border-white/[0.05] rounded-xl p-3 line-clamp-3">
-                  {preset.prompt}
-                </p>
-              )}
-            </div>
-          )}
         </section>
 
         {/* ── Real-time stats ── */}
