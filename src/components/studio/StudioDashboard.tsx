@@ -254,7 +254,7 @@ export default function StudioDashboard() {
         {view === 'chat' && (
           <header className="shrink-0 h-[60px] border-b border-white/[0.05] bg-[#08090C]/70 backdrop-blur-xl flex items-center gap-3 px-4 relative z-10">
             {/* Model tabs */}
-            <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar-thin flex-1 min-w-0">
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-none flex-1 min-w-0">
               {MODELS.map((m) => {
                 const active = m.id === selectedModelId;
                 return (
@@ -338,7 +338,7 @@ export default function StudioDashboard() {
                   <div className="w-full flex justify-center px-4 pb-80 pt-8">
                     <div className="w-full max-w-[720px] flex flex-col gap-7">
                       {isEmpty && (
-                        <div className="flex flex-col items-center text-center pt-[10vh] stagger-2">
+                        <div className="flex flex-col items-center text-center pt-[7vh] stagger-2">
                           <div className="ai-avatar-ring h-16 w-16 rounded-2xl p-[2px] shadow-[0_0_40px_-8px_rgba(0,229,255,0.5)]">
                             <div className="w-full h-full rounded-[14px] bg-[#0D0E12] flex items-center justify-center">
                               <Sparkles className="h-7 w-7 text-[#00E5FF]" />
@@ -350,6 +350,24 @@ export default function StudioDashboard() {
                           <p className="lux-welcome-sub mt-3">
                             Pick a model up top, tune the controls on the right, and create.
                           </p>
+
+                          {/* Composer — always visible so users can start chatting */}
+                          <div className="w-full mt-10 composer-in">
+                            <ClaudeChatInput
+                              onSendMessage={handleSend}
+                              models={MODELS.map((m) => ({ id: m.id, name: m.name, description: `${m.provider} · ${m.ctx}`, badge: m.badge, isFree: m.isFree, requiresAuth: !m.isFree }))}
+                              selectedModelId={selectedModelId}
+                              onSelectModel={setSelectedModelId}
+                              isLoading={isLoading}
+                              onStop={stop}
+                              placeholder="How can I help you today?"
+                              autoFocus
+                              onSignInClick={user ? undefined : () => openAuthModal('signin')}
+                            />
+                            <p className="text-center text-[11px] text-white/30 mt-5">
+                              VANTRA can make mistakes. Please check important information.
+                            </p>
+                          </div>
                         </div>
                       )}
 

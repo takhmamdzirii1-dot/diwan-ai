@@ -3268,3 +3268,7 @@ html[lang="ar"] .lux-prose table,
   -webkit-backdrop-filter: blur(20px);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 16px 40px -24px rgba(0, 0, 0, 0.9);
 }
+
+/* Hidden scrollbar utility (model tabs strip) */
+.scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
