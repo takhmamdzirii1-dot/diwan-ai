@@ -2708,10 +2708,10 @@ html[dir="rtl"] .cost-table { text-align: right; }
   background: linear-gradient(
     105deg,
     #ffffff 18%,
-    rgba(255, 255, 255, 0.55) 34%,
+    rgba(255, 255, 255, 0.82) 34%,
     #f4dea9 48%,
     #e8c87a 52%,
-    rgba(255, 255, 255, 0.6) 66%,
+    rgba(255, 255, 255, 0.85) 66%,
     #ffffff 84%
   );
   background-size: 220% auto;

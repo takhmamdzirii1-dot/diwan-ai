@@ -35,6 +35,7 @@ function useAutoResizeTextarea({
 
             if (reset) {
                 textarea.style.height = `${minHeight}px`;
+                textarea.scrollTop = 0;
                 return;
             }
 
@@ -47,6 +48,11 @@ function useAutoResizeTextarea({
                 )
             );
             textarea.style.height = `${newHeight}px`;
+
+            // If all content fits, snap back to top so text never stays clipped
+            if (textarea.scrollHeight <= textarea.clientHeight + 2) {
+                textarea.scrollTop = 0;
+            }
         },
         [minHeight, maxHeight]
     );
@@ -197,33 +203,38 @@ export function VercelV0Chat(props: V0AIChatProps) {
 
                 <div className="lux-input-shell relative">
                     <div className="lux-input-shell-inner">
-                        <div className="overflow-y-auto custom-scrollbar" dir="auto">
-                            <Textarea
-                                ref={textareaRef}
-                                value={value}
-                                onChange={(e) => {
-                                    setValue(e.target.value);
-                                    adjustHeight();
-                                }}
-                                onKeyDown={handleKeyDown}
-                                placeholder={placeholder}
-                                dir="auto"
-                                className={cn(
-                                    "w-full px-5 pt-4 pb-2",
-                                    "resize-none",
-                                    "bg-transparent",
-                                    "border-none",
-                                    "text-white text-[15px] leading-relaxed",
-                                    "focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
-                                    "placeholder:text-white/30",
-                                    "min-h-[60px]"
-                                )}
-                                style={{ overflow: "hidden" }}
-                            />
-                        </div>
+                        <Textarea
+                            ref={textareaRef}
+                            value={value}
+                            onChange={(e) => {
+                                setValue(e.target.value);
+                                adjustHeight();
+                            }}
+                            onKeyDown={handleKeyDown}
+                            onClick={(e) => {
+                                // never allow stale scroll offsets to clip text
+                                const el = e.currentTarget;
+                                if (el.scrollHeight <= el.clientHeight + 2) el.scrollTop = 0;
+                            }}
+                            placeholder={placeholder}
+                            dir="auto"
+                            rows={1}
+                            className={cn(
+                                "block w-full px-5 pt-4 pb-2",
+                                "resize-none",
+                                "bg-transparent",
+                                "border-none",
+                                "text-white text-[15px] leading-relaxed",
+                                "focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
+                                "placeholder:text-white/30",
+                                "min-h-[60px]",
+                                "overflow-y-auto custom-scrollbar"
+                            )}
+                            style={{ overflowX: "hidden" }}
+                        />
 
                         {/* Toolbar */}
-                        <div className="flex items-center justify-between p-3 gap-3">
+                        <div className="flex items-center justify-between px-3.5 pb-3 pt-1 gap-3">
                             <div className="flex items-center gap-1.5 min-w-0">
                                 {/* Attach */}
                                 <button
