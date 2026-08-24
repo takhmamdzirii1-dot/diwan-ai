@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   try {
     const supabase = await createClient();
 
-    // 1. Authentication
+    // 1. Authentication (optional — guests can chat on free models)
     let user = null;
     const authHeader = request.headers.get('authorization');
     if (authHeader?.startsWith('Bearer ')) {
@@ -24,13 +24,6 @@ export async function POST(request: Request) {
     } else {
       const { data } = await supabase.auth.getUser();
       user = data.user;
-    }
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized. Please sign in to use your AI balance.' },
-        { status: 401 }
-      );
     }
 
     // 2. Parse Request Body
@@ -72,7 +65,15 @@ export async function POST(request: Request) {
     const requestedModel = model.trim();
     const cost = getModelCost(requestedModel);
 
-    // 3. Atomic Point Deduction
+    // Guests are limited to free models — premium engines require an account.
+    if (!user && cost > 0) {
+      return NextResponse.json(
+        { error: 'Sign in to use premium models. Free models need no account.' },
+        { status: 401 }
+      );
+    }
+
+    // 3. Atomic Point Deduction (authenticated users only)
     let deductSuccess = cost === 0;
     
     if (cost > 0) {

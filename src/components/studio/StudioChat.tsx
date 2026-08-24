@@ -85,13 +85,13 @@ export default function StudioChat({
   const welcomeTitleA = lang === 'ar' ? 'كيف أساعدك' : lang === 'fr' ? 'Comment puis-je' : 'How can I help';
   const welcomeTitleB = lang === 'ar' ? 'اليوم؟' : lang === 'fr' ? 'vous ?' : 'you today?';
   const welcomeSub = lang === 'ar'
-    ? 'نماذج رائدة عالمياً في مكان واحد — ابدأ مجاناً، وادفع بالنقاط فقط عند استخدام النماذج المتقدمة.'
+    ? 'ابدأ المحادثة فوراً بدون حساب — سجّل الدخول فقط لفتح النماذج المتقدمة وحفظ سجلك.'
     : lang === 'fr'
-    ? 'Les meilleurs modèles du monde en un seul endroit — commencez gratuitement, payez des points uniquement pour les modèles premium.'
-    : 'Frontier models in one place — start free, spend points only when you call premium engines.';
-  const signInToChat = lang === 'ar' ? 'سجّل الدخول لبدء المحادثة' :
-                       lang === 'fr' ? 'Connectez-vous pour discuter' :
-                       'Sign in to start chatting';
+    ? 'Commencez à discuter instantanément, sans compte — connectez-vous pour débloquer les modèles premium et votre historique.'
+    : 'Start chatting instantly, no account needed — sign in only to unlock premium models and save your history.';
+  const signInOptional = lang === 'ar' ? 'سجّل الدخول لفتح النماذج المتقدمة' :
+                       lang === 'fr' ? 'Connectez-vous pour les modèles premium' :
+                       'Sign in to unlock premium models';
 
   const { messages, setMessages, append, isLoading, error, stop } = useChat({
     id: activeSessionId || 'default-session',
@@ -155,16 +155,12 @@ export default function StudioChat({
     _cost: number,
     _attachments?: AttachedFile[]
   ) => {
-    if (!user) {
-      openAuthModal('signin');
-      return;
-    }
     onSessionActivity?.(activeSessionId, content);
     await append(
       { role: 'user', content },
       { body: { model: modelId || selectedModelId } }
     );
-  }, [user, append, openAuthModal, selectedModelId, activeSessionId, onSessionActivity]);
+  }, [append, selectedModelId, activeSessionId, onSessionActivity]);
 
   // Spotlight tracking for suggestion cards
   const handleCardMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -209,11 +205,10 @@ export default function StudioChat({
                   <button
                     type="button"
                     onClick={() => openAuthModal('signin')}
-                    className="group mt-8 inline-flex items-center gap-2.5 px-6 h-12 rounded-full bg-gradient-to-r from-[#1FD8B8] to-[#34E2C2] text-[#050506] text-sm font-bold transition-all hover:-translate-y-0.5 shadow-[0_10px_36px_-8px_rgba(31,216,184,0.55)] hover:shadow-[0_16px_44px_-8px_rgba(31,216,184,0.65)] cursor-pointer"
+                    className="mt-7 inline-flex items-center gap-2 px-4 h-9 rounded-full border border-[#E8C87A]/25 bg-[#E8C87A]/[0.06] text-[#E8C87A]/90 text-xs font-semibold transition-all hover:bg-[#E8C87A]/[0.12] hover:-translate-y-0.5 cursor-pointer"
                   >
-                    <LogIn className="h-4 w-4" />
-                    {signInToChat}
-                    <span className="block h-px w-0 group-hover:w-2 bg-[#050506]/60 transition-all duration-300" />
+                    <LogIn className="h-3.5 w-3.5" />
+                    {signInOptional}
                   </button>
                 )}
 
@@ -283,8 +278,8 @@ export default function StudioChat({
                       try {
                         return error?.message?.includes('{')
                           ? JSON.parse(error.message).error || error.message
-                          : error?.message.includes('Unauthorized')
-                            ? 'Please sign in to use your AI balance.'
+                          : error?.message.includes('Unauthorized') || error?.message.includes('Sign in')
+                            ? 'Sign in to use premium models. Free models need no account.'
                             : error?.message || 'The AI engine is currently experiencing high demand. Please try again in a moment.';
                       } catch {
                         return error?.message || 'The AI engine is currently experiencing high demand. Please try again in a moment.';
