@@ -2,13 +2,12 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, Gauge, Zap, Swords, Database, Settings, Sparkles, LayoutGrid, MessageSquare, Image as ImageIcon, Video, PenLine, Code2, Lightbulb, BarChart3 } from 'lucide-react';
+import { Menu, Zap, Swords, Database, Settings, Sparkles, LayoutGrid, MessageSquare, Image as ImageIcon, Video, PenLine, Code2, Lightbulb, BarChart3 } from 'lucide-react';
 import { useChat } from '@ai-sdk/react';
 import useUser from '../../hooks/useUser';
 import { useModal } from '../../context/ModalContext';
 import { ClaudeChatInput } from '@/components/ui/claude-style-chat-input';
 import DashboardSidebar, { type DashboardView } from './DashboardSidebar';
-import ControlDrawer, { type GenerationParams } from './ControlDrawer';
 import MessageBubble from './MessageBubble';
 import StudioImage from './StudioImage';
 import StudioVideo from './StudioVideo';
@@ -86,10 +85,8 @@ export default function StudioDashboard() {
   const [view, setView] = useState<DashboardView>('chat');
   const [centerMode, setCenterMode] = useState<CenterMode>('chat');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const [selectedModelId, setSelectedModelId] = useState(MODELS[0].id);
-  const [params, setParams] = useState<GenerationParams>({ temperature: 0.7, max_tokens: 2048, top_p: 0.95 });
   const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null);
   const sendStartRef = useRef<number>(0);
 
@@ -207,14 +204,11 @@ export default function StudioDashboard() {
         {
           body: {
             model: selectedModelId,
-            temperature: params.temperature,
-            max_tokens: params.max_tokens,
-            top_p: params.top_p,
           },
         }
       );
     },
-    [append, selectedModelId, params, activeSessionId, activeModel.isFree, user, openAuthModal]
+    [append, selectedModelId, activeSessionId, activeModel.isFree, user, openAuthModal]
   );
 
   const handleNewChat = useCallback(() => {
@@ -251,14 +245,7 @@ export default function StudioDashboard() {
           <Menu className="h-5 w-5" />
         </button>
         <span className="font-heading font-bold text-sm tracking-[0.2em] text-white">VANTRA</span>
-        <button
-          type="button"
-          onClick={() => setDrawerOpen(true)}
-          className="p-2 rounded-xl border border-white/10 bg-white/5 text-white cursor-pointer"
-          aria-label="Open controls"
-        >
-          <Gauge className="h-5 w-5" />
-        </button>
+        <span className="w-[38px]" />
       </div>
 
       {/* ── 1. Left navigation ── */}
@@ -330,17 +317,8 @@ export default function StudioDashboard() {
                   {label}
                 </button>
               ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(true)}
-              className="hidden xl:flex items-center gap-1.5 h-9 px-3 rounded-xl border border-white/[0.08] bg-white/[0.03] text-white/50 hover:text-white hover:border-[#9D4EDD]/40 transition-all cursor-pointer shrink-0"
-              title="Control room"
-            >
-              <Gauge className="h-4 w-4" />
-            </button>
-          </header>
+             </div>
+           </header>
         )}
 
         {/* Center content */}
@@ -578,22 +556,6 @@ export default function StudioDashboard() {
           </AnimatePresence>
         </div>
       </main>
-
-      {/* ── 3. Right control drawer ── */}
-      {view === 'chat' && (
-        <ControlDrawer
-          open={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          params={params}
-          onParamsChange={setParams}
-          stats={{
-            totalTokens,
-            lastLatencyMs,
-            messageCount: messages.length,
-            model: activeModel.name,
-          }}
-        />
-      )}
     </div>
   );
 }
