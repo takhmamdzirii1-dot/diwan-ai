@@ -28,18 +28,32 @@ export async function POST(request: Request) {
 
     // 2. Parse Request Body
     const body = await request.json().catch(() => ({}));
-    
+
     const { prompt, model = 'nvidia/nemotron-3.5-lightning:free', messages } = body;
-    
+
+    // Generation controls (clamped for safety)
+    const clamp = (v: unknown, min: number, max: number, fallback: number) => {
+      const n = typeof v === 'number' && Number.isFinite(v) ? v : Number(v);
+      if (!Number.isFinite(n)) return fallback;
+      return Math.min(max, Math.max(min, n));
+    };
+    const temperature = clamp(body.temperature, 0, 2, 0.7);
+    const maxTokens = Math.round(clamp(body.max_tokens, 64, 8192, 2048));
+    const topP = clamp(body.top_p, 0.05, 1, 0.95);
+    const customSystem =
+      typeof body.system === 'string' && body.system.trim()
+        ? body.system.trim().slice(0, 2000)
+        : null;
+
+    const DEFAULT_SYSTEM =
+      'You are VANTRA, an elite AI assistant on the premier unified AI gateway for Algeria. Provide well-structured, insightful answers with clean markdown. You are fully fluent in English, French, and Algerian Darja.';
+    const SYSTEM_PROMPT = customSystem || DEFAULT_SYSTEM;
+
     let messagesPayload = messages;
     if (!messagesPayload || !Array.isArray(messagesPayload) || messagesPayload.length === 0) {
        if (prompt) {
           messagesPayload = [
-            {
-              role: 'system',
-              content:
-                'You are an expert AI assistant hosted on VANTRA, the premier unified AI gateway for Algeria. Provide well-structured, helpful, and insightful answers with clean markdown formatting. You are fully fluent in English, French, and Algerian Darja.',
-            },
+            { role: 'system', content: SYSTEM_PROMPT },
             { role: 'user', content: prompt }
           ];
        } else {
@@ -52,12 +66,13 @@ export async function POST(request: Request) {
        // Ensure there's a system prompt if it's a new conversation
        if (messagesPayload[0].role !== 'system') {
           messagesPayload = [
-            {
-              role: 'system',
-              content:
-                'You are an expert AI assistant hosted on VANTRA, the premier unified AI gateway for Algeria. Provide well-structured, helpful, and insightful answers with clean markdown formatting. You are fully fluent in English, French, and Algerian Darja.',
-            },
+            { role: 'system', content: SYSTEM_PROMPT },
             ...messagesPayload
+          ];
+       } else {
+          messagesPayload = [
+            { role: 'system', content: SYSTEM_PROMPT },
+            ...messagesPayload.slice(1)
           ];
        }
     }
@@ -141,6 +156,9 @@ export async function POST(request: Request) {
       const result = await streamText({
         model: openRouter(requestedModel),
         messages: messagesPayload,
+        temperature,
+        maxTokens,
+        topP,
       });
 
       

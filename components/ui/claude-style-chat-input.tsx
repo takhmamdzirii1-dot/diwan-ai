@@ -272,6 +272,35 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
     const [pastedContent, setPastedContent] = useState<{ id: string; content: string }[]>([]);
     const [isDragging, setIsDragging] = useState(false);
     const [isThinkingEnabled, setIsThinkingEnabled] = useState(false);
+    const [isListening, setIsListening] = useState(false);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const recognitionRef = useRef<any>(null);
+
+    const toggleVoice = () => {
+        if (isListening) {
+            recognitionRef.current?.stop();
+            setIsListening(false);
+            return;
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SR) return;
+        const rec = new SR();
+        rec.lang = document.documentElement.lang === 'ar' ? 'ar-DZ' : 'en-US';
+        rec.interimResults = true;
+        rec.continuous = false;
+        rec.onresult = (e: any) => {
+            const transcript = Array.from(e.results as any[])
+                .map((r) => r[0].transcript as string)
+                .join(' ');
+            setMessage((prev) => (prev ? prev + ' ' : '') + transcript);
+        };
+        rec.onend = () => setIsListening(false);
+        rec.onerror = () => setIsListening(false);
+        recognitionRef.current = rec;
+        rec.start();
+        setIsListening(true);
+    };
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -466,6 +495,33 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                     </div>
                                 </button>
                             </div>
+
+                            {/* Voice input */}
+                            <div className="flex shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={toggleVoice}
+                                    className={cn(
+                                        "relative transition-all duration-200 h-8 w-8 flex items-center justify-center rounded-lg active:scale-95 cursor-pointer",
+                                        isListening
+                                            ? 'text-[#00F5D4] bg-[#00F5D4]/[0.1] shadow-[0_0_18px_-4px_rgba(0,245,212,0.5)]'
+                                            : 'text-white/40 hover:text-white hover:bg-white/[0.07]'
+                                    )}
+                                    aria-label="Voice input"
+                                >
+                                    <MicIcon className={cn("w-[18px] h-[18px]", isListening && "animate-pulse")} />
+                                </button>
+                            </div>
+
+                            {/* Token counter */}
+                            {message.trim().length > 0 && (
+                                <span
+                                    className="ms-1 hidden sm:inline-flex items-center h-5 px-2 rounded-md border border-white/[0.08] bg-white/[0.03] text-[10px] font-mono text-white/40 animate-fade-in"
+                                    title="Approximate token count"
+                                >
+                                    ≈{Math.max(1, Math.ceil(message.trim().length / 4))} tok
+                                </span>
+                            )}
                         </div>
 
                         {/* Right tools */}
@@ -542,3 +598,12 @@ const ClockIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 export default ClaudeChatInput;
+
+/* Mic icon for voice input */
+const MicIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+        <line x1="12" x2="12" y1="19" y2="22" />
+    </svg>
+);

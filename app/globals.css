@@ -3114,3 +3114,157 @@ html[lang="ar"] .lux-prose table,
 @media (prefers-reduced-motion: reduce) {
   .send-ready { animation: none; }
 }
+/* ==========================================================================
+   VANTRA STUDIO DASHBOARD - OBSIDIAN DESIGN SYSTEM
+   ========================================================================== */
+:root {
+  --obsidian: #08090C;
+  --obsidian-2: #0D0E12;
+  --bronze: #C5A059;
+  --bronze-deep: #8A6D3B;
+  --cyan-glow: #00F5D4;
+  --cyan-deep: #00B4D8;
+  --violet-glow: #9D4EDD;
+  --violet-deep: #7928CA;
+  --ice: #00E5FF;
+}
+
+.obsidian-bg {
+  background:
+    radial-gradient(1100px 600px at 4% 10%, rgba(0, 245, 212, 0.06), transparent 60%),
+    radial-gradient(1100px 600px at 96% 90%, rgba(157, 78, 221, 0.08), transparent 60%),
+    radial-gradient(700px 420px at 50% 0%, rgba(0, 180, 216, 0.04), transparent 65%),
+    linear-gradient(180deg, #08090C 0%, #0D0E12 100%);
+}
+
+.wing-glow-left, .wing-glow-right {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(110px);
+  pointer-events: none;
+}
+.wing-glow-left {
+  left: -140px; top: 22%; width: 380px; height: 480px;
+  background: radial-gradient(circle, rgba(0, 245, 212, 0.13) 0%, rgba(0, 180, 216, 0.05) 45%, transparent 70%);
+  animation: lux-breathe 12s ease-in-out infinite alternate;
+}
+.wing-glow-right {
+  right: -140px; bottom: 12%; width: 400px; height: 500px;
+  background: radial-gradient(circle, rgba(157, 78, 221, 0.16) 0%, rgba(121, 40, 202, 0.06) 45%, transparent 70%);
+  animation: lux-breathe 15s ease-in-out infinite alternate -6s;
+}
+
+/* Bronze metallic frame */
+.bronze-border {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(180deg, rgba(13, 14, 18, 0.92), rgba(8, 9, 12, 0.96)) padding-box,
+    linear-gradient(135deg, rgba(197, 160, 89, 0.65) 0%, rgba(138, 109, 59, 0.2) 38%, rgba(197, 160, 89, 0.12) 62%, rgba(197, 160, 89, 0.5) 100%) border-box;
+}
+.bronze-text {
+  background: linear-gradient(100deg, #8A6D3B 0%, #C5A059 45%, #EDD9A3 55%, #C5A059 65%, #8A6D3B 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Animated gradient AI avatar (cyan -> violet conic) */
+.ai-avatar-ring {
+  background: conic-gradient(from 0deg, #00F5D4, #00B4D8, #9D4EDD, #7928CA, #00F5D4);
+  animation: avatar-spin 7s linear infinite;
+}
+@keyframes avatar-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-avatar-ring { animation: none; }
+}
+
+/* Three pulsing neon dots */
+.neon-dot {
+  width: 6px; height: 6px; border-radius: 999px;
+  animation: neon-pulse 1.15s ease-in-out infinite;
+}
+.neon-dot:nth-child(1) { background: #00F5D4; box-shadow: 0 0 9px #00F5D4; }
+.neon-dot:nth-child(2) { background: #00E5FF; box-shadow: 0 0 9px #00E5FF; animation-delay: 0.15s; }
+.neon-dot:nth-child(3) { background: #9D4EDD; box-shadow: 0 0 9px #9D4EDD; animation-delay: 0.3s; }
+@keyframes neon-pulse {
+  0%, 100% { opacity: 0.3; transform: translateY(0) scale(0.9); }
+  50% { opacity: 1; transform: translateY(-3px) scale(1.05); }
+}
+
+/* Luxury range sliders */
+.lux-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 18px;
+  background: transparent;
+  cursor: pointer;
+}
+.lux-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(0, 245, 212, 0.75), rgba(157, 78, 221, 0.75));
+}
+.lux-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  margin-top: -5.5px;
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  background: #E0F7FA;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.8), 0 0 3px rgba(255, 255, 255, 0.9);
+  transition: transform 0.15s ease;
+}
+.lux-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+.lux-slider::-moz-range-track {
+  height: 4px; border-radius: 999px;
+  background: linear-gradient(90deg, rgba(0, 245, 212, 0.75), rgba(157, 78, 221, 0.75));
+}
+.lux-slider::-moz-range-thumb {
+  width: 15px; height: 15px; border-radius: 50%;
+  background: #E0F7FA; border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.8);
+}
+
+/* Cyan user-bubble accent */
+.user-bubble-cyan {
+  border: 1px solid rgba(0, 245, 212, 0.22);
+  background: linear-gradient(135deg, rgba(0, 245, 212, 0.1) 0%, rgba(0, 180, 216, 0.05) 60%, rgba(255, 255, 255, 0.02) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 0 24px -12px rgba(0, 245, 212, 0.35);
+}
+
+/* Nav active pill: cyan -> violet */
+.nav-pill-active {
+  background: linear-gradient(100deg, rgba(0, 245, 212, 0.14) 0%, rgba(157, 78, 221, 0.14) 100%);
+  border: 1px solid rgba(0, 245, 212, 0.28);
+  box-shadow: 0 0 24px -8px rgba(0, 245, 212, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* Tooltip */
+.lux-tip { position: relative; }
+.lux-tip:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  color: #E0F7FA;
+  background: rgba(8, 9, 12, 0.95);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: 7px;
+  padding: 4px 9px;
+  pointer-events: none;
+  z-index: 60;
+  box-shadow: 0 0 16px -4px rgba(0, 229, 255, 0.35);
+}
+/* Glass panel (dashboard cards) */
+.glass-panel {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 16px 40px -24px rgba(0, 0, 0, 0.9);
+}

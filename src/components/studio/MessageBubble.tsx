@@ -1,21 +1,22 @@
 import React, { useState, useRef } from 'react';
+import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Bot, User, Copy, Check, Terminal } from 'lucide-react';
+import { Copy, Check, Terminal, Share, RefreshCw, Sparkles, User } from 'lucide-react';
 import type { Message } from '@ai-sdk/react';
 
 export interface MessageBubbleProps {
   message: Message;
   isLatest: boolean;
   isStreaming?: boolean;
+  onRegenerate?: () => void;
 }
 
-export default function MessageBubble({ message, isLatest, isStreaming }: MessageBubbleProps) {
+export default function MessageBubble({ message, isLatest, isStreaming, onRegenerate }: MessageBubbleProps) {
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
   const [copiedMessage, setCopiedMessage] = useState(false);
+  const [shared, setShared] = useState(false);
   const codeBlockCounter = useRef(0);
-
-  // Stable ids per render pass: incrementing counter instead of Math.random()
   codeBlockCounter.current = 0;
 
   const handleCopyCode = (code: string, id: string) => {
@@ -30,38 +31,75 @@ export default function MessageBubble({ message, isLatest, isStreaming }: Messag
     setTimeout(() => setCopiedMessage(false), 2000);
   };
 
+  const handleShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'VANTRA AI', text: message.content });
+      } else {
+        await navigator.clipboard.writeText(message.content);
+        setShared(true);
+        setTimeout(() => setShared(false), 2000);
+      }
+    } catch {}
+  };
+
   const isUser = message.role === 'user';
-  const showStreamingCursor =
-    !isUser && isStreaming && isLatest && message.content.length > 0;
+  const showStreamingCursor = !isUser && isStreaming && isLatest && message.content.length > 0;
 
   return (
-    <div className="group/msg flex flex-col gap-2.5 w-full min-w-0 animate-fade-in">
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
+      className="group/msg flex flex-col gap-2.5 w-full min-w-0"
+    >
       {/* Header meta */}
       <div className={`flex items-center gap-3 w-full px-1 ${isUser ? 'justify-end' : 'justify-start'}`}>
         {isUser ? (
           <>
-            <span className="text-[11px] font-mono uppercase tracking-[0.14em] text-white/40">You</span>
-            <div className="h-7 w-7 rounded-lg bg-white/[0.06] border border-white/[0.1] flex items-center justify-center text-white/80 shadow-sm">
+            <span className="text-[11px] font-mono uppercase tracking-[0.14em] text-[#00F5D4]/60">You</span>
+            <div className="h-7 w-7 rounded-lg bg-white/[0.06] border border-[#00F5D4]/25 flex items-center justify-center text-[#00F5D4]/90 shadow-[0_0_14px_-4px_rgba(0,245,212,0.5)]">
               <User className="h-3.5 w-3.5" />
             </div>
           </>
         ) : (
           <>
-            <div className="relative h-7 w-7 rounded-lg bg-gradient-to-br from-[#1FD8B8]/25 to-transparent border border-[#1FD8B8]/30 flex items-center justify-center text-[#1FD8B8] shadow-[0_0_16px_rgba(31,216,184,0.18)]">
-              <Bot className="h-3.5 w-3.5" />
+            {/* Animated gradient avatar */}
+            <div className="ai-avatar-ring h-7 w-7 rounded-lg p-[1.5px] shadow-[0_0_18px_-2px_rgba(0,229,255,0.4)]">
+              <div className="w-full h-full rounded-[calc(0.5rem-1.5px)] bg-[#0D0E12] flex items-center justify-center">
+                <Sparkles className="h-3.5 w-3.5 text-[#00E5FF]" />
+              </div>
             </div>
-            <span className="text-[11px] font-mono uppercase tracking-[0.14em] text-white/55">
-              VANTRA
-            </span>
+            <span className="text-[11px] font-mono uppercase tracking-[0.14em] text-white/55">VANTRA</span>
             {!isStreaming && (
-              <button
-                type="button"
-                onClick={handleCopyMessage}
-                title="Copy message"
-                className="opacity-0 group-hover/msg:opacity-100 transition-opacity p-1 rounded-md text-white/30 hover:text-white hover:bg-white/[0.07] cursor-pointer"
-              >
-                {copiedMessage ? <Check className="h-3 w-3 text-[#E8C87A]" /> : <Copy className="h-3 w-3" />}
-              </button>
+              <div className="flex items-center gap-0.5 opacity-0 group-hover/msg:opacity-100 transition-opacity">
+                <button
+                  type="button"
+                  onClick={handleCopyMessage}
+                  title="Copy"
+                  className="p-1.5 rounded-md text-white/30 hover:text-[#00F5D4] hover:bg-white/[0.06] transition-colors cursor-pointer active:scale-90"
+                >
+                  {copiedMessage ? <Check className="h-3 w-3 text-[#00F5D4]" /> : <Copy className="h-3 w-3" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  title="Share"
+                  className="p-1.5 rounded-md text-white/30 hover:text-[#9D4EDD] hover:bg-white/[0.06] transition-colors cursor-pointer active:scale-90"
+                >
+                  {shared ? <Check className="h-3 w-3 text-[#00F5D4]" /> : <Share className="h-3 w-3" />}
+                </button>
+                {isLatest && onRegenerate && (
+                  <button
+                    type="button"
+                    onClick={onRegenerate}
+                    title="Regenerate"
+                    className="p-1.5 rounded-md text-white/30 hover:text-[#E8C87A] hover:bg-white/[0.06] transition-colors cursor-pointer active:scale-90"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
             )}
           </>
         )}
@@ -70,16 +108,15 @@ export default function MessageBubble({ message, isLatest, isStreaming }: Messag
       {/* Bubble / Panel */}
       <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
         {isUser ? (
-          <div
-            className="lux-msg-user max-w-[85%] min-w-0 rounded-2xl rounded-tr-md px-5 py-4"
-            dir="auto"
-          >
+          <div className="user-bubble-cyan max-w-[85%] min-w-0 rounded-2xl rounded-tr-md px-5 py-4 backdrop-blur-xl" dir="auto">
             <p className="text-[15px] leading-[1.75] text-white whitespace-pre-wrap break-words">
               {message.content}
             </p>
           </div>
         ) : (
-          <div className="lux-msg-ai w-full min-w-0 rounded-2xl px-6 py-5 md:px-7 md:py-6" dir="auto">
+          <div className="w-full min-w-0 rounded-2xl border border-white/[0.07] bg-white/[0.025] backdrop-blur-xl px-6 py-5 md:px-7 md:py-6 shadow-[0_18px_44px_-24px_rgba(0,0,0,0.9)] relative overflow-hidden" dir="auto">
+            {/* top gradient hairline: cyan -> violet */}
+            <span className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-[#00E5FF]/40 to-transparent pointer-events-none" style={{ background: 'linear-gradient(90deg, transparent, rgba(0,245,212,0.45), rgba(157,78,221,0.35), transparent)' }} />
             <div className="lux-prose">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
@@ -97,19 +134,19 @@ export default function MessageBubble({ message, isLatest, isStreaming }: Messag
                     return (
                       <div className="my-5 overflow-hidden rounded-xl border border-white/[0.09] bg-[#060609] shadow-2xl flex flex-col w-full" dir="ltr">
                         <div className="flex flex-wrap items-center justify-between border-b border-white/[0.07] bg-white/[0.02] px-4 py-2.5 gap-4">
-                          <div className="flex items-center gap-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#E8C87A]/85 shrink-0">
+                          <div className="flex items-center gap-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#00E5FF]/85 shrink-0">
                             <Terminal className="h-3 w-3" />
                             <span>{langName || 'code'}</span>
                           </div>
                           <button
                             type="button"
                             onClick={() => handleCopyCode(codeString, blockId)}
-                            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-white/55 hover:bg-white/[0.06] hover:text-white transition cursor-pointer shrink-0"
+                            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-white/55 hover:bg-white/[0.06] hover:text-white transition cursor-pointer shrink-0 active:scale-95"
                           >
                             {copiedCodeId === blockId ? (
                               <>
-                                <Check className="h-3 w-3 text-[#1FD8B8]" />
-                                <span className="text-[#1FD8B8]">Copied</span>
+                                <Check className="h-3 w-3 text-[#00F5D4]" />
+                                <span className="text-[#00F5D4]">Copied</span>
                               </>
                             ) : (
                               <>
@@ -135,13 +172,13 @@ export default function MessageBubble({ message, isLatest, isStreaming }: Messag
               {showStreamingCursor && (
                 <span
                   aria-hidden
-                  className="inline-block w-[7px] h-[17px] ms-1 align-middle bg-[#E8C87A] animate-pulse rounded-[2px] shadow-[0_0_10px_rgba(232,200,122,0.5)]"
+                  className="inline-block w-[7px] h-[17px] ms-1 align-middle bg-[#00E5FF] animate-pulse rounded-[2px] shadow-[0_0_10px_rgba(0,229,255,0.6)]"
                 />
               )}
             </div>
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
