@@ -122,7 +122,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
             </p>
           </div>
         ) : (
-          <div className="w-full min-w-0 rounded-2xl border border-white/[0.07] bg-white/[0.025] backdrop-blur-xl px-6 py-5 md:px-7 md:py-6 shadow-[0_18px_44px_-24px_rgba(0,0,0,0.9)] relative overflow-hidden" dir={detectDir(message.content)}>
+          <div className="w-fit max-w-full min-w-0 rounded-2xl border border-white/[0.07] bg-white/[0.025] backdrop-blur-xl px-6 py-5 md:px-7 md:py-6 shadow-[0_18px_44px_-24px_rgba(0,0,0,0.9)] relative">
             {/* top gradient hairline: cyan -> violet */}
             <span className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-[#00E5FF]/40 to-transparent pointer-events-none" style={{ background: 'linear-gradient(90deg, transparent, rgba(0,245,212,0.45), rgba(157,78,221,0.35), transparent)' }} />
             <div className="lux-prose">
@@ -131,6 +131,13 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
                 rehypePlugins={[rehypeRaw]}
                 components={{
                   pre: ({ children }) => <>{children}</>,
+                  p: ({ children }) => <p dir="auto">{children}</p>,
+                  h1: ({ children }) => <h1 dir="auto">{children}</h1>,
+                  h2: ({ children }) => <h2 dir="auto">{children}</h2>,
+                  h3: ({ children }) => <h3 dir="auto">{children}</h3>,
+                  h4: ({ children }) => <h4 dir="auto">{children}</h4>,
+                  li: ({ children }) => <li dir="auto">{children}</li>,
+                  blockquote: ({ children }) => <blockquote dir="auto">{children}</blockquote>,
                   table: ({ children }) => (
                     <div className="my-6 overflow-x-auto custom-scrollbar rounded-xl border border-white/[0.1] bg-[#07080B]" dir="ltr">
                       <table className="w-full text-[14px] border-collapse min-w-[520px]">{children}</table>
@@ -138,12 +145,12 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
                   ),
                   thead: ({ children }) => <thead className="bg-white/[0.045]">{children}</thead>,
                   th: ({ children }) => (
-                    <th className="px-4 py-3.5 text-start text-[12.5px] font-semibold uppercase tracking-wider text-[#00E5FF]/85 border-b border-white/[0.12]">
+                    <th dir="auto" className="px-4 py-3.5 text-start text-[12.5px] font-semibold uppercase tracking-wider text-[#00E5FF]/85 border-b border-white/[0.12]">
                       {children}
                     </th>
                   ),
                   td: ({ children }) => (
-                    <td className="px-4 py-3.5 align-top text-white/85 leading-relaxed border-b border-white/[0.05]">
+                    <td dir="auto" className="px-4 py-3.5 align-top text-white/85 leading-relaxed border-b border-white/[0.05]">
                       {children}
                     </td>
                   ),
