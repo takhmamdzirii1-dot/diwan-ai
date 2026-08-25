@@ -166,6 +166,21 @@ export default function StudioDashboard() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // ResizeObserver: stick to bottom while streaming reveals content frame-by-frame
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const inner = container.firstElementChild as HTMLElement | null;
+    if (!inner) return;
+    const ro = new ResizeObserver(() => {
+      const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
+      if (distance < 300) {
+        container.scrollTop = container.scrollHeight;
+      }
+    });
+    ro.observe(inner);
+    return () => ro.disconnect();
+  }, []);
   // Sticky-lock auto scroll: never jumps while streaming unless user is near bottom
   useEffect(() => {
     const el = messagesEndRef.current;
