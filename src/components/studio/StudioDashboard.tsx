@@ -165,6 +165,28 @@ export default function StudioDashboard() {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const userScrolledUpRef = useRef(false);
+
+  /* ---- Scroll management (ChatGPT/Claude behavior) ---- */
+
+  // Track whether the user intentionally scrolled up
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const onScroll = () => {
+      const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
+      userScrolledUpRef.current = distance > 420;
+    };
+    container.addEventListener('scroll', onScroll, { passive: true });
+    return () => container.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const scrollToBottom = useCallback((smooth = false) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    userScrolledUpRef.current = false;
+    container.scrollTo({ top: container.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+  }, []);
 
   // ResizeObserver: stick to bottom while streaming reveals content frame-by-frame
   useEffect(() => {
@@ -173,24 +195,40 @@ export default function StudioDashboard() {
     const inner = container.firstElementChild as HTMLElement | null;
     if (!inner) return;
     const ro = new ResizeObserver(() => {
+      if (userScrolledUpRef.current) return;
       const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
-      if (distance < 300) {
+      if (distance < 420) {
         container.scrollTop = container.scrollHeight;
       }
     });
     ro.observe(inner);
     return () => ro.disconnect();
   }, []);
-  // Sticky-lock auto scroll: never jumps while streaming unless user is near bottom
+
+  // Force bottom the moment a new exchange starts (send / regenerate)
   useEffect(() => {
-    const el = messagesEndRef.current;
-    const container = scrollContainerRef.current;
-    if (!el || !container) return;
-    const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
-    if (distance < 260) {
-      el.scrollIntoView({ behavior: isLoading ? 'auto' : 'smooth', block: 'end' });
+    if (isLoading) {
+      const t = setTimeout(() => scrollToBottom(false), 60);
+      return () => clearTimeout(t);
     }
-  }, [messages, isLoading]);
+  }, [isLoading, scrollToBottom]);
+
+  // Stick to bottom on every message update unless the user scrolled up
+  useEffect(() => {
+    if (userScrolledUpRef.current) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
+    if (distance < 420) {
+      container.scrollTo({ top: container.scrollHeight, behavior: isLoading ? 'auto' : 'smooth' });
+    }
+  }, [messages, isLoading, scrollToBottom]);
+
+  // Jump to bottom when switching sessions
+  useEffect(() => {
+    const t = setTimeout(() => scrollToBottom(false), 120);
+    return () => clearTimeout(t);
+  }, [activeSessionId, scrollToBottom]);
 
   const handleSend = useCallback(
     async (data: { message: string; isThinkingEnabled: boolean }) => {
