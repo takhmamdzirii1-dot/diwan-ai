@@ -388,7 +388,7 @@ export default function StudioDashboard() {
                 className="absolute inset-0 flex flex-col"
               >
                 <div ref={scrollContainerRef} className="flex-1 overflow-y-auto custom-scrollbar relative">
-                  <div className={`w-full flex justify-center px-4 ${isEmpty ? "min-h-full items-center py-8" : "pb-80 pt-8"}`}>
+                  <div className={`w-full flex justify-center px-4 ${isEmpty ? "min-h-full items-center py-8" : "pb-52 pt-8"}`}>
                     <div className="w-full max-w-[820px] flex flex-col gap-7">
                       {isEmpty && (
                         <div className="flex flex-col items-center text-center stagger-2">
@@ -489,7 +489,7 @@ export default function StudioDashboard() {
                 {/* Floating curved prompt bar */}
                 {!isEmpty && (
                   <div
-                    className="absolute bottom-0 left-0 w-full pb-9 px-6 flex justify-center z-30 pointer-events-none h-60 items-end"
+                    className="absolute bottom-0 left-0 w-full pb-9 px-6 flex justify-center z-30 pointer-events-none h-56 items-end"
                     style={{ background: 'linear-gradient(to top, #08090C 38%, rgba(8,9,12,0.94) 58%, rgba(8,9,12,0.55) 80%, transparent)' }}
                   >
                     <div className="w-full max-w-[760px] pointer-events-auto">
