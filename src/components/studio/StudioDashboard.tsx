@@ -188,41 +188,41 @@ export default function StudioDashboard() {
     container.scrollTo({ top: container.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
   }, []);
 
-  // ResizeObserver: stick to bottom while streaming reveals content frame-by-frame
+  // Bulletproof stick: rAF loop pins to bottom every frame while AI responds
+  // (immune to missed events, smooth-scroll races, or fast-growing code blocks)
   useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    const inner = container.firstElementChild as HTMLElement | null;
-    if (!inner) return;
-    const ro = new ResizeObserver(() => {
-      if (userScrolledUpRef.current) return;
-      const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
-      if (distance < 420) {
-        container.scrollTop = container.scrollHeight;
+    if (!isLoading) return;
+    let raf = 0;
+    const stick = () => {
+      if (!userScrolledUpRef.current) {
+        const container = scrollContainerRef.current;
+        if (container) container.scrollTop = container.scrollHeight;
       }
-    });
-    ro.observe(inner);
-    return () => ro.disconnect();
-  }, []);
+      raf = requestAnimationFrame(stick);
+    };
+    raf = requestAnimationFrame(stick);
+    return () => cancelAnimationFrame(raf);
+  }, [isLoading]);
 
   // Force bottom the moment a new exchange starts (send / regenerate)
   useEffect(() => {
     if (isLoading) {
-      const t = setTimeout(() => scrollToBottom(false), 60);
+      scrollToBottom(false);
+      const t = setTimeout(() => scrollToBottom(false), 80);
       return () => clearTimeout(t);
     }
   }, [isLoading, scrollToBottom]);
 
   // Stick to bottom on every message update unless the user scrolled up
   useEffect(() => {
-    if (userScrolledUpRef.current) return;
+    if (userScrolledUpRef.current || isLoading) return; // rAF loop handles streaming
     const container = scrollContainerRef.current;
     if (!container) return;
     const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
     if (distance < 420) {
-      container.scrollTo({ top: container.scrollHeight, behavior: isLoading ? 'auto' : 'smooth' });
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
     }
-  }, [messages, isLoading, scrollToBottom]);
+  }, [messages, scrollToBottom]);
 
   // Jump to bottom when switching sessions
   useEffect(() => {
