@@ -228,7 +228,7 @@ export default function StudioDashboard() {
   const soon = SOON_VIEWS[view];
 
   return (
-    <div className="obsidian-bg relative flex h-screen w-full overflow-hidden text-white font-sans">
+    <div dir="ltr" className="obsidian-bg relative flex h-screen w-full overflow-hidden text-white font-sans">
       {/* Wing glows */}
       <div className="wing-glow-left" />
       <div className="wing-glow-right" />

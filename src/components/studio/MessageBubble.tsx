@@ -6,6 +6,7 @@ import rehypeRaw from 'rehype-raw';
 import { Copy, Check, Terminal, Share, RefreshCw, Sparkles, User } from 'lucide-react';
 import type { Message } from '@ai-sdk/react';
 import { useSmoothText } from '../../hooks/useSmoothText';
+import { detectDir } from '../../lib/direction';
 
 export interface MessageBubbleProps {
   message: Message;
@@ -115,13 +116,13 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
       {/* Bubble / Panel */}
       <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
         {isUser ? (
-          <div className="user-bubble-cyan max-w-[85%] min-w-0 rounded-2xl rounded-tr-md px-5 py-4 backdrop-blur-xl" dir="auto">
+          <div className="user-bubble-cyan max-w-[85%] min-w-0 rounded-2xl rounded-tr-md px-5 py-4 backdrop-blur-xl" dir={detectDir(message.content)}>
             <p className="text-[15px] leading-[1.75] text-white whitespace-pre-wrap break-words">
               {message.content}
             </p>
           </div>
         ) : (
-          <div className="w-full min-w-0 rounded-2xl border border-white/[0.07] bg-white/[0.025] backdrop-blur-xl px-6 py-5 md:px-7 md:py-6 shadow-[0_18px_44px_-24px_rgba(0,0,0,0.9)] relative overflow-hidden" dir="auto">
+          <div className="w-full min-w-0 rounded-2xl border border-white/[0.07] bg-white/[0.025] backdrop-blur-xl px-6 py-5 md:px-7 md:py-6 shadow-[0_18px_44px_-24px_rgba(0,0,0,0.9)] relative overflow-hidden" dir={detectDir(message.content)}>
             {/* top gradient hairline: cyan -> violet */}
             <span className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-[#00E5FF]/40 to-transparent pointer-events-none" style={{ background: 'linear-gradient(90deg, transparent, rgba(0,245,212,0.45), rgba(157,78,221,0.35), transparent)' }} />
             <div className="lux-prose">
