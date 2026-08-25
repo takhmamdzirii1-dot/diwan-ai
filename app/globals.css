@@ -254,12 +254,13 @@
 
 /* ==========================================================================
    RESET & BASE STYLING
+   NOTE: padding/margin resets removed — Tailwind preflight (@layer base)
+   handles them. A universal unlayered `padding: 0` silently killed every
+   Tailwind padding utility on the site (computed as 0px).
    ========================================================================== */
 
 *, *::before, *::after {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 html {
