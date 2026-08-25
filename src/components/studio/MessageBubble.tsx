@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import { Copy, Check, Terminal, Share, RefreshCw, Sparkles, User } from 'lucide-react';
 import type { Message } from '@ai-sdk/react';
 import { useSmoothText } from '../../hooks/useSmoothText';
@@ -126,8 +127,26 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
             <div className="lux-prose">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeRaw]}
                 components={{
                   pre: ({ children }) => <>{children}</>,
+                  table: ({ children }) => (
+                    <div className="my-6 overflow-x-auto custom-scrollbar rounded-xl border border-white/[0.1] bg-[#07080B]" dir="ltr">
+                      <table className="w-full text-[14px] border-collapse min-w-[520px]">{children}</table>
+                    </div>
+                  ),
+                  thead: ({ children }) => <thead className="bg-white/[0.045]">{children}</thead>,
+                  th: ({ children }) => (
+                    <th className="px-4 py-3.5 text-start text-[12.5px] font-semibold uppercase tracking-wider text-[#00E5FF]/85 border-b border-white/[0.12]">
+                      {children}
+                    </th>
+                  ),
+                  td: ({ children }) => (
+                    <td className="px-4 py-3.5 align-top text-white/85 leading-relaxed border-b border-white/[0.05]">
+                      {children}
+                    </td>
+                  ),
+                  tr: ({ children }) => <tr className="transition-colors hover:bg-white/[0.02]">{children}</tr>,
                   code: ({ node, className, children, ...props }: any) => {
                     const match = /language-(\w+)/.exec(className || '');
                     const isInline = !match;

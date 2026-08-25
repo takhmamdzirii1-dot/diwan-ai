@@ -336,7 +336,7 @@ export default function StudioDashboard() {
               >
                 <div ref={scrollContainerRef} className="flex-1 overflow-y-auto custom-scrollbar relative">
                   <div className="w-full flex justify-center px-4 pb-80 pt-8">
-                    <div className="w-full max-w-[720px] flex flex-col gap-7">
+                    <div className="w-full max-w-[820px] flex flex-col gap-7">
                       {isEmpty && (
                         <div className="flex flex-col items-center text-center pt-[7vh] stagger-2">
                           <div className="ai-avatar-ring h-16 w-16 rounded-2xl p-[2px] shadow-[0_0_40px_-8px_rgba(0,229,255,0.5)]">
@@ -439,7 +439,7 @@ export default function StudioDashboard() {
                     className="absolute bottom-0 left-0 w-full pb-5 px-4 flex justify-center z-30 pointer-events-none h-52 items-end"
                     style={{ background: 'linear-gradient(to top, #08090C 38%, rgba(8,9,12,0.94) 58%, rgba(8,9,12,0.55) 80%, transparent)' }}
                   >
-                    <div className="w-full max-w-[720px] pointer-events-auto">
+                    <div className="w-full max-w-[820px] pointer-events-auto">
                       <ClaudeChatInput
                         onSendMessage={handleSend}
                         models={MODELS.map((m) => ({ id: m.id, name: m.name, description: `${m.provider} · ${m.ctx}`, badge: m.badge, isFree: m.isFree, requiresAuth: !m.isFree }))}
