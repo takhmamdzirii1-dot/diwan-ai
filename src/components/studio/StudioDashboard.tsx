@@ -439,7 +439,7 @@ export default function StudioDashboard() {
                     className="absolute bottom-0 left-0 w-full pb-9 px-6 flex justify-center z-30 pointer-events-none h-60 items-end"
                     style={{ background: 'linear-gradient(to top, #08090C 38%, rgba(8,9,12,0.94) 58%, rgba(8,9,12,0.55) 80%, transparent)' }}
                   >
-                    <div className="w-full max-w-[820px] pointer-events-auto">
+                    <div className="w-full max-w-[760px] pointer-events-auto">
                       <ClaudeChatInput
                         onSendMessage={handleSend}
                         models={MODELS.map((m) => ({ id: m.id, name: m.name, description: `${m.provider} · ${m.ctx}`, badge: m.badge, isFree: m.isFree, requiresAuth: !m.isFree }))}
