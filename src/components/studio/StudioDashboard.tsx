@@ -387,8 +387,8 @@ export default function StudioDashboard() {
                 transition={{ duration: 0.2 }}
                 className="absolute inset-0 flex flex-col"
               >
-                <div ref={scrollContainerRef} className="flex-1 overflow-y-auto custom-scrollbar relative">
-                  <div className={`w-full flex justify-center px-4 ${isEmpty ? "min-h-full items-center py-8" : "pb-52 pt-8"}`}>
+                <div ref={scrollContainerRef} className="flex-1 overflow-y-auto custom-scrollbar relative" style={{ overflowAnchor: 'none' }}>
+                  <div className={`w-full flex justify-center px-4 ${isEmpty ? "min-h-full items-center py-8" : "pt-8 pb-4"}`}>
                     <div className="w-full max-w-[820px] flex flex-col gap-7">
                       {isEmpty && (
                         <div className="flex flex-col items-center text-center stagger-2">
@@ -486,13 +486,13 @@ export default function StudioDashboard() {
                   </div>
                 </div>
 
-                {/* Floating curved prompt bar */}
+                {/* Composer — IN-FLOW below the scroll area (root fix: content can never slide under it) */}
                 {!isEmpty && (
                   <div
-                    className="absolute bottom-0 left-0 w-full pb-9 px-6 flex justify-center z-30 pointer-events-none h-56 items-end"
-                    style={{ background: 'linear-gradient(to top, #08090C 38%, rgba(8,9,12,0.94) 58%, rgba(8,9,12,0.55) 80%, transparent)' }}
+                    className="shrink-0 w-full px-6 pb-4 pt-1 relative z-30"
+                    style={{ background: 'linear-gradient(to top, #16181A 55%, rgba(22,24,26,0.9) 82%, transparent)' }}
                   >
-                    <div className="w-full max-w-[760px] pointer-events-auto">
+                    <div className="w-full max-w-[760px] mx-auto">
                       <ClaudeChatInput
                         onSendMessage={handleSend}
                         models={MODELS.map((m) => ({ id: m.id, name: m.name, description: `${m.provider} · ${m.ctx}`, badge: m.badge, isFree: m.isFree, requiresAuth: !m.isFree }))}
