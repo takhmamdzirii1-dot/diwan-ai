@@ -525,7 +525,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                         </div>
 
                         {/* Right tools */}
-                        <div className="flex flex-row items-center min-w-0 gap-1.5">
+                        <div className="flex flex-row items-center shrink-0 gap-1.5">
                             {models.length > 0 && (
                                 <div className="shrink-0">
                                     <ModelSelector
@@ -541,7 +541,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                 <button
                                     type="button"
                                     onClick={onStop}
-                                    className="inline-flex items-center justify-center h-9 w-9 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 hover:bg-red-500/25 transition-colors active:scale-95 cursor-pointer"
+                                    className="inline-flex items-center justify-center h-9 w-9 shrink-0 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 hover:bg-red-500/25 transition-colors active:scale-95 cursor-pointer"
                                     aria-label="Stop"
                                 >
                                     <span className="block w-3 h-3 rounded-[3px] bg-current" />
@@ -552,10 +552,10 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                     onClick={handleSend}
                                     disabled={!hasContent}
                                     className={cn(
-                                        "inline-flex items-center justify-center h-9 w-9 rounded-xl transition-all duration-300 active:scale-95",
+                                        "inline-flex items-center justify-center h-9 w-9 shrink-0 rounded-xl transition-colors duration-300 active:scale-95",
                                         hasContent
-                                            ? 'send-ready bg-gradient-to-br from-[#E6C27A] to-[#F0DCAB] text-[#050506] hover:-translate-y-0.5 ring-1 ring-transparent hover:ring-[#E6C27A]/45 cursor-pointer'
-                                            : 'bg-white/[0.07] text-white/25 cursor-default'
+                                            ? 'send-ready bg-gradient-to-br from-[#E6C27A] to-[#F0DCAB] text-[#16181A] font-bold cursor-pointer'
+                                            : 'bg-white/[0.14] text-white/60 border border-white/[0.18] cursor-default'
                                     )}
                                     aria-label="Send message"
                                 >
