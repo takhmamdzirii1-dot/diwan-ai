@@ -201,7 +201,7 @@ export default function AuthModal({
           {/* Modal Header */}
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-3.5">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#1FD8B8]/15 border border-[#1FD8B8]/30 text-[#1FD8B8] shadow-[0_0_20px_rgba(31,216,184,0.15)]">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#E6C27A]/15 border border-[#E6C27A]/30 text-[#E6C27A] shadow-[0_0_20px_rgba(230,194,122,0.15)]">
                 <Sparkles className="h-5 w-5" />
               </div>
               <div>
@@ -268,7 +268,7 @@ export default function AuthModal({
             <motion.div
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-2.5 rounded-2xl border border-[#1FD8B8]/30 bg-[#1FD8B8]/10 p-3.5 text-xs text-[#1FD8B8] mb-4"
+              className="flex items-center gap-2.5 rounded-2xl border border-[#E6C27A]/30 bg-[#E6C27A]/10 p-3.5 text-xs text-[#E6C27A] mb-4"
             >
               <CheckCircle2 className="h-4 w-4 shrink-0" />
               <span>{successMsg}</span>
@@ -283,7 +283,7 @@ export default function AuthModal({
             className="vantra-google-btn mb-4"
           >
             {googleLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin text-[#1FD8B8]" />
+              <Loader2 className="h-5 w-5 animate-spin text-[#E6C27A]" />
             ) : (
               <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
                 <path
@@ -399,7 +399,7 @@ export default function AuthModal({
                   setError(null);
                   setSuccessMsg(null);
                 }}
-                className="ml-1.5 font-bold text-[#1FD8B8] hover:underline cursor-pointer"
+                className="ml-1.5 font-bold text-[#E6C27A] hover:underline cursor-pointer"
               >
                 {mode === 'signin' ? 'Create Account' : 'Sign In'}
               </button>

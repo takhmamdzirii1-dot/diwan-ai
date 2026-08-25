@@ -251,9 +251,9 @@ export function VercelV0Chat(props: V0AIChatProps) {
                                         <button
                                             type="button"
                                             onClick={() => setModelOpen((o) => !o)}
-                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-white/15 hover:border-[#1FD8B8]/40 hover:bg-white/[0.04] text-xs text-white/60 hover:text-white/90 transition-all cursor-pointer max-w-[190px]"
+                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-white/15 hover:border-[#E6C27A]/40 hover:bg-white/[0.04] text-xs text-white/60 hover:text-white/90 transition-all cursor-pointer max-w-[190px]"
                                         >
-                                            <Sparkles className="w-3.5 h-3.5 text-[#E8C87A]/80 shrink-0" />
+                                            <Sparkles className="w-3.5 h-3.5 text-[#E6C27A]/80 shrink-0" />
                                             <span className="truncate">{currentModel?.name ?? "Model"}</span>
                                             <ChevronDown className={cn(
                                                 "w-3 h-3 opacity-60 shrink-0 transition-transform duration-200",
@@ -262,10 +262,10 @@ export function VercelV0Chat(props: V0AIChatProps) {
                                         </button>
 
                                         {modelOpen && (
-                                            <div className="absolute left-0 bottom-full mb-2 w-64 rounded-xl border border-white/[0.1] bg-[#0A0B0F]/95 backdrop-blur-xl p-1.5 shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                                            <div className="absolute left-0 bottom-full mb-2 w-64 rounded-xl border border-white/[0.1] bg-[#212326]/95 backdrop-blur-xl p-1.5 shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
                                                 <div className="px-3 py-2 text-[9px] font-mono uppercase tracking-[0.22em] text-white/35 border-b border-white/[0.06] mb-1 flex items-center justify-between">
                                                     <span>Select model</span>
-                                                    <span className="text-[#E8C87A]/70">pts</span>
+                                                    <span className="text-[#E6C27A]/70">pts</span>
                                                 </div>
                                                 <div className="max-h-52 overflow-y-auto space-y-0.5 custom-scrollbar">
                                                     {models.map((m) => (
@@ -279,14 +279,14 @@ export function VercelV0Chat(props: V0AIChatProps) {
                                                             className={cn(
                                                                 "w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors cursor-pointer",
                                                                 selectedModelId === m.id
-                                                                    ? "bg-[#1FD8B8]/10 text-white ring-1 ring-inset ring-[#1FD8B8]/25"
+                                                                    ? "bg-[#E6C27A]/10 text-white ring-1 ring-inset ring-[#E6C27A]/25"
                                                                     : "text-white/55 hover:bg-white/[0.05] hover:text-white"
                                                             )}
                                                         >
                                                             <span className="text-xs font-medium truncate">{m.name}</span>
                                                             <span className={cn(
                                                                 "text-[10px] font-mono shrink-0 ms-3",
-                                                                m.isFree ? "text-[#E8C87A]/85" : "text-white/30"
+                                                                m.isFree ? "text-[#E6C27A]/85" : "text-white/30"
                                                             )}>
                                                                 {m.cost ?? 0}
                                                             </span>
@@ -312,7 +312,7 @@ export function VercelV0Chat(props: V0AIChatProps) {
                                     </button>
                                 ) : isLoading ? (
                                     <div className="w-9 h-9 rounded-full border border-white/10 flex items-center justify-center">
-                                        <Loader2 className="w-4 h-4 text-[#1FD8B8] animate-spin" />
+                                        <Loader2 className="w-4 h-4 text-[#E6C27A] animate-spin" />
                                     </div>
                                 ) : (
                                     <button
@@ -322,7 +322,7 @@ export function VercelV0Chat(props: V0AIChatProps) {
                                         className={cn(
                                             "w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer",
                                             hasText && !disabled
-                                                ? "bg-gradient-to-br from-[#1FD8B8] to-[#34E2C2] text-[#050506] shadow-[0_0_24px_-4px_rgba(31,216,184,0.55)] hover:shadow-[0_0_32px_-2px_rgba(31,216,184,0.7)] hover:-translate-y-0.5 ring-1 ring-transparent hover:ring-[#E8C87A]/45"
+                                                ? "bg-gradient-to-br from-[#E6C27A] to-[#F0DCAB] text-[#050506] shadow-[0_0_24px_-4px_rgba(230,194,122,0.55)] hover:shadow-[0_0_32px_-2px_rgba(230,194,122,0.7)] hover:-translate-y-0.5 ring-1 ring-transparent hover:ring-[#E6C27A]/45"
                                                 : "bg-white/[0.05] text-white/30"
                                         )}
                                     >
@@ -347,7 +347,7 @@ export function VercelV0Chat(props: V0AIChatProps) {
                             key={`${action.label}-${i}`}
                             type="button"
                             onClick={action.onClick}
-                            className="group flex items-center gap-2 px-4 py-2 rounded-full border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] hover:border-[#1FD8B8]/30 text-white/50 hover:text-white/90 text-xs font-medium transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-12px_rgba(31,216,184,0.4)] cursor-pointer"
+                            className="group flex items-center gap-2 px-4 py-2 rounded-full border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] hover:border-[#E6C27A]/30 text-white/50 hover:text-white/90 text-xs font-medium transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-12px_rgba(230,194,122,0.4)] cursor-pointer"
                         >
                             <span className="text-sm leading-none">{action.icon}</span>
                             <span>{action.label}</span>

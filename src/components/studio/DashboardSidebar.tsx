@@ -83,7 +83,7 @@ export default function DashboardSidebar({
               VANTRA
             </span>
             <span className="text-[9px] font-mono tracking-[0.3em] bronze-text mt-1 uppercase">
-              Studio v4.2
+              Studio v5.0 GOLD
             </span>
           </div>
         </div>
@@ -110,15 +110,15 @@ export default function DashboardSidebar({
                   className={cn(
                     'h-4 w-4 shrink-0 transition-colors',
                     active
-                      ? 'text-[#00F5D4]'
+                      ? 'text-[#E6C27A]'
                       : item.action
-                      ? 'text-[#00B4D8]'
+                      ? 'text-[#B8934A]'
                       : 'text-white/35 group-hover:text-white/70'
                   )}
                 />
                 <span className="truncate">{item.label}</span>
                 {active && (
-                  <span className="ms-auto w-1.5 h-1.5 rounded-full bg-[#00F5D4] shadow-[0_0_8px_#00F5D4]" />
+                  <span className="ms-auto w-1.5 h-1.5 rounded-full bg-[#E6C27A] shadow-[0_0_8px_#E6C27A]" />
                 )}
               </button>
             );
@@ -130,7 +130,7 @@ export default function DashboardSidebar({
           {user ? (
             <div className="bronze-border rounded-2xl p-3.5 space-y-3">
               <div className="flex items-center gap-2.5">
-                <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[#00B4D8] to-[#7928CA] flex items-center justify-center font-bold text-white text-[13px] shadow-[0_0_16px_-4px_rgba(0,180,216,0.6)]">
+                <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[#B8934A] to-[#8A6D3B] flex items-center justify-center font-bold text-white text-[13px] shadow-[0_0_16px_-4px_rgba(0,180,216,0.6)]">
                   {user?.user_metadata?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
                 </div>
                 <div className="flex flex-col min-w-0 flex-1">
@@ -154,7 +154,7 @@ export default function DashboardSidebar({
               <button
                 type="button"
                 onClick={() => openTopUpModal()}
-                className="w-full h-9 rounded-xl bg-gradient-to-r from-[#00B4D8]/15 via-transparent to-[#7928CA]/15 border border-white/[0.08] text-[11.5px] font-semibold text-white/75 hover:text-white hover:border-[#C5A059]/40 transition-all cursor-pointer active:scale-[0.98]"
+                className="w-full h-9 rounded-xl bg-gradient-to-r from-[#B8934A]/15 via-transparent to-[#8A6D3B]/15 border border-white/[0.08] text-[11.5px] font-semibold text-white/75 hover:text-white hover:border-[#C5A059]/40 transition-all cursor-pointer active:scale-[0.98]"
               >
                 Manage Credits
               </button>
@@ -163,7 +163,7 @@ export default function DashboardSidebar({
             <button
               type="button"
               onClick={() => openAuthModal('signin')}
-              className="w-full flex items-center justify-center gap-2 h-11 rounded-2xl bronze-border text-[#E8C87A] text-[12.5px] font-semibold hover:brightness-125 transition-all cursor-pointer active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-2 h-11 rounded-2xl bronze-border text-[#E6C27A] text-[12.5px] font-semibold hover:brightness-125 transition-all cursor-pointer active:scale-[0.98]"
             >
               <LogIn className="h-4 w-4" />
               Sign in to Studio

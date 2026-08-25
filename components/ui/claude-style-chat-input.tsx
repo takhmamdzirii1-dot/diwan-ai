@@ -59,7 +59,7 @@ const FilePreviewCard: React.FC<{ file: AttachedFile; onRemove: (id: string) => 
     const isImage = file.type.startsWith("image/") && file.preview;
 
     return (
-        <div className="relative group flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border border-white/10 bg-white/[0.04] animate-fade-in transition-all hover:border-[#1FD8B8]/40">
+        <div className="relative group flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border border-white/10 bg-white/[0.04] animate-fade-in transition-all hover:border-[#E6C27A]/40">
             {isImage ? (
                 <div className="w-full h-full relative">
                     <img src={file.preview!} alt={file.file.name} className="w-full h-full object-cover" />
@@ -69,7 +69,7 @@ const FilePreviewCard: React.FC<{ file: AttachedFile; onRemove: (id: string) => 
                 <div className="w-full h-full p-3 flex flex-col justify-between">
                     <div className="flex items-center gap-2">
                         <div className="p-1.5 bg-white/[0.06] rounded">
-                            <FileText className="w-4 h-4 text-[#E8C87A]/80" />
+                            <FileText className="w-4 h-4 text-[#E6C27A]/80" />
                         </div>
                         <span className="text-[10px] font-medium text-white/45 uppercase tracking-wider truncate">
                             {file.file.name.split('.').pop()}
@@ -96,7 +96,7 @@ const FilePreviewCard: React.FC<{ file: AttachedFile; onRemove: (id: string) => 
 
             {file.uploadStatus === "pending" && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <Loader2 className="w-5 h-5 text-[#1FD8B8] animate-spin" />
+                    <Loader2 className="w-5 h-5 text-[#E6C27A] animate-spin" />
                 </div>
             )}
         </div>
@@ -172,7 +172,7 @@ const ModelSelector: React.FC<{
             className={cn(
                 "w-full text-left px-3 py-2.5 rounded-xl flex items-start justify-between transition-colors group/item",
                 locked
-                    ? "hover:bg-[#E8C87A]/[0.05]"
+                    ? "hover:bg-[#E6C27A]/[0.05]"
                     : "hover:bg-white/[0.06]",
                 selectedModel === model.id && "bg-white/[0.05]"
             )}
@@ -181,7 +181,7 @@ const ModelSelector: React.FC<{
                 <div className="flex items-center gap-2">
                     <span className={cn(
                         "text-[13px] font-semibold truncate",
-                        locked ? "text-[#E8C87A]/90" : "text-white/95"
+                        locked ? "text-[#E6C27A]/90" : "text-white/95"
                     )}>
                         {model.name}
                     </span>
@@ -189,8 +189,8 @@ const ModelSelector: React.FC<{
                         <span className={cn(
                             "px-1.5 py-[1px] rounded-full text-[9px] font-semibold border shrink-0",
                             model.isFree
-                                ? "border-[#1FD8B8]/25 text-[#1FD8B8]/90 bg-[#1FD8B8]/[0.06]"
-                                : "border-[#E8C87A]/30 text-[#E8C87A]/90 bg-[#E8C87A]/[0.07]"
+                                ? "border-[#E6C27A]/25 text-[#E6C27A]/90 bg-[#E6C27A]/[0.06]"
+                                : "border-[#E6C27A]/30 text-[#E6C27A]/90 bg-[#E6C27A]/[0.07]"
                         )}>
                             {locked ? "PRO" : model.badge}
                         </span>
@@ -201,9 +201,9 @@ const ModelSelector: React.FC<{
                 </span>
             </div>
             {selectedModel === model.id ? (
-                <Check className="w-4 h-4 text-[#1FD8B8] mt-1 shrink-0" />
+                <Check className="w-4 h-4 text-[#E6C27A] mt-1 shrink-0" />
             ) : locked ? (
-                <svg className="w-3.5 h-3.5 text-[#E8C87A]/50 mt-1 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg className="w-3.5 h-3.5 text-[#E6C27A]/50 mt-1 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <rect x="3" y="11" width="18" height="11" rx="2" />
                     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
@@ -224,7 +224,7 @@ const ModelSelector: React.FC<{
                 )}
             >
                 {!currentModel?.isFree && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#E8C87A] shadow-[0_0_6px_rgba(232,200,122,0.7)] shrink-0" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#E6C27A] shadow-[0_0_6px_rgba(230,194,122,0.7)] shrink-0" />
                 )}
                 <span className="font-medium select-none truncate">{currentModel?.name ?? "Model"}</span>
                 <ChevronDown className={cn("w-3.5 h-3.5 opacity-70 shrink-0 transition-transform duration-200", isOpen && "rotate-180")} />
@@ -234,14 +234,14 @@ const ModelSelector: React.FC<{
                 <div className="absolute bottom-full right-0 mb-2 w-[290px] glass-pop rounded-2xl overflow-hidden z-50 flex flex-col p-1.5 animate-fade-in origin-bottom-right max-h-[420px] overflow-y-auto custom-scrollbar-thin">
                     <div className="px-3 pt-2 pb-1.5 text-[9px] font-mono uppercase tracking-[0.22em] text-white/30 flex items-center justify-between">
                         <span>Free models</span>
-                        <span className="text-[#1FD8B8]/60">0 pts</span>
+                        <span className="text-[#E6C27A]/60">0 pts</span>
                     </div>
                     {freeModels.map(m => renderItem(m, false))}
 
                     {premiumModels.length > 0 && (
                         <>
                             <div className="h-px bg-white/[0.07] my-1.5 mx-2" />
-                            <div className="px-3 pb-1.5 text-[9px] font-mono uppercase tracking-[0.22em] text-[#E8C87A]/50 flex items-center justify-between">
+                            <div className="px-3 pb-1.5 text-[9px] font-mono uppercase tracking-[0.22em] text-[#E6C27A]/50 flex items-center justify-between">
                                 <span>Premium · Sign in</span>
                                 <Sparkles className="h-3 w-3" />
                             </div>
@@ -481,7 +481,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                     className={cn(
                                         "relative transition-all duration-200 h-8 w-8 flex items-center justify-center rounded-lg active:scale-95 cursor-pointer",
                                         isThinkingEnabled
-                                            ? 'text-[#E8C87A] bg-[#E8C87A]/[0.1] shadow-[0_0_18px_-4px_rgba(232,200,122,0.4)]'
+                                            ? 'text-[#E6C27A] bg-[#E6C27A]/[0.1] shadow-[0_0_18px_-4px_rgba(230,194,122,0.4)]'
                                             : 'text-white/40 hover:text-white hover:bg-white/[0.07]'
                                     )}
                                     aria-pressed={isThinkingEnabled}
@@ -504,7 +504,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                     className={cn(
                                         "relative transition-all duration-200 h-8 w-8 flex items-center justify-center rounded-lg active:scale-95 cursor-pointer",
                                         isListening
-                                            ? 'text-[#00F5D4] bg-[#00F5D4]/[0.1] shadow-[0_0_18px_-4px_rgba(0,245,212,0.5)]'
+                                            ? 'text-[#E6C27A] bg-[#E6C27A]/[0.1] shadow-[0_0_18px_-4px_rgba(230,194,122,0.5)]'
                                             : 'text-white/40 hover:text-white hover:bg-white/[0.07]'
                                     )}
                                     aria-label="Voice input"
@@ -554,7 +554,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                     className={cn(
                                         "inline-flex items-center justify-center h-8 w-8 rounded-xl transition-all duration-300 active:scale-95",
                                         hasContent
-                                            ? 'send-ready bg-gradient-to-br from-[#1FD8B8] to-[#34E2C2] text-[#050506] hover:-translate-y-0.5 ring-1 ring-transparent hover:ring-[#E8C87A]/45 cursor-pointer'
+                                            ? 'send-ready bg-gradient-to-br from-[#E6C27A] to-[#F0DCAB] text-[#050506] hover:-translate-y-0.5 ring-1 ring-transparent hover:ring-[#E6C27A]/45 cursor-pointer'
                                             : 'bg-white/[0.07] text-white/25 cursor-default'
                                     )}
                                     aria-label="Send message"
@@ -569,9 +569,9 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
 
             {/* Drag overlay */}
             {isDragging && (
-                <div className="absolute inset-0 bg-[#0A0C11]/85 border-2 border-dashed border-[#1FD8B8]/60 rounded-2xl z-50 flex flex-col items-center justify-center backdrop-blur-sm pointer-events-none">
-                    <Archive className="w-10 h-10 text-[#1FD8B8] mb-2 animate-bounce" />
-                    <p className="text-[#1FD8B8] font-medium text-sm">Drop files to upload</p>
+                <div className="absolute inset-0 bg-[#1A1C1F]/90 border-2 border-dashed border-[#E6C27A]/60 rounded-2xl z-50 flex flex-col items-center justify-center backdrop-blur-sm pointer-events-none">
+                    <Archive className="w-10 h-10 text-[#E6C27A] mb-2 animate-bounce" />
+                    <p className="text-[#E6C27A] font-medium text-sm">Drop files to upload</p>
                 </div>
             )}
 

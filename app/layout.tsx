@@ -30,7 +30,7 @@ export default function RootLayout({
           referrerPolicy="no-referrer"
         />
       </head>
-      <body className="bg-[#050506] text-[#F5F6F8] antialiased min-h-screen relative selection:bg-[#1FD8B8] selection:text-[#050506]">
+      <body className="bg-[#16181A] text-[#F5F6F8] antialiased min-h-screen relative selection:bg-[#E6C27A] selection:text-[#16181A]">
         <ModalProvider>
           <AmbientMotionBackground />
           {children}

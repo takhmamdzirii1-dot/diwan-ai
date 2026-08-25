@@ -134,7 +134,7 @@ export default function StudioSidebar({
         <div className={`flex items-center h-[60px] shrink-0 border-b border-white/[0.05] ${isCollapsed ? 'justify-center px-2' : 'justify-between px-4'}`}>
           <Link href="/" className="flex items-center gap-2.5 group cursor-pointer" title="Back to home">
             <div className="relative w-8 h-8 flex items-center justify-center">
-              <div className="absolute inset-0 bg-[#1FD8B8]/15 blur-lg rounded-full scale-110 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 bg-[#E6C27A]/15 blur-lg rounded-full scale-110 opacity-0 group-hover:opacity-100 transition-opacity" />
               <img src="/brandmark.svg" alt="VANTRA" className="relative w-6 h-6 object-contain" />
             </div>
             {!isCollapsed && (
@@ -176,12 +176,12 @@ export default function StudioSidebar({
               onNewSession();
               onCloseMobile?.();
             }}
-            className={`group flex items-center gap-2.5 h-10 rounded-xl border border-white/[0.09] bg-white/[0.04] hover:bg-[#1FD8B8]/[0.1] hover:border-[#1FD8B8]/40 text-white/85 hover:text-white text-[13px] font-semibold transition-all duration-200 hover:-translate-y-px hover:shadow-[0_8px_24px_-12px_rgba(31,216,184,0.5)] cursor-pointer ${
+            className={`group flex items-center gap-2.5 h-10 rounded-xl border border-white/[0.09] bg-white/[0.04] hover:bg-[#E6C27A]/[0.1] hover:border-[#E6C27A]/40 text-white/85 hover:text-white text-[13px] font-semibold transition-all duration-200 hover:-translate-y-px hover:shadow-[0_8px_24px_-12px_rgba(230,194,122,0.5)] cursor-pointer ${
               isCollapsed ? 'w-10 justify-center mx-auto' : 'w-full px-3.5'
             }`}
             title="New chat"
           >
-            <Plus className="h-4 w-4 text-[#1FD8B8] group-hover:rotate-90 transition-transform duration-300" />
+            <Plus className="h-4 w-4 text-[#E6C27A] group-hover:rotate-90 transition-transform duration-300" />
             {!isCollapsed && <span>New chat</span>}
           </button>
         </div>
@@ -209,7 +209,7 @@ export default function StudioSidebar({
                 onFocus={() => setSearchOpen(true)}
                 onBlur={() => setSearchOpen(false)}
                 placeholder="Search chats..."
-                className="w-full h-9 rounded-xl bg-white/[0.03] border border-white/[0.07] focus:border-[#1FD8B8]/40 pl-9 pr-3 text-[12.5px] text-white placeholder-white/25 outline-none transition-colors"
+                className="w-full h-9 rounded-xl bg-white/[0.03] border border-white/[0.07] focus:border-[#E6C27A]/40 pl-9 pr-3 text-[12.5px] text-white placeholder-white/25 outline-none transition-colors"
               />
             </div>
           )}
@@ -236,7 +236,7 @@ export default function StudioSidebar({
                     isCollapsed ? 'w-10 h-10 justify-center' : 'flex-1 h-9 justify-center gap-1.5'
                   } ${
                     active
-                      ? 'bg-[#1FD8B8]/[0.12] text-white ring-1 ring-[#1FD8B8]/25 shadow-[0_0_20px_-8px_rgba(31,216,184,0.5)]'
+                      ? 'bg-[#E6C27A]/[0.12] text-white ring-1 ring-[#E6C27A]/25 shadow-[0_0_20px_-8px_rgba(230,194,122,0.5)]'
                       : 'text-white/40 hover:text-white/85 hover:bg-white/[0.05]'
                   }`}
                 >
@@ -283,9 +283,9 @@ export default function StudioSidebar({
                           }`}
                         >
                           {active && (
-                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2.5px] h-5 rounded-full bg-gradient-to-b from-[#1FD8B8] to-transparent" />
+                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2.5px] h-5 rounded-full bg-gradient-to-b from-[#E6C27A] to-transparent" />
                           )}
-                          <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${active ? 'text-[#1FD8B8]' : 'text-white/30 group-hover:text-white/60'}`} />
+                          <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${active ? 'text-[#E6C27A]' : 'text-white/30 group-hover:text-white/60'}`} />
                           <span className="text-[12.5px] truncate flex-1">{session.title}</span>
                           <button
                             type="button"
@@ -318,7 +318,7 @@ export default function StudioSidebar({
                     }}
                     title={session.title}
                     className={`w-10 h-10 flex items-center justify-center rounded-xl transition-colors cursor-pointer ${
-                      active ? 'bg-white/[0.08] text-[#1FD8B8]' : 'text-white/35 hover:text-white hover:bg-white/[0.05]'
+                      active ? 'bg-white/[0.08] text-[#E6C27A]' : 'text-white/35 hover:text-white hover:bg-white/[0.05]'
                     }`}
                   >
                     <MessageSquare className="h-4 w-4" />
@@ -342,12 +342,12 @@ export default function StudioSidebar({
                   <div className="flex items-center justify-between">
                     <span className="text-[15px] font-mono font-semibold text-white">
                       {balance.toLocaleString()}
-                      <span className="text-[10px] text-[#1FD8B8] ms-1.5">PTS</span>
+                      <span className="text-[10px] text-[#E6C27A] ms-1.5">PTS</span>
                     </span>
                     <button
                       type="button"
                       onClick={() => openTopUpModal()}
-                      className="px-2.5 py-1.5 rounded-lg bg-[#1FD8B8]/10 border border-[#1FD8B8]/25 text-[#1FD8B8] text-[11px] font-semibold hover:bg-[#1FD8B8]/20 transition-colors cursor-pointer"
+                      className="px-2.5 py-1.5 rounded-lg bg-[#E6C27A]/10 border border-[#E6C27A]/25 text-[#E6C27A] text-[11px] font-semibold hover:bg-[#E6C27A]/20 transition-colors cursor-pointer"
                     >
                       Top up
                     </button>
@@ -358,14 +358,14 @@ export default function StudioSidebar({
                   type="button"
                   onClick={() => openTopUpModal()}
                   title={`${balance.toLocaleString()} PTS — Top up`}
-                  className="w-10 h-10 mx-auto mb-2 flex items-center justify-center rounded-xl bg-[#1FD8B8]/10 text-[#1FD8B8] hover:bg-[#1FD8B8]/20 transition-colors cursor-pointer"
+                  className="w-10 h-10 mx-auto mb-2 flex items-center justify-center rounded-xl bg-[#E6C27A]/10 text-[#E6C27A] hover:bg-[#E6C27A]/20 transition-colors cursor-pointer"
                 >
                   <CreditCard className="h-4 w-4" />
                 </button>
               )}
 
               <div className={`flex items-center rounded-xl hover:bg-white/[0.04] transition-colors ${isCollapsed ? 'justify-center p-1' : 'gap-2.5 p-2'}`}>
-                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#1FD8B8] to-[#0EA98E] flex items-center justify-center font-bold text-[#050506] text-[13px] shrink-0 shadow-inner">
+                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#E6C27A] to-[#8A6D3B] flex items-center justify-center font-bold text-[#050506] text-[13px] shrink-0 shadow-inner">
                   {user?.user_metadata?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
                 </div>
                 {!isCollapsed && (
@@ -392,7 +392,7 @@ export default function StudioSidebar({
             <button
               type="button"
               onClick={() => openAuthModal('signin')}
-              className={`flex items-center gap-2 h-10 rounded-xl bg-[#1FD8B8]/[0.08] border border-[#1FD8B8]/25 text-[#1FD8B8] text-[12.5px] font-semibold hover:bg-[#1FD8B8]/[0.15] transition-colors cursor-pointer ${
+              className={`flex items-center gap-2 h-10 rounded-xl bg-[#E6C27A]/[0.08] border border-[#E6C27A]/25 text-[#E6C27A] text-[12.5px] font-semibold hover:bg-[#E6C27A]/[0.15] transition-colors cursor-pointer ${
                 isCollapsed ? 'w-10 justify-center mx-auto' : 'w-full justify-center'
               }`}
               title="Sign in"

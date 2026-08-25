@@ -294,15 +294,15 @@ export default function StudioDashboard() {
                         : 'text-white/40 hover:text-white/85 hover:bg-white/[0.04] border border-transparent'
                     )}
                   >
-                    <span className={cn('w-1.5 h-1.5 rounded-full', m.isFree ? 'bg-[#00F5D4] shadow-[0_0_6px_#00F5D4]' : 'bg-[#E8C87A] shadow-[0_0_6px_#E8C87A]')} />
+                    <span className={cn('w-1.5 h-1.5 rounded-full', m.isFree ? 'bg-[#E6C27A] shadow-[0_0_6px_#E6C27A]' : 'bg-[#E6C27A] shadow-[0_0_6px_#E6C27A]')} />
                     <span className="max-w-[120px] truncate">{m.name}</span>
                     {active && (
                       <>
-                        <span className="hidden md:inline-flex items-center h-[18px] px-1.5 rounded-md bg-white/[0.06] text-[9.5px] font-mono text-[#00E5FF]/90">
+                        <span className="hidden md:inline-flex items-center h-[18px] px-1.5 rounded-md bg-white/[0.06] text-[9.5px] font-mono text-[#E6C27A]/90">
                           <Zap className="h-2.5 w-2.5 me-1" />
                           {lastLatencyMs ? `${(lastLatencyMs / 1000).toFixed(1)}s` : `${m.latency}ms`}
                         </span>
-                        <span className="hidden md:inline-flex items-center h-[18px] px-1.5 rounded-md bg-white/[0.06] text-[9.5px] font-mono text-[#9D4EDD]">
+                        <span className="hidden md:inline-flex items-center h-[18px] px-1.5 rounded-md bg-white/[0.06] text-[9.5px] font-mono text-[#C5A059]">
                           {m.ctx}
                         </span>
                       </>
@@ -354,9 +354,9 @@ export default function StudioDashboard() {
                     <div className="w-full max-w-[820px] flex flex-col gap-7">
                       {isEmpty && (
                         <div className="flex flex-col items-center text-center pt-[7vh] stagger-2">
-                          <div className="ai-avatar-ring h-16 w-16 rounded-2xl p-[2px] shadow-[0_0_40px_-8px_rgba(0,229,255,0.5)]">
-                            <div className="w-full h-full rounded-[14px] bg-[#0D0E12] flex items-center justify-center">
-                              <Sparkles className="h-7 w-7 text-[#00E5FF]" />
+                          <div className="ai-avatar-ring h-16 w-16 rounded-2xl p-[2px] shadow-[0_0_40px_-8px_rgba(230,194,122,0.5)]">
+                            <div className="w-full h-full rounded-[14px] bg-[#1A1C1F] flex items-center justify-center">
+                              <Sparkles className="h-7 w-7 text-[#E6C27A]" />
                             </div>
                           </div>
                           <h1 className="font-serif-lux text-[clamp(28px,4vw,40px)] text-white/95 mt-6 tracking-tight">
@@ -388,7 +388,7 @@ export default function StudioDashboard() {
                                 onClick={() => handleSend({ message: s.prompt, isThinkingEnabled: false })}
                                 className="glass-pill inline-flex items-center gap-2 px-4 py-2 rounded-full text-[12.5px] text-white/55 cursor-pointer"
                               >
-                                <s.icon className="h-3.5 w-3.5 text-[#00F5D4]/80" />
+                                <s.icon className="h-3.5 w-3.5 text-[#E6C27A]/80" />
                                 {s.label}
                               </button>
                             ))}
@@ -498,7 +498,7 @@ export default function StudioDashboard() {
               >
                 <div className="max-w-4xl mx-auto px-6 py-10">
                   <div className="flex items-center gap-3 mb-2">
-                    <LayoutGrid className="h-5 w-5 text-[#00F5D4]" />
+                    <LayoutGrid className="h-5 w-5 text-[#E6C27A]" />
                     <h1 className="text-2xl font-semibold tracking-tight">All Models</h1>
                   </div>
                   <p className="text-[13px] text-white/40 mb-8">
@@ -527,16 +527,16 @@ export default function StudioDashboard() {
                         )}
                       >
                         <div className="flex items-start justify-between mb-3">
-                          <span className={cn('text-[9px] font-mono font-bold tracking-[0.18em] px-2 py-1 rounded-full border', m.isFree ? 'border-[#00F5D4]/30 text-[#00F5D4]/90' : 'border-[#E8C87A]/35 text-[#E8C87A]')}>
+                          <span className={cn('text-[9px] font-mono font-bold tracking-[0.18em] px-2 py-1 rounded-full border', m.isFree ? 'border-[#E6C27A]/30 text-[#E6C27A]/90' : 'border-[#E6C27A]/35 text-[#E6C27A]')}>
                             {m.badge}
                           </span>
                           <span className="text-[10px] font-mono text-white/30">{m.provider}</span>
                         </div>
                         <p className="text-[15px] font-semibold text-white/95 mb-1">{m.name}</p>
                         <div className="flex items-center gap-3 text-[11px] font-mono text-white/40">
-                          <span className="flex items-center gap-1"><Zap className="h-3 w-3 text-[#00B4D8]" />~{m.latency}ms</span>
-                          <span className="flex items-center gap-1 text-[#9D4EDD]/80">{m.ctx} ctx</span>
-                          {!m.isFree && <span className="text-[#E8C87A]/70">{m.id.includes('opus') ? '60' : '50'} pts</span>}
+                          <span className="flex items-center gap-1"><Zap className="h-3 w-3 text-[#B8934A]" />~{m.latency}ms</span>
+                          <span className="flex items-center gap-1 text-[#C5A059]/80">{m.ctx} ctx</span>
+                          {!m.isFree && <span className="text-[#E6C27A]/70">{m.id.includes('opus') ? '60' : '50'} pts</span>}
                         </div>
                         <span className="absolute bottom-0 left-5 right-5 h-px bg-gradient-to-r from-transparent via-[#C5A059]/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                       </motion.button>
@@ -564,7 +564,7 @@ export default function StudioDashboard() {
                   <button
                     type="button"
                     onClick={() => setView('chat')}
-                    className="inline-flex items-center gap-2 px-5 h-10 rounded-xl bg-gradient-to-r from-[#00B4D8]/20 to-[#7928CA]/20 border border-white/[0.1] text-[12.5px] font-semibold text-white/85 hover:text-white hover:border-[#00F5D4]/40 transition-all cursor-pointer active:scale-[0.98]"
+                    className="inline-flex items-center gap-2 px-5 h-10 rounded-xl bg-gradient-to-r from-[#B8934A]/20 to-[#8A6D3B]/20 border border-white/[0.1] text-[12.5px] font-semibold text-white/85 hover:text-white hover:border-[#E6C27A]/40 transition-all cursor-pointer active:scale-[0.98]"
                   >
                     <MessageSquare className="h-4 w-4" /> Back to Studio Chat
                   </button>

@@ -189,11 +189,11 @@ export default function StudioChat({
               <div className="flex flex-col items-center text-center pt-[6vh]">
                 {/* Brandmark with soft glow */}
                 <div className="relative w-16 h-16 mb-6 flex items-center justify-center stagger-1">
-                  <div className="absolute inset-0 bg-[#1FD8B8]/15 blur-2xl rounded-full scale-125" />
+                  <div className="absolute inset-0 bg-[#E6C27A]/15 blur-2xl rounded-full scale-125" />
                   <img
                     src="/brandmark.svg"
                     alt="VANTRA"
-                    className="relative w-12 h-12 object-contain drop-shadow-[0_0_18px_rgba(31,216,184,0.45)]"
+                    className="relative w-12 h-12 object-contain drop-shadow-[0_0_18px_rgba(230,194,122,0.45)]"
                   />
                 </div>
 
@@ -204,7 +204,7 @@ export default function StudioChat({
                   <span className="relative inline-block">
                     {userName}
                     <svg
-                      className="lux-squiggle absolute w-[130%] h-[16px] -bottom-1.5 -left-[6%] text-[#1FD8B8]"
+                      className="lux-squiggle absolute w-[130%] h-[16px] -bottom-1.5 -left-[6%] text-[#E6C27A]"
                       viewBox="0 0 140 24"
                       fill="none"
                       preserveAspectRatio="none"
@@ -243,7 +243,7 @@ export default function StudioChat({
                       onClick={() => handleSend({ message: sp.prompt, isThinkingEnabled: false, model: selectedModelId })}
                       className="glass-pill inline-flex items-center gap-2 px-4 py-2 rounded-full text-[13px] text-white/55 cursor-pointer"
                     >
-                      <span className="text-[#1FD8B8]/80">{sp.icon}</span>
+                      <span className="text-[#E6C27A]/80">{sp.icon}</span>
                       {sp.label}
                     </button>
                   ))}
@@ -254,7 +254,7 @@ export default function StudioChat({
                   <button
                     type="button"
                     onClick={() => openAuthModal('signin')}
-                    className="stagger-4 mt-7 inline-flex items-center gap-2 px-4 h-9 rounded-full border border-[#E8C87A]/25 bg-[#E8C87A]/[0.06] text-[#E8C87A]/90 text-xs font-semibold transition-all hover:bg-[#E8C87A]/[0.12] hover:-translate-y-0.5 cursor-pointer"
+                    className="stagger-4 mt-7 inline-flex items-center gap-2 px-4 h-9 rounded-full border border-[#E6C27A]/25 bg-[#E6C27A]/[0.06] text-[#E6C27A]/90 text-xs font-semibold transition-all hover:bg-[#E6C27A]/[0.12] hover:-translate-y-0.5 cursor-pointer"
                   >
                     <LogIn className="h-3.5 w-3.5" />
                     Sign in to unlock premium models
@@ -282,7 +282,7 @@ export default function StudioChat({
             {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
               <div className={`flex w-full ${isRtl ? 'justify-end' : 'justify-start'}`}>
                 <div className="inline-flex items-center gap-3 px-1 py-2 animate-fade-in">
-                  <Sparkles className="h-4 w-4 text-[#E8C87A] animate-pulse" />
+                  <Sparkles className="h-4 w-4 text-[#E6C27A] animate-pulse" />
                   <span className="lux-shimmer-text text-[14px] font-medium tracking-wide">
                     Thinking...
                   </span>
@@ -322,7 +322,7 @@ export default function StudioChat({
       {/* ─── Floating Composer Dock (mid-conversation) ─── */}
       {!isEmpty && (
         <div className="absolute bottom-0 left-0 w-full pb-5 px-4 flex justify-center z-40 pointer-events-none h-52 items-end"
-          style={{ background: 'linear-gradient(to top, #050506 38%, rgba(5,5,6,0.94) 58%, rgba(5,5,6,0.6) 78%, transparent)' }}
+          style={{ background: 'linear-gradient(to top, #16181A 38%, rgba(22,24,26,0.94) 58%, rgba(22,24,26,0.6) 78%, transparent)' }}
         >
           <div className="w-full max-w-[700px] pointer-events-auto">
             <ClaudeChatInput

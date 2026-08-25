@@ -67,9 +67,9 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
         {
           <>
             {/* Animated gradient avatar */}
-            <div className="ai-avatar-ring h-7 w-7 rounded-lg p-[1.5px] shadow-[0_0_18px_-2px_rgba(0,229,255,0.4)]">
-              <div className="w-full h-full rounded-[calc(0.5rem-1.5px)] bg-[#0D0E12] flex items-center justify-center">
-                <Sparkles className="h-3.5 w-3.5 text-[#00E5FF]" />
+            <div className="ai-avatar-ring h-7 w-7 rounded-lg p-[1.5px] shadow-[0_0_18px_-2px_rgba(230,194,122,0.4)]">
+              <div className="w-full h-full rounded-[calc(0.5rem-1.5px)] bg-[#1A1C1F] flex items-center justify-center">
+                <Sparkles className="h-3.5 w-3.5 text-[#E6C27A]" />
               </div>
             </div>
             <span className="text-[11px] font-mono uppercase tracking-[0.14em] text-white/55">VANTRA</span>
@@ -79,24 +79,24 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
                   type="button"
                   onClick={handleCopyMessage}
                   title="Copy"
-                  className="p-1.5 rounded-md text-white/30 hover:text-[#00F5D4] hover:bg-white/[0.06] transition-colors cursor-pointer active:scale-90"
+                  className="p-1.5 rounded-md text-white/30 hover:text-[#E6C27A] hover:bg-white/[0.06] transition-colors cursor-pointer active:scale-90"
                 >
-                  {copiedMessage ? <Check className="h-3 w-3 text-[#00F5D4]" /> : <Copy className="h-3 w-3" />}
+                  {copiedMessage ? <Check className="h-3 w-3 text-[#E6C27A]" /> : <Copy className="h-3 w-3" />}
                 </button>
                 <button
                   type="button"
                   onClick={handleShare}
                   title="Share"
-                  className="p-1.5 rounded-md text-white/30 hover:text-[#9D4EDD] hover:bg-white/[0.06] transition-colors cursor-pointer active:scale-90"
+                  className="p-1.5 rounded-md text-white/30 hover:text-[#C5A059] hover:bg-white/[0.06] transition-colors cursor-pointer active:scale-90"
                 >
-                  {shared ? <Check className="h-3 w-3 text-[#00F5D4]" /> : <Share className="h-3 w-3" />}
+                  {shared ? <Check className="h-3 w-3 text-[#E6C27A]" /> : <Share className="h-3 w-3" />}
                 </button>
                 {isLatest && onRegenerate && (
                   <button
                     type="button"
                     onClick={onRegenerate}
                     title="Regenerate"
-                    className="p-1.5 rounded-md text-white/30 hover:text-[#E8C87A] hover:bg-white/[0.06] transition-colors cursor-pointer active:scale-90"
+                    className="p-1.5 rounded-md text-white/30 hover:text-[#E6C27A] hover:bg-white/[0.06] transition-colors cursor-pointer active:scale-90"
                   >
                     <RefreshCw className="h-3 w-3" />
                   </button>
@@ -119,7 +119,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
         ) : (
           <div className="w-fit max-w-full min-w-0 rounded-2xl border border-white/[0.07] bg-white/[0.025] backdrop-blur-xl px-6 py-5 md:px-7 md:py-6 shadow-[0_18px_44px_-24px_rgba(0,0,0,0.9)] relative">
             {/* top gradient hairline: cyan -> violet */}
-            <span className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-[#00E5FF]/40 to-transparent pointer-events-none" style={{ background: 'linear-gradient(90deg, transparent, rgba(0,245,212,0.45), rgba(157,78,221,0.35), transparent)' }} />
+            <span className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-[#E6C27A]/40 to-transparent pointer-events-none" style={{ background: 'linear-gradient(90deg, transparent, rgba(230,194,122,0.5), rgba(197,160,89,0.3), transparent)' }} />
             <div className="lux-prose">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
@@ -134,13 +134,13 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
                   li: ({ children }) => <li dir="auto">{children}</li>,
                   blockquote: ({ children }) => <blockquote dir="auto">{children}</blockquote>,
                   table: ({ children }) => (
-                    <div className="my-6 overflow-x-auto custom-scrollbar rounded-xl border border-white/[0.1] bg-[#07080B]" dir="ltr">
+                    <div className="my-6 overflow-x-auto custom-scrollbar rounded-xl border border-white/[0.1] bg-[#1A1C1F]" dir="ltr">
                       <table className="w-full text-[14px] border-collapse min-w-[520px]">{children}</table>
                     </div>
                   ),
                   thead: ({ children }) => <thead className="bg-white/[0.045]">{children}</thead>,
                   th: ({ children }) => (
-                    <th dir="auto" className="px-4 py-3.5 text-start text-[12.5px] font-semibold uppercase tracking-wider text-[#00E5FF]/85 border-b border-white/[0.12]">
+                    <th dir="auto" className="px-4 py-3.5 text-start text-[12.5px] font-semibold uppercase tracking-wider text-[#E6C27A]/85 border-b border-white/[0.12]">
                       {children}
                     </th>
                   ),
@@ -160,9 +160,9 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
                     const codeString = String(children).replace(/\n$/, '');
                     const blockId = `blk-${message.id}-${codeBlockCounter.current++}`;
                     return (
-                      <div className="my-5 overflow-hidden rounded-xl border border-white/[0.09] bg-[#060609] shadow-2xl flex flex-col w-full" dir="ltr">
+                      <div className="my-5 overflow-hidden rounded-xl border border-white/[0.09] bg-[#1A1C1F] shadow-2xl flex flex-col w-full" dir="ltr">
                         <div className="flex flex-wrap items-center justify-between border-b border-white/[0.07] bg-white/[0.02] px-4 py-2.5 gap-4">
-                          <div className="flex items-center gap-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#00E5FF]/85 shrink-0">
+                          <div className="flex items-center gap-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#E6C27A]/85 shrink-0">
                             <Terminal className="h-3 w-3" />
                             <span>{langName || 'code'}</span>
                           </div>
@@ -173,8 +173,8 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
                           >
                             {copiedCodeId === blockId ? (
                               <>
-                                <Check className="h-3 w-3 text-[#00F5D4]" />
-                                <span className="text-[#00F5D4]">Copied</span>
+                                <Check className="h-3 w-3 text-[#E6C27A]" />
+                                <span className="text-[#E6C27A]">Copied</span>
                               </>
                             ) : (
                               <>
@@ -200,7 +200,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
               {showStreamingCursor && (
                 <span
                   aria-hidden
-                  className="inline-block w-[7px] h-[17px] ms-1 align-middle bg-[#00E5FF] animate-pulse rounded-[2px] shadow-[0_0_10px_rgba(0,229,255,0.6)]"
+                  className="inline-block w-[7px] h-[17px] ms-1 align-middle bg-[#E6C27A] animate-pulse rounded-[2px] shadow-[0_0_10px_rgba(230,194,122,0.6)]"
                 />
               )}
             </div>

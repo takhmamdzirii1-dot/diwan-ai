@@ -106,12 +106,12 @@ export default function StudioImage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#050506] overflow-y-auto custom-scrollbar p-6 space-y-8 pb-32">
+    <div className="flex-1 flex flex-col h-full bg-[#16181A] overflow-y-auto custom-scrollbar p-6 space-y-8 pb-32">
       {/* Studio Header */}
       <div className="max-w-4xl mx-auto w-full space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-2xl bg-[#1FD8B8]/15 border border-[#1FD8B8]/30 flex items-center justify-center text-[#1FD8B8]">
+            <div className="h-10 w-10 rounded-2xl bg-[#E6C27A]/15 border border-[#E6C27A]/30 flex items-center justify-center text-[#E6C27A]">
               <ImageIcon className="h-5 w-5" />
             </div>
             <div>
@@ -133,7 +133,7 @@ export default function StudioImage() {
               onClick={() => setModel('flux-1-pro')}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
                 model === 'flux-1-pro'
-                  ? 'bg-[#1FD8B8]/15 border-[#1FD8B8] text-[#1FD8B8] font-bold'
+                  ? 'bg-[#E6C27A]/15 border-[#E6C27A] text-[#E6C27A] font-bold'
                   : 'bg-white/[0.03] border-white/[0.08] text-white/70'
               }`}
             >
@@ -144,7 +144,7 @@ export default function StudioImage() {
               onClick={() => setModel('midjourney-v6-1')}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
                 model === 'midjourney-v6-1'
-                  ? 'bg-[#1FD8B8]/15 border-[#1FD8B8] text-[#1FD8B8] font-bold'
+                  ? 'bg-[#E6C27A]/15 border-[#E6C27A] text-[#E6C27A] font-bold'
                   : 'bg-white/[0.03] border-white/[0.08] text-white/70'
               }`}
             >
@@ -155,7 +155,7 @@ export default function StudioImage() {
       </div>
 
       {/* Control Studio Card */}
-      <div className="max-w-4xl mx-auto w-full rounded-3xl border border-white/[0.1] bg-[#0E1016] p-6 space-y-6 shadow-2xl">
+      <div className="max-w-4xl mx-auto w-full rounded-3xl border border-white/[0.1] bg-[#212326] p-6 space-y-6 shadow-2xl">
         {/* Prompt Input Box */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -163,7 +163,7 @@ export default function StudioImage() {
             <button
               type="button"
               onClick={handleEnhancePrompt}
-              className="flex items-center gap-1 text-[11px] text-[#1FD8B8] hover:underline cursor-pointer"
+              className="flex items-center gap-1 text-[11px] text-[#E6C27A] hover:underline cursor-pointer"
             >
               <Wand2 className="h-3 w-3" />
               <span>Auto-Enhance Prompt</span>
@@ -175,7 +175,7 @@ export default function StudioImage() {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="Describe your scene in detail (e.g., Ultra-photorealistic 4K portrait of an Algerian artisan crafting traditional jewelry in Ghardaïa, cinematic warm rim lighting...)"
-            className="w-full rounded-2xl border border-white/[0.1] bg-[#050608] p-4 text-sm text-white placeholder-white/30 outline-none transition focus:border-[#1FD8B8] focus:ring-1 focus:ring-[#1FD8B8]"
+            className="w-full rounded-2xl border border-white/[0.1] bg-[#1A1C1F] p-4 text-sm text-white placeholder-white/30 outline-none transition focus:border-[#E6C27A] focus:ring-1 focus:ring-[#E6C27A]"
           />
         </div>
 
@@ -192,8 +192,8 @@ export default function StudioImage() {
                   onClick={() => setAspectRatio(ratio.id)}
                   className={`py-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                     aspectRatio === ratio.id
-                      ? 'border-[#1FD8B8] bg-[#1FD8B8]/10 text-[#1FD8B8]'
-                      : 'border-white/[0.08] bg-[#050608] text-[#94A3B8] hover:bg-white/[0.04]'
+                      ? 'border-[#E6C27A] bg-[#E6C27A]/10 text-[#E6C27A]'
+                      : 'border-white/[0.08] bg-[#1A1C1F] text-[#94A3B8] hover:bg-white/[0.04]'
                   }`}
                 >
                   <span>{ratio.icon}</span>
@@ -209,10 +209,10 @@ export default function StudioImage() {
             <select
               value={selectedStyle}
               onChange={(e) => setSelectedStyle(e.target.value)}
-              className="w-full h-10 rounded-xl border border-white/[0.08] bg-[#050608] px-3 text-xs text-white outline-none focus:border-[#1FD8B8]"
+              className="w-full h-10 rounded-xl border border-white/[0.08] bg-[#1A1C1F] px-3 text-xs text-white outline-none focus:border-[#E6C27A]"
             >
               {STYLE_PRESETS.map((style) => (
-                <option key={style} value={style} className="bg-[#0E1016]">
+                <option key={style} value={style} className="bg-[#212326]">
                   {style}
                 </option>
               ))}
@@ -224,7 +224,7 @@ export default function StudioImage() {
         <div className="flex items-center justify-between pt-3 border-t border-white/[0.06] flex-wrap gap-3">
           <div className="text-xs text-[#64748B]">
             Cost:{' '}
-            <span className="font-mono font-bold text-[#1FD8B8]">{cost} Points / Render</span>
+            <span className="font-mono font-bold text-[#E6C27A]">{cost} Points / Render</span>
             {!user && <span className="ms-2 text-white/40">· Sign in required</span>}
             {user && balance < cost && (
               <span className="ms-2 text-red-400">· Insufficient balance</span>
@@ -235,7 +235,7 @@ export default function StudioImage() {
             type="button"
             disabled={!prompt.trim() || isGenerating}
             onClick={handleGenerate}
-            className="flex items-center gap-2 px-6 h-11 rounded-2xl bg-[#1FD8B8] hover:bg-[#34e2c2] text-[#050506] font-bold text-sm shadow-[0_4px_20px_rgba(31,216,184,0.35)] transition cursor-pointer disabled:opacity-40"
+            className="flex items-center gap-2 px-6 h-11 rounded-2xl bg-[#E6C27A] hover:bg-[#f0dcab] text-[#050506] font-bold text-sm shadow-[0_4px_20px_rgba(230,194,122,0.35)] transition cursor-pointer disabled:opacity-40"
           >
             {isGenerating ? (
               <>
@@ -271,7 +271,7 @@ export default function StudioImage() {
             gallery.map((img) => (
             <div
               key={img.id}
-              className="group relative rounded-3xl overflow-hidden border border-white/[0.1] bg-[#0E1016] shadow-xl space-y-3"
+              className="group relative rounded-3xl overflow-hidden border border-white/[0.1] bg-[#212326] shadow-xl space-y-3"
             >
               <div className="relative aspect-video overflow-hidden bg-black/40">
                 <img
@@ -285,7 +285,7 @@ export default function StudioImage() {
                     href={img.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="h-8 w-8 rounded-full bg-black/70 backdrop-blur-md border border-white/20 text-white flex items-center justify-center hover:bg-[#1FD8B8] hover:text-[#050506] transition"
+                    className="h-8 w-8 rounded-full bg-black/70 backdrop-blur-md border border-white/20 text-white flex items-center justify-center hover:bg-[#E6C27A] hover:text-[#050506] transition"
                     title="Open Full Image"
                   >
                     <Maximize2 className="h-4 w-4" />
@@ -293,7 +293,7 @@ export default function StudioImage() {
                   <a
                     href={img.url}
                     download="vantra-render.jpg"
-                    className="h-8 w-8 rounded-full bg-black/70 backdrop-blur-md border border-white/20 text-white flex items-center justify-center hover:bg-[#1FD8B8] hover:text-[#050506] transition"
+                    className="h-8 w-8 rounded-full bg-black/70 backdrop-blur-md border border-white/20 text-white flex items-center justify-center hover:bg-[#E6C27A] hover:text-[#050506] transition"
                     title="Download Render"
                   >
                     <Download className="h-4 w-4" />
@@ -311,7 +311,7 @@ export default function StudioImage() {
                   <button
                     type="button"
                     onClick={() => handleCopyPrompt(img.id, img.prompt)}
-                    className="flex items-center gap-1 text-[#1FD8B8] hover:underline cursor-pointer"
+                    className="flex items-center gap-1 text-[#E6C27A] hover:underline cursor-pointer"
                   >
                     {copiedId === img.id ? (
                       <>
