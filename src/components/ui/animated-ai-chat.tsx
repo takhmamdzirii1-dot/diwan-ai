@@ -116,7 +116,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         
         {showRing && isFocused && (
           <motion.span 
-            className="absolute inset-0 rounded-md pointer-events-none ring-2 ring-offset-0 ring-[#1FD8B8]/30"
+            className="absolute inset-0 rounded-md pointer-events-none ring-2 ring-offset-0 ring-[#E6C27A]/30"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -421,7 +421,7 @@ export function AnimatedAIChat({
 
             {isExpanded && (
                 <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
-                    <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#1FD8B8]/10 rounded-full mix-blend-normal filter blur-[128px] animate-pulse" />
+                    <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#E6C27A]/10 rounded-full mix-blend-normal filter blur-[128px] animate-pulse" />
                     <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-500/10 rounded-full mix-blend-normal filter blur-[128px] animate-pulse delay-700" />
                     <div className="absolute top-1/4 right-1/3 w-64 h-64 bg-fuchsia-500/10 rounded-full mix-blend-normal filter blur-[96px] animate-pulse delay-1000" />
                 </div>
@@ -617,7 +617,7 @@ export function AnimatedAIChat({
                                             onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
                                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.05] text-white/70 hover:text-white/90 text-xs font-medium transition-colors"
                                         >
-                                            <Sparkles className="w-3.5 h-3.5 text-[#1FD8B8]" />
+                                            <Sparkles className="w-3.5 h-3.5 text-[#E6C27A]" />
                                             <span className="max-w-[100px] truncate">{currentModel.name}</span>
                                             <ChevronDown className="w-3.5 h-3.5 opacity-50" />
                                         </button>
@@ -633,7 +633,7 @@ export function AnimatedAIChat({
                                                 >
                                                     <div className="px-3 py-2 text-[10px] font-mono uppercase text-white/40 border-b border-white/[0.05] mb-1 flex items-center justify-between">
                                                         <span>Select Model</span>
-                                                        <Sparkles className="w-3 h-3 text-[#1FD8B8]" />
+                                                        <Sparkles className="w-3 h-3 text-[#E6C27A]" />
                                                     </div>
                                                     <div className="max-h-48 overflow-y-auto space-y-0.5 custom-scrollbar">
                                                         {models.map((model) => (
@@ -647,7 +647,7 @@ export function AnimatedAIChat({
                                                                 className={cn(
                                                                     "w-full flex flex-col px-3 py-2 rounded-lg text-left transition-colors",
                                                                     selectedModelId === model.id
-                                                                        ? "bg-[#1FD8B8]/10 text-white ring-1 ring-inset ring-[#1FD8B8]/25"
+                                                                        ? "bg-[#E6C27A]/10 text-white ring-1 ring-inset ring-[#E6C27A]/25"
                                                                         : "text-white/60 hover:bg-white/5 hover:text-white"
                                                                 )}
                                                             >
@@ -655,7 +655,7 @@ export function AnimatedAIChat({
                                                                     <span className="text-xs font-medium">{model.name}</span>
                                                                     <span className={cn(
                                                                         "text-[10px] font-mono",
-                                                                        model.isFree ? "text-[#1FD8B8]" : "text-white/30"
+                                                                        model.isFree ? "text-[#E6C27A]" : "text-white/30"
                                                                     )}>{model.cost} pts</span>
                                                                 </div>
                                                                 <span className="text-[10px] text-white/40 mt-0.5">{model.provider}</span>
@@ -690,7 +690,7 @@ export function AnimatedAIChat({
                                     className={cn(
                                         "px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2",
                                         (value.trim() || attachments.length > 0)
-                                            ? "bg-gradient-to-r from-[#1FD8B8] to-[#34E2C2] text-[#050506] shadow-lg shadow-[#1FD8B8]/30 hover:shadow-[#1FD8B8]/45 ring-1 ring-transparent hover:ring-[#E8C87A]/40"
+                                            ? "bg-gradient-to-r from-[#E6C27A] to-[#F0DCAB] text-[#050506] shadow-lg shadow-[#E6C27A]/30 hover:shadow-[#E6C27A]/45 ring-1 ring-transparent hover:ring-[#E8C87A]/40"
                                             : "bg-white/[0.05] text-white/40"
                                     )}
                                 >

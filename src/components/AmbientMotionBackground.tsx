@@ -45,7 +45,7 @@ export default function AmbientMotionBackground({
   return (
     <div
       aria-hidden="true"
-      className={`pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#050506] select-none ${className}`}
+      className={`pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#16181A] select-none ${className}`}
     >
       {/* 1. Subtle Micro Dot Grid */}
       <motion.div
@@ -67,7 +67,7 @@ export default function AmbientMotionBackground({
               height="32"
               patternUnits="userSpaceOnUse"
             >
-              <circle cx="2" cy="2" r="1" fill="#1FD8B8" />
+              <circle cx="2" cy="2" r="1" fill="#E6C27A" />
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#ambient-dots-grid)" />

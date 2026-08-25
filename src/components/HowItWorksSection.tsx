@@ -35,7 +35,7 @@ export default function HowItWorksSection() {
       <div className="max-w-7xl mx-auto space-y-16">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto space-y-4">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.035] px-3.5 py-1 text-xs font-medium text-[#1FD8B8]">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.035] px-3.5 py-1 text-xs font-medium text-[#E6C27A]">
             <Rocket className="h-3.5 w-3.5" />
             <span>Seamless Workflow</span>
           </div>
@@ -55,10 +55,10 @@ export default function HowItWorksSection() {
               <SpotlightCard key={idx} className="p-8 flex flex-col justify-between space-y-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-3xl font-bold text-[#1FD8B8]/40">
+                    <span className="font-mono text-3xl font-bold text-[#E6C27A]/40">
                       {step.step}
                     </span>
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1FD8B8]/10 text-[#1FD8B8]">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#E6C27A]/10 text-[#E6C27A]">
                       <Icon className="h-5 w-5" />
                     </div>
                   </div>
@@ -74,7 +74,7 @@ export default function HowItWorksSection() {
                 <div className="border-t border-white/[0.06] pt-4 space-y-2">
                   {step.details.map((detail, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs text-[rgba(245,246,248,0.75)]">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-[#1FD8B8] shrink-0" />
+                      <CheckCircle2 className="h-3.5 w-3.5 text-[#E6C27A] shrink-0" />
                       <span>{detail}</span>
                     </div>
                   ))}

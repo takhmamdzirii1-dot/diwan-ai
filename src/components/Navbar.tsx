@@ -70,12 +70,12 @@ export default function Navbar({ onOpenAuth, onOpenTopUp }: NavbarProps) {
       <div className="max-w-7xl mx-auto flex h-20 items-center justify-between px-4 md:px-8">
         {/* Brand Logo */}
         <a href="#" className="flex items-center gap-3 group">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1FD8B8] p-2 transition-transform duration-200 group-hover:scale-105">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#E6C27A] p-2 transition-transform duration-200 group-hover:scale-105">
             <Sparkles className="h-5 w-5 text-[#050506]" />
           </div>
           <div>
             <span className="text-xl font-bold tracking-wider text-white font-heading">VANTRA</span>
-            <span className="block text-[10px] uppercase font-semibold tracking-widest text-[#1FD8B8]">
+            <span className="block text-[10px] uppercase font-semibold tracking-widest text-[#E6C27A]">
               Algerian AI Gateway
             </span>
           </div>
@@ -99,10 +99,10 @@ export default function Navbar({ onOpenAuth, onOpenTopUp }: NavbarProps) {
               {/* Live Point Balance Pill */}
               <div className="flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.035] px-3.5 py-1.5 backdrop-blur-md">
                 <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#1FD8B8] opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#1FD8B8]" />
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E6C27A] opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#E6C27A]" />
                 </span>
-                <span className="font-mono text-xs font-bold text-[#1FD8B8]">
+                <span className="font-mono text-xs font-bold text-[#E6C27A]">
                   {balance.toLocaleString()}
                 </span>
                 <span className="text-[10px] font-semibold text-[rgba(245,246,248,0.6)] font-mono">
@@ -124,7 +124,7 @@ export default function Navbar({ onOpenAuth, onOpenTopUp }: NavbarProps) {
                       className="h-7 w-7 rounded-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1FD8B8] font-bold text-xs text-[#050506]">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#E6C27A] font-bold text-xs text-[#050506]">
                       {userInitial}
                     </div>
                   )}
@@ -160,9 +160,9 @@ export default function Navbar({ onOpenAuth, onOpenTopUp }: NavbarProps) {
                             setDropdownOpen(false);
                             handleOpenTopUp();
                           }}
-                          className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-[rgba(245,246,248,0.8)] transition hover:bg-white/[0.06] hover:text-[#1FD8B8]"
+                          className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-[rgba(245,246,248,0.8)] transition hover:bg-white/[0.06] hover:text-[#E6C27A]"
                         >
-                          <Wallet className="h-4 w-4 text-[#1FD8B8]" />
+                          <Wallet className="h-4 w-4 text-[#E6C27A]" />
                           <span>Top Up DZD Points</span>
                         </button>
 
@@ -191,7 +191,7 @@ export default function Navbar({ onOpenAuth, onOpenTopUp }: NavbarProps) {
                 onClick={() => handleOpenAuth('signin')}
                 className="hidden sm:inline-flex items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.035] px-4 py-2.5 text-xs font-medium text-[#F5F6F8] hover:bg-white/[0.065] transition duration-[250ms]"
               >
-                <UserIcon className="h-3.5 w-3.5 mr-1.5 text-[#1FD8B8]" />
+                <UserIcon className="h-3.5 w-3.5 mr-1.5 text-[#E6C27A]" />
                 <span>Sign In</span>
               </button>
 

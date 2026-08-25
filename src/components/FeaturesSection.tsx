@@ -59,7 +59,7 @@ export default function FeaturesSection() {
       <div className="max-w-7xl mx-auto space-y-16">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto space-y-4">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.035] px-3.5 py-1 text-xs font-medium text-[#1FD8B8]">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.035] px-3.5 py-1 text-xs font-medium text-[#E6C27A]">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Engineered for Algerian Creators</span>
           </div>
@@ -78,10 +78,10 @@ export default function FeaturesSection() {
             return (
               <SpotlightCard key={idx} className="p-8 space-y-5">
                 <div className="flex items-center justify-between">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1FD8B8]/10 border border-[#1FD8B8]/20 text-[#1FD8B8]">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E6C27A]/10 border border-[#E6C27A]/20 text-[#E6C27A]">
                     <Icon className="h-6 w-6" />
                   </div>
-                  <span className="rounded-full bg-white/[0.04] border border-white/[0.06] px-3 py-1 text-[11px] font-semibold text-[#1FD8B8]">
+                  <span className="rounded-full bg-white/[0.04] border border-white/[0.06] px-3 py-1 text-[11px] font-semibold text-[#E6C27A]">
                     {feat.badge}
                   </span>
                 </div>
@@ -93,7 +93,7 @@ export default function FeaturesSection() {
                   </p>
                 </div>
 
-                <div className="pt-2 border-t border-white/[0.06] flex items-center gap-2 text-xs text-[#1FD8B8] font-medium">
+                <div className="pt-2 border-t border-white/[0.06] flex items-center gap-2 text-xs text-[#E6C27A] font-medium">
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   <span>Available in all packs</span>
                 </div>

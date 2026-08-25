@@ -441,10 +441,10 @@ export default function OriginalLandingPage() {
                   className="balance-pill cursor-pointer hover:border-white/[0.15] transition"
                 >
                   <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#1FD8B8] opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-[#1FD8B8]" />
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E6C27A] opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-[#E6C27A]" />
                   </span>
-                  <span className="balance-val mono-num text-[#1FD8B8] font-bold">
+                  <span className="balance-val mono-num text-[#E6C27A] font-bold">
                     {balance.toLocaleString()}
                   </span>
                   <span style={{ fontSize: '11px', color: 'var(--teal)' }}>PTS</span>
@@ -455,7 +455,7 @@ export default function OriginalLandingPage() {
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                   className="flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.035] p-1.5 pr-3 text-xs font-semibold text-white hover:bg-white/[0.065] transition"
                 >
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#1FD8B8] text-[#050506] font-bold text-xs">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#E6C27A] text-[#050506] font-bold text-xs">
                     {(user.user_metadata?.full_name?.[0] || user.email?.[0] || 'U').toUpperCase()}
                   </div>
                   <span className="max-w-[90px] truncate">
@@ -471,9 +471,9 @@ export default function OriginalLandingPage() {
                         setUserDropdownOpen(false);
                         openTopUpModal();
                       }}
-                      className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-white hover:bg-white/[0.06] hover:text-[#1FD8B8]"
+                      className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-white hover:bg-white/[0.06] hover:text-[#E6C27A]"
                     >
-                      <i className="fa-solid fa-wallet text-[#1FD8B8]" />
+                      <i className="fa-solid fa-wallet text-[#E6C27A]" />
                       <span>Top Up DZD Points</span>
                     </button>
                     <button
@@ -588,15 +588,15 @@ export default function OriginalLandingPage() {
 
             <div className="hero-guarantee">
               <div className="guarantee-item">
-                <i className="fa-solid fa-circle-check text-[#1FD8B8]" />
+                <i className="fa-solid fa-circle-check text-[#E6C27A]" />
                 <span>{t.guaranteeEdahabia || 'Secure Payment via Edahabia & CIB'}</span>
               </div>
               <div className="guarantee-item">
-                <i className="fa-solid fa-shield-halved text-[#1FD8B8]" />
+                <i className="fa-solid fa-shield-halved text-[#E6C27A]" />
                 <span>{t.guaranteeExpiry || 'Non-expiring Credit Points'}</span>
               </div>
               <div className="guarantee-item">
-                <i className="fa-solid fa-rotate text-[#1FD8B8]" />
+                <i className="fa-solid fa-rotate text-[#E6C27A]" />
                 <span>{t.guaranteeNoLockin || 'Zero Monthly Commitment'}</span>
               </div>
             </div>

@@ -215,8 +215,8 @@ export default function LiveLedgerCard({ onOpenAuth }: LiveLedgerCardProps) {
         {/* Header: Title & Balance Pill */}
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.06] pb-5">
           <div className="flex items-center gap-3">
-            <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-[#1FD8B8]/10 border border-[#1FD8B8]/25">
-              <Sparkles className="h-4 w-4 text-[#1FD8B8]" />
+            <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-[#E6C27A]/10 border border-[#E6C27A]/25">
+              <Sparkles className="h-4 w-4 text-[#E6C27A]" />
             </div>
             <div>
               <h3 className="text-sm font-semibold tracking-wide uppercase text-[#F5F6F8]">
@@ -236,11 +236,11 @@ export default function LiveLedgerCard({ onOpenAuth }: LiveLedgerCardProps) {
                 key={activeBalance}
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="font-mono text-base font-bold text-[#1FD8B8]"
+                className="font-mono text-base font-bold text-[#E6C27A]"
               >
                 {activeBalance.toLocaleString()}
               </motion.span>
-              <span className="ml-1 text-[11px] font-semibold text-[#1FD8B8] font-mono">PTS</span>
+              <span className="ml-1 text-[11px] font-semibold text-[#E6C27A] font-mono">PTS</span>
 
               {/* Floating deduction indicator */}
               <AnimatePresence>
@@ -250,7 +250,7 @@ export default function LiveLedgerCard({ onOpenAuth }: LiveLedgerCardProps) {
                     animate={{ opacity: 0, y: -24, scale: 1.05 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.65 }}
-                    className="absolute -top-4 right-0 text-xs font-bold text-[#1FD8B8] font-mono"
+                    className="absolute -top-4 right-0 text-xs font-bold text-[#E6C27A] font-mono"
                   >
                     -{lastDeduction}
                   </motion.span>
@@ -283,7 +283,7 @@ export default function LiveLedgerCard({ onOpenAuth }: LiveLedgerCardProps) {
                 {isActive && (
                   <motion.div
                     layoutId="active-tab-indicator"
-                    className="absolute inset-0 rounded-full bg-[#1FD8B8]"
+                    className="absolute inset-0 rounded-full bg-[#E6C27A]"
                     transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   />
                 )}
@@ -308,7 +308,7 @@ export default function LiveLedgerCard({ onOpenAuth }: LiveLedgerCardProps) {
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#1FD8B8]/25 bg-[#1FD8B8]/10 text-[#1FD8B8]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#E6C27A]/25 bg-[#E6C27A]/10 text-[#E6C27A]">
                 <IconComponent className="h-4 w-4" />
               </div>
               <div>
@@ -324,7 +324,7 @@ export default function LiveLedgerCard({ onOpenAuth }: LiveLedgerCardProps) {
 
             {/* Cost Badge */}
             <div className="text-right">
-              <div className="font-mono text-sm font-bold text-[#1FD8B8]">
+              <div className="font-mono text-sm font-bold text-[#E6C27A]">
                 {currentModel.cost} PTS
               </div>
               <span className="text-[10px] text-[rgba(245,246,248,0.4)]">{currentModel.unit}</span>
@@ -335,7 +335,7 @@ export default function LiveLedgerCard({ onOpenAuth }: LiveLedgerCardProps) {
           <div className="rounded-lg bg-black/40 p-3.5 border border-white/[0.03] space-y-2">
             <div className="flex items-center justify-between text-[11px] text-[rgba(245,246,248,0.4)] font-medium">
               <span>Interactive Live Prompt:</span>
-              <span className="text-[#1FD8B8] font-mono text-[10px]">
+              <span className="text-[#E6C27A] font-mono text-[10px]">
                 {user ? 'Authenticated Session' : 'Instant Preview'}
               </span>
             </div>
@@ -361,7 +361,7 @@ export default function LiveLedgerCard({ onOpenAuth }: LiveLedgerCardProps) {
             whileTap={{ scale: 0.98 }}
             disabled={isDeducting}
             onClick={handleExecute}
-            className="w-full flex items-center justify-center gap-2.5 rounded-full bg-[#1FD8B8] h-12 text-sm font-bold text-[#050506] shadow-[0_4px_16px_rgba(31,216,184,0.25)] transition-all hover:bg-[#34e2c2] disabled:opacity-60"
+            className="w-full flex items-center justify-center gap-2.5 rounded-full bg-[#E6C27A] h-12 text-sm font-bold text-[#050506] shadow-[0_4px_16px_rgba(31,216,184,0.25)] transition-all hover:bg-[#F0DCAB] disabled:opacity-60"
           >
             {isDeducting ? (
               <>
@@ -378,9 +378,9 @@ export default function LiveLedgerCard({ onOpenAuth }: LiveLedgerCardProps) {
 
           {/* AI Response Output Terminal */}
           {aiOutput && (
-            <div className="rounded-xl border border-[#1FD8B8]/25 bg-black/60 p-4 space-y-2">
+            <div className="rounded-xl border border-[#E6C27A]/25 bg-black/60 p-4 space-y-2">
               <div
-                className="flex items-center justify-between cursor-pointer text-xs font-semibold text-[#1FD8B8]"
+                className="flex items-center justify-between cursor-pointer text-xs font-semibold text-[#E6C27A]"
                 onClick={() => setShowOutput(!showOutput)}
               >
                 <div className="flex items-center gap-2">
@@ -411,7 +411,7 @@ export default function LiveLedgerCard({ onOpenAuth }: LiveLedgerCardProps) {
             </span>
             <button
               onClick={handleReset}
-              className="text-[11px] text-[#1FD8B8] hover:underline flex items-center gap-1"
+              className="text-[11px] text-[#E6C27A] hover:underline flex items-center gap-1"
             >
               <RefreshCw className="h-3 w-3" /> Reset Demo
             </button>
@@ -426,12 +426,12 @@ export default function LiveLedgerCard({ onOpenAuth }: LiveLedgerCardProps) {
                 className="flex items-center justify-between rounded-lg bg-[#050506]/60 px-3 py-2 text-xs border border-white/[0.03]"
               >
                 <div className="flex items-center gap-2">
-                  <ArrowDownRight className="h-3.5 w-3.5 text-[#1FD8B8]" />
+                  <ArrowDownRight className="h-3.5 w-3.5 text-[#E6C27A]" />
                   <span className="text-[rgba(245,246,248,0.8)] font-medium">{log.opName}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-[rgba(245,246,248,0.4)] font-mono">{log.time}</span>
-                  <span className="font-mono font-bold text-[#1FD8B8]">
+                  <span className="font-mono font-bold text-[#E6C27A]">
                     {log.cost < 0
                       ? `+${Math.abs(log.cost).toLocaleString()} PTS`
                       : `-${log.cost} PTS`}
@@ -445,11 +445,11 @@ export default function LiveLedgerCard({ onOpenAuth }: LiveLedgerCardProps) {
         {/* Bottom Trust Badges */}
         <div className="flex items-center justify-between text-[11px] text-[rgba(245,246,248,0.4)] border-t border-white/[0.06] pt-3.5">
           <div className="flex items-center gap-1.5">
-            <ShieldCheck className="h-3.5 w-3.5 text-[#1FD8B8]" />
+            <ShieldCheck className="h-3.5 w-3.5 text-[#E6C27A]" />
             <span>Encrypted Edahabia & CIB Payment</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <CheckCircle2 className="h-3.5 w-3.5 text-[#1FD8B8]" />
+            <CheckCircle2 className="h-3.5 w-3.5 text-[#E6C27A]" />
             <span>Instant API Balance Sync</span>
           </div>
         </div>
