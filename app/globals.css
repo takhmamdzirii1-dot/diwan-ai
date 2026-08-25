@@ -3272,3 +3272,11 @@ html[lang="ar"] .lux-prose table,
 /* Hidden scrollbar utility (model tabs strip) */
 .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
 .scrollbar-none::-webkit-scrollbar { display: none; }
+/* Per-LINE bidi resolution: every line takes its own direction
+   (English lines LTR, Arabic lines RTL) even inside one paragraph */
+.lux-prose :is(p, li, h1, h2, h3, h4, blockquote, td, th) {
+  unicode-bidi: plaintext;
+}
+.user-bubble-cyan p {
+  unicode-bidi: plaintext;
+}
