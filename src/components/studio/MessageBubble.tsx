@@ -62,13 +62,13 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
       className="group/msg flex flex-col gap-2.5 w-full min-w-0"
     >
       {/* Header meta */}
-      <div className={`flex items-center gap-3 w-full px-1 ${isUser ? 'justify-end' : 'justify-start'}`}>
+      <div className="flex items-center gap-3 w-full px-1 justify-start">
         {isUser ? (
           <>
-            <span className="text-[11px] font-mono uppercase tracking-[0.14em] text-[#00F5D4]/60">You</span>
             <div className="h-7 w-7 rounded-lg bg-white/[0.06] border border-[#00F5D4]/25 flex items-center justify-center text-[#00F5D4]/90 shadow-[0_0_14px_-4px_rgba(0,245,212,0.5)]">
               <User className="h-3.5 w-3.5" />
             </div>
+            <span className="text-[11px] font-mono uppercase tracking-[0.14em] text-[#00F5D4]/60">You</span>
           </>
         ) : (
           <>
@@ -114,9 +114,9 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
       </div>
 
       {/* Bubble / Panel */}
-      <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
+      <div className="flex w-full justify-start">
         {isUser ? (
-          <div className="user-bubble-cyan max-w-[85%] min-w-0 rounded-2xl rounded-tr-md px-5 py-4 backdrop-blur-xl" dir={detectDir(message.content)}>
+          <div className="user-bubble-cyan max-w-[85%] min-w-0 rounded-2xl rounded-tl-md px-5 py-4 backdrop-blur-xl" dir={detectDir(message.content)}>
             <p className="text-[15px] leading-[1.75] text-white whitespace-pre-wrap break-words">
               {message.content}
             </p>
