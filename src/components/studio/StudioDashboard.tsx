@@ -436,7 +436,7 @@ export default function StudioDashboard() {
                 {/* Floating curved prompt bar */}
                 {!isEmpty && (
                   <div
-                    className="absolute bottom-0 left-0 w-full pb-7 px-6 flex justify-center z-30 pointer-events-none h-56 items-end"
+                    className="absolute bottom-0 left-0 w-full pb-9 px-6 flex justify-center z-30 pointer-events-none h-60 items-end"
                     style={{ background: 'linear-gradient(to top, #08090C 38%, rgba(8,9,12,0.94) 58%, rgba(8,9,12,0.55) 80%, transparent)' }}
                   >
                     <div className="w-full max-w-[820px] pointer-events-auto">
@@ -450,6 +450,9 @@ export default function StudioDashboard() {
                         placeholder="How can I help you today?"
                         onSignInClick={user ? undefined : () => openAuthModal('signin')}
                       />
+                      <p className="text-center text-[11px] text-white/30 mt-2.5">
+                        VANTRA can make mistakes. Please check important information.
+                      </p>
                     </div>
                   </div>
                 )}
