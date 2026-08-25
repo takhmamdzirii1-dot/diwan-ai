@@ -422,7 +422,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
         >
             {/* Glass box with luxury gradient frame */}
             <div className="lux-input-shell">
-                <div className="claude-glass-inner rounded-[25px] flex flex-col px-3 pt-3 pb-2 gap-2">
+                <div className="claude-glass-inner rounded-[25px] flex flex-col px-5 pt-4 pb-3 gap-2.5">
 
                     {/* Attachments above input */}
                     {(files.length > 0 || pastedContent.length > 0) && (
@@ -457,7 +457,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                             autoFocus={autoFocus}
                             className="w-full bg-transparent border-0 outline-none text-white text-[16px] placeholder:text-white/30 resize-none overflow-y-auto custom-scrollbar-thin leading-relaxed block antialiased"
                             rows={1}
-                            style={{ minHeight: '1.6em', padding: '18px 22px 10px 22px' }}
+                            style={{ minHeight: '2.4em', padding: '20px 24px 12px 24px' }}
                         />
                     </div>
 
@@ -541,7 +541,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                 <button
                                     type="button"
                                     onClick={onStop}
-                                    className="inline-flex items-center justify-center h-8 w-8 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 hover:bg-red-500/25 transition-colors active:scale-95 cursor-pointer"
+                                    className="inline-flex items-center justify-center h-9 w-9 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 hover:bg-red-500/25 transition-colors active:scale-95 cursor-pointer"
                                     aria-label="Stop"
                                 >
                                     <span className="block w-3 h-3 rounded-[3px] bg-current" />
@@ -552,7 +552,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                     onClick={handleSend}
                                     disabled={!hasContent}
                                     className={cn(
-                                        "inline-flex items-center justify-center h-8 w-8 rounded-xl transition-all duration-300 active:scale-95",
+                                        "inline-flex items-center justify-center h-9 w-9 rounded-xl transition-all duration-300 active:scale-95",
                                         hasContent
                                             ? 'send-ready bg-gradient-to-br from-[#E6C27A] to-[#F0DCAB] text-[#050506] hover:-translate-y-0.5 ring-1 ring-transparent hover:ring-[#E6C27A]/45 cursor-pointer'
                                             : 'bg-white/[0.07] text-white/25 cursor-default'
