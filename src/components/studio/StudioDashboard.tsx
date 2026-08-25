@@ -350,10 +350,10 @@ export default function StudioDashboard() {
                 className="absolute inset-0 flex flex-col"
               >
                 <div ref={scrollContainerRef} className="flex-1 overflow-y-auto custom-scrollbar relative">
-                  <div className="w-full flex justify-center px-4 pb-80 pt-8">
+                  <div className={`w-full flex justify-center px-4 ${isEmpty ? "min-h-full items-center py-8" : "pb-80 pt-8"}`}>
                     <div className="w-full max-w-[820px] flex flex-col gap-7">
                       {isEmpty && (
-                        <div className="flex flex-col items-center text-center pt-[7vh] stagger-2">
+                        <div className="flex flex-col items-center text-center stagger-2">
                           <div className="ai-avatar-ring h-16 w-16 rounded-2xl p-[2px] shadow-[0_0_40px_-8px_rgba(230,194,122,0.5)]">
                             <div className="w-full h-full rounded-[14px] bg-[#1A1C1F] flex items-center justify-center">
                               <Sparkles className="h-7 w-7 text-[#E6C27A]" />

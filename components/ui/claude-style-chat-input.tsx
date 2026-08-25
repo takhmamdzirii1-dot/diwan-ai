@@ -455,9 +455,9 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                             placeholder={placeholder}
                             dir="auto"
                             autoFocus={autoFocus}
-                            className="w-full bg-transparent border-0 outline-none text-white text-[16px] placeholder:text-white/30 resize-none overflow-y-auto custom-scrollbar-thin pt-4 pb-2 px-5 leading-relaxed block antialiased"
+                            className="w-full bg-transparent border-0 outline-none text-white text-[16px] placeholder:text-white/30 resize-none overflow-y-auto custom-scrollbar-thin leading-relaxed block antialiased"
                             rows={1}
-                            style={{ minHeight: '1.6em' }}
+                            style={{ minHeight: '1.6em', padding: '18px 22px 10px 22px' }}
                         />
                     </div>
 
