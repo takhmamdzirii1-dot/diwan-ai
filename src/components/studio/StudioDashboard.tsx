@@ -436,7 +436,7 @@ export default function StudioDashboard() {
                 {/* Floating curved prompt bar */}
                 {!isEmpty && (
                   <div
-                    className="absolute bottom-0 left-0 w-full pb-5 px-4 flex justify-center z-30 pointer-events-none h-52 items-end"
+                    className="absolute bottom-0 left-0 w-full pb-7 px-6 flex justify-center z-30 pointer-events-none h-56 items-end"
                     style={{ background: 'linear-gradient(to top, #08090C 38%, rgba(8,9,12,0.94) 58%, rgba(8,9,12,0.55) 80%, transparent)' }}
                   >
                     <div className="w-full max-w-[820px] pointer-events-auto">

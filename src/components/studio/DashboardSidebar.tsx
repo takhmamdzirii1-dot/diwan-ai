@@ -83,7 +83,7 @@ export default function DashboardSidebar({
               VANTRA
             </span>
             <span className="text-[9px] font-mono tracking-[0.3em] bronze-text mt-1 uppercase">
-              Studio v3.4
+              Studio v3.5
             </span>
           </div>
         </div>
