@@ -422,7 +422,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
         >
             {/* Glass box with luxury gradient frame */}
             <div className="lux-input-shell">
-                <div className="claude-glass-inner rounded-[25px] flex flex-col px-5 pt-4 pb-3 gap-2.5">
+                <div className="claude-glass-inner rounded-[25px] flex flex-col px-7 pt-5 pb-4 gap-3">
 
                     {/* Attachments above input */}
                     {(files.length > 0 || pastedContent.length > 0) && (
@@ -457,7 +457,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                             autoFocus={autoFocus}
                             className="w-full bg-transparent border-0 outline-none text-white text-[16px] placeholder:text-white/30 resize-none overflow-y-auto custom-scrollbar-thin leading-relaxed block antialiased"
                             rows={1}
-                            style={{ minHeight: '2.4em', padding: '20px 24px 12px 24px' }}
+                            style={{ minHeight: '2.4em', padding: '22px 28px 14px 28px' }}
                         />
                     </div>
 
