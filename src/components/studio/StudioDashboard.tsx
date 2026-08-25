@@ -489,10 +489,10 @@ export default function StudioDashboard() {
                 {/* Composer — IN-FLOW below the scroll area (root fix: content can never slide under it) */}
                 {!isEmpty && (
                   <div
-                    className="shrink-0 w-full px-6 pb-4 pt-1 relative z-30"
+                    className="shrink-0 w-full px-6 pb-4 pt-1 relative z-30 flex justify-center"
                     style={{ background: 'linear-gradient(to top, #16181A 55%, rgba(22,24,26,0.9) 82%, transparent)' }}
                   >
-                    <div className="w-full max-w-[760px] mx-auto">
+                    <div className="w-full max-w-[760px]">
                       <ClaudeChatInput
                         onSendMessage={handleSend}
                         models={MODELS.map((m) => ({ id: m.id, name: m.name, description: `${m.provider} · ${m.ctx}`, badge: m.badge, isFree: m.isFree, requiresAuth: !m.isFree }))}
