@@ -461,10 +461,10 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                         />
                     </div>
 
-                    {/* Action bar */}
-                    <div className="flex gap-2 w-full items-center">
+                    {/* Action bar — bottom padding lifts buttons off the edge */}
+                    <div className="flex gap-2 w-full items-center px-1 pb-3">
                         {/* Left tools */}
-                        <div className="relative flex-1 flex items-center shrink min-w-0 gap-1">
+                        <div className="relative flex-1 flex items-center shrink min-w-0 gap-1 ps-1">
                             <button
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
@@ -524,8 +524,8 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                             )}
                         </div>
 
-                        {/* Right tools */}
-                        <div className="flex flex-row items-center shrink-0 gap-1.5">
+                        {/* Right tools — extra space from the right edge */}
+                        <div className="flex flex-row items-center shrink-0 gap-1.5 pe-1">
                             {models.length > 0 && (
                                 <div className="shrink-0">
                                     <ModelSelector
