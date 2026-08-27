@@ -9,7 +9,8 @@ import { useModal } from '../../context/ModalContext';
 import { ClaudeChatInput } from '@/components/ui/claude-style-chat-input';
 import DashboardSidebar, { type DashboardView } from './DashboardSidebar';
 import MessageBubble from './MessageBubble';
-import StudioImage from './StudioImage';
+import ImageCanvas from './ImageCanvas';
+import SettingsModal from './SettingsModal';
 import StudioVideo from './StudioVideo';
 import { cn } from '@/lib/utils';
 
@@ -17,12 +18,8 @@ import { cn } from '@/lib/utils';
 const MODELS = [
   { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', name: 'Nemotron 3 Ultra', provider: 'NVIDIA', ctx: '1M', latency: 1200, badge: 'FREE', isFree: true },
   { id: 'z-ai/glm-5.2:free', name: 'GLM 5.2', provider: 'Z.ai', ctx: '256K', latency: 700, badge: 'FREE', isFree: true },
-  { id: 'nvidia/nemotron-3.5-lightning:free', name: 'Nemotron Lightning', provider: 'NVIDIA', ctx: '1M', latency: 380, badge: 'FREE', isFree: true },
-  { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4 31B', provider: 'Google', ctx: '262K', latency: 520, badge: 'FREE', isFree: true },
-  { id: 'liquid/lfm-2.5-2.6b:free', name: 'Liquid LFM 2.5', provider: 'Liquid', ctx: '64K', latency: 300, badge: 'FREE', isFree: true },
-  { id: 'cohere/north-mini-code:free', name: 'Cohere North Mini', provider: 'Cohere', ctx: '256K', latency: 450, badge: 'FREE', isFree: true },
-  { id: 'anthropic/claude-opus-5', name: 'Claude Opus 5', provider: 'Anthropic', ctx: '1M', latency: 2400, badge: 'PRO', isFree: false },
-  { id: 'openai/gpt-5.6-sol', name: 'GPT-5.6 Sol', provider: 'OpenAI', ctx: '1M', latency: 1800, badge: 'PRO', isFree: false },
+  { id: 'poolside/laguna-s-2.1:free', name: 'Laguna S 2.1', provider: 'Poolside', ctx: '128K', latency: 600, badge: 'FREE', isFree: true },
+  { id: 'minimax/minimax-m3:free', name: 'MiniMax M3', provider: 'MiniMax', ctx: '1M', latency: 500, badge: 'FREE', isFree: true },
 ];
 
 type CenterMode = 'chat' | 'image' | 'video';
@@ -85,6 +82,7 @@ export default function StudioDashboard() {
   const [view, setView] = useState<DashboardView>('chat');
   const [centerMode, setCenterMode] = useState<CenterMode>('chat');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [selectedModelId, setSelectedModelId] = useState(MODELS[0].id);
   const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null);
@@ -114,9 +112,13 @@ export default function StudioDashboard() {
   }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('vantra_sessions_v2', JSON.stringify(sessions));
-    } catch {}
+    // Debounced + capped: keep max 30 sessions, never block main thread per keystroke
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem('vantra_sessions_v2', JSON.stringify(sessions.slice(0, 30)));
+      } catch {}
+    }, 400);
+    return () => clearTimeout(t);
   }, [sessions]);
 
   const {
@@ -152,15 +154,18 @@ export default function StudioDashboard() {
   }, [activeSessionId, setMessages]);
 
   useEffect(() => {
-    if (activeSessionId) {
+    if (!activeSessionId) return;
+    // Debounced + capped: persist only the last 50 messages per session
+    const t = setTimeout(() => {
       try {
         if (messages.length > 0) {
-          localStorage.setItem(`vantra_chat_${activeSessionId}`, JSON.stringify(messages));
+          localStorage.setItem(`vantra_chat_${activeSessionId}`, JSON.stringify(messages.slice(-50)));
         } else {
           localStorage.removeItem(`vantra_chat_${activeSessionId}`);
         }
       } catch {}
-    }
+    }, 400);
+    return () => clearTimeout(t);
   }, [messages, activeSessionId]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -281,98 +286,39 @@ export default function StudioDashboard() {
   const soon = SOON_VIEWS[view];
 
   return (
-    <div dir="ltr" className="obsidian-bg relative flex h-screen w-full overflow-hidden text-white font-sans">
+    <div className="obsidian-bg relative flex h-screen w-full overflow-hidden text-white font-sans">
       {/* Wing glows */}
       <div className="wing-glow-left" />
       <div className="wing-glow-right" />
       <div className="lux-noise absolute inset-0 pointer-events-none" />
 
-      {/* Mobile top bar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-[#08090C]/95 backdrop-blur-xl border-b border-white/[0.06] px-4 flex items-center justify-between z-30">
-        <button
-          type="button"
-          onClick={() => setIsMobileNavOpen(true)}
-          className="p-2 rounded-xl border border-white/10 bg-white/5 text-white cursor-pointer"
-          aria-label="Open menu"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
-        <span className="font-heading font-bold text-sm tracking-[0.2em] text-white">VANTRA</span>
-        <span className="w-[38px]" />
-      </div>
+      {/* Floating glass hamburger — immersive, no header wrapper */}
+      <button
+        type="button"
+        onClick={() => setIsMobileNavOpen(true)}
+        aria-label="Open menu"
+        className="lg:hidden fixed top-4 left-4 z-50 p-2.5 rounded-xl bg-[#2A2D33]/80 backdrop-blur-md border border-white/10 text-white/90 shadow-lg cursor-pointer active:scale-95 transition-transform"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
 
       {/* ── 1. Left navigation ── */}
       <DashboardSidebar
         activeView={view}
         onViewChange={setView}
-        onNewChat={handleNewChat}
+        activeWorkspace={centerMode}
+        onOpenSettings={() => setSettingsOpen(true)}
+        onWorkspaceChange={(w) => {
+          setView('chat');
+          setCenterMode(w);
+        }}
         isMobileOpen={isMobileNavOpen}
         onCloseMobile={() => setIsMobileNavOpen(false)}
       />
 
       {/* ── 2. Center studio ── */}
-      <main className="flex-1 flex flex-col relative h-full min-w-0 pt-14 lg:pt-0 z-[2]">
-        {/* Header: model tabs + latency + ctx + mode switcher + drawer toggle */}
-        {view === 'chat' && (
-          <header className="shrink-0 h-[60px] border-b border-white/[0.05] bg-[#08090C]/70 backdrop-blur-xl flex items-center gap-3 px-4 relative z-10">
-            {/* Model tabs */}
-            <div className="flex items-center gap-1 overflow-x-auto scrollbar-none flex-1 min-w-0">
-              {MODELS.map((m) => {
-                const active = m.id === selectedModelId;
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setSelectedModelId(m.id)}
-                    title={`${m.provider} · ${m.ctx} context`}
-                    className={cn(
-                      'shrink-0 flex items-center gap-2 h-9 px-3 rounded-xl text-[12px] font-medium transition-all duration-200 cursor-pointer active:scale-[0.97]',
-                      active
-                        ? 'nav-pill-active text-white'
-                        : 'text-white/40 hover:text-white/85 hover:bg-white/[0.04] border border-transparent'
-                    )}
-                  >
-                    <span className={cn('w-1.5 h-1.5 rounded-full', m.isFree ? 'bg-[#E6C27A] shadow-[0_0_6px_#E6C27A]' : 'bg-[#E6C27A] shadow-[0_0_6px_#E6C27A]')} />
-                    <span className="max-w-[120px] truncate">{m.name}</span>
-                    {active && (
-                      <>
-                        <span className="hidden md:inline-flex items-center h-[18px] px-1.5 rounded-md bg-white/[0.06] text-[9.5px] font-mono text-[#E6C27A]/90">
-                          <Zap className="h-2.5 w-2.5 me-1" />
-                          {lastLatencyMs ? `${(lastLatencyMs / 1000).toFixed(1)}s` : `${m.latency}ms`}
-                        </span>
-                        <span className="hidden md:inline-flex items-center h-[18px] px-1.5 rounded-md bg-white/[0.06] text-[9.5px] font-mono text-[#C5A059]">
-                          {m.ctx}
-                        </span>
-                      </>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Mode switcher */}
-            <div className="hidden sm:flex items-center gap-1 p-1 rounded-xl bg-white/[0.03] border border-white/[0.06] shrink-0">
-              {([
-                { id: 'chat', icon: MessageSquare, label: 'Chat' },
-                { id: 'image', icon: ImageIcon, label: 'Image' },
-                { id: 'video', icon: Video, label: 'Video' },
-              ] as const).map(({ id, icon: Icon, label }) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setCenterMode(id)}
-                  className={cn(
-                    'flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[11.5px] font-medium transition-all cursor-pointer active:scale-95',
-                    centerMode === id ? 'bg-white/[0.08] text-white' : 'text-white/40 hover:text-white/80'
-                  )}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {label}
-                </button>
-              ))}
-             </div>
-           </header>
-        )}
+      <main className="flex-1 flex flex-col relative h-full min-w-0 z-[2]">
+        {/* Top area intentionally empty — immersive minimalism */}
 
         {/* Center content */}
         <div className="flex-1 relative min-h-0">
@@ -392,16 +338,16 @@ export default function StudioDashboard() {
                     <div className="w-full max-w-[820px] flex flex-col gap-7">
                       {isEmpty && (
                         <div className="flex flex-col items-center text-center stagger-2">
-                          <div className="ai-avatar-ring h-16 w-16 rounded-2xl p-[2px] shadow-[0_0_40px_-8px_rgba(230,194,122,0.5)]">
+                          <div className="ai-avatar-ring h-16 w-16 rounded-2xl p-[2px]">
                             <div className="w-full h-full rounded-[14px] bg-[#1A1C1F] flex items-center justify-center">
-                              <Sparkles className="h-7 w-7 text-[#E6C27A]" />
+                              <Sparkles className="h-7 w-7 text-[#FFFFFF]" />
                             </div>
                           </div>
                           <h1 className="font-serif-lux text-[clamp(28px,4vw,40px)] text-white/95 mt-6 tracking-tight">
                             The Studio is ready
                           </h1>
                           <p className="lux-welcome-sub mt-3">
-                            Pick a model up top, tune the controls on the right, and create.
+                            Pick a model from the composer below and create.
                           </p>
 
                           {/* Composer — always visible so users can start chatting */}
@@ -426,15 +372,11 @@ export default function StudioDashboard() {
                                 onClick={() => handleSend({ message: s.prompt, isThinkingEnabled: false })}
                                 className="glass-pill inline-flex items-center gap-2 px-4 py-2 rounded-full text-[12.5px] text-white/55 cursor-pointer"
                               >
-                                <s.icon className="h-3.5 w-3.5 text-[#E6C27A]/80" />
+                                <s.icon className="h-3.5 w-3.5 text-[#FFFFFF]/80" />
                                 {s.label}
                               </button>
                             ))}
                           </div>
-
-                          <p className="text-center text-[11px] text-white/30 mt-6">
-                            VANTRA can make mistakes. Please check important information.
-                          </p>
                           </div>
                         </div>
                       )}
@@ -503,9 +445,6 @@ export default function StudioDashboard() {
                         placeholder="How can I help you today?"
                         onSignInClick={user ? undefined : () => openAuthModal('signin')}
                       />
-                      <p className="text-center text-[11px] text-white/30 mt-2.5">
-                        VANTRA can make mistakes. Please check important information.
-                      </p>
                     </div>
                   </div>
                 )}
@@ -514,8 +453,8 @@ export default function StudioDashboard() {
 
             {/* ── Image / Video studios ── */}
             {view === 'chat' && centerMode === 'image' && (
-              <motion.div key="image" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 overflow-y-auto custom-scrollbar">
-                <StudioImage />
+              <motion.div key="image" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0">
+                <ImageCanvas />
               </motion.div>
             )}
             {view === 'chat' && centerMode === 'video' && (
@@ -536,7 +475,7 @@ export default function StudioDashboard() {
               >
                 <div className="max-w-4xl mx-auto px-6 py-10">
                   <div className="flex items-center gap-3 mb-2">
-                    <LayoutGrid className="h-5 w-5 text-[#E6C27A]" />
+                    <LayoutGrid className="h-5 w-5 text-[#FFFFFF]" />
                     <h1 className="text-2xl font-semibold tracking-tight">All Models</h1>
                   </div>
                   <p className="text-[13px] text-white/40 mb-8">
@@ -565,18 +504,18 @@ export default function StudioDashboard() {
                         )}
                       >
                         <div className="flex items-start justify-between mb-3">
-                          <span className={cn('text-[9px] font-mono font-bold tracking-[0.18em] px-2 py-1 rounded-full border', m.isFree ? 'border-[#E6C27A]/30 text-[#E6C27A]/90' : 'border-[#E6C27A]/35 text-[#E6C27A]')}>
+                          <span className={cn('text-[9px] font-mono font-bold tracking-[0.18em] px-2 py-1 rounded-full border', m.isFree ? 'border-[#FFFFFF]/30 text-[#FFFFFF]/90' : 'border-[#FFFFFF]/35 text-[#FFFFFF]')}>
                             {m.badge}
                           </span>
                           <span className="text-[10px] font-mono text-white/30">{m.provider}</span>
                         </div>
                         <p className="text-[15px] font-semibold text-white/95 mb-1">{m.name}</p>
                         <div className="flex items-center gap-3 text-[11px] font-mono text-white/40">
-                          <span className="flex items-center gap-1"><Zap className="h-3 w-3 text-[#B8934A]" />~{m.latency}ms</span>
-                          <span className="flex items-center gap-1 text-[#C5A059]/80">{m.ctx} ctx</span>
-                          {!m.isFree && <span className="text-[#E6C27A]/70">{m.id.includes('opus') ? '60' : '50'} pts</span>}
+                          <span className="flex items-center gap-1"><Zap className="h-3 w-3 text-[#9CA3AF]" />~{m.latency}ms</span>
+                          <span className="flex items-center gap-1 text-[#D1D5DB]/80">{m.ctx} ctx</span>
+                          {!m.isFree && <span className="text-[#FFFFFF]/70">{m.id.includes('opus') ? '60' : '50'} pts</span>}
                         </div>
-                        <span className="absolute bottom-0 left-5 right-5 h-px bg-gradient-to-r from-transparent via-[#C5A059]/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <span className="absolute bottom-0 left-5 right-5 h-px bg-gradient-to-r from-transparent via-[#D1D5DB]/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                       </motion.button>
                     ))}
                   </div>
@@ -594,15 +533,15 @@ export default function StudioDashboard() {
                 transition={{ duration: 0.25 }}
                 className="absolute inset-0 flex items-center justify-center px-6"
               >
-                <div className="bronze-border rounded-3xl p-10 max-w-md text-center relative overflow-hidden">
-                  <span className="absolute top-0 left-8 right-8 h-px" style={{ background: 'linear-gradient(90deg,transparent,rgba(197,160,89,0.6),transparent)' }} />
-                  {React.createElement(soon.icon, { className: 'h-10 w-10 text-[#C5A059] mx-auto mb-5' })}
+                <div className="border border-white/10 rounded-3xl p-10 max-w-md text-center relative overflow-hidden">
+                  <span className="absolute top-0 left-8 right-8 h-px" style={{ background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.6),transparent)' }} />
+                  {React.createElement(soon.icon, { className: 'h-10 w-10 text-[#D1D5DB] mx-auto mb-5' })}
                   <h2 className="font-serif-lux text-3xl text-white/95 mb-3">{soon.title}</h2>
                   <p className="text-[13px] text-white/45 leading-relaxed mb-6">{soon.desc}</p>
                   <button
                     type="button"
                     onClick={() => setView('chat')}
-                    className="inline-flex items-center gap-2 px-5 h-10 rounded-xl bg-gradient-to-r from-[#B8934A]/20 to-[#8A6D3B]/20 border border-white/[0.1] text-[12.5px] font-semibold text-white/85 hover:text-white hover:border-[#E6C27A]/40 transition-all cursor-pointer active:scale-[0.98]"
+                    className="inline-flex items-center gap-2 px-5 h-10 rounded-xl bg-gradient-to-r from-[#9CA3AF]/20 to-[#6B7280]/20 border border-white/[0.1] text-[12.5px] font-semibold text-white/85 hover:text-white hover:border-[#FFFFFF]/40 transition-all cursor-pointer active:scale-[0.98]"
                   >
                     <MessageSquare className="h-4 w-4" /> Back to Studio Chat
                   </button>
@@ -612,6 +551,8 @@ export default function StudioDashboard() {
           </AnimatePresence>
         </div>
       </main>
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

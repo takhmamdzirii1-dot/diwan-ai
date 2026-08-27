@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { VantraLogo } from './VantraLogo';
+import { Check, ShieldCheck, RefreshCw, Image as ImageIcon } from 'lucide-react';
 import { useModal } from '../context/ModalContext';
 import useUser from '../hooks/useUser';
 import HeroCinematicBackground from './HeroCinematicBackground';
@@ -227,7 +229,7 @@ export default function OriginalLandingPage() {
         <div className="mobile-sheet-header">
           <div className="brand-logo">
             <div className="logo-badge">
-              <img src="/brandmark.svg" alt="VANTRA" />
+              <VantraLogo className="w-full h-full" />
             </div>
             <span className="brand-name">VANTRA</span>
           </div>
@@ -356,7 +358,7 @@ export default function OriginalLandingPage() {
           {/* Logo */}
           <a href="#hero" className="brand-logo" aria-label="VANTRA Home">
             <div className="logo-badge">
-              <img src="/brandmark.svg" alt="VANTRA" />
+              <VantraLogo className="w-full h-full" />
             </div>
             <div className="brand-name-group">
               <span className="brand-name">VANTRA</span>
@@ -364,98 +366,16 @@ export default function OriginalLandingPage() {
             </div>
           </a>
 
-          {/* Desktop Navigation */}
-          <nav aria-label="Main Navigation">
-            <ul className="nav-links">
-              <li>
-                <a href="#hero" className="nav-link active">
-                  {t.navHome || 'Home'}
-                </a>
-              </li>
-              <li>
-                <a href="#models" className="nav-link">
-                  {t.navModels || 'Models'}
-                </a>
-              </li>
-              <li>
-                <a href="#features" className="nav-link">
-                  {t.navFeatures || 'Features'}
-                </a>
-              </li>
-              <li>
-                <a href="#how-it-works" className="nav-link">
-                  {t.navHowItWorks || 'How It Works'}
-                </a>
-              </li>
-              <li>
-                <a href="#pricing" className="nav-link">
-                  {t.navPricing || 'Pricing'}
-                </a>
-              </li>
-              <li>
-                <a href="#cost-table" className="nav-link">
-                  {t.navCostTable || 'Cost Table'}
-                </a>
-              </li>
-              <li>
-                <a href="#faq" className="nav-link">
-                  {t.navFaq || 'FAQ'}
-                </a>
-              </li>
-            </ul>
-          </nav>
-
-          {/* Actions */}
+          {/* Actions — minimal: Sign In + Get Started */}
           <div className="header-actions">
-            {/* Language Switcher Pill */}
-            <div className="lang-switcher" id="desktop-lang-switcher" aria-label="Language Switcher">
-              <button
-                type="button"
-                className={`lang-btn ${lang === 'en' ? 'active' : ''}`}
-                onClick={() => setLang('en')}
-              >
-                EN
-              </button>
-              <button
-                type="button"
-                className={`lang-btn ${lang === 'fr' ? 'active' : ''}`}
-                onClick={() => setLang('fr')}
-              >
-                FR
-              </button>
-              <button
-                type="button"
-                className={`lang-btn ${lang === 'ar' ? 'active' : ''}`}
-                onClick={() => setLang('ar')}
-              >
-                عربي
-              </button>
-            </div>
-
             {user ? (
-              /* Logged In User Pill & Avatar */
               <div className="flex items-center gap-3 relative" ref={userDropdownRef}>
                 <button
                   type="button"
-                  onClick={() => openTopUpModal()}
-                  className="balance-pill cursor-pointer hover:border-white/[0.15] transition"
-                >
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E6C27A] opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-[#E6C27A]" />
-                  </span>
-                  <span className="balance-val mono-num text-[#E6C27A] font-bold">
-                    {balance.toLocaleString()}
-                  </span>
-                  <span style={{ fontSize: '11px', color: 'var(--teal)' }}>PTS</span>
-                </button>
-
-                <button
-                  type="button"
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                  className="flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.035] p-1.5 pr-3 text-xs font-semibold text-white hover:bg-white/[0.065] transition"
+                  className="flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] p-1.5 pr-3 text-xs font-semibold text-white hover:bg-white/[0.08] transition"
                 >
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#E6C27A] text-[#050506] font-bold text-xs">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-black font-bold text-xs">
                     {(user.user_metadata?.full_name?.[0] || user.email?.[0] || 'U').toUpperCase()}
                   </div>
                   <span className="max-w-[90px] truncate">
@@ -464,18 +384,7 @@ export default function OriginalLandingPage() {
                 </button>
 
                 {userDropdownOpen && (
-                  <div className="absolute right-0 top-12 w-52 rounded-2xl border border-white/[0.06] bg-[#0A0B0D] p-2 shadow-2xl z-50">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setUserDropdownOpen(false);
-                        openTopUpModal();
-                      }}
-                      className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-white hover:bg-white/[0.06] hover:text-[#E6C27A]"
-                    >
-                      <i className="fa-solid fa-wallet text-[#E6C27A]" />
-                      <span>Top Up DZD Points</span>
-                    </button>
+                  <div className="user-dropdown absolute right-0 top-12 w-52 rounded-2xl border border-white/[0.06] bg-[#0A0B0D] p-2 shadow-2xl z-50">
                     <button
                       type="button"
                       onClick={() => {
@@ -491,32 +400,21 @@ export default function OriginalLandingPage() {
                 )}
               </div>
             ) : (
-              /* Logged Out Actions */
               <>
                 <button
-                  className="btn-ghost"
+                  className="text-[13.5px] font-medium text-white/60 hover:text-white transition-colors cursor-pointer px-2"
                   onClick={() => openAuthModal('signin')}
                 >
-                  {t.btnLogin || 'Login'}
+                  Sign In
                 </button>
                 <button
-                  className="btn-primary"
+                  className="h-10 px-5 rounded-xl bg-white text-black text-[13.5px] font-semibold hover:bg-gray-200 transition-colors cursor-pointer active:scale-[0.98]"
                   onClick={() => openAuthModal('signup')}
                 >
-                  <i className="fa-solid fa-bolt" />
-                  <span>{t.btnTopup || 'Get Started'}</span>
+                  Get Started
                 </button>
               </>
             )}
-
-            <button
-              className="menu-toggle"
-              id="menu-toggle-btn"
-              aria-label="Open Menu"
-              onClick={() => setMobileMenuOpen(true)}
-            >
-              <i className="fa-solid fa-bars" />
-            </button>
           </div>
         </div>
       </header>
@@ -538,65 +436,41 @@ export default function OriginalLandingPage() {
               </span>
             </div>
 
-            <h1 className="hero-title">
-              <span>{t.heroTitlePrefix || 'One unified gateway for all AI models,'}</span>{' '}
-              <span className="hero-title-gradient">
-                {t.heroTitleGradient || 'and pay in Algerian Dinar.'}
-              </span>
+            <h1 className="hero-title text-white">
+              <span>Every AI model. One balance.</span>
             </h1>
 
             <p className="hero-subtitle">
-              {t.heroSubtitle ||
-                "No need for international cards or multiple subscriptions. VANTRA unifies the world's most powerful chat, image, and video generation models in a single credit balance via EDAHABIA & CIB."}
+              Chat, image, and video generation from the world's best models — pay locally with Edahabia &amp; CIB.
             </p>
 
             <div className="hero-cta-group">
               <button
                 type="button"
-                className="btn-primary"
-                style={{ padding: '14px 30px', fontSize: '15.5px' }}
+                className="h-12 px-8 rounded-xl bg-white text-black text-[15px] font-semibold hover:bg-gray-200 transition-colors cursor-pointer active:scale-[0.98]"
                 onClick={() => (user ? openTopUpModal() : openAuthModal('signup'))}
               >
-                <i className="fa-solid fa-bolt" />
-                <span>{t.btnStartTopup || 'Get Started & Top Up'}</span>
+                Get Started
               </button>
               <a
                 href="#cost-table"
-                className="btn-ghost"
-                style={{ padding: '14px 24px', fontSize: '15px' }}
+                className="h-12 px-7 inline-flex items-center rounded-xl border border-white/15 bg-white/[0.03] text-[14.5px] font-medium text-white/80 hover:text-white hover:bg-white/[0.06] transition-colors"
               >
-                <i className="fa-solid fa-list-check" style={{ marginInlineEnd: '6px' }} />
-                <span>{t.btnExploreCosts || 'Explore Cost Table'}</span>
+                Explore Cost Table
               </a>
-            </div>
-
-            {/* 3 Floating Glassmorphic Preview Cards */}
-            <div className="hero-floating-cards">
-              <div className="floating-card float-1">
-                <i className="fa-solid fa-message" style={{ color: 'var(--teal)', fontSize: '20px' }} />
-                <span>Claude 3.5 Sonnet</span>
-              </div>
-              <div className="floating-card float-2">
-                <i className="fa-solid fa-image" style={{ color: 'var(--violet)', fontSize: '20px' }} />
-                <span>Flux.1 Pro</span>
-              </div>
-              <div className="floating-card float-3">
-                <i className="fa-solid fa-play" style={{ color: 'var(--gold)', fontSize: '20px' }} />
-                <span>Kling AI 1.5</span>
-              </div>
             </div>
 
             <div className="hero-guarantee">
               <div className="guarantee-item">
-                <i className="fa-solid fa-circle-check text-[#E6C27A]" />
+                <Check className="h-3.5 w-3.5 text-white/80" />
                 <span>{t.guaranteeEdahabia || 'Secure Payment via Edahabia & CIB'}</span>
               </div>
               <div className="guarantee-item">
-                <i className="fa-solid fa-shield-halved text-[#E6C27A]" />
+                <ShieldCheck className="h-3.5 w-3.5 text-white/80" />
                 <span>{t.guaranteeExpiry || 'Non-expiring Credit Points'}</span>
               </div>
               <div className="guarantee-item">
-                <i className="fa-solid fa-rotate text-[#E6C27A]" />
+                <RefreshCw className="h-3.5 w-3.5 text-white/80" />
                 <span>{t.guaranteeNoLockin || 'Zero Monthly Commitment'}</span>
               </div>
             </div>
@@ -621,106 +495,41 @@ export default function OriginalLandingPage() {
             </div>
           </div>
 
-          {/* Hero Interactive Credit Ledger Simulation Device */}
+          {/* Premium product mockup — quiet, no simulation noise */}
           <div className="ledger-device" id="interactive-ledger">
-            <div className="ledger-header">
-              <div className="ledger-status">
-                <div className="logo-badge" style={{ width: '24px', height: '24px' }}>
-                  <img src="/brandmark.svg" alt="VANTRA" />
-                </div>
-                <span className="ledger-title">{t.ledgerTitle || 'VANTRA Live Ledger • Credit Balance'}</span>
+            {/* Window chrome */}
+            <div className="flex items-center gap-1.5 px-5 pt-4 pb-3 border-b border-white/[0.06]">
+              <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
+              <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
+              <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
+              <span className="ms-auto text-[10px] font-mono tracking-[0.18em] uppercase text-white/30">
+                VANTRA Studio
+              </span>
+            </div>
+
+            <div className="p-5 space-y-3">
+              {/* Prompt row */}
+              <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] px-4 py-3">
+                <p className="text-[12.5px] text-white/70 leading-relaxed">
+                  "Cinematic 4K photograph of Algiers Casbah at sunset."
+                </p>
               </div>
-              <div className="balance-pill">
-                <span className="balance-label">{t.ledgerAvailableBalance || 'Available Balance:'}</span>
-                <span className="balance-val mono-num" id="live-balance">
-                  {user ? balance.toLocaleString() : simBalance.toLocaleString()}
+
+              {/* Rendered frame placeholder */}
+              <div className="relative rounded-xl border border-white/[0.07] bg-[#121212] aspect-[16/10] overflow-hidden flex items-center justify-center">
+                <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-white/[0.04] blur-3xl" />
+                <div className="flex flex-col items-center gap-2.5 text-white/25">
+                  <ImageIcon style={{ fontSize: 22 }} />
+                  <span className="text-[11px] font-mono tracking-[0.14em] uppercase">Render 4K · 00:12</span>
+                </div>
+              </div>
+
+              {/* Balance chip */}
+              <div className="flex items-center justify-between rounded-xl border border-white/[0.07] bg-white/[0.03] px-4 py-2.5">
+                <span className="text-[11.5px] text-white/45">Credit Balance</span>
+                <span className="text-[13px] font-semibold text-white mono-num">
+                  {(user ? balance : simBalance).toLocaleString()} PTS
                 </span>
-                <span style={{ fontSize: '11px', color: 'var(--teal)' }}>{t.pointsUnit || 'Points'}</span>
-              </div>
-            </div>
-
-            {/* Category Tabs */}
-            <div className="ledger-tabs">
-              <button
-                type="button"
-                className={`ledger-tab ${ledgerCategory === 'chat' ? 'active' : ''}`}
-                onClick={() => setLedgerCategory('chat')}
-              >
-                <i className="fa-solid fa-comments" />
-                <span>{t.tabChat || 'Chat'}</span>
-              </button>
-              <button
-                type="button"
-                className={`ledger-tab ${ledgerCategory === 'image' ? 'active' : ''}`}
-                onClick={() => setLedgerCategory('image')}
-              >
-                <i className="fa-solid fa-image" />
-                <span>{t.tabImage || 'Image Gen'}</span>
-              </button>
-              <button
-                type="button"
-                className={`ledger-tab ${ledgerCategory === 'video' ? 'active' : ''}`}
-                onClick={() => setLedgerCategory('video')}
-              >
-                <i className="fa-solid fa-video" />
-                <span>{t.tabVideo || 'Video Gen'}</span>
-              </button>
-            </div>
-
-            {/* Interactive Ledger Body */}
-            <div className="ledger-body">
-              {/* Active Model Card */}
-              <div className="active-model-box">
-                <div className="model-info-left">
-                  <div className="model-avatar" id="model-avatar">
-                    <i className={`fa-solid ${currentLedger.icon}`} />
-                  </div>
-                  <div>
-                    <div className="model-name" id="model-name-display">
-                      {currentLedger.name}
-                    </div>
-                    <div className="model-category" id="model-category-display">
-                      {currentLedger.category}
-                    </div>
-                  </div>
-                </div>
-                <div className="cost-tag">
-                  <span className="mono-num" id="operation-cost">
-                    {currentLedger.cost}
-                  </span>
-                  <span>{currentLedger.unit}</span>
-                </div>
-              </div>
-
-              {/* Sample Prompt Preview */}
-              <div className="sample-prompt-box">
-                <div className="prompt-label">{t.simulationPromptLabel || 'Simulated Operation in Progress:'}</div>
-                <div className="prompt-text" id="prompt-preview-text">
-                  {currentLedger.prompt}
-                </div>
-              </div>
-
-              {/* Action Button that decrements credit */}
-              <button
-                type="button"
-                className="ledger-action-btn"
-                id="execute-sim-btn"
-                onClick={handleSimulateLedger}
-              >
-                <i className="fa-solid fa-play" />
-                <span id="btn-action-text">{currentLedger.btnText}</span>
-              </button>
-
-              {/* Real-time Ledger Log */}
-              <div className="ledger-log" id="ledger-log-container">
-                {ledgerLogs.map((log, i) => (
-                  <div key={i} className="log-entry">
-                    <span className="log-op">{log.op}</span>
-                    <span className="mono-num" style={{ color: log.color, fontWeight: 700 }}>
-                      {log.pts}
-                    </span>
-                  </div>
-                ))}
               </div>
             </div>
           </div>
@@ -1597,7 +1406,10 @@ export default function OriginalLandingPage() {
                 </button>
                 {openFaq === idx && (
                   <div className="faq-answer">
-                    <div className="faq-answer-inner">{faqItem.a}</div>
+                    <div
+                      className="faq-answer-inner"
+                      dangerouslySetInnerHTML={{ __html: faqItem.a }}
+                    />
                   </div>
                 )}
               </div>
@@ -1655,7 +1467,7 @@ export default function OriginalLandingPage() {
             <div>
               <div className="brand-logo" style={{ marginBottom: '10px' }}>
                 <div className="logo-badge">
-                  <img src="/brandmark.svg" alt="VANTRA" />
+                  <VantraLogo className="w-full h-full" />
                 </div>
                 <span className="brand-name">VANTRA</span>
               </div>

@@ -59,7 +59,7 @@ const FilePreviewCard: React.FC<{ file: AttachedFile; onRemove: (id: string) => 
     const isImage = file.type.startsWith("image/") && file.preview;
 
     return (
-        <div className="relative group flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border border-white/10 bg-white/[0.04] animate-fade-in transition-all hover:border-[#E6C27A]/40">
+        <div className="relative group flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border border-white/10 bg-white/[0.04] animate-fade-in transition-all hover:border-[#FFFFFF]/40">
             {isImage ? (
                 <div className="w-full h-full relative">
                     <img src={file.preview!} alt={file.file.name} className="w-full h-full object-cover" />
@@ -69,7 +69,7 @@ const FilePreviewCard: React.FC<{ file: AttachedFile; onRemove: (id: string) => 
                 <div className="w-full h-full p-3 flex flex-col justify-between">
                     <div className="flex items-center gap-2">
                         <div className="p-1.5 bg-white/[0.06] rounded">
-                            <FileText className="w-4 h-4 text-[#E6C27A]/80" />
+                            <FileText className="w-4 h-4 text-[#FFFFFF]/80" />
                         </div>
                         <span className="text-[10px] font-medium text-white/45 uppercase tracking-wider truncate">
                             {file.file.name.split('.').pop()}
@@ -96,7 +96,7 @@ const FilePreviewCard: React.FC<{ file: AttachedFile; onRemove: (id: string) => 
 
             {file.uploadStatus === "pending" && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <Loader2 className="w-5 h-5 text-[#E6C27A] animate-spin" />
+                    <Loader2 className="w-5 h-5 text-[#FFFFFF] animate-spin" />
                 </div>
             )}
         </div>
@@ -172,7 +172,7 @@ const ModelSelector: React.FC<{
             className={cn(
                 "w-full text-left px-3 py-2.5 rounded-xl flex items-start justify-between transition-colors group/item",
                 locked
-                    ? "hover:bg-[#E6C27A]/[0.05]"
+                    ? "hover:bg-[#FFFFFF]/[0.05]"
                     : "hover:bg-white/[0.06]",
                 selectedModel === model.id && "bg-white/[0.05]"
             )}
@@ -181,7 +181,7 @@ const ModelSelector: React.FC<{
                 <div className="flex items-center gap-2">
                     <span className={cn(
                         "text-[13px] font-semibold truncate",
-                        locked ? "text-[#E6C27A]/90" : "text-white/95"
+                        locked ? "text-[#FFFFFF]/90" : "text-white/95"
                     )}>
                         {model.name}
                     </span>
@@ -189,8 +189,8 @@ const ModelSelector: React.FC<{
                         <span className={cn(
                             "px-1.5 py-[1px] rounded-full text-[9px] font-semibold border shrink-0",
                             model.isFree
-                                ? "border-[#E6C27A]/25 text-[#E6C27A]/90 bg-[#E6C27A]/[0.06]"
-                                : "border-[#E6C27A]/30 text-[#E6C27A]/90 bg-[#E6C27A]/[0.07]"
+                                ? "border-[#FFFFFF]/25 text-[#FFFFFF]/90 bg-[#FFFFFF]/[0.06]"
+                                : "border-[#FFFFFF]/30 text-[#FFFFFF]/90 bg-[#FFFFFF]/[0.07]"
                         )}>
                             {locked ? "PRO" : model.badge}
                         </span>
@@ -201,9 +201,9 @@ const ModelSelector: React.FC<{
                 </span>
             </div>
             {selectedModel === model.id ? (
-                <Check className="w-4 h-4 text-[#E6C27A] mt-1 shrink-0" />
+                <Check className="w-4 h-4 text-[#FFFFFF] mt-1 shrink-0" />
             ) : locked ? (
-                <svg className="w-3.5 h-3.5 text-[#E6C27A]/50 mt-1 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg className="w-3.5 h-3.5 text-[#FFFFFF]/50 mt-1 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <rect x="3" y="11" width="18" height="11" rx="2" />
                     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
@@ -224,7 +224,7 @@ const ModelSelector: React.FC<{
                 )}
             >
                 {!currentModel?.isFree && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#E6C27A] shadow-[0_0_6px_rgba(230,194,122,0.7)] shrink-0" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#FFFFFF] shrink-0" />
                 )}
                 <span className="font-medium select-none truncate">{currentModel?.name ?? "Model"}</span>
                 <ChevronDown className={cn("w-3.5 h-3.5 opacity-70 shrink-0 transition-transform duration-200", isOpen && "rotate-180")} />
@@ -234,14 +234,14 @@ const ModelSelector: React.FC<{
                 <div className="absolute bottom-full right-0 mb-2 w-[290px] glass-pop rounded-2xl overflow-hidden z-50 flex flex-col p-1.5 animate-fade-in origin-bottom-right max-h-[420px] overflow-y-auto custom-scrollbar-thin">
                     <div className="px-3 pt-2 pb-1.5 text-[9px] font-mono uppercase tracking-[0.22em] text-white/30 flex items-center justify-between">
                         <span>Free models</span>
-                        <span className="text-[#E6C27A]/60">0 pts</span>
+                        <span className="text-[#FFFFFF]/60">0 pts</span>
                     </div>
                     {freeModels.map(m => renderItem(m, false))}
 
                     {premiumModels.length > 0 && (
                         <>
                             <div className="h-px bg-white/[0.07] my-1.5 mx-2" />
-                            <div className="px-3 pb-1.5 text-[9px] font-mono uppercase tracking-[0.22em] text-[#E6C27A]/50 flex items-center justify-between">
+                            <div className="px-3 pb-1.5 text-[9px] font-mono uppercase tracking-[0.22em] text-[#FFFFFF]/50 flex items-center justify-between">
                                 <span>Premium · Sign in</span>
                                 <Sparkles className="h-3 w-3" />
                             </div>
@@ -272,34 +272,78 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
     const [pastedContent, setPastedContent] = useState<{ id: string; content: string }[]>([]);
     const [isDragging, setIsDragging] = useState(false);
     const [isThinkingEnabled, setIsThinkingEnabled] = useState(false);
-    const [isListening, setIsListening] = useState(false);
+    const [isRecording, setIsRecording] = useState(false);
+    const [isTranscribing, setIsTranscribing] = useState(false);
+    const [voiceError, setVoiceError] = useState<string | null>(null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const recognitionRef = useRef<any>(null);
+    const mediaRecorderRef = useRef<any>(null);
+    const chunksRef = useRef<Blob[]>([]);
 
-    const toggleVoice = () => {
-        if (isListening) {
-            recognitionRef.current?.stop();
-            setIsListening(false);
+    const voiceStatusError = (msg: string) => {
+        setVoiceError(msg);
+        setTimeout(() => setVoiceError(null), 3500);
+    };
+
+    const toggleVoice = async () => {
+        if (isRecording) {
+            mediaRecorderRef.current?.stop();
             return;
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-        if (!SR) return;
-        const rec = new SR();
-        rec.lang = document.documentElement.lang === 'ar' ? 'ar-DZ' : 'en-US';
-        rec.interimResults = true;
-        rec.continuous = false;
-        rec.onresult = (e: any) => {
-            const transcript = Array.from(e.results as any[])
-                .map((r) => r[0].transcript as string)
-                .join(' ');
-            setMessage((prev) => (prev ? prev + ' ' : '') + transcript);
-        };
-        rec.onend = () => setIsListening(false);
-        rec.onerror = () => setIsListening(false);
-        recognitionRef.current = rec;
-        rec.start();
-        setIsListening(true);
+        if (isTranscribing) return;
+        if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+            voiceStatusError('Voice input is not supported in this browser');
+            return;
+        }
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+            const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+            chunksRef.current = [];
+
+            recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) chunksRef.current.push(e.data);
+            };
+
+            recorder.onstop = async () => {
+                stream.getTracks().forEach((t) => t.stop());
+                setIsRecording(false);
+
+                const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+                if (blob.size < 2048) {
+                    voiceStatusError('Recording too short — hold the mic longer');
+                    return;
+                }
+
+                setIsTranscribing(true);
+                try {
+                    const fd = new FormData();
+                    fd.append('audio', blob, 'recording.webm');
+                    const res = await fetch('/api/transcribe', { method: 'POST', body: fd });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || 'Transcription failed');
+                    const text = (data.text || '').trim();
+                    if (text) setMessage((prev) => (prev ? prev + ' ' : '') + text);
+                    else voiceStatusError('No speech detected');
+                } catch (err: any) {
+                    voiceStatusError(err?.message || 'Transcription failed');
+                } finally {
+                    setIsTranscribing(false);
+                }
+            };
+
+            recorder.onerror = () => {
+                stream.getTracks().forEach((t) => t.stop());
+                setIsRecording(false);
+                voiceStatusError('Recording error — please try again');
+            };
+
+            recorder.start();
+            mediaRecorderRef.current = recorder;
+            setIsRecording(true);
+            setVoiceError(null);
+        } catch {
+            voiceStatusError('Microphone access denied');
+        }
     };
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -312,6 +356,16 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
             textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 384) + "px";
         }
     }, [message]);
+
+    // Revoke blob object URLs whenever the attachment list changes or on unmount,
+    // preventing browser memory leaks from accumulated preview blobs.
+    useEffect(() => {
+        return () => {
+            files.forEach((f) => {
+                if (f.preview) URL.revokeObjectURL(f.preview);
+            });
+        };
+    }, [files]);
 
     const handleFiles = useCallback((newFilesList: FileList | File[]) => {
         const newFiles: AttachedFile[] = Array.from(newFilesList).map(file => {
@@ -422,7 +476,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
         >
             {/* Glass box with luxury gradient frame */}
             <div className="lux-input-shell">
-                <div className="claude-glass-inner rounded-[25px] flex flex-col px-7 pt-5 pb-4 gap-3">
+                <div className="claude-glass-inner rounded-[25px] flex flex-col px-7 pt-3 pb-3 gap-2">
 
                     {/* Attachments above input */}
                     {(files.length > 0 || pastedContent.length > 0) && (
@@ -457,7 +511,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                             autoFocus={autoFocus}
                             className="w-full bg-transparent border-0 outline-none text-white text-[16px] placeholder:text-white/30 resize-none overflow-y-auto custom-scrollbar-thin leading-relaxed block antialiased"
                             rows={1}
-                            style={{ minHeight: '2.4em', padding: '22px 28px 14px 28px' }}
+                            style={{ minHeight: '2.4em', padding: '8px 28px 4px 28px' }}
                         />
                     </div>
 
@@ -481,7 +535,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                     className={cn(
                                         "relative transition-all duration-200 h-8 w-8 flex items-center justify-center rounded-lg active:scale-95 cursor-pointer",
                                         isThinkingEnabled
-                                            ? 'text-[#E6C27A] bg-[#E6C27A]/[0.1] shadow-[0_0_18px_-4px_rgba(230,194,122,0.4)]'
+                                            ? 'text-[#FFFFFF] bg-[#FFFFFF]/[0.1]'
                                             : 'text-white/40 hover:text-white hover:bg-white/[0.07]'
                                     )}
                                     aria-pressed={isThinkingEnabled}
@@ -496,32 +550,33 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                 </button>
                             </div>
 
-                            {/* Voice input */}
-                            <div className="flex shrink-0">
+                            {/* Voice input — Groq Whisper via /api/transcribe */}
+                            <div className="flex shrink-0 items-center gap-1">
+                                {voiceError && (
+                                    <span className="text-[10.5px] text-red-400/90 max-w-[140px] truncate animate-fade-in" role="status">
+                                        {voiceError}
+                                    </span>
+                                )}
                                 <button
                                     type="button"
                                     onClick={toggleVoice}
+                                    disabled={isTranscribing}
                                     className={cn(
-                                        "relative transition-all duration-200 h-8 w-8 flex items-center justify-center rounded-lg active:scale-95 cursor-pointer",
-                                        isListening
-                                            ? 'text-[#E6C27A] bg-[#E6C27A]/[0.1] shadow-[0_0_18px_-4px_rgba(230,194,122,0.5)]'
-                                            : 'text-white/40 hover:text-white hover:bg-white/[0.07]'
+                                        "relative transition-all duration-200 h-8 w-8 flex items-center justify-center rounded-lg active:scale-95 cursor-pointer disabled:cursor-wait",
+                                        isRecording
+                                            ? 'bg-white text-black animate-pulse'
+                                            : 'text-white/40 hover:text-white hover:bg-white/[0.07]',
+                                        isTranscribing && 'opacity-70'
                                     )}
-                                    aria-label="Voice input"
+                                    aria-label={isRecording ? 'Stop recording' : 'Voice input'}
                                 >
-                                    <MicIcon className={cn("w-[18px] h-[18px]", isListening && "animate-pulse")} />
+                                    {isTranscribing ? (
+                                        <Loader2 className="w-[18px] h-[18px] animate-spin text-white" />
+                                    ) : (
+                                        <MicIcon className="w-[18px] h-[18px]" />
+                                    )}
                                 </button>
                             </div>
-
-                            {/* Token counter */}
-                            {message.trim().length > 0 && (
-                                <span
-                                    className="ms-1 hidden sm:inline-flex items-center h-5 px-2 rounded-md border border-white/[0.08] bg-white/[0.03] text-[10px] font-mono text-white/40 animate-fade-in"
-                                    title="Approximate token count"
-                                >
-                                    ≈{Math.max(1, Math.ceil(message.trim().length / 4))} tok
-                                </span>
-                            )}
                         </div>
 
                         {/* Right tools — extra space from the right edge */}
@@ -554,7 +609,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                     className={cn(
                                         "inline-flex items-center justify-center h-9 w-9 shrink-0 rounded-xl transition-colors duration-300 active:scale-95",
                                         hasContent
-                                            ? 'send-ready bg-gradient-to-br from-[#E6C27A] to-[#F0DCAB] text-[#16181A] font-bold cursor-pointer'
+                                            ? 'send-ready bg-white text-black font-semibold hover:bg-gray-200 transition-colors cursor-pointer'
                                             : 'bg-white/[0.14] text-white/60 border border-white/[0.18] cursor-default'
                                     )}
                                     aria-label="Send message"
@@ -569,9 +624,9 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
 
             {/* Drag overlay */}
             {isDragging && (
-                <div className="absolute inset-0 bg-[#1A1C1F]/90 border-2 border-dashed border-[#E6C27A]/60 rounded-2xl z-50 flex flex-col items-center justify-center backdrop-blur-sm pointer-events-none">
-                    <Archive className="w-10 h-10 text-[#E6C27A] mb-2 animate-bounce" />
-                    <p className="text-[#E6C27A] font-medium text-sm">Drop files to upload</p>
+                <div className="absolute inset-0 bg-[#1A1C1F]/90 border-2 border-dashed border-[#FFFFFF]/60 rounded-2xl z-50 flex flex-col items-center justify-center backdrop-blur-sm pointer-events-none">
+                    <Archive className="w-10 h-10 text-[#FFFFFF] mb-2 animate-bounce" />
+                    <p className="text-[#FFFFFF] font-medium text-sm">Drop files to upload</p>
                 </div>
             )}
 

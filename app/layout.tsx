@@ -1,8 +1,29 @@
 import type { Metadata } from 'next';
 import React from 'react';
+import { Inter, Cairo, IBM_Plex_Mono } from 'next/font/google';
 import AmbientMotionBackground from '../src/components/AmbientMotionBackground';
 import { ModalProvider } from '../src/context/ModalContext';
 import './globals.css';
+
+// Self-hosted via next/font — zero external font requests, zero layout shift
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
+const cairo = Cairo({
+  subsets: ['arabic', 'latin'],
+  variable: '--font-cairo',
+  display: 'swap',
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-ibm-mono',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'VANTRA — Algerian AI Gateway • Pay in DZD with Edahabia & CIB',
@@ -15,22 +36,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark scroll-smooth">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400..700;1,8..60,400..700&family=Space+Grotesk:wght@500;600;700&display=swap"
-          rel="stylesheet"
-        />
-        <link
-          rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-          crossOrigin="anonymous"
-          referrerPolicy="no-referrer"
-        />
-      </head>
-      <body className="bg-[#16181A] text-[#F5F6F8] antialiased min-h-screen relative selection:bg-[#E6C27A] selection:text-[#16181A]">
+    <html
+      lang="en"
+      className={`dark scroll-smooth ${inter.variable} ${cairo.variable} ${ibmPlexMono.variable}`}
+    >
+      <body className="bg-[#16181A] text-[#F5F6F8] antialiased min-h-screen relative">
         <ModalProvider>
           <AmbientMotionBackground />
           {children}

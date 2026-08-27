@@ -10,11 +10,11 @@
 
     <!-- Bronze / Gold Metallic Beveled Border -->
     <linearGradient id="bronze-rim" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#DEB887" stop-opacity="0.85" />
-      <stop offset="25%" stop-color="#8B6914" stop-opacity="0.6" />
-      <stop offset="50%" stop-color="#D4AF37" stop-opacity="0.9" />
-      <stop offset="75%" stop-color="#5C4018" stop-opacity="0.5" />
-      <stop offset="100%" stop-color="#B8860B" stop-opacity="0.8" />
+      <stop offset="0%" stop-color="#E5E7EB" stop-opacity="0.85" />
+      <stop offset="25%" stop-color="#6B7280" stop-opacity="0.6" />
+      <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.9" />
+      <stop offset="75%" stop-color="#374151" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#9CA3AF" stop-opacity="0.8" />
     </linearGradient>
 
     <!-- Outer Rim Base Dark Stroke -->

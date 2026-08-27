@@ -1,0 +1,12 @@
+# Graphify ignore file — analogous to .gitignore
+# Exclude build/output directories and third-party dependencies
+
+.next/
+/node_modules/
+/dist/
+/build/
+/coverage/
+*.test.*
+*.spec.*
+.env*
+*.local

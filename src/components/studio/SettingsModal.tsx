@@ -1,0 +1,436 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import {
+  X,
+  User,
+  Sparkles,
+  CreditCard,
+  ShieldCheck,
+  Download,
+  Trash2,
+  ChevronDown,
+  Check,
+  Zap,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+type TabId = 'profile' | 'behavior' | 'billing' | 'privacy';
+
+const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
+  { id: 'profile', label: 'Profile & General', icon: User },
+  { id: 'behavior', label: 'AI Behavior', icon: Sparkles },
+  { id: 'billing', label: 'Billing & Plans', icon: CreditCard },
+  { id: 'privacy', label: 'Data & Privacy', icon: ShieldCheck },
+];
+
+const TEXT_MODELS = ['Nemotron 3 Ultra', 'GLM 5.2', 'Laguna S 2.1', 'MiniMax M3'];
+const IMAGE_MODELS = ['Flux.1 Pro', 'Midjourney v6.1', 'SDXL Turbo'];
+
+/* ── Primitives ─────────────────────────────────────────── */
+
+function Toggle({
+  enabled,
+  onChange,
+}: {
+  enabled: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={enabled}
+      onClick={() => onChange(!enabled)}
+      className={cn(
+        'relative w-11 h-6 rounded-full transition-colors duration-200 cursor-pointer shrink-0',
+        enabled ? 'bg-white' : 'bg-white/10 border border-white/15'
+      )}
+    >
+      <span
+        className={cn(
+          'absolute top-1/2 -translate-y-1/2 h-4.5 w-4.5 rounded-full transition-all duration-200',
+          enabled ? 'left-[26px] bg-black' : 'left-[3px] bg-white/70'
+        )}
+        style={{ height: 18, width: 18 }}
+      />
+    </button>
+  );
+}
+
+function Select({
+  value,
+  onChange,
+  options,
+  label,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  label: string;
+}) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={label}
+        className="w-full appearance-none h-10 ps-3.5 pe-9 rounded-xl bg-white/[0.05] border border-white/10 text-[13px] font-medium text-white/90 outline-none cursor-pointer hover:bg-white/[0.07] transition-colors focus:border-white/30"
+      >
+        {options.map((o) => (
+          <option key={o} value={o} className="bg-[#1A1C20] text-white">
+            {o}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40 pointer-events-none" />
+    </div>
+  );
+}
+
+function Row({
+  title,
+  desc,
+  children,
+}: {
+  title: string;
+  desc?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-6 py-4 border-b border-white/[0.06] last:border-0">
+      <div className="min-w-0">
+        <p className="text-[13.5px] font-medium text-white/90">{title}</p>
+        {desc && <p className="text-[12px] text-white/40 mt-0.5 leading-relaxed">{desc}</p>}
+      </div>
+      <div className="shrink-0">{children}</div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <p className="text-[12px] font-medium text-white/50">{label}</p>
+      {children}
+    </div>
+  );
+}
+
+/* ── Panels ─────────────────────────────────────────────── */
+
+function ProfilePanel() {
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [textModel, setTextModel] = useState(TEXT_MODELS[0]);
+  const [imageModel, setImageModel] = useState(IMAGE_MODELS[0]);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-[15px] font-semibold text-white">Profile & General</h3>
+        <p className="text-[12.5px] text-white/40 mt-1">
+          Appearance and defaults across your workspace.
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-5">
+        <Row title="Dark Theme" desc="Pure black surfaces, high contrast.">
+          <Toggle enabled={theme === 'dark'} onChange={(v) => setTheme(v ? 'dark' : 'light')} />
+        </Row>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Field label="Default Text Model">
+          <Select value={textModel} onChange={setTextModel} options={TEXT_MODELS} label="Default text model" />
+        </Field>
+        <Field label="Default Image Model">
+          <Select value={imageModel} onChange={setImageModel} options={IMAGE_MODELS} label="Default image model" />
+        </Field>
+      </div>
+    </div>
+  );
+}
+
+function BehaviorPanel() {
+  const [instructions, setInstructions] = useState('');
+  const [tts, setTts] = useState(false);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-[15px] font-semibold text-white">AI Behavior</h3>
+        <p className="text-[12.5px] text-white/40 mt-1">
+          Shape how the assistant thinks and sounds.
+        </p>
+      </div>
+
+      <Field label="Custom Instructions">
+        <textarea
+          value={instructions}
+          onChange={(e) => setInstructions(e.target.value)}
+          placeholder="How should the AI respond? e.g. 'Always answer in Algerian Darja, be concise, show code examples.'"
+          dir="auto"
+          rows={5}
+          className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13.5px] text-white placeholder:text-white/25 outline-none resize-none leading-relaxed focus:border-white/30 transition-colors custom-scrollbar-thin"
+        />
+        <p className="text-[11px] text-white/30 text-end">{instructions.length} / 2000</p>
+      </Field>
+
+      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-5">
+        <Row title="Text-to-Speech (Voice)" desc="Read responses aloud automatically.">
+          <Toggle enabled={tts} onChange={setTts} />
+        </Row>
+      </div>
+    </div>
+  );
+}
+
+function BillingPanel() {
+  const [cycle, setCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const used = 85;
+  const quota = 100;
+  const pct = Math.min(100, Math.round((used / quota) * 100));
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-[15px] font-semibold text-white">Billing & Plans</h3>
+        <p className="text-[12.5px] text-white/40 mt-1">
+          Manage your plan, usage, and billing cycle.
+        </p>
+      </div>
+
+      {/* Current plan card */}
+      <div className="rounded-2xl border border-white/[0.09] bg-white/[0.03] p-5 space-y-5">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <p className="text-[11px] font-mono uppercase tracking-[0.18em] text-white/40">
+              Current Plan
+            </p>
+            <p className="text-[19px] font-semibold text-white mt-1.5">Free Tier</p>
+            <p className="text-[12px] text-white/40 mt-0.5">
+              {cycle === 'monthly' ? 'Billed monthly · cancel anytime' : 'Billed yearly · 20% saved'}
+            </p>
+          </div>
+
+          {/* Billing cycle toggle */}
+          <div className="flex items-center p-1 rounded-xl bg-white/[0.05] border border-white/10">
+            {(['monthly', 'yearly'] as const).map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setCycle(c)}
+                className={cn(
+                  'relative h-7 px-3 rounded-lg text-[11.5px] font-medium capitalize transition-colors cursor-pointer',
+                  cycle === c ? 'bg-white text-black' : 'text-white/50 hover:text-white/80'
+                )}
+              >
+                {c}
+                {c === 'yearly' && cycle !== 'yearly' && (
+                  <span className="absolute -top-2.5 -right-2 px-1.5 h-4 rounded-full bg-white text-black text-[9px] font-bold flex items-center">
+                    −20%
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Usage progress */}
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between text-[12px]">
+            <span className="text-white/60">Image Generations</span>
+            <span className="font-mono text-white/85">
+              {used} / {quota} used this month
+            </span>
+          </div>
+          <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+              className={cn('h-full rounded-full', pct > 90 ? 'bg-white' : 'bg-white/80')}
+            />
+          </div>
+          {pct >= 80 && (
+            <p className="text-[11px] text-white/45 flex items-center gap-1.5">
+              <Zap className="h-3 w-3" />
+              You're close to the monthly limit.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Upgrade CTA */}
+      <button
+        type="button"
+        className="w-full h-12 rounded-xl bg-white text-black font-semibold text-[14px] hover:bg-gray-200 transition-colors cursor-pointer active:scale-[0.99] flex items-center justify-center gap-2"
+      >
+        <Check className="h-4 w-4" />
+        Upgrade to Pro
+      </button>
+      <p className="text-center text-[11.5px] text-white/35 -mt-3">
+        Unlimited generations · Priority rendering · Early access models
+      </p>
+    </div>
+  );
+}
+
+function PrivacyPanel() {
+  const [confirmClear, setConfirmClear] = useState(false);
+
+  useEffect(() => {
+    if (!confirmClear) return;
+    const t = setTimeout(() => setConfirmClear(false), 4000);
+    return () => clearTimeout(t);
+  }, [confirmClear]);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-[15px] font-semibold text-white">Data & Privacy</h3>
+        <p className="text-[12.5px] text-white/40 mt-1">
+          Your data belongs to you. Take it or erase it.
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 space-y-4">
+        <div>
+          <p className="text-[13.5px] font-medium text-white/90">Export Workspace Data</p>
+          <p className="text-[12px] text-white/40 mt-0.5">
+            Download all chats, settings, and generated assets as a .zip archive.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-white/[0.06] border border-white/10 text-[13px] font-medium text-white/85 hover:bg-white/[0.1] transition-colors cursor-pointer active:scale-[0.98]"
+        >
+          <Download className="h-4 w-4" />
+          Export Data
+        </button>
+      </div>
+
+      <div className="rounded-2xl border border-red-500/15 bg-red-500/[0.04] p-5 space-y-4">
+        <div>
+          <p className="text-[13.5px] font-medium text-red-300/90">Clear All Chat History</p>
+          <p className="text-[12px] text-white/40 mt-0.5">
+            Permanently deletes every conversation. This cannot be undone.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            if (confirmClear) {
+              setConfirmClear(false);
+              return;
+            }
+            setConfirmClear(true);
+          }}
+          className={cn(
+            'inline-flex items-center gap-2 h-10 px-4 rounded-xl text-[13px] font-medium border transition-colors cursor-pointer active:scale-[0.98]',
+            confirmClear
+              ? 'bg-red-500 text-white border-red-400'
+              : 'bg-red-500/10 border-red-500/25 text-red-400/90 hover:bg-red-500/20'
+          )}
+        >
+          <Trash2 className="h-4 w-4" />
+          {confirmClear ? 'Click again to confirm' : 'Clear All Chat History'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Modal shell ────────────────────────────────────────── */
+
+export default function SettingsModal({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const [tab, setTab] = useState<TabId>('profile');
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-md bg-black/50"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Settings"
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.97, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-3xl max-h-[86vh] flex flex-col sm:flex-row bg-[#1A1C20] rounded-2xl border border-white/10 shadow-[0_32px_80px_-24px_rgba(0,0,0,0.9)] overflow-hidden"
+      >
+        {/* Left nav */}
+        <div className="sm:w-56 shrink-0 border-b sm:border-b-0 sm:border-r border-white/[0.07] p-3 flex sm:flex-col gap-1 overflow-x-auto custom-scrollbar-thin">
+          <p className="hidden sm:block px-3 pt-2 pb-3 text-[10px] font-mono font-semibold tracking-[0.22em] uppercase text-white/30">
+            Settings
+          </p>
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setTab(id)}
+              className={cn(
+                'flex items-center gap-2.5 shrink-0 h-10 px-3.5 rounded-lg text-[13px] font-medium transition-colors duration-150 cursor-pointer whitespace-nowrap',
+                tab === id
+                  ? 'bg-white/10 text-white font-medium'
+                  : 'text-white/50 hover:text-white/80 hover:bg-white/5'
+              )}
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="truncate">{label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Right content */}
+        <div className="flex-1 min-w-0 flex flex-col">
+          <div className="flex items-center justify-between px-6 pt-5 pb-1 sm:hidden">
+            <span className="text-[13px] font-semibold text-white">Settings</span>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close settings"
+              className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+            >
+              <X className="h-4.5 w-4.5" style={{ height: 18, width: 18 }} />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto custom-scrollbar-thin p-6">
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close settings"
+              className="hidden sm:flex absolute top-4 right-4 p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+              style={{ position: 'absolute' }}
+            >
+              <X style={{ height: 16, width: 16 }} />
+            </button>
+            {tab === 'profile' && <ProfilePanel />}
+            {tab === 'behavior' && <BehaviorPanel />}
+            {tab === 'billing' && <BillingPanel />}
+            {tab === 'privacy' && <PrivacyPanel />}
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}

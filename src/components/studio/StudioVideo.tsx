@@ -84,7 +84,7 @@ export default function StudioVideo() {
       <div className="max-w-4xl mx-auto w-full space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-2xl bg-[#E6C27A]/15 border border-[#E6C27A]/30 flex items-center justify-center text-[#E6C27A]">
+            <div className="h-10 w-10 rounded-2xl bg-[#FFFFFF]/15 border border-[#FFFFFF]/30 flex items-center justify-center text-[#FFFFFF]">
               <Film className="h-5 w-5" />
             </div>
             <div>
@@ -106,7 +106,7 @@ export default function StudioVideo() {
               onClick={() => setModel('kling-ai-1-5')}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
                 model === 'kling-ai-1-5'
-                  ? 'bg-[#E6C27A]/15 border-[#E6C27A] text-[#E6C27A] font-bold'
+                  ? 'bg-[#FFFFFF]/15 border-[#FFFFFF] text-[#FFFFFF] font-bold'
                   : 'bg-white/[0.03] border-white/[0.08] text-white/70'
               }`}
             >
@@ -117,7 +117,7 @@ export default function StudioVideo() {
               onClick={() => setModel('runway-gen-3')}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
                 model === 'runway-gen-3'
-                  ? 'bg-[#E6C27A]/15 border-[#E6C27A] text-[#E6C27A] font-bold'
+                  ? 'bg-[#FFFFFF]/15 border-[#FFFFFF] text-[#FFFFFF] font-bold'
                   : 'bg-white/[0.03] border-white/[0.08] text-white/70'
               }`}
             >
@@ -137,7 +137,7 @@ export default function StudioVideo() {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="Describe the action and environment (e.g., Drone flying through coastal mountains of Béjaïa overlooking azure waters with realistic waves and seagulls...)"
-            className="w-full rounded-2xl border border-white/[0.1] bg-[#1A1C1F] p-4 text-sm text-white placeholder-white/30 outline-none transition focus:border-[#E6C27A] focus:ring-1 focus:ring-[#E6C27A]"
+            className="w-full rounded-2xl border border-white/[0.1] bg-[#1A1C1F] p-4 text-sm text-white placeholder-white/30 outline-none transition focus:border-[#FFFFFF] focus:ring-1 focus:ring-[#FFFFFF]"
           />
         </div>
 
@@ -152,7 +152,7 @@ export default function StudioVideo() {
                 onClick={() => setDuration('5s')}
                 className={`py-2 rounded-xl border text-xs font-semibold transition cursor-pointer ${
                   duration === '5s'
-                    ? 'border-[#E6C27A] bg-[#E6C27A]/10 text-[#E6C27A]'
+                    ? 'border-[#FFFFFF] bg-[#FFFFFF]/10 text-[#FFFFFF]'
                     : 'border-white/[0.08] bg-[#1A1C1F] text-[#94A3B8]'
                 }`}
               >
@@ -163,7 +163,7 @@ export default function StudioVideo() {
                 onClick={() => setDuration('10s')}
                 className={`py-2 rounded-xl border text-xs font-semibold transition cursor-pointer ${
                   duration === '10s'
-                    ? 'border-[#E6C27A] bg-[#E6C27A]/10 text-[#E6C27A]'
+                    ? 'border-[#FFFFFF] bg-[#FFFFFF]/10 text-[#FFFFFF]'
                     : 'border-white/[0.08] bg-[#1A1C1F] text-[#94A3B8]'
                 }`}
               >
@@ -178,7 +178,7 @@ export default function StudioVideo() {
             <select
               value={cameraMotion}
               onChange={(e) => setCameraMotion(e.target.value)}
-              className="w-full h-10 rounded-xl border border-white/[0.08] bg-[#1A1C1F] px-3 text-xs text-white outline-none focus:border-[#E6C27A]"
+              className="w-full h-10 rounded-xl border border-white/[0.08] bg-[#1A1C1F] px-3 text-xs text-white outline-none focus:border-[#FFFFFF]"
             >
               {CAMERA_MOTIONS.map((motion) => (
                 <option key={motion} value={motion} className="bg-[#212326]">
@@ -193,7 +193,7 @@ export default function StudioVideo() {
         <div className="flex items-center justify-between pt-3 border-t border-white/[0.06] flex-wrap gap-3">
           <div className="text-xs text-[#64748B]">
             Cost:{' '}
-            <span className="font-mono font-bold text-[#E6C27A]">{cost} Points / Scene</span>
+            <span className="font-mono font-bold text-[#FFFFFF]">{cost} Points / Scene</span>
             {!user && <span className="ms-2 text-white/40">· Sign in required</span>}
             {user && balance < cost && (
               <span className="ms-2 text-red-400">· Insufficient balance</span>
@@ -204,7 +204,7 @@ export default function StudioVideo() {
             type="button"
             disabled={!prompt.trim() || isGenerating}
             onClick={handleGenerate}
-            className="flex items-center gap-2 px-6 h-11 rounded-2xl bg-[#E6C27A] hover:bg-[#f0dcab] text-[#050506] font-bold text-sm shadow-[0_4px_20px_rgba(230,194,122,0.35)] transition cursor-pointer disabled:opacity-40"
+            className="flex items-center gap-2 px-6 h-11 rounded-2xl bg-[#FFFFFF] hover:bg-[#E5E7EB] text-[#050506] font-bold text-sm shadow-[0_4px_20px_rgba(255,255,255,0.35)] transition cursor-pointer disabled:opacity-40"
           >
             {isGenerating ? (
               <>
@@ -263,7 +263,7 @@ export default function StudioVideo() {
                     download="vantra-video.mp4"
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-1 text-[#E6C27A] hover:underline cursor-pointer"
+                    className="flex items-center gap-1 text-[#FFFFFF] hover:underline cursor-pointer"
                   >
                     <Download className="h-3 w-3" />
                     <span>Download MP4</span>

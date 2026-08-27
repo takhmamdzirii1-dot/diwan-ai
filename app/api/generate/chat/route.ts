@@ -47,7 +47,12 @@ export async function POST(request: Request) {
 
     const DEFAULT_SYSTEM =
       'You are VANTRA, an elite AI assistant on the premier unified AI gateway for Algeria. Provide well-structured, insightful answers with clean markdown. You are fully fluent in English, French, and Algerian Darja.';
-    const SYSTEM_PROMPT = customSystem || DEFAULT_SYSTEM;
+
+    // Dynamic temporal context — the LLM has no clock of its own
+    const now = new Date();
+    const DATETIME_CONTEXT = `You are VANTRA, a premium AI assistant. Today's date is ${now.toLocaleDateString()} and the current time is ${now.toLocaleTimeString()}. Always answer concisely.`;
+
+    const SYSTEM_PROMPT = `${customSystem || DEFAULT_SYSTEM}\n\n${DATETIME_CONTEXT}`;
 
     let messagesPayload = messages;
     if (!messagesPayload || !Array.isArray(messagesPayload) || messagesPayload.length === 0) {

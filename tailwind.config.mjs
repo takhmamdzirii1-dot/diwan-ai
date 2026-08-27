@@ -8,6 +8,10 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['var(--font-inter)', 'var(--font-cairo)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-ibm-mono)', 'ui-monospace', 'monospace'],
+      },
       colors: {
         bg: '#050506',
         'bg-soft': '#0A0B0D',
