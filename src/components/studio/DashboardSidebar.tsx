@@ -8,6 +8,7 @@ import {
   Video,
   FolderOpen,
   Settings,
+  Key,
   LogOut,
   LogIn,
   Trash2,
@@ -42,10 +43,13 @@ interface DashboardSidebarProps {
   onOpenMobile?: () => void;
 }
 
-const WORKSPACES: { id: Workspace; label: string; icon: React.ElementType }[] = [
+const CREATE_ITEMS: { id: Workspace; label: string; icon: React.ElementType }[] = [
   { id: 'chat', label: 'Chat Studio', icon: MessageSquare },
   { id: 'image', label: 'Image Canvas', icon: ImageIcon },
   { id: 'video', label: 'Motion Studio', icon: Video },
+];
+
+const WORKSPACE_ITEMS: { id: Workspace; label: string; icon: React.ElementType }[] = [
   { id: 'library', label: 'Library', icon: FolderOpen },
 ];
 
@@ -101,11 +105,11 @@ export default function DashboardSidebar({
   const renderHistory = () => {
     if (sessions.length === 0) {
       return (
-        <p className="px-2 text-[11px] text-white/40 italic">No recent chats</p>
+        <p className="px-2 py-1 text-[11px] text-white/35 italic">No recent chats</p>
       );
     }
     return (
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         {sessions.map((session) => {
           const active = session.id === activeSessionId;
           return (
@@ -113,7 +117,7 @@ export default function DashboardSidebar({
               key={session.id}
               className={cn(
                 'group relative flex items-center rounded-lg transition-colors',
-                active ? 'bg-white/[0.10]' : 'hover:bg-white/[0.05]'
+                active ? 'bg-white/[0.08]' : 'hover:bg-white/[0.04]'
               )}
             >
               <button
@@ -124,11 +128,11 @@ export default function DashboardSidebar({
                   onCloseMobile?.();
                 }}
                 className={cn(
-                  'flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 text-start text-[13px] cursor-pointer transition-colors rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
-                  active ? 'text-white font-medium' : 'text-white/70 hover:text-white'
+                  'flex-1 min-w-0 flex items-center gap-2.5 px-2.5 py-2 text-start text-[12.5px] cursor-pointer transition-colors rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
+                  active ? 'text-white font-medium' : 'text-white/60 hover:text-white'
                 )}
               >
-                <MessageSquare className={cn('h-4 w-4 shrink-0', active ? 'text-white' : 'text-white/40')} />
+                <MessageSquare className={cn('h-3.5 w-3.5 shrink-0', active ? 'text-white' : 'text-white/40')} />
                 <span className="truncate">{session.title}</span>
               </button>
               {onDeleteSession && (
@@ -139,9 +143,9 @@ export default function DashboardSidebar({
                     onDeleteSession(session.id);
                   }}
                   aria-label={`Delete chat: ${session.title}`}
-                  className="shrink-0 me-1.5 p-1.5 rounded-md text-white/25 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                  className="shrink-0 me-1 p-1 rounded-md text-white/25 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-3 w-3" />
                 </button>
               )}
             </div>
@@ -173,7 +177,7 @@ export default function DashboardSidebar({
         {/* Brand — matches 56px top bar height */}
         <div className="flex items-center justify-between h-14 shrink-0 px-4 border-b border-white/[0.08]">
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg border border-white/10 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-lg border border-white/10 flex items-center justify-center bg-white/[0.03]">
               <VantraLogo className="w-4 h-4" />
             </div>
             <span className="text-[13px] font-semibold tracking-[0.14em] text-white">VANTRA</span>
@@ -191,7 +195,7 @@ export default function DashboardSidebar({
           )}
         </div>
 
-        <ScrollArea className="flex-1 px-3 pt-4 pb-4 space-y-6">
+        <ScrollArea className="flex-1 px-3 pt-3 pb-4 space-y-5">
           {/* Primary action */}
           <button
             type="button"
@@ -199,16 +203,18 @@ export default function DashboardSidebar({
               onNewChat?.();
               onCloseMobile?.();
             }}
-            className="w-full h-10 rounded-lg bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] text-white font-medium text-[13.5px] flex items-center justify-center gap-2 transition-colors active:scale-[0.99] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+            className="w-full h-9 rounded-lg bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] text-white font-medium text-[13px] flex items-center justify-center gap-2 transition-colors active:scale-[0.99] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
           >
             <Plus className="h-4 w-4 shrink-0" />
             New Chat
           </button>
 
-          {/* Workspaces */}
-          <nav aria-label="Workspaces" className="space-y-1">
-            <PanelLabel className="px-2 mb-3">Workspaces</PanelLabel>
-            {WORKSPACES.map((ws) => {
+          {/* Group 1: CREATE */}
+          <nav aria-label="Create tools" className="space-y-0.5">
+            <p className="text-[11px] uppercase tracking-[0.12em] text-white/35 font-medium mb-1.5 px-2">
+              CREATE
+            </p>
+            {CREATE_ITEMS.map((ws) => {
               const active = activeWorkspace === ws.id;
               const Icon = ws.icon;
               return (
@@ -221,22 +227,66 @@ export default function DashboardSidebar({
                     onCloseMobile?.();
                   }}
                   className={cn(
-                    'w-full flex items-center gap-3 px-3.5 h-10 rounded-xl text-[13px] font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
+                    'w-full flex items-center gap-2.5 px-2.5 h-8.5 rounded-lg text-[12.5px] font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
                     active
-                      ? 'bg-white/[0.10] text-white'
-                      : 'text-white/50 hover:text-white/80 hover:bg-white/[0.05]'
+                      ? 'bg-white/[0.08] text-white'
+                      : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
                   )}
                 >
-                  <Icon className={cn('h-4.5 w-4.5 shrink-0', active ? 'text-white' : 'text-white/40')} style={{ height: 18, width: 18 }} />
+                  <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-white' : 'text-white/40')} />
                   <span className="truncate">{ws.label}</span>
                 </button>
               );
             })}
           </nav>
 
-          {/* History */}
-          <section aria-label="Recent chats" className="space-y-2">
-            <PanelLabel className="px-2 mb-3">Recent</PanelLabel>
+          {/* Group 2: WORKSPACE */}
+          <nav aria-label="Workspace tools" className="space-y-0.5">
+            <p className="text-[11px] uppercase tracking-[0.12em] text-white/35 font-medium mb-1.5 px-2">
+              WORKSPACE
+            </p>
+            {WORKSPACE_ITEMS.map((ws) => {
+              const active = activeWorkspace === ws.id;
+              const Icon = ws.icon;
+              return (
+                <button
+                  key={ws.id}
+                  type="button"
+                  aria-current={active ? 'page' : undefined}
+                  onClick={() => {
+                    onWorkspaceChange?.(ws.id);
+                    onCloseMobile?.();
+                  }}
+                  className={cn(
+                    'w-full flex items-center gap-2.5 px-2.5 h-8.5 rounded-lg text-[12.5px] font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
+                    active
+                      ? 'bg-white/[0.08] text-white'
+                      : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
+                  )}
+                >
+                  <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-white' : 'text-white/40')} />
+                  <span className="truncate">{ws.label}</span>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => {
+                onOpenSettings?.();
+                onCloseMobile?.();
+              }}
+              className="w-full flex items-center gap-2.5 px-2.5 h-8.5 rounded-lg text-[12.5px] font-medium text-white/60 hover:text-white hover:bg-white/[0.04] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+            >
+              <Key className="h-4 w-4 shrink-0 text-white/40" />
+              <span className="truncate">API Keys</span>
+            </button>
+          </nav>
+
+          {/* Group 3: RECENT */}
+          <section aria-label="Recent chats" className="space-y-1">
+            <p className="text-[11px] uppercase tracking-[0.12em] text-white/35 font-medium mb-1.5 px-2">
+              RECENT
+            </p>
             {renderHistory()}
           </section>
         </ScrollArea>

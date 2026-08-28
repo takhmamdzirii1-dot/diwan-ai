@@ -6,7 +6,7 @@ import { Menu, ArrowDown, Plus, Zap, Swords, Database, Settings, Sparkles, Layou
 import { useChat } from '@ai-sdk/react';
 import useUser from '../../hooks/useUser';
 import { useModal } from '../../context/ModalContext';
-import { ClaudeChatInput } from '@/components/ui/claude-style-chat-input';
+import { ClaudeChatInput, ModelSelector } from '@/components/ui/claude-style-chat-input';
 import DashboardSidebar, { type Workspace as DashboardView } from './DashboardSidebar';
 import MessageBubble from './MessageBubble';
 import ImageCanvas from './ImageCanvas';
@@ -336,35 +336,58 @@ export default function StudioDashboard() {
 
       {/* Workspace */}
       <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
-        {/* Compact Mobile Top Bar: inline hamburger + VANTRA title/logo */}
-        <header className="lg:hidden shrink-0 h-14 bg-[#0D0D0D]/90 backdrop-blur-xl border-b border-white/[0.08] px-4 flex items-center justify-between z-30">
-          <div className="flex items-center gap-2.5">
+        {/* Contextual Header (Main Workspace) */}
+        <header className="h-13 shrink-0 flex items-center justify-between border-b border-white/[0.05] px-6 bg-[#0A0A0B]/80 backdrop-blur-md z-40">
+          <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setIsMobileNavOpen(true)}
               aria-label="Open navigation"
               aria-expanded={isMobileNavOpen}
-              className="p-2 -ms-2 rounded-lg bg-transparent border-none text-white/80 hover:text-white hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer active:scale-95 transition-colors"
+              className="lg:hidden p-1.5 -ms-2 rounded-lg bg-transparent border-none text-white/70 hover:text-white hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer active:scale-95 transition-colors"
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-4.5 w-4.5" />
             </button>
             <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-lg border border-white/10 flex items-center justify-center bg-white/[0.04]">
-                <VantraLogo className="w-3.5 h-3.5" />
-              </div>
-              <span className="text-[13px] font-semibold tracking-[0.14em] text-white">VANTRA</span>
-              <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-white/40">Studio</span>
+              <span className="text-sm font-medium text-white/80">
+                {centerMode === 'chat'
+                  ? 'Chat Studio'
+                  : centerMode === 'image'
+                  ? 'Image Canvas'
+                  : centerMode === 'video'
+                  ? 'Motion Studio'
+                  : 'Library'}
+              </span>
+              {centerMode === 'chat' && activeSessionId && (
+                <>
+                  <span className="text-white/20 text-xs">/</span>
+                  <span className="text-xs text-white/40 font-normal truncate max-w-[200px]">
+                    {sessions.find((s) => s.id === activeSessionId)?.title || 'Thread'}
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleNewChat}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-white/[0.04] text-[11.5px] font-medium text-white/70 hover:text-white hover:bg-white/[0.08] transition-colors"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span>New</span>
-          </button>
+          {/* Top Context Actions: Model Selector */}
+          {centerMode === 'chat' && (
+            <div className="flex items-center gap-2">
+              <ModelSelector
+                models={MODELS.map((m) => ({
+                  id: m.id,
+                  name: m.name,
+                  description: `${m.provider} · ${m.ctx}`,
+                  badge: m.badge,
+                  isFree: m.isFree,
+                  requiresAuth: !m.isFree,
+                }))}
+                selectedModel={selectedModelId}
+                onSelect={(id) => setSelectedModelId(id)}
+                onSignInClick={user ? undefined : () => openAuthModal('signin')}
+                dropdownPosition="bottom"
+              />
+            </div>
+          )}
         </header>
 
         {/* Center content */}

@@ -131,12 +131,13 @@ const PastedContentCard: React.FC<{ content: { id: string; content: string }; on
 };
 
 /* --- Model Selector (Claude-style, glass, grouped) --- */
-const ModelSelector: React.FC<{
+export const ModelSelector: React.FC<{
     models: ChatModelOption[];
     selectedModel: string;
     onSelect: (id: string) => void;
     onSignInClick?: () => void;
-}> = ({ models, selectedModel, onSelect, onSignInClick }) => {
+    dropdownPosition?: 'top' | 'bottom';
+}> = ({ models, selectedModel, onSelect, onSignInClick, dropdownPosition = 'top' }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -170,7 +171,7 @@ const ModelSelector: React.FC<{
             type="button"
             onClick={() => handlePick(model)}
             className={cn(
-                "w-full text-left px-3 py-2.5 rounded-xl flex items-start justify-between transition-colors group/item",
+                "w-full text-left px-3 py-2.5 rounded-xl flex items-start justify-between transition-colors group/item cursor-pointer",
                 locked
                     ? "hover:bg-[#FFFFFF]/[0.05]"
                     : "hover:bg-white/[0.06]",
@@ -217,21 +218,26 @@ const ModelSelector: React.FC<{
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
-                    "inline-flex items-center relative shrink-0 transition-all duration-300 ease-[cubic-bezier(0.165,0.85,0.45,1)] h-8 rounded-xl px-2.5 active:scale-[0.98] whitespace-nowrap text-xs gap-1 cursor-pointer max-w-[200px]",
+                    "inline-flex items-center relative shrink-0 transition-all duration-200 h-8 rounded-lg px-2.5 active:scale-[0.98] whitespace-nowrap text-xs gap-1.5 cursor-pointer max-w-[200px] border border-white/[0.08] hover:border-white/[0.15] bg-white/[0.03]",
                     isOpen
-                        ? "bg-white/[0.08] text-white"
-                        : "text-white/55 hover:text-white hover:bg-white/[0.06]"
+                        ? "bg-white/[0.08] border-white/[0.2] text-white"
+                        : "text-white/70 hover:text-white"
                 )}
             >
                 {!currentModel?.isFree && (
                     <span className="w-1.5 h-1.5 rounded-full bg-[#FFFFFF] shrink-0" />
                 )}
                 <span className="font-medium select-none truncate">{currentModel?.name ?? "Model"}</span>
-                <ChevronDown className={cn("w-3.5 h-3.5 opacity-70 shrink-0 transition-transform duration-200", isOpen && "rotate-180")} />
+                <ChevronDown className={cn("w-3.5 h-3.5 opacity-60 shrink-0 transition-transform duration-200", isOpen && "rotate-180")} />
             </button>
 
             {isOpen && (
-                <div className="absolute bottom-full right-0 mb-2 w-[290px] glass-pop rounded-2xl overflow-hidden z-50 flex flex-col p-1.5 animate-fade-in origin-bottom-right max-h-[420px] overflow-y-auto custom-scrollbar-thin">
+                <div className={cn(
+                    "absolute right-0 w-[290px] glass-pop rounded-2xl overflow-hidden z-50 flex flex-col p-1.5 animate-fade-in max-h-[420px] overflow-y-auto custom-scrollbar-thin border border-white/10 bg-[#0F1012]/95 shadow-2xl backdrop-blur-xl",
+                    dropdownPosition === 'top'
+                        ? "bottom-full mb-2 origin-bottom-right"
+                        : "top-full mt-2 origin-top-right"
+                )}>
                     <div className="px-3 pt-2 pb-1.5 text-[9px] font-mono uppercase tracking-[0.22em] text-white/30 flex items-center justify-between">
                         <span>Free models</span>
                         <span className="text-[#FFFFFF]/60">0 pts</span>
