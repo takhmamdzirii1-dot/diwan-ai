@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, ArrowDown, Plus, Zap, Swords, Database, Settings, Sparkles, LayoutGrid, MessageSquare, Image as ImageIcon, Video, PenLine, Code2, Lightbulb, BarChart3, RefreshCw } from 'lucide-react';
+import { Menu, ArrowDown, Plus, Zap, Swords, Database, Settings, Sparkles, LayoutGrid, MessageSquare, Image as ImageIcon, Video, PenLine, Code2, Lightbulb, BarChart3, RefreshCw, FileText } from 'lucide-react';
 import { useChat } from '@ai-sdk/react';
 import useUser from '../../hooks/useUser';
 import { useModal } from '../../context/ModalContext';
@@ -33,30 +33,30 @@ interface ChatSession {
   createdAt: number;
 }
 
-const SUGGESTIONS = [
-  {
-    icon: PenLine,
-    label: 'Write',
-    prompt:
-      'Write a punchy launch announcement in Algerian Darja for a new Algerian coffee brand, with 3 call-to-action options.',
-  },
+const MAGIC_SKILLS = [
   {
     icon: Code2,
-    label: 'Code',
-    prompt:
-      'Build a production-ready Next.js App Router API route that verifies Chargily Pay Edahabia webhooks, with zod validation.',
+    title: 'Write Code',
+    desc: 'Generate type-safe components, refactor logic, or debug complex issues.',
+    prompt: 'Write a type-safe TypeScript React hook for debounced async search with abort signal cancellation.',
   },
   {
-    icon: Lightbulb,
-    label: 'Ideate',
-    prompt:
-      'Give me 10 SaaS startup ideas tailored for the Algerian market in 2026, each with a one-line monetization model.',
+    icon: ImageIcon,
+    title: 'Analyze Image',
+    desc: 'Extract OCR text, critique UI designs, or diagnose layout bugs.',
+    prompt: 'Analyze this UI screenshot and provide actionable CSS layout and accessibility improvements.',
   },
   {
-    icon: BarChart3,
-    label: 'Compare',
-    prompt:
-      'Compare Claude Opus 5 vs GPT-5.6 Sol for long-context research and coding. End with a clear recommendation table.',
+    icon: Video,
+    title: 'Generate Video',
+    desc: 'Create scene prompts, cinematographic camera directions, and storyboards.',
+    prompt: 'Create a 4-shot cinematic video storyboard prompt with camera movement and lighting specs.',
+  },
+  {
+    icon: FileText,
+    title: 'Summarize Doc',
+    desc: 'Synthesize PDFs, technical RFCs, or documentation into concise briefs.',
+    prompt: 'Synthesize the key architectural decisions, tradeoffs, and next steps from this document.',
   },
 ];
 
@@ -391,18 +391,12 @@ export default function StudioDashboard() {
                     <div className={cn('w-full flex justify-center', isEmpty ? 'min-h-full items-center py-6' : 'pt-4 sm:pt-6 pb-36 sm:pb-40')}>
                       <div className="mx-auto w-full max-w-4xl px-6 flex flex-col gap-y-8">
                         {isEmpty ? (
-                          <div className="flex flex-col items-center text-center max-w-2xl mx-auto w-full">
-                            <div className="h-14 w-14 rounded-2xl border border-white/[0.08] bg-white/[0.03] flex items-center justify-center">
-                              <Sparkles className="h-6 w-6 text-white/70" />
-                            </div>
-                            <h2 className="text-[20px] sm:text-[22px] font-semibold tracking-tight text-white mt-5">
-                              How can I help you today?
+                          <div className="max-w-3xl mx-auto w-full flex flex-col items-center text-center py-6">
+                            <h2 className="text-xl font-medium text-white/90 mb-6">
+                              What are we building today?
                             </h2>
-                            <p className="text-[13px] text-white/40 mt-2">
-                              Pick a model in the composer and start typing.
-                            </p>
 
-                            <div className="w-full mt-6 sm:mt-8">
+                            <div className="w-full mb-6">
                               <ClaudeChatInput
                                 onSendMessage={handleSend}
                                 models={MODELS.map((m) => ({ id: m.id, name: m.name, description: `${m.provider} · ${m.ctx}`, badge: m.badge, isFree: m.isFree, requiresAuth: !m.isFree }))}
@@ -410,24 +404,35 @@ export default function StudioDashboard() {
                                 onSelectModel={setSelectedModelId}
                                 isLoading={isLoading}
                                 onStop={stop}
-                                placeholder="Ask anything…"
+                                placeholder="Ask anything or pick a skill below…"
                                 autoFocus
                                 onSignInClick={user ? undefined : () => openAuthModal('signin')}
                               />
                             </div>
 
-                            <div className="flex flex-wrap justify-center gap-2 mt-6">
-                              {SUGGESTIONS.map((s) => (
-                                <button
-                                  key={s.label}
-                                  type="button"
-                                  onClick={() => handleSend({ message: s.prompt, isThinkingEnabled: false })}
-                                  className="inline-flex items-center gap-2 px-3.5 h-9 rounded-full border border-white/10 text-[12px] sm:text-[12.5px] text-white/60 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-                                >
-                                  <s.icon className="h-3.5 w-3.5" />
-                                  {s.label}
-                                </button>
-                              ))}
+                            {/* Magic Skills Grid (4 Minimalist Action Cards) */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full text-start">
+                              {MAGIC_SKILLS.map((skill) => {
+                                const Icon = skill.icon;
+                                return (
+                                  <button
+                                    key={skill.title}
+                                    type="button"
+                                    onClick={() => handleSend({ message: skill.prompt, isThinkingEnabled: false })}
+                                    className="flex flex-col gap-2 p-4 rounded-xl border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.06] hover:border-white/[0.1] transition-all cursor-pointer text-sm text-white/70 hover:text-white text-start"
+                                  >
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="h-7 w-7 rounded-lg border border-white/10 bg-white/[0.04] flex items-center justify-center text-white/90 shrink-0">
+                                        <Icon className="h-3.5 w-3.5" />
+                                      </div>
+                                      <span className="font-medium text-white/90">{skill.title}</span>
+                                    </div>
+                                    <p className="text-[12.5px] text-white/40 leading-relaxed font-normal">
+                                      {skill.desc}
+                                    </p>
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
                         ) : null}

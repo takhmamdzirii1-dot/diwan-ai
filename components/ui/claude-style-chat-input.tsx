@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Plus, ChevronDown, ArrowUp, Square, X, FileText, Loader2, Check, Archive, Sparkles } from "lucide-react";
+import { Plus, ChevronDown, ArrowUp, Square, X, FileText, Loader2, Check, Archive, Sparkles, Image as ImageIcon, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------
@@ -346,14 +346,31 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
         }
     };
 
+    const [multimodalMenuOpen, setMultimodalMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
+    const docInputRef = useRef<HTMLInputElement>(null);
+
+    // Click outside listener for multimodal dropdown
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+                setMultimodalMenuOpen(false);
+            }
+        };
+        if (multimodalMenuOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [multimodalMenuOpen]);
 
     // Auto-resize
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = "auto";
-            textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 384) + "px";
+            textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 240) + "px";
         }
     }, [message]);
 
@@ -518,14 +535,66 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                 <div className="flex gap-2 w-full items-center px-1 pt-1">
                     {/* Left tools */}
                     <div className="relative flex-1 flex items-center shrink min-w-0 gap-1 ps-1">
-                        <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="inline-flex items-center justify-center shrink-0 transition-colors duration-200 h-8 w-8 rounded-lg active:scale-95 text-white/40 hover:text-white hover:bg-white/[0.07] cursor-pointer"
-                            aria-label="Attach files"
-                        >
-                            <Plus className="w-5 h-5" />
-                        </button>
+                        {/* Multimodal Dropdown Menu */}
+                        <div className="relative" ref={menuRef}>
+                            <button
+                                type="button"
+                                onClick={() => setMultimodalMenuOpen(!multimodalMenuOpen)}
+                                className={cn(
+                                    "inline-flex items-center justify-center shrink-0 transition-colors duration-200 h-8 w-8 rounded-lg active:scale-95 cursor-pointer",
+                                    multimodalMenuOpen
+                                        ? "bg-white/10 text-white"
+                                        : "text-white/40 hover:text-white hover:bg-white/[0.07]"
+                                )}
+                                aria-label="Multimodal attachments"
+                                aria-expanded={multimodalMenuOpen}
+                            >
+                                <Plus className={cn("w-5 h-5 transition-transform duration-150", multimodalMenuOpen && "rotate-45")} />
+                            </button>
+
+                            {multimodalMenuOpen && (
+                                <div
+                                    className="absolute bottom-full left-0 mb-2 w-52 bg-[#0F1012] border border-white/[0.08] shadow-2xl rounded-lg p-1 text-sm text-white/80 z-50 flex flex-col gap-0.5"
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setMultimodalMenuOpen(false);
+                                            imageInputRef.current?.click();
+                                        }}
+                                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md hover:bg-white/[0.06] text-white transition-colors text-start cursor-pointer"
+                                    >
+                                        <ImageIcon className="w-4 h-4 text-white/60 shrink-0" />
+                                        <span>Upload Image</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setMultimodalMenuOpen(false);
+                                            docInputRef.current?.click();
+                                        }}
+                                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md hover:bg-white/[0.06] text-white transition-colors text-start cursor-pointer"
+                                    >
+                                        <FileText className="w-4 h-4 text-white/60 shrink-0" />
+                                        <span>Upload Document</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setMultimodalMenuOpen(false);
+                                            setMessage((prev) => (prev ? prev + ' ' : '') + '@integration: ');
+                                            textareaRef.current?.focus();
+                                        }}
+                                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md hover:bg-white/[0.06] text-white transition-colors text-start cursor-pointer"
+                                    >
+                                        <Layers className="w-4 h-4 text-white/60 shrink-0" />
+                                        <span>Connect Integration</span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
 
                         <div className="flex shrink-0">
                             <button
@@ -628,10 +697,32 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                 </div>
             )}
 
-            {/* Hidden file input */}
+            {/* Hidden file inputs */}
             <input
                 ref={fileInputRef}
                 type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                    if (e.target.files) handleFiles(e.target.files);
+                    e.target.value = '';
+                }}
+            />
+            <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                    if (e.target.files) handleFiles(e.target.files);
+                    e.target.value = '';
+                }}
+            />
+            <input
+                ref={docInputRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.txt,.md,.json,.csv,.py,.ts,.tsx,.js,.jsx,.yaml,.yml"
                 multiple
                 className="hidden"
                 onChange={(e) => {
