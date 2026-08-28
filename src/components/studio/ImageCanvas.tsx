@@ -2,13 +2,25 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Image as ImageIcon, Sparkles, Loader2 } from 'lucide-react';
+import {
+  Sparkles,
+  Loader2,
+  Plus,
+  ChevronDown,
+  Check,
+  Download,
+  Copy,
+  X,
+  Layers,
+  Ratio,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
-import ImageConfigPopover, {
-  ImageConfigPill,
+import {
+  IMAGE_MODELS,
+  ASPECT_RATIOS,
   type ImageConfig,
 } from './ImageConfigPopover';
-import ImageResultCard, {
+import {
   appendToImageLibrary,
   readImageLibrary,
   type GeneratedImage,
@@ -19,25 +31,62 @@ export default function ImageCanvas() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [genError, setGenError] = useState<string | null>(null);
-  const [configOpen, setConfigOpen] = useState(false);
+  const [modelMenuOpen, setModelMenuOpen] = useState(false);
+  const [ratioMenuOpen, setRatioMenuOpen] = useState(false);
+  const [referenceImage, setReferenceImage] = useState<{ url: string; name: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+
   const [config, setConfig] = useState<ImageConfig>({
     model: 'flux-1-pro',
     ratio: '1:1',
     count: 1,
   });
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Restore the persisted library on mount
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const modelMenuRef = useRef<HTMLDivElement>(null);
+  const ratioMenuRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     setGeneratedImages(readImageLibrary());
   }, []);
 
-  // Auto-grow textarea (capped at max-h-32 = 128px, then scrolls invisibly)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setModelMenuOpen(false);
+        setRatioMenuOpen(false);
+      }
+    };
+    const handleClickOutside = (e: MouseEvent) => {
+      if (modelMenuRef.current && !modelMenuRef.current.contains(e.target as Node)) {
+        setModelMenuOpen(false);
+      }
+      if (ratioMenuRef.current && !ratioMenuRef.current.contains(e.target as Node)) {
+        setRatioMenuOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const autoGrow = () => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = 'auto';
     el.style.height = Math.min(el.scrollHeight, 128) + 'px';
+  };
+
+  const handleRefUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setReferenceImage({ url, name: file.name });
+    e.target.value = '';
   };
 
   const handleGenerate = async () => {
@@ -70,7 +119,6 @@ export default function ImageCanvas() {
         })
       );
 
-      // Newest first — Google Flow style feed
       setGeneratedImages((prev) => [...fresh, ...prev]);
       appendToImageLibrary(fresh);
     } catch (err) {
@@ -80,172 +128,268 @@ export default function ImageCanvas() {
     }
   };
 
+  const latestImage = generatedImages[0];
+
+  const handleDownload = async () => {
+    if (!latestImage?.url) return;
+    try {
+      const res = await fetch(latestImage.url);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `vantra-image-${Date.now()}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(latestImage.url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleCopyPrompt = async () => {
+    if (!latestImage?.prompt) return;
+    await navigator.clipboard.writeText(latestImage.prompt);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
-    <div className="absolute inset-0 flex flex-col">
-      {/* â”€â”€ Canvas Area â”€â”€ */}
-      <div className="flex-1 min-h-0 relative overflow-hidden">
-        {/* Dot Grid Background */}
-        <div 
-          className="absolute inset-0 fixed"
-          style={{
-            backgroundImage: 'url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2720%27%20height%3D%2720%27%20viewBox%3D%270%200%2020%2020%27%3E%3Ccircle%20cx%3D%2710%27%20cy%3D%2710%27%20r%3D%270.5%27%20fill%3D%27white%27%20opacity%3D%270.03%27%2F%3E%3C%2Fsvg%27")',
-            opacity: 0.03,
-          }}
-          aria-hidden="true"
-        />
-        
-        {/* Subtle corner glows */}
-        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-white/5 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-white/5 blur-3xl pointer-events-none" />
+    <div className="absolute inset-0 flex flex-col bg-[#0A0A0B] overflow-hidden">
+      <div className="relative flex flex-1 items-center justify-center overflow-hidden p-6">
+        <div className="relative flex flex-col items-center justify-center aspect-square w-full max-w-[min(60vh,680px)] rounded-xl border border-white/[0.06] bg-white/[0.015] shadow-2xl overflow-hidden">
+          {latestImage ? (
+            <div className="relative w-full h-full group flex items-center justify-center bg-black/40">
+              <img
+                src={latestImage.url}
+                alt={latestImage.prompt || 'Generated canvas visual'}
+                className="w-full h-full object-contain"
+              />
 
-        {/* Canvas Viewport */}
-        {/* Result Feed — scrollable, hidden scrollbar */}
-        <div className="absolute inset-0 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-          {generatedImages.length > 0 ? (
-            <div className="max-w-3xl mx-auto w-full px-4 pt-6 pb-4 space-y-4">
-              <AnimatePresence initial={false}>
-                {generatedImages.map((img, i) => (
-                  <motion.div
-                    key={img.url}
-                    initial={{ opacity: 0, y: 16, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.98 }}
-                    transition={{ type: 'spring', stiffness: 320, damping: 30, delay: i * 0.05 }}
-                  >
-                    <ImageResultCard image={img} />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-
-              {isGenerating && (
-                <div className="rounded-xl border border-white/10 bg-[#1A1C20] h-64 relative overflow-hidden">
-                  <div className="absolute inset-0 bg-white/[0.02] animate-pulse" />
-                </div>
-              )}
+              <div className="absolute top-3.5 right-3.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1.5 p-1.5 rounded-lg bg-black/70 backdrop-blur-md border border-white/10 shadow-lg">
+                <button
+                  type="button"
+                  onClick={handleDownload}
+                  title="Download Image"
+                  className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  <Download className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyPrompt}
+                  title="Copy Prompt"
+                  className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          ) : isGenerating ? (
+            <div className="flex flex-col items-center justify-center p-6 text-center">
+              <Loader2 className="h-8 w-8 text-white/70 animate-spin mb-3" />
+              <p className="text-sm font-medium text-white/80">Synthesizing image...</p>
+              <p className="text-xs text-white/40 mt-1 font-mono">
+                {IMAGE_MODELS.find((m) => m.id === config.model)?.name} · {config.ratio}
+              </p>
             </div>
           ) : (
-            <div className="min-h-full flex items-center justify-center p-4">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                className="flex flex-col items-center"
-              >
-                <motion.div
-                  animate={{ scale: [0.98, 1.02, 0.98] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-                  className="h-20 w-20 rounded-2xl border border-white/10 bg-white/5 flex items-center justify-center mb-6"
-                >
-                  <svg viewBox="0 0 100 100" width="48" height="48">
-                    <path
-                      d="M 50 12 L 53.5 35 L 76 38.5 L 53.5 42 L 50 65 L 46.5 42 L 24 38.5 L 46.5 35 Z"
-                      fill="white"
-                      opacity={0.8}
-                    />
-                  </svg>
-                </motion.div>
-                <p className="text-[15px] font-medium text-white/70 mb-1.5">Canvas is ready</p>
-                <p className="text-xs text-white/30 max-w-xs text-center">
-                  Describe an image below, pick your settings, and press Generate.
-                </p>
-              </motion.div>
+            <div className="flex flex-col items-center justify-center p-6 text-center">
+              <Sparkles className="h-8 w-8 text-white/20 mb-3 stroke-[1.5]" />
+              <p className="text-sm font-medium text-white/40">Create your first image</p>
+              <p className="text-xs text-white/20 mt-1 max-w-xs">
+                Describe an image below, configure your ratio and model, then press Generate.
+              </p>
             </div>
           )}
-        </div>
 
-        {/* Scanning Laser Line (while generating) */}
-        <AnimatePresence>
-          {isGenerating && (
-            <motion.div
-              initial={{ y: '-100%', opacity: 0 }}
-              animate={{ y: '100%', opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 2.5, ease: 'linear', repeat: Infinity }}
-              className="absolute left-0 right-0 h-[2px] pointer-events-none z-20"
-              style={{
-                background: 'linear-gradient(90deg, transparent 0%, white 50%, transparent 100%)',
-                filter: 'blur(1px)',
-              }}
-            />
-          )}
-        </AnimatePresence>
+          <AnimatePresence>
+            {isGenerating && (
+              <motion.div
+                initial={{ y: '-100%', opacity: 0 }}
+                animate={{ y: '100%', opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 2.2, ease: 'linear', repeat: Infinity }}
+                className="absolute left-0 right-0 h-[2px] pointer-events-none z-20"
+                style={{
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.8) 50%, transparent 100%)',
+                  filter: 'blur(1px)',
+                }}
+              />
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
-      {/* ── Command Bar ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
-        className="relative shrink-0"
-      >
-        {/* Command Bar */}
-        <div className="max-w-3xl mx-auto px-4 pb-4 pt-2">
-          <div className="relative backdrop-blur-xl bg-black/60 border border-white/10 rounded-[26px] shadow-[0_0_40px_rgba(255,255,255,0.03)]">
-            <div className="p-4 space-y-3">
-              {/* Prompt Input */}
-              <div className="flex items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <textarea
-                    ref={textareaRef}
-                    value={prompt}
-                    onChange={(e) => { setPrompt(e.target.value); autoGrow(); }}
-                    placeholder="Describe the image you want to createâ€¦"
-                    dir="auto"
-                    rows={2}
-                    className="w-full max-h-32 bg-transparent border-0 outline-none text-white text-[15px] placeholder:text-white/30 resize-none overflow-y-auto leading-relaxed block antialiased font-sans [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-                    style={{ minHeight: '3em', padding: '8px 8px 4px 4px' }}
-                    disabled={isGenerating}
-                  />
+      <div className="sticky bottom-0 w-full bg-gradient-to-t from-[#0A0A0B] via-[#0A0A0B] to-transparent pt-4 pb-6 z-20">
+        <div className="mx-auto w-full max-w-4xl px-6">
+          {genError && (
+            <p className="mb-2 px-1 text-[11.5px] text-red-400/90" role="alert">
+              {genError}
+            </p>
+          )}
+
+          <div className="w-full border border-white/[0.08] bg-[#111216]/90 shadow-2xl backdrop-blur-xl transition-all duration-200 focus-within:border-white/[0.25] focus-within:bg-[#15161A]/90 rounded-2xl flex flex-col justify-between overflow-hidden">
+            <div className="p-3">
+              {referenceImage && (
+                <div className="flex items-center gap-2 mb-2 p-1.5 bg-white/[0.04] rounded-lg border border-white/[0.08] w-fit">
+                  <img src={referenceImage.url} alt="Reference" className="size-7 object-cover rounded-md" />
+                  <span className="text-xs text-white/70 truncate max-w-[160px]">{referenceImage.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setReferenceImage(null)}
+                    aria-label="Remove reference image"
+                    className="text-white/40 hover:text-white p-0.5 rounded transition-colors cursor-pointer"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+
+              <textarea
+                ref={textareaRef}
+                value={prompt}
+                onChange={(e) => {
+                  setPrompt(e.target.value);
+                  autoGrow();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleGenerate();
+                  }
+                }}
+                placeholder="Describe the image you want to create in vivid detail…"
+                dir="auto"
+                rows={2}
+                className="w-full bg-transparent border-0 outline-none text-white text-[15px] placeholder:text-white/30 resize-none overflow-y-auto leading-relaxed block antialiased font-sans px-1"
+                style={{ minHeight: '3em', maxHeight: '140px' }}
+                disabled={isGenerating}
+              />
+            </div>
+
+            <div className="flex items-center justify-between border-t border-white/[0.05] px-3 py-2.5 bg-white/[0.01]">
+              <div className="flex items-center gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleRefUpload}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="h-8 text-xs bg-white/[0.04] border border-white/[0.05] px-2.5 rounded-lg text-white/70 hover:text-white hover:bg-white/[0.07] transition-colors flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <Plus className="h-3.5 w-3.5 text-white/50" />
+                  <span>Ref</span>
+                </button>
+
+                <div className="relative" ref={modelMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setModelMenuOpen((v) => !v)}
+                    className="h-8 text-xs bg-white/[0.04] border border-white/[0.05] px-2.5 rounded-lg text-white/70 hover:text-white hover:bg-white/[0.07] transition-colors flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <Layers className="h-3 w-3 text-white/50" />
+                    <span>Model: {IMAGE_MODELS.find((m) => m.id === config.model)?.name || 'Flux.1 Pro'}</span>
+                    <ChevronDown className="h-3 w-3 text-white/40" />
+                  </button>
+
+                  {modelMenuOpen && (
+                    <div className="absolute bottom-full left-0 mb-2 w-56 bg-[#0F1012] border border-white/[0.08] shadow-2xl rounded-xl p-1.5 z-50 flex flex-col gap-0.5">
+                      {IMAGE_MODELS.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => {
+                            setConfig({ ...config, model: m.id });
+                            setModelMenuOpen(false);
+                          }}
+                          className={cn(
+                            'w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer text-left',
+                            config.model === m.id
+                              ? 'bg-white/10 text-white font-medium'
+                              : 'text-white/70 hover:text-white hover:bg-white/[0.05]'
+                          )}
+                        >
+                          <div>
+                            <p className="font-medium">{m.name}</p>
+                            <p className="text-[10px] text-white/40">{m.label}</p>
+                          </div>
+                          {config.model === m.id && <Check className="h-3.5 w-3.5 text-white" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                {/* Google Flow-style settings pill + popover */}
-                <div className="relative shrink-0 pt-1">
-                  <ImageConfigPill
-                    config={config}
-                    open={configOpen}
-                    onToggle={() => setConfigOpen((v) => !v)}
-                  />
-                  <ImageConfigPopover
-                    open={configOpen}
-                    onClose={() => setConfigOpen(false)}
-                    config={config}
-                    onChange={setConfig}
-                  />
+                <div className="relative" ref={ratioMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setRatioMenuOpen((v) => !v)}
+                    className="h-8 text-xs bg-white/[0.04] border border-white/[0.05] px-2.5 rounded-lg text-white/70 hover:text-white hover:bg-white/[0.07] transition-colors flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <Ratio className="h-3 w-3 text-white/50" />
+                    <span>Ratio: {config.ratio}</span>
+                    <ChevronDown className="h-3 w-3 text-white/40" />
+                  </button>
+
+                  {ratioMenuOpen && (
+                    <div className="absolute bottom-full left-0 mb-2 w-32 bg-[#0F1012] border border-white/[0.08] shadow-2xl rounded-xl p-1.5 z-50 flex flex-col gap-0.5">
+                      {ASPECT_RATIOS.map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => {
+                            setConfig({ ...config, ratio: r });
+                            setRatioMenuOpen(false);
+                          }}
+                          className={cn(
+                            'w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer',
+                            config.ratio === r
+                              ? 'bg-white/10 text-white font-medium'
+                              : 'text-white/70 hover:text-white hover:bg-white/[0.05]'
+                          )}
+                        >
+                          <span>{r}</span>
+                          {config.ratio === r && <Check className="h-3.5 w-3.5 text-white" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {genError && (
-                <p className="px-1 text-[11.5px] text-red-400/90">{genError}</p>
-              )}
-
-              {/* Generate Button */}
               <button
                 type="button"
                 onClick={handleGenerate}
                 disabled={isGenerating || !prompt.trim()}
                 className={cn(
-                  'w-full h-11 rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98]',
+                  'bg-white text-black px-4 py-1.5 rounded-lg text-sm font-medium transition-all active:scale-95 flex items-center gap-1.5 shadow-sm',
                   isGenerating || !prompt.trim()
-                    ? 'bg-white/10 text-white/60 border border-white/10 cursor-default'
-                    : 'bg-white text-black font-semibold hover:bg-gray-200 hover:scale-105 transition-transform duration-200 shadow-[0_0_20px_-4px_rgba(255,255,255,0.3)]'
+                    ? 'opacity-40 cursor-not-allowed'
+                    : 'hover:bg-white/90 cursor-pointer'
                 )}
               >
                 {isGenerating ? (
                   <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Generatingâ€¦</span>
+                    <Loader2 className="h-4 w-4 animate-spin text-black" />
+                    <span>Generating…</span>
                   </>
                 ) : (
                   <>
-                    <Sparkles className="h-4.5 w-4.5" />
-                    <span className="font-semibold">Generate</span>
+                    <Sparkles className="h-3.5 w-3.5 text-black" />
+                    <span>Generate · 1 credit</span>
                   </>
                 )}
               </button>
             </div>
           </div>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
