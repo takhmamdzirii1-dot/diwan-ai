@@ -22,18 +22,11 @@ import {
   ASPECT_RATIOS,
   type ImageConfig,
 } from './ImageConfigPopover';
-import {
-  appendToImageLibrary,
-  readImageLibrary,
-  type GeneratedImage,
-} from './ImageResultCard';
 
 export default function ImageCanvas() {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
-  const [genError, setGenError] = useState<string | null>(null);
+  const [hasResult, setHasResult] = useState(false);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [ratioMenuOpen, setRatioMenuOpen] = useState(false);
   const [referenceImage, setReferenceImage] = useState<{ url: string; name: string } | null>(null);
@@ -49,27 +42,7 @@ export default function ImageCanvas() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
   const ratioMenuRef = useRef<HTMLDivElement>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    setGeneratedImages(readImageLibrary());
-  }, []);
-
-  useEffect(() => {
-    if (!isGenerating) {
-      setProgress(0);
-      return;
-    }
-    setProgress(18);
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 94) return prev;
-        const step = Math.floor(Math.random() * 14) + 6;
-        return Math.min(prev + step, 94);
-      });
-    }, 450);
-    return () => clearInterval(interval);
-  }, [isGenerating]);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -91,6 +64,7 @@ export default function ImageCanvas() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('mousedown', handleClickOutside);
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);
 
@@ -109,82 +83,33 @@ export default function ImageCanvas() {
     e.target.value = '';
   };
 
-  const handleCancel = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    setIsGenerating(false);
-    setProgress(0);
-  };
-
-  const handleGenerate = async () => {
-    if (!prompt.trim() || isGenerating) return;
-
-    const usedPrompt = prompt.trim();
+  const handleGenerate = () => {
     setIsGenerating(true);
-    setGenError(null);
-    abortControllerRef.current = new AbortController();
-
-    try {
-      const res = await fetch('/api/generate-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: abortControllerRef.current.signal,
-        body: JSON.stringify({
-          prompt: usedPrompt,
-          model: config.model,
-          ratio: config.ratio,
-          count: config.count,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Generation failed');
-
-      const fresh: GeneratedImage[] = (Array.isArray(data.images) ? data.images : []).map(
-        (im: { url: string; width?: number; height?: number }) => ({
-          ...im,
-          prompt: usedPrompt,
-          ratio: config.ratio,
-          model: data.model || config.model,
-          createdAt: Date.now(),
-        })
-      );
-
-      setGeneratedImages((prev) => [...fresh, ...prev]);
-      appendToImageLibrary(fresh);
-      setProgress(100);
-    } catch (err) {
-      if ((err as Error).name !== 'AbortError') {
-        setGenError(err instanceof Error ? err.message : 'Generation failed');
-      }
-    } finally {
+    setHasResult(false);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
       setIsGenerating(false);
-    }
+      setHasResult(true);
+    }, 3000);
   };
 
-  const latestImage = generatedImages[0];
-
-  const handleDownload = async () => {
-    if (!latestImage?.url) return;
-    try {
-      const res = await fetch(latestImage.url);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `vantra-image-${Date.now()}.jpg`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch {
-      window.open(latestImage.url, '_blank', 'noopener,noreferrer');
-    }
+  const handleCancel = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setIsGenerating(false);
   };
 
-  const handleCopyPrompt = async () => {
-    if (!latestImage?.prompt) return;
-    await navigator.clipboard.writeText(latestImage.prompt);
+  const handleDownload = () => {
+    const a = document.createElement('a');
+    a.href = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop';
+    a.download = `vantra-artwork-${Date.now()}.jpg`;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(prompt || 'Abstract glowing fluid architecture in deep space, hyperrealistic 8k');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -192,73 +117,73 @@ export default function ImageCanvas() {
   return (
     <div className="absolute inset-0 flex flex-col bg-[#0A0A0B] overflow-hidden">
       <div className="relative flex flex-1 items-center justify-center overflow-hidden p-6">
-        <div className="relative flex flex-col items-center justify-center aspect-square w-full max-w-[min(60vh,680px)] rounded-xl border border-white/[0.06] bg-white/[0.015] shadow-2xl overflow-hidden group">
-          {latestImage && !isGenerating ? (
-            <div className="relative w-full h-full flex items-center justify-center bg-black/40">
+        <div className="relative flex flex-col items-center justify-center aspect-square w-full max-w-[min(60vh,680px)] rounded-xl border border-white/[0.06] bg-white/[0.015] shadow-2xl overflow-hidden">
+          {isGenerating ? (
+            <div className="flex flex-col items-center justify-center w-full h-full animate-pulse bg-white/[0.03] text-white/50 font-mono text-sm">
+              <p className="tracking-wide">Generating... 64%</p>
+              <p className="text-xs text-white/30 mt-1 font-mono">
+                {IMAGE_MODELS.find((m) => m.id === config.model)?.name || 'Flux.1 Pro'} · {config.ratio}
+              </p>
+            </div>
+          ) : hasResult ? (
+            <div className="relative w-full h-full group">
               <img
-                src={latestImage.url}
-                alt={latestImage.prompt || 'Generated canvas visual'}
-                className="w-full h-full object-contain"
+                src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop"
+                className="w-full h-full object-cover rounded-xl"
+                alt="Generated artwork"
               />
 
-              <div className="absolute top-3.5 right-3.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1.5 p-1.5 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 shadow-2xl z-20">
+              <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20">
                 <button
                   type="button"
                   onClick={handleDownload}
-                  title="Download Image"
-                  className="size-8 rounded-lg bg-black/50 backdrop-blur-md border border-white/10 hover:bg-black/70 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95"
+                  title="Download"
+                  className="size-8 rounded-lg bg-black/50 backdrop-blur-md border border-white/10 hover:bg-black/70 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95 shadow-lg"
                 >
                   <Download className="h-4 w-4" />
                 </button>
+
                 <button
                   type="button"
                   onClick={handleGenerate}
                   title="Upscale"
-                  className="size-8 rounded-lg bg-black/50 backdrop-blur-md border border-white/10 hover:bg-black/70 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95"
+                  className="size-8 rounded-lg bg-black/50 backdrop-blur-md border border-white/10 hover:bg-black/70 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95 shadow-lg"
                 >
                   <Maximize2 className="h-3.5 w-3.5" />
                 </button>
+
                 <button
                   type="button"
                   onClick={handleGenerate}
                   title="Make Variant"
-                  className="size-8 rounded-lg bg-black/50 backdrop-blur-md border border-white/10 hover:bg-black/70 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95"
+                  className="size-8 rounded-lg bg-black/50 backdrop-blur-md border border-white/10 hover:bg-black/70 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95 shadow-lg"
                 >
                   <Shuffle className="h-3.5 w-3.5" />
                 </button>
+
                 <button
                   type="button"
                   onClick={() => {
-                    if (latestImage) {
-                      setReferenceImage({ url: latestImage.url, name: 'Canvas-Output.jpg' });
-                    }
+                    setReferenceImage({
+                      url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop',
+                      name: 'Canvas-Output.jpg',
+                    });
                   }}
                   title="Use as Ref"
-                  className="size-8 rounded-lg bg-black/50 backdrop-blur-md border border-white/10 hover:bg-black/70 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95"
+                  className="size-8 rounded-lg bg-black/50 backdrop-blur-md border border-white/10 hover:bg-black/70 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95 shadow-lg"
                 >
                   <ImagePlus className="h-3.5 w-3.5" />
                 </button>
+
                 <button
                   type="button"
-                  onClick={handleCopyPrompt}
+                  onClick={handleCopy}
                   title="Copy Prompt"
-                  className="size-8 rounded-lg bg-black/50 backdrop-blur-md border border-white/10 hover:bg-black/70 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95"
+                  className="size-8 rounded-lg bg-black/50 backdrop-blur-md border border-white/10 hover:bg-black/70 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95 shadow-lg"
                 >
                   {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                 </button>
               </div>
-            </div>
-          ) : isGenerating ? (
-            <div className="relative w-full h-full flex flex-col items-center justify-center animate-pulse bg-white/[0.03]">
-              <div className="flex flex-col items-center text-center p-6 z-10">
-                <p className="text-sm font-medium text-white/90 mb-1 font-mono tracking-wide">
-                  Generating... {progress}%
-                </p>
-                <p className="text-xs text-white/40 font-mono">
-                  {IMAGE_MODELS.find((m) => m.id === config.model)?.name} · {config.ratio}
-                </p>
-              </div>
-              <div className="absolute inset-0 bg-gradient-to-t from-white/[0.02] to-transparent pointer-events-none" />
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center p-6 text-center">
@@ -290,12 +215,6 @@ export default function ImageCanvas() {
 
       <div className="sticky bottom-0 w-full bg-gradient-to-t from-[#0A0A0B] via-[#0A0A0B] to-transparent pt-4 pb-6 z-20">
         <div className="mx-auto w-full max-w-4xl px-6">
-          {genError && (
-            <p className="mb-2 px-1 text-[11.5px] text-red-400/90" role="alert">
-              {genError}
-            </p>
-          )}
-
           <div className="w-full border border-white/[0.08] bg-[#111216]/90 shadow-2xl backdrop-blur-xl transition-all duration-200 focus-within:border-white/[0.25] focus-within:bg-[#15161A]/90 rounded-2xl flex flex-col justify-between overflow-hidden">
             <div className="p-3">
               {referenceImage && (
@@ -442,13 +361,7 @@ export default function ImageCanvas() {
                 <button
                   type="button"
                   onClick={handleGenerate}
-                  disabled={!prompt.trim()}
-                  className={cn(
-                    'bg-white text-black px-4 py-1.5 rounded-lg text-sm font-medium transition-all active:scale-95 flex items-center gap-1.5 shadow-sm',
-                    !prompt.trim()
-                      ? 'opacity-40 cursor-not-allowed'
-                      : 'hover:bg-white/90 cursor-pointer'
-                  )}
+                  className="bg-white text-black px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-white/90 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
                 >
                   <Sparkles className="h-3.5 w-3.5 text-black" />
                   <span>Generate · 1 credit</span>
