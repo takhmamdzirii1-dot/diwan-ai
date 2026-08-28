@@ -2902,12 +2902,12 @@ html[dir="rtl"] .cost-table { text-align: right; }
    5) AI RESPONSE TYPOGRAPHY - the reading experience
    --------------------------------------------------------------- */
 .lux-prose {
-  font-family: "Source Serif 4", "Noto Naskh Arabic", Georgia, serif;
+  font-family: var(--font-sans), var(--font-body), ui-sans-serif, system-ui, sans-serif;
   color: #F3F4F6;
-  font-weight: 500;
+  font-weight: 400;
   text-rendering: optimizeLegibility;
-  font-size: clamp(16px, 0.6vw + 13px, 17.5px);
-  line-height: 1.92;
+  font-size: clamp(15px, 0.5vw + 13px, 16px);
+  line-height: 1.75;
   word-break: break-word;
 }
 html[lang="ar"] .lux-prose,
