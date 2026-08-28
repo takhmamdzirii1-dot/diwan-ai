@@ -86,11 +86,11 @@ export function Typewriter({
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
-              a: ({ node, ...props }) => <a {...props} className="text-[#E6C27A] hover:underline" target="_blank" rel="noopener noreferrer" />,
+              a: ({ node, ...props }) => <a {...props} className="text-[#FFFFFF] hover:underline" target="_blank" rel="noopener noreferrer" />,
               p: ({ node, children, ...props }) => <p className="mb-3 last:mb-0 text-white/90 inline" {...props}>{children}</p>,
               strong: ({ node, ...props }) => <strong className="font-bold text-white" {...props} />,
-              ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-3 text-white/90 marker:text-[#E6C27A]" {...props} />,
-              ol: ({ node, ...props }) => <ol className="list-decimal pl-5 mb-3 text-white/90 marker:text-[#E6C27A]" {...props} />,
+              ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-3 text-white/90 marker:text-[#FFFFFF]" {...props} />,
+              ol: ({ node, ...props }) => <ol className="list-decimal pl-5 mb-3 text-white/90 marker:text-[#FFFFFF]" {...props} />,
               li: ({ node, ...props }) => <li className="mb-1" {...props} />,
               h1: ({ node, ...props }) => <h1 className="text-xl font-bold text-white mt-5 mb-3" {...props} />,
               h2: ({ node, ...props }) => <h2 className="text-lg font-bold text-white mt-4 mb-2" {...props} />,
@@ -102,13 +102,13 @@ export function Typewriter({
                 const match = /language-(\w+)/.exec(className || '');
                 const isInline = inline || !match;
                 if (isInline) {
-                  return <code className="rounded-md bg-white/[0.08] px-1.5 py-0.5 font-mono text-[13px] text-[#E6C27A] border border-white/[0.06]" {...props}>{children}</code>;
+                  return <code className="rounded-md bg-white/[0.08] px-1.5 py-0.5 font-mono text-[13px] text-[#FFFFFF] border border-white/[0.06]" {...props}>{children}</code>;
                 }
                 const lang = match ? match[1] : '';
                 return (
                   <div className="my-4 overflow-hidden rounded-xl border border-white/10 bg-[#050506] shadow-2xl">
                     <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#0A0B0E] px-4 py-2 text-xs text-[#94A3B8]">
-                      <div className="flex items-center gap-2 font-mono text-[11px] text-[#E6C27A]">
+                      <div className="flex items-center gap-2 font-mono text-[11px] text-[#FFFFFF]">
                         <Terminal className="h-3.5 w-3.5" />
                         <span>{lang || 'code'}</span>
                       </div>
@@ -126,7 +126,7 @@ export function Typewriter({
             {displayText}
           </ReactMarkdown>
           {cursor && charIndex < currentWord.length && (
-            <span className="ml-1 transition-opacity duration-75 inline-block w-2 h-4 bg-[#E6C27A] align-middle translate-y-[-2px]" style={{ opacity: showCursor ? 1 : 0 }} />
+            <span className="ml-1 transition-opacity duration-75 inline-block w-2 h-4 bg-[#FFFFFF] align-middle translate-y-[-2px]" style={{ opacity: showCursor ? 1 : 0 }} />
           )}
         </div>
       </div>

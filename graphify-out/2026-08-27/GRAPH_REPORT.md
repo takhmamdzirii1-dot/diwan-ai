@@ -1,11 +1,11 @@
 # Graph Report - diwan-ai-main  (2026-08-27)
 
 ## Corpus Check
-- 126 files · ~49,109 words
+- 125 files · ~48,790 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 457 nodes · 584 edges · 91 communities (58 shown, 33 thin omitted)
+- 448 nodes · 560 edges · 88 communities (55 shown, 33 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
 - Token cost: 0 input · 0 output
 
@@ -20,9 +20,7 @@
 - devDependencies
 - verify-final.mjs
 - compilerOptions
-- SettingsModal.tsx
-- claude-style-chat-input.tsx
-- cn
+- StudioDashboard.tsx
 - verify-feed.mjs
 - src/components/OriginalLandingPage.tsx
 - dependencies
@@ -57,18 +55,17 @@
 - zod
 - VANTRA — SELF WORK RULES (متعهد أنفذها في كل تعديل)
 - AGENTS.md
-- MediaLibrary.tsx
+- cn
 - transcribe/route.ts
 - src/components/HeroSection.tsx
-- MessageBubble.tsx
-- clsx
-- CostTableSection.tsx
+- @ai-sdk/openai
+- VideoConfigPopover.tsx
 - @ai-sdk/react
 - verify-motion-studio.mjs
 - verify-library.mjs
 
 ## God Nodes (most connected - your core abstractions)
-1. `cn()` - 37 edges
+1. `cn()` - 29 edges
 2. `useModal()` - 16 edges
 3. `useUser()` - 16 edges
 4. `compilerOptions` - 16 edges
@@ -82,23 +79,23 @@
 ## Surprising Connections (you probably didn't know these)
 - `ModelSelector()` --calls--> `cn()`  [EXTRACTED]
   components/ui/claude-style-chat-input.tsx → lib/utils.ts
-- `BillingPanel()` --calls--> `cn()`  [EXTRACTED]
-  src/components/studio/SettingsModal.tsx → lib/utils.ts
-- `PrivacyPanel()` --calls--> `cn()`  [EXTRACTED]
-  src/components/studio/SettingsModal.tsx → lib/utils.ts
-- `Toggle()` --calls--> `cn()`  [EXTRACTED]
-  src/components/studio/SettingsModal.tsx → lib/utils.ts
 - `GET()` --calls--> `createClient()`  [EXTRACTED]
   app/auth/callback/route.ts → src/lib/supabase/server.ts
+- `ClaudeChatInput()` --calls--> `cn()`  [EXTRACTED]
+  components/ui/claude-style-chat-input.tsx → lib/utils.ts
+- `Textarea` --calls--> `cn()`  [EXTRACTED]
+  components/ui/textarea.tsx → lib/utils.ts
+- `DashboardSidebar()` --calls--> `cn()`  [EXTRACTED]
+  src/components/studio/DashboardSidebar.tsx → lib/utils.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (91 total, 33 thin omitted)
+## Communities (88 total, 33 thin omitted)
 
 ### Community 0 - "src/context/ModalContext.tsx"
-Cohesion: 0.10
-Nodes (18): cairo, ibmPlexMono, inter, metadata, ClosingCtaSection(), Navbar(), NavbarProps, ShimmerButton() (+10 more)
+Cohesion: 0.07
+Nodes (29): AuthModal(), AuthModalProps, ClosingCtaSection(), COST_ROWS, CostTableSection(), Navbar(), NavbarProps, ShimmerButton() (+21 more)
 
 ### Community 2 - "devDependencies"
 Cohesion: 0.07
@@ -108,25 +105,17 @@ Nodes (29): autoprefixer, esbuild, vite, devDependencies, autoprefixer, esbuild,
 Cohesion: 0.07
 Nodes (27): dom, dom.iterable, esnext, .next/dev/types/**/*.ts, next-env.d.ts, .next/types/**/*.ts, node_modules, **/*.ts (+19 more)
 
-### Community 5 - "SettingsModal.tsx"
-Cohesion: 0.10
-Nodes (17): AuthModal(), AuthModalProps, BillingPanel(), IMAGE_MODEL_HINTS, IMAGE_MODELS, INSTRUCTION_SUGGESTIONS, PrivacyPanel(), ProfilePanel() (+9 more)
-
-### Community 6 - "claude-style-chat-input.tsx"
-Cohesion: 0.20
-Nodes (7): AttachedFile, ChatModelOption, ClaudeChatInputProps, ClaudeSendPayload, FilePreviewCard(), formatFileSize(), ModelSelector()
-
-### Community 7 - "cn"
+### Community 7 - "StudioDashboard.tsx"
 Cohesion: 0.08
-Nodes (35): ClaudeChatInput(), Textarea, TextareaProps, cn(), GhostButton(), PanelLabel(), PrimaryButton(), ScrollArea (+27 more)
+Nodes (19): AttachedFile, ChatModelOption, ClaudeChatInput(), ClaudeChatInputProps, ClaudeSendPayload, FilePreviewCard(), formatFileSize(), ModelSelector() (+11 more)
 
 ### Community 9 - "src/components/OriginalLandingPage.tsx"
-Cohesion: 0.21
-Nodes (5): App(), OriginalLandingPage(), VantraLogo(), aiModels, translations
+Cohesion: 0.17
+Nodes (6): App(), HeroCinematicBackground(), HeroCinematicBackgroundProps, OriginalLandingPage(), aiModels, translations
 
 ### Community 10 - "dependencies"
 Cohesion: 0.29
-Nodes (7): ai, @ai-sdk/openai, dependencies, ai, @ai-sdk/openai, react-markdown, react-markdown
+Nodes (7): ai, clsx, dependencies, ai, clsx, react-markdown, react-markdown
 
 ### Community 11 - "HeroEntrance.tsx"
 Cohesion: 0.40
@@ -148,44 +137,40 @@ Nodes (5): VANTRA — SELF WORK RULES (متعهد أنفذها في كل تعد�
 Cohesion: 0.50
 Nodes (3): Graphify Protocol (MANDATORY — never skip), This is NOT the Next.js you know, Work Protocol (from SELF_RULES.md)
 
-### Community 69 - "MediaLibrary.tsx"
-Cohesion: 0.11
-Nodes (23): ImageCanvas(), ASPECT_RATIOS, AspectRatio, GEN_COUNTS, GenCount, IMAGE_MODELS, ImageConfig, ImageConfigPill() (+15 more)
+### Community 69 - "cn"
+Cohesion: 0.07
+Nodes (38): Textarea, TextareaProps, cn(), ImageCanvas(), ASPECT_RATIOS, AspectRatio, GEN_COUNTS, GenCount (+30 more)
 
 ### Community 78 - "transcribe/route.ts"
 Cohesion: 0.40
 Nodes (3): ALLOWED_MIME, dynamic, maxDuration
 
 ### Community 79 - "src/components/HeroSection.tsx"
-Cohesion: 0.07
-Nodes (20): AmbientMotionBackground(), AmbientMotionBackgroundProps, FAQS, FEATURES, HeroCinematicBackground(), HeroCinematicBackgroundProps, containerVariants, floatingCardVariants (+12 more)
+Cohesion: 0.06
+Nodes (22): cairo, ibmPlexMono, inter, metadata, AmbientMotionBackground(), AmbientMotionBackgroundProps, FAQS, FEATURES (+14 more)
 
-### Community 83 - "MessageBubble.tsx"
-Cohesion: 0.48
-Nodes (4): MessageBubble(), MessageBubbleProps, useSmoothText(), detectDir()
-
-### Community 89 - "CostTableSection.tsx"
-Cohesion: 0.18
-Nodes (10): dynamic, maxDuration, POST(), GET(), COST_ROWS, CostTableSection(), getModelCost(), MODEL_PRICES (+2 more)
+### Community 89 - "VideoConfigPopover.tsx"
+Cohesion: 0.11
+Nodes (18): dynamic, maxDuration, POST(), GET(), MotionStudio(), CAMERA_MOTIONS, CameraMotion, DURATIONS (+10 more)
 
 ## Knowledge Gaps
-- **182 isolated node(s):** `dynamic`, `maxDuration`, `Provider`, `ALLOWED_MODELS`, `ALLOWED_RATIOS` (+177 more)
+- **183 isolated node(s):** `dynamic`, `maxDuration`, `Provider`, `ALLOWED_MODELS`, `ALLOWED_RATIOS` (+178 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **33 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `cn()` connect `cn` to `SettingsModal.tsx`, `MediaLibrary.tsx`, `claude-style-chat-input.tsx`?**
-  _High betweenness centrality (0.044) - this node is a cross-community bridge._
-- **Why does `useUser()` connect `SettingsModal.tsx` to `src/context/ModalContext.tsx`, `src/components/OriginalLandingPage.tsx`, `cn`, `src/components/HeroSection.tsx`?**
+- **Why does `cn()` connect `cn` to `src/context/ModalContext.tsx`, `VideoConfigPopover.tsx`, `StudioDashboard.tsx`?**
+  _High betweenness centrality (0.036) - this node is a cross-community bridge._
+- **Why does `dependencies` connect `dependencies` to `framer-motion`, `devDependencies`, `dotenv`, `express`, `@google/genai`, `lucide-react`, `motion`, `next`, `puppeteer-core`, `react`, `react-dom`, `rehype-raw`, `remark-gfm`, `@supabase/ssr`, `@supabase/supabase-js`, `tailwind-merge`, `@tailwindcss/postcss`, `@tailwindcss/typography`, `@tailwindcss/vite`, `@vitejs/plugin-react`, `zod`, `@ai-sdk/openai`, `@ai-sdk/react`?**
   _High betweenness centrality (0.027) - this node is a cross-community bridge._
-- **Why does `dependencies` connect `dependencies` to `framer-motion`, `devDependencies`, `dotenv`, `express`, `@google/genai`, `lucide-react`, `motion`, `next`, `puppeteer-core`, `react`, `react-dom`, `rehype-raw`, `remark-gfm`, `@supabase/ssr`, `@supabase/supabase-js`, `tailwind-merge`, `@tailwindcss/postcss`, `@tailwindcss/typography`, `@tailwindcss/vite`, `@vitejs/plugin-react`, `zod`, `clsx`, `@ai-sdk/react`?**
+- **Why does `useUser()` connect `src/context/ModalContext.tsx` to `src/components/OriginalLandingPage.tsx`, `StudioDashboard.tsx`, `cn`, `src/components/HeroSection.tsx`?**
   _High betweenness centrality (0.026) - this node is a cross-community bridge._
 - **What connects `dynamic`, `maxDuration`, `Provider` to the rest of the system?**
-  _182 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _183 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `src/context/ModalContext.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.10114942528735632 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07358156028368794 - nodes in this community are weakly interconnected._
 - **Should `devDependencies` be split into smaller, more focused modules?**
   _Cohesion score 0.06666666666666667 - nodes in this community are weakly interconnected._
 - **Should `compilerOptions` be split into smaller, more focused modules?**

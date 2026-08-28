@@ -81,7 +81,7 @@ export default function CostTableSection() {
         {/* Section Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-4 max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.035] px-3.5 py-1 text-xs font-medium text-[#E6C27A]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.035] px-3.5 py-1 text-xs font-medium text-[#FFFFFF]">
               <Table className="h-3.5 w-3.5" />
               <span>Transparent Yield Matrix</span>
             </div>
@@ -101,7 +101,7 @@ export default function CostTableSection() {
                 value={filterQuery}
                 onChange={(e) => setFilterQuery(e.target.value)}
                 placeholder="Filter models or providers..."
-                className="w-full rounded-full border border-white/[0.06] bg-[#050506] py-2 pl-10 pr-4 text-xs text-white placeholder-[rgba(245,246,248,0.4)] focus:border-[#E6C27A] focus:outline-none"
+                className="w-full rounded-full border border-white/[0.06] bg-[#050506] py-2 pl-10 pr-4 text-xs text-white placeholder-[rgba(245,246,248,0.4)] focus:border-[#FFFFFF] focus:outline-none"
               />
             </div>
           </div>
@@ -117,7 +117,7 @@ export default function CostTableSection() {
                 <th className="py-4 px-6 font-semibold">Category</th>
                 <th className="py-4 px-6 font-semibold">Point Cost</th>
                 <th className="py-4 px-6 font-semibold">Estimated DZD Cost</th>
-                <th className="py-4 px-6 font-semibold text-[#E6C27A]">Yield per 1,000 DZD</th>
+                <th className="py-4 px-6 font-semibold text-[#FFFFFF]">Yield per 1,000 DZD</th>
                 <th className="py-4 px-6 font-semibold text-right">Action</th>
               </tr>
             </thead>
@@ -129,7 +129,7 @@ export default function CostTableSection() {
                 >
                   <td className="py-4 px-6 font-bold text-white whitespace-nowrap">
                     <div className="flex items-center gap-2">
-                      <Zap className="h-3.5 w-3.5 text-[#E6C27A]" />
+                      <Zap className="h-3.5 w-3.5 text-[#FFFFFF]" />
                       <span>{row.model}</span>
                     </div>
                   </td>
@@ -141,20 +141,20 @@ export default function CostTableSection() {
                   <td className="py-4 px-6 text-[rgba(245,246,248,0.6)] whitespace-nowrap">
                     {row.category}
                   </td>
-                  <td className="py-4 px-6 font-mono font-bold text-[#E6C27A] whitespace-nowrap">
+                  <td className="py-4 px-6 font-mono font-bold text-[#FFFFFF] whitespace-nowrap">
                     {row.ptsCost}
                   </td>
                   <td className="py-4 px-6 font-mono text-[rgba(245,246,248,0.8)] whitespace-nowrap">
                     {row.dzdEquiv}
                   </td>
-                  <td className="py-4 px-6 font-medium text-[#E6C27A] whitespace-nowrap">
+                  <td className="py-4 px-6 font-medium text-[#FFFFFF] whitespace-nowrap">
                     {row.yieldPer1000DZD}
                   </td>
                   <td className="py-4 px-6 text-right whitespace-nowrap">
                     <button
                       type="button"
                       onClick={() => openAuthModal('signup')}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-[#E6C27A] hover:underline"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-[#FFFFFF] hover:underline"
                     >
                       <span>Try Now</span>
                       <ArrowRight className="h-3 w-3" />
@@ -171,7 +171,7 @@ export default function CostTableSection() {
               <div key={idx} className="p-4 space-y-3 hover:bg-white/[0.025] transition duration-150">
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-[#E6C27A]" />
+                    <Sparkles className="h-4 w-4 text-[#FFFFFF]" />
                     <span className="font-bold text-white text-sm">{row.model}</span>
                   </div>
                   <span className="rounded-full bg-white/[0.04] px-2 py-0.5 text-[10px] text-[rgba(245,246,248,0.6)]">
@@ -186,7 +186,7 @@ export default function CostTableSection() {
                 
                 <div className="flex justify-between text-xs">
                   <span className="text-[rgba(245,246,248,0.5)]">Point Cost</span>
-                  <span className="font-mono font-bold text-[#E6C27A]">{row.ptsCost}</span>
+                  <span className="font-mono font-bold text-[#FFFFFF]">{row.ptsCost}</span>
                 </div>
 
                 <div className="flex justify-between text-xs">
@@ -195,15 +195,15 @@ export default function CostTableSection() {
                 </div>
 
                 <div className="flex justify-between text-xs">
-                  <span className="text-[rgba(245,246,248,0.5)] text-[#E6C27A]/70">Yield / 1000 DZD</span>
-                  <span className="font-medium text-[#E6C27A] text-right max-w-[150px]">{row.yieldPer1000DZD}</span>
+                  <span className="text-[rgba(245,246,248,0.5)] text-[#FFFFFF]/70">Yield / 1000 DZD</span>
+                  <span className="font-medium text-[#FFFFFF] text-right max-w-[150px]">{row.yieldPer1000DZD}</span>
                 </div>
 
                 <div className="pt-2 flex justify-end">
                   <button
                     type="button"
                     onClick={() => openAuthModal('signup')}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-[#E6C27A] hover:underline"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-[#FFFFFF] hover:underline"
                   >
                     <span>Try Now</span>
                     <ArrowRight className="h-3 w-3" />

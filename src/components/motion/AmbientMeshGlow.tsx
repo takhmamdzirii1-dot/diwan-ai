@@ -22,7 +22,7 @@ export const AmbientMeshGlow: React.FC<AmbientMeshGlowProps> = ({
       className={`pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#050506] ${className}`}
       style={{ opacity }}
     >
-      {/* Orb 1: Vantra Primary Teal (#E6C27A) */}
+      {/* Orb 1: Vantra Primary Teal (#FFFFFF) */}
       <motion.div
         animate={{
           x: [0, 25, -20, 0],
@@ -34,7 +34,7 @@ export const AmbientMeshGlow: React.FC<AmbientMeshGlowProps> = ({
           repeat: Infinity,
           ease: 'easeInOut',
         }}
-        className="absolute -top-[12%] left-[8%] h-[520px] w-[520px] rounded-full bg-[radial-gradient(circle_at_center,#E6C27A_0%,transparent_70%)] opacity-18 blur-[100px] will-change-transform"
+        className="absolute -top-[12%] left-[8%] h-[520px] w-[520px] rounded-full bg-[radial-gradient(circle_at_center,#FFFFFF_0%,transparent_70%)] opacity-18 blur-[100px] will-change-transform"
       />
 
       {/* Orb 2: Vantra Primary Violet (#6E6BFF) */}

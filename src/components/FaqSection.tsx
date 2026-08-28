@@ -44,7 +44,7 @@ export default function FaqSection() {
       <div className="max-w-4xl mx-auto space-y-14">
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto space-y-4">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.035] px-3.5 py-1 text-xs font-medium text-[#E6C27A]">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.035] px-3.5 py-1 text-xs font-medium text-[#FFFFFF]">
             <HelpCircle className="h-3.5 w-3.5" />
             <span>Got Questions?</span>
           </div>
@@ -74,8 +74,8 @@ export default function FaqSection() {
                     {faq.q}
                   </span>
                   <div
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.04] text-[#E6C27A] transition-transform duration-200 ${
-                      isOpen ? 'rotate-180 bg-[#E6C27A]/10' : ''
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.04] text-[#FFFFFF] transition-transform duration-200 ${
+                      isOpen ? 'rotate-180 bg-[#FFFFFF]/10' : ''
                     }`}
                   >
                     <ChevronDown className="h-4 w-4" />

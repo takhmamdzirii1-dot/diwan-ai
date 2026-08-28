@@ -67,7 +67,7 @@ export default function AmbientMotionBackground({
               height="32"
               patternUnits="userSpaceOnUse"
             >
-              <circle cx="2" cy="2" r="1" fill="#E6C27A" />
+              <circle cx="2" cy="2" r="1" fill="#FFFFFF" />
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#ambient-dots-grid)" />

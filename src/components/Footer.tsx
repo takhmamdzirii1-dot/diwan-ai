@@ -12,7 +12,7 @@ export default function Footer() {
           {/* Col 1: Brand */}
           <div className="space-y-4">
             <a href="#hero" className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#E6C27A] text-[#050506]">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFFFFF] text-[#050506]">
                 <Sparkles className="h-5 w-5" />
               </div>
               <span className="text-xl font-bold tracking-wider text-white font-heading">VANTRA</span>
@@ -45,7 +45,7 @@ export default function Footer() {
             <ul className="space-y-2">
               <li><a href="#faq" className="hover:text-white transition">FAQ</a></li>
               <li className="flex items-center gap-1.5">
-                <Mail className="h-3.5 w-3.5 text-[#E6C27A]" />
+                <Mail className="h-3.5 w-3.5 text-[#FFFFFF]" />
                 <a href="mailto:support@vantra.dz" className="hover:text-white transition">
                   support@vantra.dz
                 </a>
@@ -70,7 +70,7 @@ export default function Footer() {
               </div>
 
               <div className="flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2.5">
-                <Building2 className="h-4 w-4 text-[#E6C27A]" />
+                <Building2 className="h-4 w-4 text-[#FFFFFF]" />
                 <div>
                   <p className="font-semibold text-white text-[11px]">CIB Bank Cards</p>
                   <p className="text-[10px] text-[rgba(245,246,248,0.4)]">SATIM Certified Banks</p>
@@ -78,7 +78,7 @@ export default function Footer() {
               </div>
 
               <div className="flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2.5">
-                <Smartphone className="h-4 w-4 text-[#E6C27A]" />
+                <Smartphone className="h-4 w-4 text-[#FFFFFF]" />
                 <div>
                   <p className="font-semibold text-white text-[11px]">BaridiMob App</p>
                   <p className="text-[10px] text-[rgba(245,246,248,0.4)]">Instant Notification & OTP</p>
@@ -91,8 +91,8 @@ export default function Footer() {
         {/* Footer Bottom Bar */}
         <div className="border-t border-white/[0.06] pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-[rgba(245,246,248,0.45)]">
           <p>© 2026 VANTRA (VANTRA AI Algeria). All rights reserved.</p>
-          <div className="flex items-center gap-2 font-mono text-[#E6C27A]">
-            <span className="h-2 w-2 rounded-full bg-[#E6C27A] animate-pulse" />
+          <div className="flex items-center gap-2 font-mono text-[#FFFFFF]">
+            <span className="h-2 w-2 rounded-full bg-[#FFFFFF] animate-pulse" />
             <span>v2.5.0-dz • Secured via SATIM & Algérie Poste</span>
           </div>
         </div>

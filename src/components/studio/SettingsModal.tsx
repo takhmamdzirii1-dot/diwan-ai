@@ -15,6 +15,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import useUser from '../../hooks/useUser';
 
 type TabId = 'profile' | 'behavior' | 'billing' | 'privacy';
 
@@ -27,6 +28,25 @@ const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
 
 const TEXT_MODELS = ['Nemotron 3 Ultra', 'GLM 5.2', 'Laguna S 2.1', 'MiniMax M3'];
 const IMAGE_MODELS = ['Flux.1 Pro', 'Midjourney v6.1', 'SDXL Turbo'];
+
+const TEXT_MODEL_HINTS: Record<string, string> = {
+  'Nemotron 3 Ultra': 'Best for deep reasoning and long documents',
+  'GLM 5.2': 'Balanced speed and quality for everyday chat',
+  'Laguna S 2.1': 'Tuned for code and technical answers',
+  'MiniMax M3': 'Fastest replies for quick questions',
+};
+
+const IMAGE_MODEL_HINTS: Record<string, string> = {
+  'Flux.1 Pro': 'Best for high-realism generation',
+  'Midjourney v6.1': 'Best for artistic and stylized visuals',
+  'SDXL Turbo': 'Fastest drafts and quick iterations',
+};
+
+const INSTRUCTION_SUGGESTIONS = [
+  'Be concise',
+  'Speak in Arabic',
+  'Professional tone',
+];
 
 /* ── Primitives ─────────────────────────────────────────── */
 
@@ -121,9 +141,14 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 /* ── Panels ─────────────────────────────────────────────── */
 
 function ProfilePanel() {
+  const { user } = useUser();
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [textModel, setTextModel] = useState(TEXT_MODELS[0]);
   const [imageModel, setImageModel] = useState(IMAGE_MODELS[0]);
+
+  const fullName =
+    user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Guest';
+  const email = user?.email || 'Not signed in';
 
   return (
     <div className="space-y-6">
@@ -132,6 +157,23 @@ function ProfilePanel() {
         <p className="text-[12.5px] text-white/40 mt-1">
           Appearance and defaults across your workspace.
         </p>
+      </div>
+
+      {/* User profile card */}
+      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 flex items-center gap-4">
+        <div className="h-12 w-12 shrink-0 rounded-2xl bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center font-bold text-white text-[16px]">
+          {fullName[0].toUpperCase()}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[14px] font-semibold text-white/95 truncate">{fullName}</p>
+          <p className="text-[12px] text-white/40 truncate">{email}</p>
+        </div>
+        <button
+          type="button"
+          className="shrink-0 h-8 px-3.5 rounded-lg border border-white/10 text-[12px] font-medium text-white/70 hover:text-white hover:bg-white/5 transition-colors cursor-pointer active:scale-[0.98]"
+        >
+          Edit
+        </button>
       </div>
 
       <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-5">
@@ -143,9 +185,11 @@ function ProfilePanel() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field label="Default Text Model">
           <Select value={textModel} onChange={setTextModel} options={TEXT_MODELS} label="Default text model" />
+          <p className="text-[11px] text-white/40 mt-1.5">{TEXT_MODEL_HINTS[textModel]}</p>
         </Field>
         <Field label="Default Image Model">
           <Select value={imageModel} onChange={setImageModel} options={IMAGE_MODELS} label="Default image model" />
+          <p className="text-[11px] text-white/40 mt-1.5">{IMAGE_MODEL_HINTS[imageModel]}</p>
         </Field>
       </div>
     </div>
@@ -155,6 +199,16 @@ function ProfilePanel() {
 function BehaviorPanel() {
   const [instructions, setInstructions] = useState('');
   const [tts, setTts] = useState(false);
+
+  const appendSuggestion = (text: string) => {
+    setInstructions((prev) => {
+      const trimmed = prev.trim();
+      if (!trimmed) return text + '.';
+      if (trimmed.toLowerCase().includes(text.toLowerCase())) return prev;
+      const sep = /[.!?]$/.test(trimmed) ? ' ' : '. ';
+      return trimmed + sep + text + '.';
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -172,8 +226,24 @@ function BehaviorPanel() {
           placeholder="How should the AI respond? e.g. 'Always answer in Algerian Darja, be concise, show code examples.'"
           dir="auto"
           rows={5}
-          className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13.5px] text-white placeholder:text-white/25 outline-none resize-none leading-relaxed focus:border-white/30 transition-colors custom-scrollbar-thin"
+          maxLength={2000}
+          className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13.5px] text-white placeholder:text-white/25 outline-none resize-none leading-relaxed focus:border-white/30 transition-colors [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         />
+
+        {/* Suggestion pills */}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          {INSTRUCTION_SUGGESTIONS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => appendSuggestion(s)}
+              className="border border-white/10 hover:bg-white/5 rounded-full px-2 py-1 text-xs text-white/60 hover:text-white/90 transition-colors cursor-pointer active:scale-[0.97]"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+
         <p className="text-[11px] text-white/30 text-end">{instructions.length} / 2000</p>
       </Field>
 

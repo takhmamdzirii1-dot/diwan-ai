@@ -450,9 +450,9 @@
     "semantic_hash": "164de18814477ba440938a787d5cb5a8"
   },
   "src/components/studio/DashboardSidebar.tsx": {
-    "mtime": 1787851371.7199564,
-    "seen": 1787860084.6678836,
-    "ast_hash": "42384c442459995310407079382fde3e",
+    "mtime": 1787811466.1675029,
+    "seen": 1787811983.3210998,
+    "ast_hash": "6395fbf0ba2c3923c6f4ecd4da107a7b",
     "semantic_hash": ""
   },
   "src/components/studio/MessageBubble.tsx": {
@@ -462,9 +462,9 @@
     "semantic_hash": ""
   },
   "src/components/studio/StudioDashboard.tsx": {
-    "mtime": 1787858570.6880429,
-    "seen": 1787860084.6678984,
-    "ast_hash": "901cbda5c32c1a0fe33ce9828220bdf7",
+    "mtime": 1787811544.8946798,
+    "seen": 1787811983.3211224,
+    "ast_hash": "51363e82df9529fb712602162ad34791",
     "semantic_hash": ""
   },
   "src/components/studio/StudioWorkspace.tsx": {
@@ -759,12 +759,6 @@
     "mtime": 1787814251.0141885,
     "seen": 1787814403.3448315,
     "ast_hash": "b3bc521482ffaa0ff0411c802f7d15e1",
-    "semantic_hash": ""
-  },
-  "src/components/studio/AppShell.tsx": {
-    "mtime": 1787853926.6566737,
-    "seen": 1787860084.6678798,
-    "ast_hash": "db806129f593aae156fb0e73f9668ea9",
     "semantic_hash": ""
   }
 }

@@ -1,0 +1,25 @@
+﻿import puppeteer from 'puppeteer-core';
+const b = await puppeteer.launch({ executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: 'new', args: ['--no-sandbox'] });
+const p = await b.newPage();
+await p.setViewport({ width: 1500, height: 950 });
+await p.goto('http://localhost:3000/studio', { waitUntil: 'networkidle2', timeout: 60000 });
+await new Promise(r => setTimeout(r, 2200));
+const out = {};
+out.sidebarLabel = await p.evaluate(() => { const b=[...document.querySelectorAll('aside button')].find(x=>x.textContent.trim()==='Library'); return b? b.textContent.trim():null; });
+await p.evaluate(() => [...document.querySelectorAll('aside button')].find(x=>x.textContent.trim()==='Library')?.click());
+await new Promise(r => setTimeout(r, 1100));
+out.title = await p.evaluate(() => document.querySelector('h2')?.textContent.trim());
+out.filters = await p.evaluate(() => [...document.querySelectorAll('button[aria-pressed]')].map(b=>b.textContent.trim()));
+out.cardsAll = await p.evaluate(() => document.querySelectorAll('img[alt]').length);
+out.playIcons = await p.evaluate(() => document.querySelectorAll('svg.lucide-play').length);
+out.durations = await p.evaluate(() => [...document.querySelectorAll('span')].map(s=>s.textContent.trim()).filter(t=>/^\d{2}:\d{2}$/.test(t)));
+// filter -> Videos
+await p.evaluate(() => [...document.querySelectorAll('button[aria-pressed]')].find(b=>b.textContent.trim()==='Videos')?.click());
+await new Promise(r => setTimeout(r, 900));
+out.cardsVideosOnly = await p.evaluate(() => document.querySelectorAll('img[alt]').length);
+await p.evaluate(() => [...document.querySelectorAll('button[aria-pressed]')].find(b=>b.textContent.trim()==='Images')?.click());
+await new Promise(r => setTimeout(r, 900));
+out.cardsImagesOnly = await p.evaluate(() => document.querySelectorAll('img[alt]').length);
+console.log(JSON.stringify(out, null, 2));
+await p.screenshot({ path: 'C:/Users/VENOM/AppData/Local/Temp/opencode/media-library.png' });
+await b.close();

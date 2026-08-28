@@ -82,13 +82,13 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
             <motion.div variants={itemVariants} className="inline-flex items-center">
               <div className="group relative flex items-center gap-2.5 rounded-full border border-white/[0.06] bg-white/[0.035] px-4 py-1.5 backdrop-blur-xl transition-all duration-[250ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-white/[0.12]">
                 <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E6C27A] opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#E6C27A]" />
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FFFFFF] opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#FFFFFF]" />
                 </span>
                 <span className="text-xs md:text-sm font-medium text-[#F5F6F8]">
                   100% Algerian Platform — Pay directly in DZD
                 </span>
-                <Sparkles className="h-3.5 w-3.5 text-[#E6C27A]" />
+                <Sparkles className="h-3.5 w-3.5 text-[#FFFFFF]" />
               </div>
             </motion.div>
 
@@ -98,7 +98,7 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
               className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-[#F5F6F8] leading-[1.15]"
             >
               One unified gateway for all AI models,{' '}
-              <span className="bg-gradient-to-r from-[#E6C27A] via-[#8583FF] to-[#E6C27A] bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#FFFFFF] via-[#8583FF] to-[#FFFFFF] bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent">
                 and pay in Algerian Dinar.
               </span>
             </motion.h1>
@@ -110,7 +110,7 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
             >
               No need for international cards or multiple subscriptions. VANTRA unifies the world's
               most powerful chat, image, and video generation models in a single credit balance via
-              <strong className="text-[#E6C27A] font-medium"> EDAHABIA & CIB</strong>.
+              <strong className="text-[#FFFFFF] font-medium"> EDAHABIA & CIB</strong>.
             </motion.p>
 
             {/* 4. CTA Button Group */}
@@ -130,7 +130,7 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
                 href="#cost-table"
                 className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.035] px-6 py-3 text-sm font-medium text-[#F5F6F8] backdrop-blur-xl transition-all duration-[250ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-white/[0.065] hover:border-white/[0.12]"
               >
-                <Layers className="h-4 w-4 text-[#E6C27A]" />
+                <Layers className="h-4 w-4 text-[#FFFFFF]" />
                 <span>Explore Cost Table</span>
                 <ArrowRight className="h-4 w-4 text-[rgba(245,246,248,0.4)]" />
               </motion.a>
@@ -144,7 +144,7 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
                 transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
                 className="flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.035] px-4 py-2 backdrop-blur-xl"
               >
-                <MessageSquare className="h-3.5 w-3.5 text-[#E6C27A]" />
+                <MessageSquare className="h-3.5 w-3.5 text-[#FFFFFF]" />
                 <span className="text-xs font-medium text-[#F5F6F8]">Claude 3.5 Sonnet</span>
               </motion.div>
 
@@ -154,7 +154,7 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
                 transition={{ duration: 4.6, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
                 className="flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.035] px-4 py-2 backdrop-blur-xl"
               >
-                <ImageIcon className="h-3.5 w-3.5 text-[#E6C27A]" />
+                <ImageIcon className="h-3.5 w-3.5 text-[#FFFFFF]" />
                 <span className="text-xs font-medium text-[#F5F6F8]">Flux.1 Pro</span>
               </motion.div>
 
@@ -164,7 +164,7 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
                 transition={{ duration: 5.2, repeat: Infinity, ease: 'easeInOut', delay: 1.2 }}
                 className="flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.035] px-4 py-2 backdrop-blur-xl"
               >
-                <Video className="h-3.5 w-3.5 text-[#E6C27A]" />
+                <Video className="h-3.5 w-3.5 text-[#FFFFFF]" />
                 <span className="text-xs font-medium text-[#F5F6F8]">Kling AI 1.5 HD</span>
               </motion.div>
             </motion.div>
@@ -175,15 +175,15 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
               className="flex flex-wrap items-center gap-y-2 gap-x-6 pt-3 text-xs text-[rgba(245,246,248,0.6)]"
             >
               <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5 text-[#E6C27A]" />
+                <CheckCircle2 className="h-3.5 w-3.5 text-[#FFFFFF]" />
                 <span>Edahabia & CIB Accepted</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <ShieldCheck className="h-3.5 w-3.5 text-[#E6C27A]" />
+                <ShieldCheck className="h-3.5 w-3.5 text-[#FFFFFF]" />
                 <span>Non-expiring Credit Points</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <Zap className="h-3.5 w-3.5 text-[#E6C27A]" />
+                <Zap className="h-3.5 w-3.5 text-[#FFFFFF]" />
                 <span>Zero Monthly Commitment</span>
               </div>
             </motion.div>
@@ -198,7 +198,7 @@ export default function HeroSection({ onOpenAuth }: HeroSectionProps) {
                 <div className="text-xs text-[rgba(245,246,248,0.6)]">Global Models</div>
               </div>
               <div>
-                <div className="text-2xl sm:text-3xl font-bold text-[#E6C27A] font-mono">100%</div>
+                <div className="text-2xl sm:text-3xl font-bold text-[#FFFFFF] font-mono">100%</div>
                 <div className="text-xs text-[rgba(245,246,248,0.6)]">Local Payment (DZD)</div>
               </div>
               <div>

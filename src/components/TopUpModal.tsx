@@ -116,12 +116,12 @@ export default function TopUpModal({
             className="relative w-full max-w-[440px] overflow-hidden rounded-3xl border border-white/10 bg-[#212326] p-6 sm:p-8 space-y-6 shadow-[0_20px_70px_rgba(0,0,0,0.85)] z-10 my-auto"
           >
             {/* Top Accent Beam */}
-            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#E6C27A] to-transparent opacity-80" />
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#FFFFFF] to-transparent opacity-80" />
 
             {/* Header */}
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3.5">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#E6C27A]/15 border border-[#E6C27A]/30 text-[#E6C27A] shadow-[0_0_20px_rgba(230,194,122,0.15)]">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#FFFFFF]/15 border border-[#FFFFFF]/30 text-[#FFFFFF] shadow-[0_0_20px_rgba(255,255,255,0.15)]">
                   <Wallet className="h-5 w-5" />
                 </div>
                 <div className="space-y-0.5">
@@ -157,13 +157,13 @@ export default function TopUpModal({
                     onClick={() => setPaymentMethod('edahabia')}
                     className={`flex items-center gap-3 rounded-2xl p-3.5 border transition-all text-left cursor-pointer ${
                       paymentMethod === 'edahabia'
-                        ? 'border-[#E6C27A] bg-[#E6C27A]/10 shadow-[0_0_15px_rgba(230,194,122,0.15)]'
+                        ? 'border-[#FFFFFF] bg-[#FFFFFF]/10 shadow-[0_0_15px_rgba(255,255,255,0.15)]'
                         : 'border-white/10 bg-[#1A1C1F] hover:bg-white/[0.04]'
                     }`}
                   >
                     <CreditCard
                       className={`h-5 w-5 ${
-                        paymentMethod === 'edahabia' ? 'text-[#E6C27A]' : 'text-white/60'
+                        paymentMethod === 'edahabia' ? 'text-[#FFFFFF]' : 'text-white/60'
                       }`}
                     />
                     <div>
@@ -177,13 +177,13 @@ export default function TopUpModal({
                     onClick={() => setPaymentMethod('cib')}
                     className={`flex items-center gap-3 rounded-2xl p-3.5 border transition-all text-left cursor-pointer ${
                       paymentMethod === 'cib'
-                        ? 'border-[#E6C27A] bg-[#E6C27A]/10 shadow-[0_0_15px_rgba(230,194,122,0.15)]'
+                        ? 'border-[#FFFFFF] bg-[#FFFFFF]/10 shadow-[0_0_15px_rgba(255,255,255,0.15)]'
                         : 'border-white/10 bg-[#1A1C1F] hover:bg-white/[0.04]'
                     }`}
                   >
                     <Building2
                       className={`h-5 w-5 ${
-                        paymentMethod === 'cib' ? 'text-[#E6C27A]' : 'text-white/60'
+                        paymentMethod === 'cib' ? 'text-[#FFFFFF]' : 'text-white/60'
                       }`}
                     />
                     <div>
@@ -202,7 +202,7 @@ export default function TopUpModal({
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-white/60">Points Credited:</span>
-                  <span className="font-mono font-bold text-[#E6C27A]">+{plan.points}</span>
+                  <span className="font-mono font-bold text-[#FFFFFF]">+{plan.points}</span>
                 </div>
                 <div className="border-t border-white/10 pt-2.5 flex items-center justify-between">
                   <span className="text-xs font-semibold text-white">Total Amount:</span>
@@ -224,7 +224,7 @@ export default function TopUpModal({
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="06 XX XX XX XX"
-                      className="w-full h-12 rounded-2xl border border-white/10 bg-[#1A1C1F] pl-12 pr-4 text-sm font-mono text-white placeholder-white/30 outline-none transition-all duration-200 focus:border-[#E6C27A] focus:ring-1 focus:ring-[#E6C27A]"
+                      className="w-full h-12 rounded-2xl border border-white/10 bg-[#1A1C1F] pl-12 pr-4 text-sm font-mono text-white placeholder-white/30 outline-none transition-all duration-200 focus:border-[#FFFFFF] focus:ring-1 focus:ring-[#FFFFFF]"
                       style={{ paddingLeft: '48px' }}
                     />
                   </div>
@@ -234,7 +234,7 @@ export default function TopUpModal({
                 <button
                   type="submit"
                   disabled={loading || success}
-                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#E6C27A] h-12 text-sm font-bold text-[#050506] shadow-[0_4px_20px_rgba(230,194,122,0.35)] transition-all duration-200 hover:bg-[#f0dcab] disabled:opacity-60 cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#FFFFFF] h-12 text-sm font-bold text-[#050506] shadow-[0_4px_20px_rgba(255,255,255,0.35)] transition-all duration-200 hover:bg-[#E5E7EB] disabled:opacity-60 cursor-pointer"
                 >
                   {loading ? (
                     <Loader2 className="h-5 w-5 animate-spin text-[#050506]" />
@@ -256,11 +256,11 @@ export default function TopUpModal({
               {/* Trust Badges */}
               <div className="flex items-center justify-between text-[11px] text-white/50 border-t border-white/10 pt-3">
                 <div className="flex items-center gap-1.5">
-                  <ShieldCheck className="h-4 w-4 text-[#E6C27A]" />
+                  <ShieldCheck className="h-4 w-4 text-[#FFFFFF]" />
                   <span>SATIM 256-bit Encrypted</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4 text-[#E6C27A]" />
+                  <CheckCircle2 className="h-4 w-4 text-[#FFFFFF]" />
                   <span>Instant Delivery</span>
                 </div>
               </div>
