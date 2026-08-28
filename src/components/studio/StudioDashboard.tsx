@@ -385,7 +385,7 @@ export default function StudioDashboard() {
                                 marginBottom: 0,
                                 transition: { duration: 0.35, ease: [0.23, 1, 0.32, 1] }
                               }}
-                              className="max-w-3xl mx-auto w-full flex flex-col items-center text-center overflow-hidden"
+                              className="w-full flex flex-col items-center text-center overflow-hidden"
                             >
                               {/* 1st (Top): Headline */}
                               <motion.h2
@@ -513,21 +513,9 @@ export default function StudioDashboard() {
                   </AnimatePresence>
                 </div>
 
-                {/* 3rd (Bottom): Persistent Unified Animated Composer */}
-                <motion.div
-                  layout
-                  transition={{ layout: { duration: 0.45, ease: [0.23, 1, 0.32, 1] } }}
-                  className={cn(
-                    'w-full z-30 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]',
-                    isEmpty
-                      ? 'relative pb-10 max-w-3xl mx-auto px-6'
-                      : 'fixed bottom-0 left-0 right-0 lg:left-64 pointer-events-none flex justify-center bg-gradient-to-t from-background via-background/90 to-transparent pt-4 pb-6'
-                  )}
-                >
-                  <div className={cn(
-                    'w-full transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] pointer-events-auto',
-                    isEmpty ? 'max-w-3xl mx-auto' : 'max-w-4xl px-6'
-                  )}>
+                {/* 3rd (Bottom): Docked Composer matching EXACT timeline bounding box */}
+                <div className="sticky bottom-0 shrink-0 z-30 w-full bg-[#0A0A0B] pb-6 pt-2">
+                  <div className="mx-auto w-full max-w-4xl px-6">
                     <ClaudeChatInput
                       onSendMessage={handleSend}
                       models={MODELS.map((m) => ({
@@ -547,7 +535,7 @@ export default function StudioDashboard() {
                       onSignInClick={user ? undefined : () => openAuthModal('signin')}
                     />
                   </div>
-                </motion.div>
+                </div>
               </motion.div>
             )}
 
