@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-import { Copy, Check, Terminal, Share, RefreshCw, Sparkles } from 'lucide-react';
+import { Copy, Check, Terminal, Share, RefreshCw, Sparkles, Image as ImageIcon, FileText } from 'lucide-react';
 import type { Message } from '@ai-sdk/react';
 import { useSmoothText } from '../../hooks/useSmoothText';
 import { detectDir } from '../../lib/direction';
@@ -26,6 +26,40 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
 
   const isUser = message.role === 'user';
   const isRTL = detectDir(message.content) === 'rtl';
+
+  // Visual Attachment Rendering parser for user messages
+  const attachmentRegex = /\[Attachment:\s*([^\]]+)\]/g;
+  const pastedTextRegex = /\[Pasted text\]\n?/g;
+  
+  const rawAttachments = isUser ? Array.from(message.content.matchAll(attachmentRegex)).map(m => m[1].trim()) : [];
+  const expAttachments = isUser ? (((message as any).experimental_attachments || []) as Array<{ name?: string; url?: string; contentType?: string }>) : [];
+  
+  const cleanContent = isUser 
+    ? message.content.replace(attachmentRegex, '').replace(pastedTextRegex, '').trim()
+    : message.content;
+
+  const userImageAttachments: Array<{ name: string; url?: string }> = [];
+  const userOtherAttachments: Array<{ name: string; url?: string }> = [];
+
+  expAttachments.forEach(att => {
+    const isImg = att.contentType?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg|avif)$/i.test(att.name || '');
+    if (isImg) {
+      userImageAttachments.push({ name: att.name || 'image', url: att.url });
+    } else {
+      userOtherAttachments.push({ name: att.name || 'file', url: att.url });
+    }
+  });
+
+  rawAttachments.forEach(name => {
+    if (!userImageAttachments.some(a => a.name === name) && !userOtherAttachments.some(a => a.name === name)) {
+      const isImg = /\.(jpg|jpeg|png|gif|webp|svg|avif)$/i.test(name);
+      if (isImg) {
+        userImageAttachments.push({ name });
+      } else {
+        userOtherAttachments.push({ name });
+      }
+    }
+  });
 
   // Fluid typewriter reveal while the assistant is streaming
   const smoothActive = !isUser && isStreaming && isLatest;
@@ -83,15 +117,55 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
       )}
 
       {/* Bubble / Panel */}
-      <div className={`flex w-full ${isUser ? (isRTL ? 'justify-start' : 'justify-end') : 'justify-start'}`}>
+      <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
         {isUser ? (
           <div
-            className="bg-[#1A1C20] text-white px-4 py-2.5 rounded-2xl rounded-tr-sm w-fit max-w-[85%] border border-white/5"
+            className="ml-auto self-end bg-[#1A1C20] text-white px-4 py-2.5 rounded-2xl rounded-tr-sm w-fit max-w-[85%] flex flex-col gap-3 border border-white/5"
             dir={isRTL ? 'rtl' : 'ltr'}
           >
-            <p className="text-[14.5px] sm:text-[15px] text-white/90 font-normal font-sans antialiased leading-relaxed whitespace-pre-wrap break-words">
-              {message.content}
-            </p>
+            {/* Visual Attachment Rendering */}
+            {(userImageAttachments.length > 0 || userOtherAttachments.length > 0) && (
+              <div className="flex flex-row flex-wrap gap-2 w-full">
+                {userImageAttachments.map((img, idx) => (
+                  <div key={idx} className="relative overflow-hidden rounded-lg">
+                    {img.url ? (
+                      <img
+                        src={img.url}
+                        alt={img.name}
+                        className="h-24 w-auto rounded-lg object-cover border border-white/10"
+                      />
+                    ) : (
+                      <div className="h-24 px-3.5 flex flex-col items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] text-white/80">
+                        <ImageIcon className="w-5 h-5 text-white/60" />
+                        <span className="text-[11px] font-mono text-white/60 truncate max-w-[120px]">{img.name}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {userOtherAttachments.map((doc, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/[0.04] text-xs text-white/80"
+                  >
+                    <FileText className="w-4 h-4 text-white/60 shrink-0" />
+                    <span className="truncate max-w-[160px] font-medium">{doc.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Text Content */}
+            {cleanContent && (
+              <p
+                dir={isRTL ? 'rtl' : 'ltr'}
+                className={cn(
+                  "text-[14.5px] sm:text-[15px] text-white/90 font-normal font-sans antialiased leading-relaxed whitespace-pre-wrap break-words",
+                  isRTL ? "text-right" : "text-left"
+                )}
+              >
+                {cleanContent}
+              </p>
+            )}
           </div>
         ) : (
           <div

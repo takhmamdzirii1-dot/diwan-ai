@@ -264,7 +264,7 @@ export default function StudioDashboard() {
   }, [activeSessionId, scrollToBottom]);
 
   const handleSend = useCallback(
-    async (data: { message: string; isThinkingEnabled: boolean }) => {
+    async (data: { message: string; isThinkingEnabled: boolean; files?: Array<{ file: File; preview?: string | null; type: string }> }) => {
       if (!user && !activeModel.isFree) {
         openAuthModal('signin');
         return;
@@ -273,6 +273,13 @@ export default function StudioDashboard() {
       if (data.isThinkingEnabled) {
         content = `Think through this step-by-step with careful reasoning before answering.\n\n${content}`;
       }
+
+      // Convert attachments for experimental_attachments
+      const attachments = (data.files || []).map((f) => ({
+        name: f.file?.name || 'attachment',
+        contentType: f.type,
+        url: f.preview || '',
+      }));
 
       // Lazy session creation: the record is materialised only on the first prompt
       const derivedTitle = (() => {
@@ -298,7 +305,11 @@ export default function StudioDashboard() {
       }
       sendStartRef.current = performance.now();
       await append(
-        { role: 'user', content },
+        {
+          role: 'user',
+          content,
+          experimental_attachments: attachments.length > 0 ? (attachments as any) : undefined,
+        },
         {
           body: {
             model: selectedModelId,
