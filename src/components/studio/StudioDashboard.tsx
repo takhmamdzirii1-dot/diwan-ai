@@ -513,8 +513,8 @@ export default function StudioDashboard() {
                   </AnimatePresence>
                 </div>
 
-                {/* 3rd (Bottom): Docked Composer matching EXACT timeline bounding box */}
-                <div className="sticky bottom-0 shrink-0 z-30 w-full bg-[#0A0A0B] pb-6 pt-2">
+                {/* 3rd (Bottom): Seamless Sticky Composer matching EXACT timeline bounding box */}
+                <div className="sticky bottom-0 w-full bg-gradient-to-t from-[#0A0A0B] via-[#0A0A0B] to-transparent pt-6 pb-6 z-20">
                   <div className="mx-auto w-full max-w-4xl px-6">
                     <ClaudeChatInput
                       onSendMessage={handleSend}
