@@ -1,14 +1,33 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
-import { Palette, Sparkles, Wand2, Maximize2, Download, Loader2 } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Palette, Sparkles, Wand2, Maximize2, Download, Loader2, Check } from 'lucide-react';
 
 export default function ImageCanvas() {
   const [prompt, setPrompt] = useState('');
   const [status, setStatus] = useState<'idle' | 'generating' | 'result'>('idle');
   const [progress, setProgress] = useState(0);
+  
+  // Dropdown states
+  const [activeDropdown, setActiveDropdown] = useState<null | 'model' | 'ratio'>(null);
+  const [selectedModel, setSelectedModel] = useState('Flux.1 Pro');
+  const [selectedRatio, setSelectedRatio] = useState('1:1');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Handle click outside to close dropdowns
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setActiveDropdown(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleGenerate = () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -140,26 +159,94 @@ export default function ImageCanvas() {
             </div>
 
             {/* Toolbar Footer */}
-            <div className="flex items-center justify-between border-t border-white/[0.05] px-4 py-3">
+            <div className="flex items-center justify-between border-t border-white/[0.05] px-4 py-3 relative" ref={dropdownRef}>
               <div className="flex items-center gap-2">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  accept="image/*"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      alert(`Mock upload: ${e.target.files[0].name}`);
+                    }
+                  }}
+                />
                 <button
                   type="button"
+                  onClick={() => fileInputRef.current?.click()}
                   className="h-8 px-3 rounded-lg text-xs bg-white/[0.04] border border-white/[0.05] text-white/70 hover:bg-white/[0.08] cursor-pointer active:scale-95 transition-transform"
                 >
                   + Ref
                 </button>
-                <button
-                  type="button"
-                  className="h-8 px-3 rounded-lg text-xs bg-white/[0.04] border border-white/[0.05] text-white/70 hover:bg-white/[0.08] cursor-pointer active:scale-95 transition-transform"
-                >
-                  Flux.1 Pro ▾
-                </button>
-                <button
-                  type="button"
-                  className="h-8 px-3 rounded-lg text-xs bg-white/[0.04] border border-white/[0.05] text-white/70 hover:bg-white/[0.08] cursor-pointer active:scale-95 transition-transform"
-                >
-                  1:1 ▾
-                </button>
+                
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setActiveDropdown(activeDropdown === 'model' ? null : 'model')}
+                    className={`h-8 px-3 rounded-lg text-xs border cursor-pointer active:scale-95 transition-all ${
+                      activeDropdown === 'model' 
+                        ? 'bg-white/[0.1] border-white/[0.1] text-white' 
+                        : 'bg-white/[0.04] border-white/[0.05] text-white/70 hover:bg-white/[0.08]'
+                    }`}
+                  >
+                    {selectedModel} ▾
+                  </button>
+                  
+                  {activeDropdown === 'model' && (
+                    <div className="absolute bottom-full left-0 mb-2 w-56 rounded-xl border border-white/[0.08] bg-[#111216]/95 backdrop-blur-xl shadow-2xl p-2 z-50">
+                      {['Flux.1 Pro', 'SDXL Turbo', 'Midjourney v6'].map((model) => (
+                        <div 
+                          key={model}
+                          onClick={() => {
+                            setSelectedModel(model);
+                            setActiveDropdown(null);
+                          }}
+                          className="hover:bg-white/[0.05] p-2.5 rounded-lg cursor-pointer text-xs text-white/80 flex items-center justify-between group transition-colors"
+                        >
+                          <span className={selectedModel === model ? 'text-white font-medium' : ''}>{model}</span>
+                          {selectedModel === model && <Check className="size-3.5 text-white/70" />}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setActiveDropdown(activeDropdown === 'ratio' ? null : 'ratio')}
+                    className={`h-8 px-3 rounded-lg text-xs border cursor-pointer active:scale-95 transition-all ${
+                      activeDropdown === 'ratio' 
+                        ? 'bg-white/[0.1] border-white/[0.1] text-white' 
+                        : 'bg-white/[0.04] border-white/[0.05] text-white/70 hover:bg-white/[0.08]'
+                    }`}
+                  >
+                    {selectedRatio} ▾
+                  </button>
+                  
+                  {activeDropdown === 'ratio' && (
+                    <div className="absolute bottom-full left-0 mb-2 w-48 rounded-xl border border-white/[0.08] bg-[#111216]/95 backdrop-blur-xl shadow-2xl p-2 z-50">
+                      {[
+                        { id: '1:1', label: '1:1 (Square)' },
+                        { id: '16:9', label: '16:9 (Landscape)' },
+                        { id: '9:16', label: '9:16 (Portrait)' },
+                      ].map((ratio) => (
+                        <div 
+                          key={ratio.id}
+                          onClick={() => {
+                            setSelectedRatio(ratio.id);
+                            setActiveDropdown(null);
+                          }}
+                          className="hover:bg-white/[0.05] p-2.5 rounded-lg cursor-pointer text-xs text-white/80 flex items-center justify-between group transition-colors"
+                        >
+                          <span className={selectedRatio === ratio.id ? 'text-white font-medium' : ''}>{ratio.label}</span>
+                          {selectedRatio === ratio.id && <Check className="size-3.5 text-white/70" />}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {status === 'generating' ? (
