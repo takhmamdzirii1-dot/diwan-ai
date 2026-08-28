@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles,
-  Loader2,
   Plus,
   ChevronDown,
   Check,
@@ -13,6 +12,9 @@ import {
   X,
   Layers,
   Ratio,
+  Maximize2,
+  Shuffle,
+  ImagePlus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -29,6 +31,7 @@ import {
 export default function ImageCanvas() {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [genError, setGenError] = useState<string | null>(null);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
@@ -46,10 +49,27 @@ export default function ImageCanvas() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
   const ratioMenuRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     setGeneratedImages(readImageLibrary());
   }, []);
+
+  useEffect(() => {
+    if (!isGenerating) {
+      setProgress(0);
+      return;
+    }
+    setProgress(18);
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 94) return prev;
+        const step = Math.floor(Math.random() * 14) + 6;
+        return Math.min(prev + step, 94);
+      });
+    }, 450);
+    return () => clearInterval(interval);
+  }, [isGenerating]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -89,16 +109,27 @@ export default function ImageCanvas() {
     e.target.value = '';
   };
 
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    setIsGenerating(false);
+    setProgress(0);
+  };
+
   const handleGenerate = async () => {
     if (!prompt.trim() || isGenerating) return;
 
     const usedPrompt = prompt.trim();
     setIsGenerating(true);
     setGenError(null);
+    abortControllerRef.current = new AbortController();
+
     try {
       const res = await fetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: abortControllerRef.current.signal,
         body: JSON.stringify({
           prompt: usedPrompt,
           model: config.model,
@@ -121,8 +152,11 @@ export default function ImageCanvas() {
 
       setGeneratedImages((prev) => [...fresh, ...prev]);
       appendToImageLibrary(fresh);
+      setProgress(100);
     } catch (err) {
-      setGenError(err instanceof Error ? err.message : 'Generation failed');
+      if ((err as Error).name !== 'AbortError') {
+        setGenError(err instanceof Error ? err.message : 'Generation failed');
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -158,41 +192,73 @@ export default function ImageCanvas() {
   return (
     <div className="absolute inset-0 flex flex-col bg-[#0A0A0B] overflow-hidden">
       <div className="relative flex flex-1 items-center justify-center overflow-hidden p-6">
-        <div className="relative flex flex-col items-center justify-center aspect-square w-full max-w-[min(60vh,680px)] rounded-xl border border-white/[0.06] bg-white/[0.015] shadow-2xl overflow-hidden">
-          {latestImage ? (
-            <div className="relative w-full h-full group flex items-center justify-center bg-black/40">
+        <div className="relative flex flex-col items-center justify-center aspect-square w-full max-w-[min(60vh,680px)] rounded-xl border border-white/[0.06] bg-white/[0.015] shadow-2xl overflow-hidden group">
+          {latestImage && !isGenerating ? (
+            <div className="relative w-full h-full flex items-center justify-center bg-black/40">
               <img
                 src={latestImage.url}
                 alt={latestImage.prompt || 'Generated canvas visual'}
                 className="w-full h-full object-contain"
               />
 
-              <div className="absolute top-3.5 right-3.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1.5 p-1.5 rounded-lg bg-black/70 backdrop-blur-md border border-white/10 shadow-lg">
+              <div className="absolute top-3.5 right-3.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1.5 p-1.5 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 shadow-2xl z-20">
                 <button
                   type="button"
                   onClick={handleDownload}
                   title="Download Image"
-                  className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  className="size-8 rounded-lg bg-black/50 backdrop-blur-md border border-white/10 hover:bg-black/70 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95"
                 >
                   <Download className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
+                  onClick={handleGenerate}
+                  title="Upscale"
+                  className="size-8 rounded-lg bg-black/50 backdrop-blur-md border border-white/10 hover:bg-black/70 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95"
+                >
+                  <Maximize2 className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  title="Make Variant"
+                  className="size-8 rounded-lg bg-black/50 backdrop-blur-md border border-white/10 hover:bg-black/70 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95"
+                >
+                  <Shuffle className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (latestImage) {
+                      setReferenceImage({ url: latestImage.url, name: 'Canvas-Output.jpg' });
+                    }
+                  }}
+                  title="Use as Ref"
+                  className="size-8 rounded-lg bg-black/50 backdrop-blur-md border border-white/10 hover:bg-black/70 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95"
+                >
+                  <ImagePlus className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
                   onClick={handleCopyPrompt}
                   title="Copy Prompt"
-                  className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  className="size-8 rounded-lg bg-black/50 backdrop-blur-md border border-white/10 hover:bg-black/70 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95"
                 >
-                  {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                  {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                 </button>
               </div>
             </div>
           ) : isGenerating ? (
-            <div className="flex flex-col items-center justify-center p-6 text-center">
-              <Loader2 className="h-8 w-8 text-white/70 animate-spin mb-3" />
-              <p className="text-sm font-medium text-white/80">Synthesizing image...</p>
-              <p className="text-xs text-white/40 mt-1 font-mono">
-                {IMAGE_MODELS.find((m) => m.id === config.model)?.name} · {config.ratio}
-              </p>
+            <div className="relative w-full h-full flex flex-col items-center justify-center animate-pulse bg-white/[0.03]">
+              <div className="flex flex-col items-center text-center p-6 z-10">
+                <p className="text-sm font-medium text-white/90 mb-1 font-mono tracking-wide">
+                  Generating... {progress}%
+                </p>
+                <p className="text-xs text-white/40 font-mono">
+                  {IMAGE_MODELS.find((m) => m.id === config.model)?.name} · {config.ratio}
+                </p>
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-white/[0.02] to-transparent pointer-events-none" />
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center p-6 text-center">
@@ -363,29 +429,31 @@ export default function ImageCanvas() {
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={handleGenerate}
-                disabled={isGenerating || !prompt.trim()}
-                className={cn(
-                  'bg-white text-black px-4 py-1.5 rounded-lg text-sm font-medium transition-all active:scale-95 flex items-center gap-1.5 shadow-sm',
-                  isGenerating || !prompt.trim()
-                    ? 'opacity-40 cursor-not-allowed'
-                    : 'hover:bg-white/90 cursor-pointer'
-                )}
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin text-black" />
-                    <span>Generating…</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-3.5 w-3.5 text-black" />
-                    <span>Generate · 1 credit</span>
-                  </>
-                )}
-              </button>
+              {isGenerating ? (
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="h-8.5 px-4 rounded-lg text-xs font-medium bg-white/[0.05] hover:bg-white/[0.1] text-white border border-white/[0.08] transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <span>Cancel</span>
+                  <span className="text-[9px]">■</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  disabled={!prompt.trim()}
+                  className={cn(
+                    'bg-white text-black px-4 py-1.5 rounded-lg text-sm font-medium transition-all active:scale-95 flex items-center gap-1.5 shadow-sm',
+                    !prompt.trim()
+                      ? 'opacity-40 cursor-not-allowed'
+                      : 'hover:bg-white/90 cursor-pointer'
+                  )}
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-black" />
+                  <span>Generate · 1 credit</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
