@@ -1,11 +1,53 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Palette, Sparkles, Wand2, Maximize2, Download } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Palette, Sparkles, Wand2, Maximize2, Download, Loader2 } from 'lucide-react';
 
 export default function ImageCanvas() {
   const [prompt, setPrompt] = useState('');
   const [status, setStatus] = useState<'idle' | 'generating' | 'result'>('idle');
+  const [progress, setProgress] = useState(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleGenerate = () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+    setStatus('generating');
+    setProgress(0);
+
+    intervalRef.current = setInterval(() => {
+      setProgress((prev) => (prev < 95 ? prev + 5 : prev));
+    }, 100);
+
+    timeoutRef.current = setTimeout(() => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      setProgress(100);
+      setStatus('result');
+    }, 2500);
+  };
+
+  const handleCancel = () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setStatus('idle');
+    setProgress(0);
+  };
+
+  const handleDownload = () => {
+    const a = document.createElement('a');
+    a.href = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop';
+    a.download = `vantra-artwork-${Date.now()}.jpg`;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  const handleUpscale = () => {
+    handleGenerate();
+  };
 
   return (
     <div className="flex h-full w-full bg-[#0A0A0B] text-white overflow-hidden">
@@ -32,9 +74,14 @@ export default function ImageCanvas() {
 
             {status === 'generating' && (
               <div className="flex flex-col items-center gap-3 text-center animate-pulse">
-                <div className="text-sm font-medium text-white/70">Generating your masterpiece...</div>
-                <div className="w-32 h-1 bg-white/10 rounded-full overflow-hidden">
-                  <div className="h-full bg-white animate-pulse w-2/3" />
+                <div className="text-sm font-medium text-white/70">
+                  Generating your masterpiece... {progress}%
+                </div>
+                <div className="w-36 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-white transition-all duration-100"
+                    style={{ width: `${progress}%` }}
+                  />
                 </div>
               </div>
             )}
@@ -48,10 +95,20 @@ export default function ImageCanvas() {
                 />
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center p-6">
                   <div className="flex gap-2 p-1.5 rounded-xl bg-black/60 backdrop-blur-md border border-white/10">
-                    <button type="button" className="p-2 hover:bg-white/10 rounded-lg cursor-pointer transition-colors">
+                    <button
+                      type="button"
+                      onClick={handleDownload}
+                      title="Download"
+                      className="p-2 hover:bg-white/10 rounded-lg cursor-pointer transition-all active:scale-95 text-white"
+                    >
                       <Download className="size-4" />
                     </button>
-                    <button type="button" className="p-2 hover:bg-white/10 rounded-lg cursor-pointer transition-colors">
+                    <button
+                      type="button"
+                      onClick={handleUpscale}
+                      title="Upscale"
+                      className="p-2 hover:bg-white/10 rounded-lg cursor-pointer transition-all active:scale-95 text-white"
+                    >
                       <Maximize2 className="size-4" />
                     </button>
                   </div>
@@ -69,37 +126,61 @@ export default function ImageCanvas() {
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleGenerate();
+                  }
+                }}
                 placeholder="Describe an imaginative scene..."
                 className="w-full bg-transparent text-white placeholder:text-white/30 text-sm focus:outline-none resize-none"
                 rows={2}
+                disabled={status === 'generating'}
               />
             </div>
 
             {/* Toolbar Footer */}
             <div className="flex items-center justify-between border-t border-white/[0.05] px-4 py-3">
               <div className="flex items-center gap-2">
-                <button type="button" className="h-8 px-3 rounded-lg text-xs bg-white/[0.04] border border-white/[0.05] text-white/70 hover:bg-white/[0.08] cursor-pointer">
+                <button
+                  type="button"
+                  className="h-8 px-3 rounded-lg text-xs bg-white/[0.04] border border-white/[0.05] text-white/70 hover:bg-white/[0.08] cursor-pointer active:scale-95 transition-transform"
+                >
                   + Ref
                 </button>
-                <button type="button" className="h-8 px-3 rounded-lg text-xs bg-white/[0.04] border border-white/[0.05] text-white/70 hover:bg-white/[0.08] cursor-pointer">
+                <button
+                  type="button"
+                  className="h-8 px-3 rounded-lg text-xs bg-white/[0.04] border border-white/[0.05] text-white/70 hover:bg-white/[0.08] cursor-pointer active:scale-95 transition-transform"
+                >
                   Flux.1 Pro ▾
                 </button>
-                <button type="button" className="h-8 px-3 rounded-lg text-xs bg-white/[0.04] border border-white/[0.05] text-white/70 hover:bg-white/[0.08] cursor-pointer">
+                <button
+                  type="button"
+                  className="h-8 px-3 rounded-lg text-xs bg-white/[0.04] border border-white/[0.05] text-white/70 hover:bg-white/[0.08] cursor-pointer active:scale-95 transition-transform"
+                >
                   1:1 ▾
                 </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setStatus('generating');
-                  setTimeout(() => setStatus('result'), 2500);
-                }}
-                className="bg-white text-black px-4 py-2 rounded-xl text-xs font-medium hover:bg-white/90 flex items-center gap-1.5 shadow-lg active:scale-95 transition-all cursor-pointer"
-              >
-                <Wand2 className="size-3.5" />
-                Generate · 1 credit
-              </button>
+              {status === 'generating' ? (
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="bg-white/10 hover:bg-white/15 text-white border border-white/10 px-4 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5 shadow-lg active:scale-95 transition-all cursor-pointer"
+                >
+                  <Loader2 className="size-3.5 animate-spin text-white/70" />
+                  <span>Generating {progress}% · Cancel ■</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  className="bg-white text-black px-4 py-2 rounded-xl text-xs font-medium hover:bg-white/90 flex items-center gap-1.5 shadow-lg active:scale-95 transition-all cursor-pointer"
+                >
+                  <Wand2 className="size-3.5" />
+                  <span>Generate · 1 credit</span>
+                </button>
+              )}
             </div>
           </div>
         </footer>
