@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Plus, ChevronDown, ArrowUp, X, FileText, Loader2, Check, Archive, Sparkles } from "lucide-react";
+import { Plus, ChevronDown, ArrowUp, Square, X, FileText, Loader2, Check, Archive, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------
@@ -595,10 +595,10 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                             <button
                                 type="button"
                                 onClick={onStop}
-                                className="inline-flex items-center justify-center h-9 w-9 shrink-0 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 hover:bg-red-500/25 transition-colors active:scale-95 cursor-pointer"
-                                aria-label="Stop"
+                                className="inline-flex items-center justify-center h-8 w-8 shrink-0 rounded-lg bg-white text-black hover:bg-white/90 active:scale-95 transition-all cursor-pointer shadow-sm"
+                                aria-label="Stop generating"
                             >
-                                <span className="block w-3 h-3 rounded-[3px] bg-current" />
+                                <Square className="w-3.5 h-3.5 fill-current" />
                             </button>
                         ) : (
                             <button
@@ -606,14 +606,14 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                 onClick={handleSend}
                                 disabled={!hasContent}
                                 className={cn(
-                                    "inline-flex items-center justify-center h-9 w-9 shrink-0 rounded-xl transition-colors duration-300 active:scale-95",
+                                    "inline-flex items-center justify-center h-8 w-8 shrink-0 rounded-lg transition-all duration-200 active:scale-95",
                                     hasContent
-                                        ? 'send-ready bg-white text-black font-semibold hover:bg-gray-200 transition-colors cursor-pointer'
-                                        : 'bg-white/[0.14] text-white/60 border border-white/[0.18] cursor-default'
+                                        ? 'bg-white text-black hover:bg-white/90 cursor-pointer opacity-100 shadow-sm'
+                                        : 'bg-white text-black cursor-not-allowed opacity-30'
                                 )}
                                 aria-label="Send message"
                             >
-                                <ArrowUp className="w-4 h-4" />
+                                <ArrowUp className="w-4 h-4 stroke-[2.5]" />
                             </button>
                         )}
                     </div>

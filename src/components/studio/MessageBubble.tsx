@@ -13,10 +13,11 @@ export interface MessageBubbleProps {
   message: Message;
   isLatest: boolean;
   isStreaming?: boolean;
+  isThinking?: boolean;
   onRegenerate?: () => void;
 }
 
-export default function MessageBubble({ message, isLatest, isStreaming, onRegenerate }: MessageBubbleProps) {
+export default function MessageBubble({ message, isLatest, isStreaming, isThinking, onRegenerate }: MessageBubbleProps) {
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
   const [copiedMessage, setCopiedMessage] = useState(false);
   const [shared, setShared] = useState(false);
@@ -61,13 +62,13 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-      className="group/msg flex flex-col gap-2.5 w-full min-w-0"
+      className="group relative flex flex-col gap-2 w-full min-w-0"
     >
       {/* Header meta - AI only (Claude style with RTL support) */}
       {!isUser && (
         <div
           dir={isRTL ? 'rtl' : 'ltr'}
-          className="flex items-center gap-2.5 w-full px-1 justify-start"
+          className="flex items-center gap-2.5 w-full justify-start"
         >
           {/* Animated gradient avatar */}
           <div className="ai-avatar-ring h-7 w-7 rounded-lg p-[1.5px] shrink-0">
@@ -78,36 +79,6 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
           <span className="text-[11px] font-mono uppercase tracking-[0.14em] text-white/55 shrink-0">
             VANTRA
           </span>
-          {!isStreaming && (
-            <div className="flex items-center gap-0.5 opacity-0 group-hover/msg:opacity-100 transition-opacity">
-              <button
-                type="button"
-                onClick={handleCopyMessage}
-                title="Copy"
-                className="p-1.5 rounded-md text-white/30 hover:text-[#FFFFFF] hover:bg-white/[0.06] transition-colors cursor-pointer active:scale-90"
-              >
-                {copiedMessage ? <Check className="h-3 w-3 text-[#FFFFFF]" /> : <Copy className="h-3 w-3" />}
-              </button>
-              <button
-                type="button"
-                onClick={handleShare}
-                title="Share"
-                className="p-1.5 rounded-md text-white/30 hover:text-[#D1D5DB] hover:bg-white/[0.06] transition-colors cursor-pointer active:scale-90"
-              >
-                {shared ? <Check className="h-3 w-3 text-[#FFFFFF]" /> : <Share className="h-3 w-3" />}
-              </button>
-              {isLatest && onRegenerate && (
-                <button
-                  type="button"
-                  onClick={onRegenerate}
-                  title="Regenerate"
-                  className="p-1.5 rounded-md text-white/30 hover:text-[#FFFFFF] hover:bg-white/[0.06] transition-colors cursor-pointer active:scale-90"
-                >
-                  <RefreshCw className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-          )}
         </div>
       )}
 
@@ -125,8 +96,15 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
         ) : (
           <div
             dir={isRTL ? 'rtl' : 'ltr'}
-            className="w-full max-w-full min-w-0 bg-transparent shadow-none border-none pt-1"
+            className="w-full max-w-full min-w-0 bg-transparent shadow-none border-none pt-0.5"
           >
+            {/* Thinking state indicator */}
+            {isThinking && (
+              <div className="flex items-center gap-2 text-[13.5px] text-white/60 animate-pulse mb-3" role="status">
+                <span className="font-sans antialiased text-white/70 font-normal">Thinking…</span>
+              </div>
+            )}
+
             <div className={cn(
               "prose prose-invert max-w-none font-sans antialiased text-white/90 text-[15px] font-normal leading-relaxed",
               "prose-p:text-white/90 prose-p:text-[15px] prose-p:font-sans prose-p:antialiased prose-p:leading-relaxed prose-p:font-normal",
@@ -268,13 +246,48 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
                 {displayContent}
               </ReactMarkdown>
 
+              {/* Streaming Cursor */}
               {showStreamingCursor && (
                 <span
                   aria-hidden
-                  className="inline-block w-[7px] h-[17px] ms-1 align-middle bg-[#FFFFFF] animate-pulse rounded-[2px]"
-                />
+                  className="inline-block text-white/90 animate-pulse select-none ms-0.5 align-baseline font-mono text-[14px]"
+                >
+                  ▮
+                </span>
               )}
             </div>
+
+            {/* Message-Level Hover Controls */}
+            {!isStreaming && (
+              <div className="flex items-center gap-1 mt-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                <button
+                  type="button"
+                  onClick={handleCopyMessage}
+                  title="Copy message"
+                  className="size-8 flex items-center justify-center rounded-md hover:bg-white/[0.06] text-white/60 hover:text-white transition-colors cursor-pointer active:scale-90"
+                >
+                  {copiedMessage ? <Check className="h-3.5 w-3.5 text-white" /> : <Copy className="h-3.5 w-3.5" />}
+                </button>
+                {isLatest && onRegenerate && (
+                  <button
+                    type="button"
+                    onClick={onRegenerate}
+                    title="Regenerate response"
+                    className="size-8 flex items-center justify-center rounded-md hover:bg-white/[0.06] text-white/60 hover:text-white transition-colors cursor-pointer active:scale-90"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  title="Share"
+                  className="size-8 flex items-center justify-center rounded-md hover:bg-white/[0.06] text-white/60 hover:text-white transition-colors cursor-pointer active:scale-90"
+                >
+                  {shared ? <Check className="h-3.5 w-3.5 text-white" /> : <Share className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

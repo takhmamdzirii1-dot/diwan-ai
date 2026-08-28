@@ -442,19 +442,15 @@ export default function StudioDashboard() {
                           />
                         ))}
 
-                        {/* Loading */}
+                        {/* Loading / Thinking */}
                         {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
-                          <div className="flex justify-start" role="status" aria-live="polite">
-                            <div className="inline-flex items-center gap-3 px-4 py-3 rounded-2xl border border-white/[0.08] bg-white/[0.03]">
-                              <span className="flex items-center gap-1.5">
-                                <span className="neon-dot" />
-                                <span className="neon-dot" />
-                                <span className="neon-dot" />
-                              </span>
-                              <span className="text-[11px] font-mono uppercase tracking-[0.18em] text-white/35">
-                                {activeModel.name}
-                              </span>
+                          <div className="flex items-center gap-2.5 py-1 text-[13.5px] text-white/60 animate-pulse" role="status" aria-live="polite">
+                            <div className="ai-avatar-ring h-6 w-6 rounded-md p-[1px] shrink-0">
+                              <div className="w-full h-full rounded-[calc(0.375rem-1px)] bg-[#1A1C1F] flex items-center justify-center">
+                                <Sparkles className="h-3 w-3 text-white/70" />
+                              </div>
                             </div>
+                            <span className="font-sans antialiased text-white/70 font-normal">Thinking…</span>
                           </div>
                         )}
 
