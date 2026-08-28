@@ -7,6 +7,7 @@ import { Copy, Check, Terminal, Share, RefreshCw, Sparkles } from 'lucide-react'
 import type { Message } from '@ai-sdk/react';
 import { useSmoothText } from '../../hooks/useSmoothText';
 import { detectDir } from '../../lib/direction';
+import { cn } from '@/lib/utils';
 
 export interface MessageBubbleProps {
   message: Message;
@@ -117,7 +118,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
             className="bg-[#1A1C20] text-white px-4 py-2.5 rounded-2xl rounded-tr-sm w-fit max-w-[85%] border border-white/5"
             dir={isRTL ? 'rtl' : 'ltr'}
           >
-            <p className="text-[14.5px] sm:text-[15px] text-white/90 font-normal leading-relaxed whitespace-pre-wrap break-words">
+            <p className="text-[14.5px] sm:text-[15px] text-white/90 font-normal font-sans antialiased leading-relaxed whitespace-pre-wrap break-words">
               {message.content}
             </p>
           </div>
@@ -126,70 +127,96 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
             dir={isRTL ? 'rtl' : 'ltr'}
             className="w-full max-w-full min-w-0 bg-transparent shadow-none border-none pt-1"
           >
-            <div className={`font-sans antialiased text-white/90 font-normal leading-relaxed text-[15px] ${isRTL ? 'text-right' : 'text-left'}`}>
+            <div className={cn(
+              "prose prose-invert max-w-none font-sans antialiased text-white/90 text-[15px] font-normal leading-relaxed",
+              "prose-p:text-white/90 prose-p:text-[15px] prose-p:font-sans prose-p:antialiased prose-p:leading-relaxed prose-p:font-normal",
+              "prose-headings:text-white/90 prose-headings:font-semibold prose-strong:text-white/90 prose-strong:font-semibold",
+              "prose-li:text-white/90 prose-li:text-[15px] prose-li:font-sans prose-code:text-white/90",
+              isRTL ? "text-right" : "text-left"
+            )}>
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeRaw]}
                 components={{
                   pre: ({ children }) => <>{children}</>,
                   p: ({ children }) => (
-                    <p dir={isRTL ? 'rtl' : 'auto'} className={`mb-3.5 last:mb-0 font-sans antialiased text-white/90 font-normal leading-relaxed text-[15px] ${isRTL ? 'text-right' : 'text-left'}`}>
+                    <p dir={isRTL ? 'rtl' : 'auto'} className={cn("text-white/90 text-[15px] font-sans antialiased leading-relaxed font-normal mb-3.5 last:mb-0", isRTL ? "text-right" : "text-left")}>
                       {children}
                     </p>
                   ),
+                  span: ({ children }) => (
+                    <span className="text-white/90 font-sans antialiased">
+                      {children}
+                    </span>
+                  ),
+                  strong: ({ children }) => (
+                    <strong className="text-white/90 font-semibold font-sans antialiased">
+                      {children}
+                    </strong>
+                  ),
+                  em: ({ children }) => (
+                    <em className="text-white/90 italic font-sans antialiased">
+                      {children}
+                    </em>
+                  ),
                   h1: ({ children }) => (
-                    <h1 dir={isRTL ? 'rtl' : 'auto'} className={`mt-6 mb-3 text-xl font-semibold font-sans antialiased text-white ${isRTL ? 'text-right' : 'text-left'}`}>
+                    <h1 dir={isRTL ? 'rtl' : 'auto'} className={cn("text-white/90 text-xl font-semibold font-sans antialiased mt-6 mb-3", isRTL ? "text-right" : "text-left")}>
                       {children}
                     </h1>
                   ),
                   h2: ({ children }) => (
-                    <h2 dir={isRTL ? 'rtl' : 'auto'} className={`mt-5 mb-2.5 text-lg font-semibold font-sans antialiased text-white border-b border-white/10 pb-1.5 ${isRTL ? 'text-right' : 'text-left'}`}>
+                    <h2 dir={isRTL ? 'rtl' : 'auto'} className={cn("text-white/90 text-lg font-semibold font-sans antialiased border-b border-white/10 pb-1.5 mt-5 mb-2.5", isRTL ? "text-right" : "text-left")}>
                       {children}
                     </h2>
                   ),
                   h3: ({ children }) => (
-                    <h3 dir={isRTL ? 'rtl' : 'auto'} className={`mt-4 mb-2 text-base font-semibold font-sans antialiased text-white ${isRTL ? 'text-right' : 'text-left'}`}>
+                    <h3 dir={isRTL ? 'rtl' : 'auto'} className={cn("text-white/90 text-base font-semibold font-sans antialiased mt-4 mb-2", isRTL ? "text-right" : "text-left")}>
                       {children}
                     </h3>
                   ),
                   h4: ({ children }) => (
-                    <h4 dir={isRTL ? 'rtl' : 'auto'} className={`mt-3 mb-1.5 text-sm font-semibold font-sans antialiased text-white ${isRTL ? 'text-right' : 'text-left'}`}>
+                    <h4 dir={isRTL ? 'rtl' : 'auto'} className={cn("text-white/90 text-sm font-semibold font-sans antialiased mt-3 mb-1.5", isRTL ? "text-right" : "text-left")}>
                       {children}
                     </h4>
                   ),
                   ul: ({ children }) => (
-                    <ul dir={isRTL ? 'rtl' : 'ltr'} className="my-3 flex flex-col gap-1.5 ps-5 list-disc font-sans antialiased text-white/90 text-[15px] leading-relaxed">
+                    <ul dir={isRTL ? 'rtl' : 'ltr'} className="my-3 flex flex-col gap-1.5 ps-5 list-disc text-white/90 font-sans antialiased text-[15px] leading-relaxed">
                       {children}
                     </ul>
                   ),
                   ol: ({ children }) => (
-                    <ol dir={isRTL ? 'rtl' : 'ltr'} className="my-3 flex flex-col gap-1.5 ps-5 list-decimal font-sans antialiased text-white/90 text-[15px] leading-relaxed">
+                    <ol dir={isRTL ? 'rtl' : 'ltr'} className="my-3 flex flex-col gap-1.5 ps-5 list-decimal text-white/90 font-sans antialiased text-[15px] leading-relaxed">
                       {children}
                     </ol>
                   ),
                   li: ({ children }) => (
-                    <li dir={isRTL ? 'rtl' : 'auto'} className={`font-sans antialiased text-white/90 font-normal leading-relaxed text-[15px] ${isRTL ? 'text-right' : 'text-left'}`}>
+                    <li dir={isRTL ? 'rtl' : 'auto'} className={cn("text-white/90 text-[15px] font-sans antialiased leading-relaxed font-normal", isRTL ? "text-right" : "text-left")}>
                       {children}
                     </li>
                   ),
                   blockquote: ({ children }) => (
-                    <blockquote dir={isRTL ? 'rtl' : 'auto'} className={`my-4 py-2 px-4 bg-white/[0.03] rounded-r-lg font-sans antialiased text-white/80 ${isRTL ? 'text-right border-r-2 border-white/20' : 'text-left border-l-2 border-white/20'}`}>
+                    <blockquote dir={isRTL ? 'rtl' : 'auto'} className={cn("my-4 py-2 px-4 bg-white/[0.03] rounded-r-lg font-sans antialiased text-white/90", isRTL ? "text-right border-r-2 border-white/20" : "text-left border-l-2 border-white/20")}>
                       {children}
                     </blockquote>
                   ),
+                  a: ({ href, children }) => (
+                    <a href={href} target="_blank" rel="noopener noreferrer" className="text-white/90 underline underline-offset-4 hover:text-white transition-colors font-sans antialiased">
+                      {children}
+                    </a>
+                  ),
                   table: ({ children }) => (
                     <div className="my-6 overflow-x-auto custom-scrollbar rounded-xl border border-white/[0.1] bg-[#1A1C1F]" dir="ltr">
-                      <table className="w-full text-[14px] font-sans border-collapse min-w-[520px]">{children}</table>
+                      <table className="w-full text-[14px] font-sans text-white/90 border-collapse min-w-[520px]">{children}</table>
                     </div>
                   ),
-                  thead: ({ children }) => <thead className="bg-white/[0.045] font-sans">{children}</thead>,
+                  thead: ({ children }) => <thead className="bg-white/[0.045] font-sans text-white/90">{children}</thead>,
                   th: ({ children }) => (
-                    <th dir="auto" className="px-4 py-3.5 text-start font-sans text-[12.5px] font-semibold uppercase tracking-wider text-[#FFFFFF]/85 border-b border-white/[0.12]">
+                    <th dir="auto" className="px-4 py-3.5 text-start font-sans text-[12.5px] font-semibold uppercase tracking-wider text-white/90 border-b border-white/[0.12]">
                       {children}
                     </th>
                   ),
                   td: ({ children }) => (
-                    <td dir="auto" className="px-4 py-3.5 align-top font-sans text-white/85 leading-relaxed border-b border-white/[0.05]">
+                    <td dir="auto" className="px-4 py-3.5 align-top font-sans text-white/90 text-[14px] leading-relaxed border-b border-white/[0.05]">
                       {children}
                     </td>
                   ),
