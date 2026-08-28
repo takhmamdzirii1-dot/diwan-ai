@@ -475,7 +475,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
             onDrop={onDrop}
         >
             {/* Single refined outer container */}
-            <div className="w-full rounded-2xl border border-white/[0.08] bg-[#111216]/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between min-h-[104px] max-h-[360px] p-3 transition-all">
+            <div className="w-full rounded-2xl border border-white/[0.08] hover:border-white/[0.15] focus-within:border-white/[0.25] bg-[#111216]/90 focus-within:bg-[#15161A]/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between min-h-[104px] max-h-[360px] p-3 transition-all duration-200 ease-in-out">
 
                 {/* Attachments above input */}
                 {(files.length > 0 || pastedContent.length > 0) && (
