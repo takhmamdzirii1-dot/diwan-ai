@@ -114,26 +114,19 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
       <div className={`flex w-full ${isUser ? (isRTL ? 'justify-start' : 'justify-end') : 'justify-start'}`}>
         {isUser ? (
           <div
-            className="user-bubble-gloss max-w-[85%] sm:max-w-[80%] min-w-0 rounded-2xl px-4 py-3 sm:px-5 sm:py-4"
+            className="bg-[#1A1C20] text-white px-4 py-2.5 rounded-2xl rounded-tr-sm w-fit max-w-[85%] border border-white/5"
             dir={isRTL ? 'rtl' : 'ltr'}
           >
-            <p className="text-[14.5px] sm:text-[15px] text-white/90 font-medium leading-relaxed whitespace-pre-wrap break-words">
+            <p className="text-[14.5px] sm:text-[15px] text-white/90 font-normal leading-relaxed whitespace-pre-wrap break-words">
               {message.content}
             </p>
           </div>
         ) : (
           <div
             dir={isRTL ? 'rtl' : 'ltr'}
-            className="w-full max-w-full min-w-0 rounded-2xl border border-white/[0.07] bg-white/[0.025] backdrop-blur-xl px-4 py-4 sm:px-6 sm:py-5 md:px-7 md:py-6 shadow-[0_18px_44px_-24px_rgba(0,0,0,0.9)] relative"
+            className="w-full max-w-full min-w-0 bg-transparent border-none shadow-none pt-1"
           >
-            {/* top gradient hairline */}
-            <span
-              className="absolute top-0 left-6 right-6 h-px pointer-events-none"
-              style={{
-                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), rgba(255,255,255,0.2), transparent)',
-              }}
-            />
-            <div className={`lux-prose font-sans antialiased text-white/90 ${isRTL ? 'text-right' : 'text-left'}`}>
+            <div className={`lux-prose font-sans text-white/90 leading-relaxed font-normal antialiased ${isRTL ? 'text-right' : 'text-left'}`}>
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeRaw]}

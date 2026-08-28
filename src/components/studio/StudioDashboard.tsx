@@ -389,7 +389,7 @@ export default function StudioDashboard() {
                     style={{ overflowAnchor: 'none' }}
                   >
                     <div className={cn('w-full flex justify-center px-3 sm:px-4', isEmpty ? 'min-h-full items-center py-6' : 'pt-4 sm:pt-6 pb-6')}>
-                      <div className="w-full max-w-[760px] flex flex-col gap-5 sm:gap-6">
+                      <div className="w-full max-w-[760px] flex flex-col gap-y-8">
                         {isEmpty ? (
                           <div className="flex flex-col items-center text-center">
                             <div className="h-14 w-14 rounded-2xl border border-white/[0.08] bg-white/[0.03] flex items-center justify-center">
