@@ -388,7 +388,7 @@ export default function StudioDashboard() {
                     className="flex-1 min-h-0"
                     style={{ overflowAnchor: 'none' }}
                   >
-                    <div className={cn('w-full flex justify-center px-3 sm:px-4', isEmpty ? 'min-h-full items-center py-6' : 'pt-4 sm:pt-6 pb-6')}>
+                    <div className={cn('w-full flex justify-center px-3 sm:px-4', isEmpty ? 'min-h-full items-center py-6' : 'pt-4 sm:pt-6 pb-36 sm:pb-40')}>
                       <div className="w-full max-w-[760px] flex flex-col gap-y-8">
                         {isEmpty ? (
                           <div className="flex flex-col items-center text-center">
@@ -494,7 +494,7 @@ export default function StudioDashboard() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 8, scale: 0.9 }}
                       transition={{ duration: 0.18, ease: 'easeOut' }}
-                      className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 pointer-events-auto"
+                      className="absolute bottom-28 sm:bottom-32 left-1/2 -translate-x-1/2 z-40 pointer-events-auto"
                     >
                       <button
                         type="button"
@@ -509,12 +509,10 @@ export default function StudioDashboard() {
                 </AnimatePresence>
               </div>
 
-              {/* Composer — strictly bottom anchored with safe-area padding */}
+              {/* Composer — strictly bottom anchored with gradient mask */}
               {!isEmpty && (
-                <div
-                  className="shrink-0 w-full px-3 sm:px-6 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-[#090909]/95 backdrop-blur-xl border-t border-white/[0.06] z-30 flex justify-center"
-                >
-                  <div className="w-full max-w-[760px]">
+                <div className="fixed bottom-0 left-0 right-0 lg:left-[280px] z-30 pointer-events-none flex justify-center bg-gradient-to-t from-background via-background/90 to-transparent pt-4 pb-6 px-3 sm:px-6">
+                  <div className="w-full max-w-[760px] pointer-events-auto">
                     <ClaudeChatInput
                       onSendMessage={handleSend}
                       models={MODELS.map((m) => ({ id: m.id, name: m.name, description: `${m.provider} · ${m.ctx}`, badge: m.badge, isFree: m.isFree, requiresAuth: !m.isFree }))}

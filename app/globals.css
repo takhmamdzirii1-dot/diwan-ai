@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme {
+  --color-background: #16181A;
   --color-vantra-teal: #FFFFFF;
   --color-vantra-teal-hover: #E5E7EB;
   --color-vantra-bg: #16181A;
