@@ -166,7 +166,7 @@ export default function DashboardSidebar({
         aria-label="Studio navigation"
         aria-hidden={!isMobileOpen ? undefined : false}
         className={cn(
-          'flex flex-col fixed lg:static top-0 bottom-0 start-0 z-50 w-[280px] h-full bg-[#0D0D0D] border-e border-white/[0.08] transition-transform duration-300',
+          'flex flex-col fixed lg:static top-0 bottom-0 start-0 z-50 w-64 h-full bg-[#0D0D0D] border-r border-white/[0.06] transition-transform duration-300',
           isMobileOpen ? 'translate-x-0' : '-translate-x-full rtl:translate-x-full lg:translate-x-0'
         )}
       >
@@ -199,9 +199,9 @@ export default function DashboardSidebar({
               onNewChat?.();
               onCloseMobile?.();
             }}
-            className="w-full h-11 rounded-xl bg-white text-black font-semibold text-[13.5px] flex items-center justify-center gap-2 transition-colors hover:bg-white/90 active:scale-[0.99] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0D0D0D]"
+            className="w-full h-10 rounded-lg bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] text-white font-medium text-[13.5px] flex items-center justify-center gap-2 transition-colors active:scale-[0.99] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
           >
-            <Plus className="h-4.5 w-4.5 shrink-0" style={{ height: 18, width: 18 }} />
+            <Plus className="h-4 w-4 shrink-0" />
             New Chat
           </button>
 

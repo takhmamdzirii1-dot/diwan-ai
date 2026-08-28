@@ -388,10 +388,10 @@ export default function StudioDashboard() {
                     className="flex-1 min-h-0"
                     style={{ overflowAnchor: 'none' }}
                   >
-                    <div className={cn('w-full flex justify-center px-3 sm:px-4', isEmpty ? 'min-h-full items-center py-6' : 'pt-4 sm:pt-6 pb-36 sm:pb-40')}>
-                      <div className="w-full max-w-[760px] flex flex-col gap-y-8">
+                    <div className={cn('w-full flex justify-center', isEmpty ? 'min-h-full items-center py-6' : 'pt-4 sm:pt-6 pb-36 sm:pb-40')}>
+                      <div className="mx-auto w-full max-w-4xl px-6 flex flex-col gap-y-8">
                         {isEmpty ? (
-                          <div className="flex flex-col items-center text-center">
+                          <div className="flex flex-col items-center text-center max-w-2xl mx-auto w-full">
                             <div className="h-14 w-14 rounded-2xl border border-white/[0.08] bg-white/[0.03] flex items-center justify-center">
                               <Sparkles className="h-6 w-6 text-white/70" />
                             </div>
@@ -511,8 +511,8 @@ export default function StudioDashboard() {
 
               {/* Composer — strictly bottom anchored with gradient mask */}
               {!isEmpty && (
-                <div className="fixed bottom-0 left-0 right-0 lg:left-[280px] z-30 pointer-events-none flex justify-center bg-gradient-to-t from-background via-background/90 to-transparent pt-4 pb-6 px-3 sm:px-6">
-                  <div className="w-full max-w-[760px] pointer-events-auto">
+                <div className="fixed bottom-0 left-0 right-0 lg:left-64 z-30 pointer-events-none flex justify-center bg-gradient-to-t from-background via-background/90 to-transparent pt-4 pb-6">
+                  <div className="mx-auto w-full max-w-4xl px-6 pointer-events-auto">
                     <ClaudeChatInput
                       onSendMessage={handleSend}
                       models={MODELS.map((m) => ({ id: m.id, name: m.name, description: `${m.provider} · ${m.ctx}`, badge: m.badge, isFree: m.isFree, requiresAuth: !m.isFree }))}

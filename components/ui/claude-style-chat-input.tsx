@@ -469,155 +469,153 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
 
     return (
         <div
-            className={cn("relative w-full max-w-[700px] mx-auto transition-all duration-300", className)}
+            className={cn("relative w-full transition-all duration-300", className)}
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
             onDrop={onDrop}
         >
-            {/* Glass box with luxury gradient frame */}
-            <div className="lux-input-shell">
-                <div className="claude-glass-inner rounded-[25px] flex flex-col px-7 pt-3 pb-3 gap-2">
+            {/* Single refined outer container */}
+            <div className="w-full rounded-2xl border border-white/[0.08] bg-[#111216]/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between min-h-[104px] max-h-[360px] p-3 transition-all">
 
-                    {/* Attachments above input */}
-                    {(files.length > 0 || pastedContent.length > 0) && (
-                        <div className="flex gap-3 overflow-x-auto custom-scrollbar pb-1 px-1">
-                            {pastedContent.map(content => (
-                                <PastedContentCard
-                                    key={content.id}
-                                    content={content}
-                                    onRemove={id => setPastedContent(prev => prev.filter(c => c.id !== id))}
-                                />
-                            ))}
-                            {files.map(file => (
-                                <FilePreviewCard
-                                    key={file.id}
-                                    file={file}
-                                    onRemove={id => setFiles(prev => prev.filter(f => f.id !== id))}
-                                />
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Input area */}
-                    <div className="relative mb-1" dir="auto">
-                        <textarea
-                            ref={textareaRef}
-                            value={message}
-                            onChange={(e) => setMessage(e.target.value)}
-                            onPaste={handlePaste}
-                            onKeyDown={handleKeyDown}
-                            placeholder={placeholder}
-                            dir="auto"
-                            autoFocus={autoFocus}
-                            className="w-full bg-transparent border-0 outline-none text-white text-[16px] placeholder:text-white/30 resize-none overflow-y-auto custom-scrollbar-thin leading-relaxed block antialiased"
-                            rows={1}
-                            style={{ minHeight: '2.4em', padding: '8px 28px 4px 28px' }}
-                        />
+                {/* Attachments above input */}
+                {(files.length > 0 || pastedContent.length > 0) && (
+                    <div className="flex gap-3 overflow-x-auto custom-scrollbar pb-2 px-1">
+                        {pastedContent.map(content => (
+                            <PastedContentCard
+                                key={content.id}
+                                content={content}
+                                onRemove={id => setPastedContent(prev => prev.filter(c => c.id !== id))}
+                            />
+                        ))}
+                        {files.map(file => (
+                            <FilePreviewCard
+                                key={file.id}
+                                file={file}
+                                onRemove={id => setFiles(prev => prev.filter(f => f.id !== id))}
+                            />
+                        ))}
                     </div>
+                )}
 
-                    {/* Action bar — bottom padding lifts buttons off the edge */}
-                    <div className="flex gap-2 w-full items-center px-1 pb-3">
-                        {/* Left tools */}
-                        <div className="relative flex-1 flex items-center shrink min-w-0 gap-1 ps-1">
+                {/* Input area */}
+                <div className="relative flex-1 min-h-[44px] flex items-center" dir="auto">
+                    <textarea
+                        ref={textareaRef}
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        onPaste={handlePaste}
+                        onKeyDown={handleKeyDown}
+                        placeholder={placeholder}
+                        dir="auto"
+                        autoFocus={autoFocus}
+                        className="w-full bg-transparent border-0 outline-none text-white text-[15px] sm:text-[16px] placeholder:text-white/30 resize-none overflow-y-auto custom-scrollbar-thin leading-relaxed block antialiased px-3 py-1.5"
+                        rows={1}
+                        style={{ minHeight: '2.4em', maxHeight: '240px' }}
+                    />
+                </div>
+
+                {/* Action bar — bottom padding lifts buttons off the edge */}
+                <div className="flex gap-2 w-full items-center px-1 pt-1">
+                    {/* Left tools */}
+                    <div className="relative flex-1 flex items-center shrink min-w-0 gap-1 ps-1">
+                        <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="inline-flex items-center justify-center shrink-0 transition-colors duration-200 h-8 w-8 rounded-lg active:scale-95 text-white/40 hover:text-white hover:bg-white/[0.07] cursor-pointer"
+                            aria-label="Attach files"
+                        >
+                            <Plus className="w-5 h-5" />
+                        </button>
+
+                        <div className="flex shrink-0">
                             <button
                                 type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                className="inline-flex items-center justify-center shrink-0 transition-colors duration-200 h-8 w-8 rounded-lg active:scale-95 text-white/40 hover:text-white hover:bg-white/[0.07] cursor-pointer"
-                                aria-label="Attach files"
-                            >
-                                <Plus className="w-5 h-5" />
-                            </button>
-
-                            <div className="flex shrink-0">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsThinkingEnabled(!isThinkingEnabled)}
-                                    className={cn(
-                                        "relative transition-all duration-200 h-8 w-8 flex items-center justify-center rounded-lg active:scale-95 cursor-pointer",
-                                        isThinkingEnabled
-                                            ? 'text-[#FFFFFF] bg-[#FFFFFF]/[0.1]'
-                                            : 'text-white/40 hover:text-white hover:bg-white/[0.07]'
-                                    )}
-                                    aria-pressed={isThinkingEnabled}
-                                    aria-label="Extended thinking"
-                                >
-                                    <ClockIcon className="w-5 h-5" />
-
-                                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2.5 py-1 glass-pop rounded-md text-[11px] font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 flex items-center gap-1.5">
-                                        <span className="text-white/85">Extended thinking</span>
-                                        <span className="text-white/35" style={{ fontSize: '10px' }}>⇧+Ctrl+E</span>
-                                    </div>
-                                </button>
-                            </div>
-
-                            {/* Voice input — Groq Whisper via /api/transcribe */}
-                            <div className="flex shrink-0 items-center gap-1">
-                                {voiceError && (
-                                    <span className="text-[10.5px] text-red-400/90 max-w-[140px] truncate animate-fade-in" role="status">
-                                        {voiceError}
-                                    </span>
+                                onClick={() => setIsThinkingEnabled(!isThinkingEnabled)}
+                                className={cn(
+                                    "relative transition-all duration-200 h-8 w-8 flex items-center justify-center rounded-lg active:scale-95 cursor-pointer",
+                                    isThinkingEnabled
+                                        ? 'text-[#FFFFFF] bg-[#FFFFFF]/[0.1]'
+                                        : 'text-white/40 hover:text-white hover:bg-white/[0.07]'
                                 )}
-                                <button
-                                    type="button"
-                                    onClick={toggleVoice}
-                                    disabled={isTranscribing}
-                                    className={cn(
-                                        "relative transition-all duration-200 h-8 w-8 flex items-center justify-center rounded-lg active:scale-95 cursor-pointer disabled:cursor-wait",
-                                        isRecording
-                                            ? 'bg-white text-black animate-pulse'
-                                            : 'text-white/40 hover:text-white hover:bg-white/[0.07]',
-                                        isTranscribing && 'opacity-70'
-                                    )}
-                                    aria-label={isRecording ? 'Stop recording' : 'Voice input'}
-                                >
-                                    {isTranscribing ? (
-                                        <Loader2 className="w-[18px] h-[18px] animate-spin text-white" />
-                                    ) : (
-                                        <MicIcon className="w-[18px] h-[18px]" />
-                                    )}
-                                </button>
-                            </div>
-                        </div>
+                                aria-pressed={isThinkingEnabled}
+                                aria-label="Extended thinking"
+                            >
+                                <ClockIcon className="w-5 h-5" />
 
-                        {/* Right tools — extra space from the right edge */}
-                        <div className="flex flex-row items-center shrink-0 gap-1.5 pe-1">
-                            {models.length > 0 && (
-                                <div className="shrink-0">
-                                    <ModelSelector
-                                        models={models}
-                                        selectedModel={selectedModelId || models[0]?.id}
-                                        onSelect={(id) => onSelectModel?.(id)}
-                                        onSignInClick={onSignInClick}
-                                    />
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2.5 py-1 glass-pop rounded-md text-[11px] font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 flex items-center gap-1.5">
+                                    <span className="text-white/85">Extended thinking</span>
+                                    <span className="text-white/35" style={{ fontSize: '10px' }}>⇧+Ctrl+E</span>
                                 </div>
-                            )}
-
-                            {isLoading && onStop ? (
-                                <button
-                                    type="button"
-                                    onClick={onStop}
-                                    className="inline-flex items-center justify-center h-9 w-9 shrink-0 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 hover:bg-red-500/25 transition-colors active:scale-95 cursor-pointer"
-                                    aria-label="Stop"
-                                >
-                                    <span className="block w-3 h-3 rounded-[3px] bg-current" />
-                                </button>
-                            ) : (
-                                <button
-                                    type="button"
-                                    onClick={handleSend}
-                                    disabled={!hasContent}
-                                    className={cn(
-                                        "inline-flex items-center justify-center h-9 w-9 shrink-0 rounded-xl transition-colors duration-300 active:scale-95",
-                                        hasContent
-                                            ? 'send-ready bg-white text-black font-semibold hover:bg-gray-200 transition-colors cursor-pointer'
-                                            : 'bg-white/[0.14] text-white/60 border border-white/[0.18] cursor-default'
-                                    )}
-                                    aria-label="Send message"
-                                >
-                                    <ArrowUp className="w-4 h-4" />
-                                </button>
-                            )}
+                            </button>
                         </div>
+
+                        {/* Voice input — Groq Whisper via /api/transcribe */}
+                        <div className="flex shrink-0 items-center gap-1">
+                            {voiceError && (
+                                <span className="text-[10.5px] text-red-400/90 max-w-[140px] truncate animate-fade-in" role="status">
+                                    {voiceError}
+                                </span>
+                            )}
+                            <button
+                                type="button"
+                                onClick={toggleVoice}
+                                disabled={isTranscribing}
+                                className={cn(
+                                    "relative transition-all duration-200 h-8 w-8 flex items-center justify-center rounded-lg active:scale-95 cursor-pointer disabled:cursor-wait",
+                                    isRecording
+                                        ? 'bg-white text-black animate-pulse'
+                                        : 'text-white/40 hover:text-white hover:bg-white/[0.07]',
+                                    isTranscribing && 'opacity-70'
+                                )}
+                                aria-label={isRecording ? 'Stop recording' : 'Voice input'}
+                            >
+                                {isTranscribing ? (
+                                    <Loader2 className="w-[18px] h-[18px] animate-spin text-white" />
+                                ) : (
+                                    <MicIcon className="w-[18px] h-[18px]" />
+                                )}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Right tools — extra space from the right edge */}
+                    <div className="flex flex-row items-center shrink-0 gap-1.5 pe-1">
+                        {models.length > 0 && (
+                            <div className="shrink-0">
+                                <ModelSelector
+                                    models={models}
+                                    selectedModel={selectedModelId || models[0]?.id}
+                                    onSelect={(id) => onSelectModel?.(id)}
+                                    onSignInClick={onSignInClick}
+                                />
+                            </div>
+                        )}
+
+                        {isLoading && onStop ? (
+                            <button
+                                type="button"
+                                onClick={onStop}
+                                className="inline-flex items-center justify-center h-9 w-9 shrink-0 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 hover:bg-red-500/25 transition-colors active:scale-95 cursor-pointer"
+                                aria-label="Stop"
+                            >
+                                <span className="block w-3 h-3 rounded-[3px] bg-current" />
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={handleSend}
+                                disabled={!hasContent}
+                                className={cn(
+                                    "inline-flex items-center justify-center h-9 w-9 shrink-0 rounded-xl transition-colors duration-300 active:scale-95",
+                                    hasContent
+                                        ? 'send-ready bg-white text-black font-semibold hover:bg-gray-200 transition-colors cursor-pointer'
+                                        : 'bg-white/[0.14] text-white/60 border border-white/[0.18] cursor-default'
+                                )}
+                                aria-label="Send message"
+                            >
+                                <ArrowUp className="w-4 h-4" />
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
