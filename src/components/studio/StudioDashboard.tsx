@@ -367,64 +367,88 @@ export default function StudioDashboard() {
                     className="flex-1 min-h-0"
                     style={{ overflowAnchor: 'none' }}
                   >
-                    <div className={cn('w-full flex justify-center', isEmpty ? 'min-h-full items-center py-6' : 'pt-4 sm:pt-6 pb-36 sm:pb-40')}>
+                    <div className={cn(
+                      'w-full flex justify-center transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]',
+                      isEmpty ? 'min-h-full items-center py-6' : 'pt-6 pb-36 sm:pb-40'
+                    )}>
                       <div className="mx-auto w-full max-w-4xl px-6 flex flex-col gap-y-8">
-                        {isEmpty ? (
-                          <div className="max-w-3xl mx-auto w-full flex flex-col items-center text-center py-6">
-                            <h2 className="text-xl font-medium text-white/90 mb-6">
-                              What are we building today?
-                            </h2>
+                        {/* Empty State: Headline & Magic Skills Cards (Animated Exit) */}
+                        <AnimatePresence>
+                          {isEmpty && (
+                            <motion.div
+                              key="empty-state-content"
+                              initial={{ opacity: 1, height: 'auto', scale: 1 }}
+                              exit={{
+                                opacity: 0,
+                                height: 0,
+                                scale: 0.95,
+                                marginBottom: 0,
+                                transition: { duration: 0.35, ease: [0.23, 1, 0.32, 1] }
+                              }}
+                              className="max-w-3xl mx-auto w-full flex flex-col items-center text-center overflow-hidden"
+                            >
+                              {/* 1st (Top): Headline */}
+                              <motion.h2
+                                initial={{ opacity: 0, y: -6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.3 }}
+                                className="text-xl font-medium text-white/90 mb-6"
+                              >
+                                What are we building today?
+                              </motion.h2>
 
-                            <div className="w-full mb-6">
-                              <ClaudeChatInput
-                                onSendMessage={handleSend}
-                                models={MODELS.map((m) => ({ id: m.id, name: m.name, description: `${m.provider} · ${m.ctx}`, badge: m.badge, isFree: m.isFree, requiresAuth: !m.isFree }))}
-                                selectedModelId={selectedModelId}
-                                onSelectModel={setSelectedModelId}
-                                isLoading={isLoading}
-                                onStop={stop}
-                                placeholder="Ask anything or pick a skill below…"
-                                autoFocus
-                                onSignInClick={user ? undefined : () => openAuthModal('signin')}
-                              />
-                            </div>
-
-                            {/* Magic Skills Grid (4 Minimalist Action Cards) */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full text-start">
-                              {MAGIC_SKILLS.map((skill) => {
-                                const Icon = skill.icon;
-                                return (
-                                  <button
-                                    key={skill.title}
-                                    type="button"
-                                    onClick={() => handleSend({ message: skill.prompt, isThinkingEnabled: false })}
-                                    className="flex flex-col gap-2 p-4 rounded-xl border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.06] hover:border-white/[0.1] transition-all cursor-pointer text-sm text-white/70 hover:text-white text-start"
-                                  >
-                                    <div className="flex items-center gap-2.5">
-                                      <div className="h-7 w-7 rounded-lg border border-white/10 bg-white/[0.04] flex items-center justify-center text-white/90 shrink-0">
-                                        <Icon className="h-3.5 w-3.5" />
+                              {/* 2nd (Middle): Magic Skills Grid */}
+                              <motion.div
+                                initial={{ opacity: 0, y: 6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.35, delay: 0.05 }}
+                                className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full text-start mb-6"
+                              >
+                                {MAGIC_SKILLS.map((skill) => {
+                                  const Icon = skill.icon;
+                                  return (
+                                    <button
+                                      key={skill.title}
+                                      type="button"
+                                      onClick={() => handleSend({ message: skill.prompt, isThinkingEnabled: false })}
+                                      className="flex flex-col gap-2 p-4 rounded-xl border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.06] hover:border-white/[0.1] transition-all cursor-pointer text-sm text-white/70 hover:text-white text-start group active:scale-[0.99]"
+                                    >
+                                      <div className="flex items-center gap-2.5">
+                                        <div className="h-7 w-7 rounded-lg border border-white/10 bg-white/[0.04] flex items-center justify-center text-white/90 shrink-0 group-hover:border-white/20 transition-colors">
+                                          <Icon className="h-3.5 w-3.5" />
+                                        </div>
+                                        <span className="font-medium text-white/90">{skill.title}</span>
                                       </div>
-                                      <span className="font-medium text-white/90">{skill.title}</span>
-                                    </div>
-                                    <p className="text-[12.5px] text-white/40 leading-relaxed font-normal">
-                                      {skill.desc}
-                                    </p>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ) : null}
+                                      <p className="text-[12.5px] text-white/40 leading-relaxed font-normal">
+                                        {skill.desc}
+                                      </p>
+                                    </button>
+                                  );
+                                })}
+                              </motion.div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
 
-                        {messages.map((msg, idx) => (
-                          <MessageBubble
-                            key={msg.id || idx}
-                            message={msg}
-                            isLatest={idx === messages.length - 1}
-                            isStreaming={isLoading}
-                            onRegenerate={isLoading ? undefined : () => reload()}
-                          />
-                        ))}
+                        {/* Messages Timeline Feed */}
+                        {messages.length > 0 && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
+                            className="flex flex-col gap-y-8 w-full"
+                          >
+                            {messages.map((msg, idx) => (
+                              <MessageBubble
+                                key={msg.id || idx}
+                                message={msg}
+                                isLatest={idx === messages.length - 1}
+                                isStreaming={isLoading}
+                                onRegenerate={isLoading ? undefined : () => reload()}
+                              />
+                            ))}
+                          </motion.div>
+                        )}
 
                         {/* Loading / Thinking */}
                         {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
@@ -448,66 +472,84 @@ export default function StudioDashboard() {
                                     return error?.message?.includes('{')
                                       ? JSON.parse(error.message).error || error.message
                                       : error?.message || 'The engine is busy. Try again in a moment.';
-                                } catch {
-                                  return error?.message || 'The engine is busy. Try again in a moment.';
-                                }
-                              })()}
-                            </p>
-                            <GhostButton onClick={() => reload()} className="mt-3">
-                              <RefreshCw className="h-3.5 w-3.5" />
-                              Retry
-                            </GhostButton>
+                                  } catch {
+                                    return error?.message || 'The engine is busy. Try again in a moment.';
+                                  }
+                                })()}
+                              </p>
+                              <GhostButton onClick={() => reload()} className="mt-3">
+                                <RefreshCw className="h-3.5 w-3.5" />
+                                Retry
+                              </GhostButton>
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      <div ref={messagesEndRef} className="h-2 w-full shrink-0" />
+                        <div ref={messagesEndRef} className="h-2 w-full shrink-0" />
+                      </div>
                     </div>
-                  </div>
-                </ScrollArea>
+                  </ScrollArea>
 
-                {/* Floating "Scroll to Bottom" Action Button */}
-                <AnimatePresence>
-                  {showScrollButton && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8, scale: 0.9 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 8, scale: 0.9 }}
-                      transition={{ duration: 0.18, ease: 'easeOut' }}
-                      className="absolute bottom-28 sm:bottom-32 left-1/2 -translate-x-1/2 z-40 pointer-events-auto"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => scrollToBottom(true)}
-                        aria-label="Scroll to bottom"
-                        className="flex items-center justify-center p-2 rounded-full backdrop-blur-md bg-white/10 border border-white/20 text-white hover:bg-white/20 shadow-lg shadow-black/40 cursor-pointer active:scale-95 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                  {/* Floating "Scroll to Bottom" Action Button */}
+                  <AnimatePresence>
+                    {showScrollButton && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 8, scale: 0.9 }}
+                        transition={{ duration: 0.18, ease: 'easeOut' }}
+                        className="absolute bottom-28 sm:bottom-32 left-1/2 -translate-x-1/2 z-40 pointer-events-auto"
                       >
-                        <ArrowDown className="h-4 w-4" />
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                        <button
+                          type="button"
+                          onClick={() => scrollToBottom(true)}
+                          aria-label="Scroll to bottom"
+                          className="flex items-center justify-center p-2 rounded-full backdrop-blur-md bg-white/10 border border-white/20 text-white hover:bg-white/20 shadow-lg shadow-black/40 cursor-pointer active:scale-95 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                        >
+                          <ArrowDown className="h-4 w-4" />
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
 
-              {/* Composer — strictly bottom anchored with gradient mask */}
-              {!isEmpty && (
-                <div className="fixed bottom-0 left-0 right-0 lg:left-64 z-30 pointer-events-none flex justify-center bg-gradient-to-t from-background via-background/90 to-transparent pt-4 pb-6">
-                  <div className="mx-auto w-full max-w-4xl px-6 pointer-events-auto">
+                {/* 3rd (Bottom): Persistent Unified Animated Composer */}
+                <motion.div
+                  layout
+                  transition={{ layout: { duration: 0.45, ease: [0.23, 1, 0.32, 1] } }}
+                  className={cn(
+                    'w-full z-30 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]',
+                    isEmpty
+                      ? 'relative pb-10 max-w-3xl mx-auto px-6'
+                      : 'fixed bottom-0 left-0 right-0 lg:left-64 pointer-events-none flex justify-center bg-gradient-to-t from-background via-background/90 to-transparent pt-4 pb-6'
+                  )}
+                >
+                  <div className={cn(
+                    'w-full transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] pointer-events-auto',
+                    isEmpty ? 'max-w-3xl mx-auto' : 'max-w-4xl px-6'
+                  )}>
                     <ClaudeChatInput
                       onSendMessage={handleSend}
-                      models={MODELS.map((m) => ({ id: m.id, name: m.name, description: `${m.provider} · ${m.ctx}`, badge: m.badge, isFree: m.isFree, requiresAuth: !m.isFree }))}
+                      models={MODELS.map((m) => ({
+                        id: m.id,
+                        name: m.name,
+                        description: `${m.provider} · ${m.ctx}`,
+                        badge: m.badge,
+                        isFree: m.isFree,
+                        requiresAuth: !m.isFree,
+                      }))}
                       selectedModelId={selectedModelId}
                       onSelectModel={setSelectedModelId}
                       isLoading={isLoading}
                       onStop={stop}
-                      placeholder="How can I help you today?"
+                      placeholder={isEmpty ? 'Ask anything or pick a skill above…' : 'How can I help you today?'}
+                      autoFocus={isEmpty}
                       onSignInClick={user ? undefined : () => openAuthModal('signin')}
                     />
                   </div>
-                </div>
-              )}
-            </motion.div>
-          )}
+                </motion.div>
+              </motion.div>
+            )}
 
           {/* ── Image Canvas ── */}
           {centerMode === 'image' && (
