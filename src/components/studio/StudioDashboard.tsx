@@ -194,72 +194,60 @@ export default function StudioDashboard() {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const userScrolledUpRef = useRef(false);
+  const isAtBottomRef = useRef(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [isNearBottom, setIsNearBottom] = useState(true);
 
-  /* ---- Scroll management (ChatGPT/Claude behavior) ---- */
+  /* ---- Smart auto-scroll management (No scroll hijacking) ---- */
 
-  // Track whether the user scrolled up to toggle Scroll to Bottom button
+  // Track whether the user is near bottom with ~100px threshold
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
+    const atBottom = distance <= 100;
+
+    isAtBottomRef.current = atBottom;
+    setIsNearBottom(atBottom);
+    setShowScrollButton(distance > 100);
+  }, []);
+
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
-    const onScroll = () => {
-      const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
-      userScrolledUpRef.current = distance > 240;
-      setShowScrollButton(distance > 100);
-      setIsNearBottom(distance <= 100);
-    };
-    container.addEventListener('scroll', onScroll, { passive: true });
-    return () => container.removeEventListener('scroll', onScroll);
-  }, []);
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
 
   const scrollToBottom = useCallback((smooth = true) => {
     const container = scrollContainerRef.current;
     if (!container) return;
-    userScrolledUpRef.current = false;
+    isAtBottomRef.current = true;
+    setIsNearBottom(true);
     setShowScrollButton(false);
     container.scrollTo({ top: container.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
   }, []);
 
-  // Bulletproof stick: rAF loop pins to bottom every frame while AI responds
-  // (immune to missed events, smooth-scroll races, or fast-growing code blocks)
-  useEffect(() => {
-    if (!isLoading) return;
-    let raf = 0;
-    const stick = () => {
-      if (!userScrolledUpRef.current) {
-        const container = scrollContainerRef.current;
-        if (container) container.scrollTop = container.scrollHeight;
-      }
-      raf = requestAnimationFrame(stick);
-    };
-    raf = requestAnimationFrame(stick);
-    return () => cancelAnimationFrame(raf);
-  }, [isLoading]);
-
-  // Force bottom the moment a new exchange starts (send / regenerate)
+  // Force bottom the moment a new send exchange starts
   useEffect(() => {
     if (isLoading) {
       scrollToBottom(false);
-      const t = setTimeout(() => scrollToBottom(false), 80);
-      return () => clearTimeout(t);
     }
   }, [isLoading, scrollToBottom]);
 
-  // Stick to bottom on every message update unless the user scrolled up
+  // When messages or streaming tokens update:
+  // ONLY auto-scroll if the user is already near the bottom.
+  // If the user scrolled up, NEVER hijack or reset their scroll position!
   useEffect(() => {
-    if (userScrolledUpRef.current || isLoading) return; // rAF loop handles streaming
+    if (!isAtBottomRef.current) return;
     const container = scrollContainerRef.current;
     if (!container) return;
-    const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
-    if (distance < 420) {
-      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-    }
-  }, [messages, scrollToBottom]);
+    container.scrollTop = container.scrollHeight;
+  }, [messages]);
+
   // Jump to bottom when switching sessions
   useEffect(() => {
-    const t = setTimeout(() => scrollToBottom(false), 120);
+    const t = setTimeout(() => scrollToBottom(false), 80);
     return () => clearTimeout(t);
   }, [activeSessionId, scrollToBottom]);
 
