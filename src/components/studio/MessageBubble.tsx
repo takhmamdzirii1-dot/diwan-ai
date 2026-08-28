@@ -23,6 +23,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
   codeBlockCounter.current = 0;
 
   const isUser = message.role === 'user';
+  const isRTL = detectDir(message.content) === 'rtl';
 
   // Fluid typewriter reveal while the assistant is streaming
   const smoothActive = !isUser && isStreaming && isLatest;
@@ -61,78 +62,90 @@ export default function MessageBubble({ message, isLatest, isStreaming, onRegene
       transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
       className="group/msg flex flex-col gap-2.5 w-full min-w-0"
     >
-      {/* Header meta - AI only (Claude style) */}
+      {/* Header meta - AI only (Claude style with RTL support) */}
       {!isUser && (
-      <div className="flex items-center gap-3 w-full px-1 justify-start">
-        {
-          <>
-            {/* Animated gradient avatar */}
-            <div className="ai-avatar-ring h-7 w-7 rounded-lg p-[1.5px]">
-              <div className="w-full h-full rounded-[calc(0.5rem-1.5px)] bg-[#1A1C1F] flex items-center justify-center">
-                <Sparkles className="h-3.5 w-3.5 text-[#FFFFFF]" />
-              </div>
+        <div
+          dir={isRTL ? 'rtl' : 'ltr'}
+          className="flex items-center gap-2.5 w-full px-1 justify-start"
+        >
+          {/* Animated gradient avatar */}
+          <div className="ai-avatar-ring h-7 w-7 rounded-lg p-[1.5px] shrink-0">
+            <div className="w-full h-full rounded-[calc(0.5rem-1.5px)] bg-[#1A1C1F] flex items-center justify-center">
+              <Sparkles className="h-3.5 w-3.5 text-[#FFFFFF]" />
             </div>
-            <span className="text-[11px] font-mono uppercase tracking-[0.14em] text-white/55">VANTRA</span>
-            {!isStreaming && (
-              <div className="flex items-center gap-0.5 opacity-0 group-hover/msg:opacity-100 transition-opacity">
+          </div>
+          <span className="text-[11px] font-mono uppercase tracking-[0.14em] text-white/55 shrink-0">
+            VANTRA
+          </span>
+          {!isStreaming && (
+            <div className="flex items-center gap-0.5 opacity-0 group-hover/msg:opacity-100 transition-opacity">
+              <button
+                type="button"
+                onClick={handleCopyMessage}
+                title="Copy"
+                className="p-1.5 rounded-md text-white/30 hover:text-[#FFFFFF] hover:bg-white/[0.06] transition-colors cursor-pointer active:scale-90"
+              >
+                {copiedMessage ? <Check className="h-3 w-3 text-[#FFFFFF]" /> : <Copy className="h-3 w-3" />}
+              </button>
+              <button
+                type="button"
+                onClick={handleShare}
+                title="Share"
+                className="p-1.5 rounded-md text-white/30 hover:text-[#D1D5DB] hover:bg-white/[0.06] transition-colors cursor-pointer active:scale-90"
+              >
+                {shared ? <Check className="h-3 w-3 text-[#FFFFFF]" /> : <Share className="h-3 w-3" />}
+              </button>
+              {isLatest && onRegenerate && (
                 <button
                   type="button"
-                  onClick={handleCopyMessage}
-                  title="Copy"
+                  onClick={onRegenerate}
+                  title="Regenerate"
                   className="p-1.5 rounded-md text-white/30 hover:text-[#FFFFFF] hover:bg-white/[0.06] transition-colors cursor-pointer active:scale-90"
                 >
-                  {copiedMessage ? <Check className="h-3 w-3 text-[#FFFFFF]" /> : <Copy className="h-3 w-3" />}
+                  <RefreshCw className="h-3 w-3" />
                 </button>
-                <button
-                  type="button"
-                  onClick={handleShare}
-                  title="Share"
-                  className="p-1.5 rounded-md text-white/30 hover:text-[#D1D5DB] hover:bg-white/[0.06] transition-colors cursor-pointer active:scale-90"
-                >
-                  {shared ? <Check className="h-3 w-3 text-[#FFFFFF]" /> : <Share className="h-3 w-3" />}
-                </button>
-                {isLatest && onRegenerate && (
-                  <button
-                    type="button"
-                    onClick={onRegenerate}
-                    title="Regenerate"
-                    className="p-1.5 rounded-md text-white/30 hover:text-[#FFFFFF] hover:bg-white/[0.06] transition-colors cursor-pointer active:scale-90"
-                  >
-                    <RefreshCw className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-            )}
-          </>
-        }
-      </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Bubble / Panel */}
-      <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
+      <div className={`flex w-full ${isUser ? (isRTL ? 'justify-start' : 'justify-end') : 'justify-start'}`}>
         {isUser ? (
-          <div className="user-bubble-gloss max-w-[80%] min-w-0 rounded-2xl px-5 py-4" dir={detectDir(message.content)}>
-            <p className="text-[15px] text-white/90 font-medium leading-relaxed whitespace-pre-wrap break-words">
+          <div
+            className="user-bubble-gloss max-w-[85%] sm:max-w-[80%] min-w-0 rounded-2xl px-4 py-3 sm:px-5 sm:py-4"
+            dir={isRTL ? 'rtl' : 'ltr'}
+          >
+            <p className="text-[14.5px] sm:text-[15px] text-white/90 font-medium leading-relaxed whitespace-pre-wrap break-words">
               {message.content}
             </p>
           </div>
         ) : (
-          <div className="w-fit max-w-full min-w-0 rounded-2xl border border-white/[0.07] bg-white/[0.025] backdrop-blur-xl px-6 py-5 md:px-7 md:py-6 shadow-[0_18px_44px_-24px_rgba(0,0,0,0.9)] relative">
-            {/* top gradient hairline: cyan -> violet */}
-            <span className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-[#FFFFFF]/40 to-transparent pointer-events-none" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.5), rgba(255,255,255,0.3), transparent)' }} />
-            <div className="lux-prose font-sans antialiased text-white/90">
+          <div
+            dir={isRTL ? 'rtl' : 'ltr'}
+            className="w-full max-w-full min-w-0 rounded-2xl border border-white/[0.07] bg-white/[0.025] backdrop-blur-xl px-4 py-4 sm:px-6 sm:py-5 md:px-7 md:py-6 shadow-[0_18px_44px_-24px_rgba(0,0,0,0.9)] relative"
+          >
+            {/* top gradient hairline */}
+            <span
+              className="absolute top-0 left-6 right-6 h-px pointer-events-none"
+              style={{
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), rgba(255,255,255,0.2), transparent)',
+              }}
+            />
+            <div className={`lux-prose font-sans antialiased text-white/90 ${isRTL ? 'text-right' : 'text-left'}`}>
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeRaw]}
                 components={{
                   pre: ({ children }) => <>{children}</>,
-                  p: ({ children }) => <p dir="auto">{children}</p>,
-                  h1: ({ children }) => <h1 dir="auto">{children}</h1>,
-                  h2: ({ children }) => <h2 dir="auto">{children}</h2>,
-                  h3: ({ children }) => <h3 dir="auto">{children}</h3>,
-                  h4: ({ children }) => <h4 dir="auto">{children}</h4>,
-                  li: ({ children }) => <li dir="auto">{children}</li>,
-                  blockquote: ({ children }) => <blockquote dir="auto">{children}</blockquote>,
+                  p: ({ children }) => <p dir={isRTL ? 'rtl' : 'auto'} className={isRTL ? 'text-right' : 'text-left'}>{children}</p>,
+                  h1: ({ children }) => <h1 dir={isRTL ? 'rtl' : 'auto'} className={isRTL ? 'text-right' : 'text-left'}>{children}</h1>,
+                  h2: ({ children }) => <h2 dir={isRTL ? 'rtl' : 'auto'} className={isRTL ? 'text-right' : 'text-left'}>{children}</h2>,
+                  h3: ({ children }) => <h3 dir={isRTL ? 'rtl' : 'auto'} className={isRTL ? 'text-right' : 'text-left'}>{children}</h3>,
+                  h4: ({ children }) => <h4 dir={isRTL ? 'rtl' : 'auto'} className={isRTL ? 'text-right' : 'text-left'}>{children}</h4>,
+                  li: ({ children }) => <li dir={isRTL ? 'rtl' : 'auto'} className={isRTL ? 'text-right' : 'text-left'}>{children}</li>,
+                  blockquote: ({ children }) => <blockquote dir={isRTL ? 'rtl' : 'auto'} className={isRTL ? 'text-right border-r-2 border-white/20 pr-4' : 'text-left border-l-2 border-white/20 pl-4'}>{children}</blockquote>,
                   table: ({ children }) => (
                     <div className="my-6 overflow-x-auto custom-scrollbar rounded-xl border border-white/[0.1] bg-[#1A1C1F]" dir="ltr">
                       <table className="w-full text-[14px] border-collapse min-w-[520px]">{children}</table>

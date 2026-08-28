@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, ArrowDown, Zap, Swords, Database, Settings, Sparkles, LayoutGrid, MessageSquare, Image as ImageIcon, Video, PenLine, Code2, Lightbulb, BarChart3, RefreshCw } from 'lucide-react';
+import { Menu, ArrowDown, Plus, Zap, Swords, Database, Settings, Sparkles, LayoutGrid, MessageSquare, Image as ImageIcon, Video, PenLine, Code2, Lightbulb, BarChart3, RefreshCw } from 'lucide-react';
 import { useChat } from '@ai-sdk/react';
 import useUser from '../../hooks/useUser';
 import { useModal } from '../../context/ModalContext';
@@ -13,6 +13,7 @@ import ImageCanvas from './ImageCanvas';
 import SettingsModal from './SettingsModal';
 import MotionStudio from './MotionStudio';
 import MediaLibrary from './MediaLibrary';
+import { VantraLogo } from '../VantraLogo';
 import { cn } from '@/lib/utils';
 import { ScrollArea, GhostButton } from './AppShell';
 
@@ -316,7 +317,7 @@ export default function StudioDashboard() {
   const isEmpty = messages.length === 0;
 
   return (
-    <div className="relative flex h-screen w-full overflow-hidden obsidian-bg text-white font-sans">
+    <div className="relative flex h-[100dvh] w-full overflow-hidden obsidian-bg text-white font-sans">
       {/* Sidebar */}
       <DashboardSidebar
         activeWorkspace={centerMode}
@@ -335,23 +336,40 @@ export default function StudioDashboard() {
       />
 
       {/* Workspace */}
-      <main className="flex-1 flex flex-col min-w-0 h-full">
-        {/* Top bar with mobile menu button */}
-        <header className="lg:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-[#0D0D0D]/80 backdrop-blur-xl border-b border-white/[0.08] px-4 flex items-center justify-between">
+      <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
+        {/* Compact Mobile Top Bar: inline hamburger + VANTRA title/logo */}
+        <header className="lg:hidden shrink-0 h-14 bg-[#0D0D0D]/90 backdrop-blur-xl border-b border-white/[0.08] px-4 flex items-center justify-between z-30">
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setIsMobileNavOpen(true)}
+              aria-label="Open navigation"
+              aria-expanded={isMobileNavOpen}
+              className="p-2 -ms-2 rounded-lg bg-transparent border-none text-white/80 hover:text-white hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer active:scale-95 transition-colors"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg border border-white/10 flex items-center justify-center bg-white/[0.04]">
+                <VantraLogo className="w-3.5 h-3.5" />
+              </div>
+              <span className="text-[13px] font-semibold tracking-[0.14em] text-white">VANTRA</span>
+              <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-white/40">Studio</span>
+            </div>
+          </div>
+
           <button
             type="button"
-            onClick={() => setIsMobileNavOpen(true)}
-            aria-label="Open navigation"
-            aria-expanded={isMobileNavOpen}
-            className="flex items-center justify-center p-2 rounded-lg bg-transparent border-none text-white/80 hover:text-white hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer active:scale-95 transition-colors"
+            onClick={handleNewChat}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-white/[0.04] text-[11.5px] font-medium text-white/70 hover:text-white hover:bg-white/[0.08] transition-colors"
           >
-            <Menu className="h-5 w-5" />
+            <Plus className="h-3.5 w-3.5" />
+            <span>New</span>
           </button>
-          <div className="flex-1" />
         </header>
 
         {/* Center content */}
-        <div className="flex-1 relative min-h-0">
+        <div className="flex-1 relative min-h-0 overflow-hidden">
           <AnimatePresence mode="wait">
             {/* ── Chat Studio ── */}
             {centerMode === 'chat' && (
@@ -361,93 +379,95 @@ export default function StudioDashboard() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.18 }}
-                className="absolute inset-0 flex flex-col"
+                className="absolute inset-0 flex flex-col min-h-0 overflow-hidden"
               >
-                <ScrollArea
-                  ref={scrollContainerRef}
-                  className="flex-1 relative"
-                  style={{ overflowAnchor: 'none' }}
-                >
-                  <div className={cn('w-full flex justify-center px-4', isEmpty ? 'min-h-full items-center py-8' : 'pt-8 pb-4')}>
-                    <div className="w-full max-w-[760px] flex flex-col gap-6">
-                      {isEmpty ? (
-                        <div className="flex flex-col items-center text-center">
-                          <div className="h-14 w-14 rounded-2xl border border-white/[0.08] bg-white/[0.03] flex items-center justify-center">
-                            <Sparkles className="h-6 w-6 text-white/70" />
+                {/* Scrollable Message Timeline Area */}
+                <div className="flex-1 min-h-0 relative flex flex-col overflow-hidden">
+                  <ScrollArea
+                    ref={scrollContainerRef}
+                    className="flex-1 min-h-0"
+                    style={{ overflowAnchor: 'none' }}
+                  >
+                    <div className={cn('w-full flex justify-center px-3 sm:px-4', isEmpty ? 'min-h-full items-center py-6' : 'pt-4 sm:pt-6 pb-6')}>
+                      <div className="w-full max-w-[760px] flex flex-col gap-5 sm:gap-6">
+                        {isEmpty ? (
+                          <div className="flex flex-col items-center text-center">
+                            <div className="h-14 w-14 rounded-2xl border border-white/[0.08] bg-white/[0.03] flex items-center justify-center">
+                              <Sparkles className="h-6 w-6 text-white/70" />
+                            </div>
+                            <h2 className="text-[20px] sm:text-[22px] font-semibold tracking-tight text-white mt-5">
+                              How can I help you today?
+                            </h2>
+                            <p className="text-[13px] text-white/40 mt-2">
+                              Pick a model in the composer and start typing.
+                            </p>
+
+                            <div className="w-full mt-6 sm:mt-8">
+                              <ClaudeChatInput
+                                onSendMessage={handleSend}
+                                models={MODELS.map((m) => ({ id: m.id, name: m.name, description: `${m.provider} · ${m.ctx}`, badge: m.badge, isFree: m.isFree, requiresAuth: !m.isFree }))}
+                                selectedModelId={selectedModelId}
+                                onSelectModel={setSelectedModelId}
+                                isLoading={isLoading}
+                                onStop={stop}
+                                placeholder="Ask anything…"
+                                autoFocus
+                                onSignInClick={user ? undefined : () => openAuthModal('signin')}
+                              />
+                            </div>
+
+                            <div className="flex flex-wrap justify-center gap-2 mt-6">
+                              {SUGGESTIONS.map((s) => (
+                                <button
+                                  key={s.label}
+                                  type="button"
+                                  onClick={() => handleSend({ message: s.prompt, isThinkingEnabled: false })}
+                                  className="inline-flex items-center gap-2 px-3.5 h-9 rounded-full border border-white/10 text-[12px] sm:text-[12.5px] text-white/60 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                                >
+                                  <s.icon className="h-3.5 w-3.5" />
+                                  {s.label}
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                          <h2 className="text-[22px] font-semibold tracking-tight text-white mt-5">
-                            How can I help you today?
-                          </h2>
-                          <p className="text-[13px] text-white/40 mt-2">
-                            Pick a model in the composer and start typing.
-                          </p>
+                        ) : null}
 
-                          <div className="w-full mt-8">
-                            <ClaudeChatInput
-                              onSendMessage={handleSend}
-                              models={MODELS.map((m) => ({ id: m.id, name: m.name, description: `${m.provider} · ${m.ctx}`, badge: m.badge, isFree: m.isFree, requiresAuth: !m.isFree }))}
-                              selectedModelId={selectedModelId}
-                              onSelectModel={setSelectedModelId}
-                              isLoading={isLoading}
-                              onStop={stop}
-                              placeholder="Ask anything…"
-                              autoFocus
-                              onSignInClick={user ? undefined : () => openAuthModal('signin')}
-                            />
+                        {messages.map((msg, idx) => (
+                          <MessageBubble
+                            key={msg.id || idx}
+                            message={msg}
+                            isLatest={idx === messages.length - 1}
+                            isStreaming={isLoading}
+                            onRegenerate={isLoading ? undefined : () => reload()}
+                          />
+                        ))}
+
+                        {/* Loading */}
+                        {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
+                          <div className="flex justify-start" role="status" aria-live="polite">
+                            <div className="inline-flex items-center gap-3 px-4 py-3 rounded-2xl border border-white/[0.08] bg-white/[0.03]">
+                              <span className="flex items-center gap-1.5">
+                                <span className="neon-dot" />
+                                <span className="neon-dot" />
+                                <span className="neon-dot" />
+                              </span>
+                              <span className="text-[11px] font-mono uppercase tracking-[0.18em] text-white/35">
+                                {activeModel.name}
+                              </span>
+                            </div>
                           </div>
+                        )}
 
-                          <div className="flex flex-wrap justify-center gap-2 mt-6">
-                            {SUGGESTIONS.map((s) => (
-                              <button
-                                key={s.label}
-                                type="button"
-                                onClick={() => handleSend({ message: s.prompt, isThinkingEnabled: false })}
-                                className="inline-flex items-center gap-2 px-3.5 h-9 rounded-full border border-white/10 text-[12.5px] text-white/60 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-                              >
-                                <s.icon className="h-3.5 w-3.5" />
-                                {s.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-
-                      {messages.map((msg, idx) => (
-                        <MessageBubble
-                          key={msg.id || idx}
-                          message={msg}
-                          isLatest={idx === messages.length - 1}
-                          isStreaming={isLoading}
-                          onRegenerate={isLoading ? undefined : () => reload()}
-                        />
-                      ))}
-
-                      {/* Loading */}
-                      {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
-                        <div className="flex justify-start" role="status" aria-live="polite">
-                          <div className="inline-flex items-center gap-3 px-4 py-3 rounded-2xl border border-white/[0.08] bg-white/[0.03]">
-                            <span className="flex items-center gap-1.5">
-                              <span className="neon-dot" />
-                              <span className="neon-dot" />
-                              <span className="neon-dot" />
-                            </span>
-                            <span className="text-[11px] font-mono uppercase tracking-[0.18em] text-white/35">
-                              {activeModel.name}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Error + retry */}
-                      {error && !error.message?.includes('Failed to parse stream string') && (
-                        <div className="flex justify-start" role="alert">
-                          <div className="max-w-lg rounded-2xl border border-white/15 bg-white/[0.04] px-4 py-3.5">
-                            <p className="text-[13px] text-white/80 leading-relaxed">
-                              {(() => {
-                                try {
-                                  return error?.message?.includes('{')
-                                    ? JSON.parse(error.message).error || error.message
-                                    : error?.message || 'The engine is busy. Try again in a moment.';
+                        {/* Error + retry */}
+                        {error && !error.message?.includes('Failed to parse stream string') && (
+                          <div className="flex justify-start" role="alert">
+                            <div className="max-w-lg rounded-2xl border border-white/15 bg-white/[0.04] px-4 py-3.5">
+                              <p className="text-[13px] text-white/80 leading-relaxed">
+                                {(() => {
+                                  try {
+                                    return error?.message?.includes('{')
+                                      ? JSON.parse(error.message).error || error.message
+                                      : error?.message || 'The engine is busy. Try again in a moment.';
                                 } catch {
                                   return error?.message || 'The engine is busy. Try again in a moment.';
                                 }
@@ -469,52 +489,54 @@ export default function StudioDashboard() {
                 {/* Floating "Scroll to Bottom" Action Button */}
                 <AnimatePresence>
                   {showScrollButton && (
-                    <div className="absolute bottom-[108px] md:bottom-[100px] left-0 right-0 z-40 flex justify-center pointer-events-none">
-                      <motion.button
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.9 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.9 }}
+                      transition={{ duration: 0.18, ease: 'easeOut' }}
+                      className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 pointer-events-auto"
+                    >
+                      <button
                         type="button"
                         onClick={() => scrollToBottom(true)}
-                        initial={{ opacity: 0, y: 10, scale: 0.9 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.9 }}
-                        transition={{ duration: 0.2, ease: 'easeOut' }}
                         aria-label="Scroll to bottom"
-                        className="pointer-events-auto flex items-center justify-center p-2 rounded-full backdrop-blur-md bg-white/10 border border-white/20 text-white hover:bg-white/20 shadow-lg shadow-black/40 cursor-pointer active:scale-95 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                        className="flex items-center justify-center p-2 rounded-full backdrop-blur-md bg-white/10 border border-white/20 text-white hover:bg-white/20 shadow-lg shadow-black/40 cursor-pointer active:scale-95 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
                       >
                         <ArrowDown className="h-4 w-4" />
-                      </motion.button>
-                    </div>
+                      </button>
+                    </motion.div>
                   )}
                 </AnimatePresence>
+              </div>
 
-                {/* Composer — IN-FLOW below the scroll area (root fix: content can never slide under it) */}
-                {!isEmpty && (
-                  <div
-                    className="shrink-0 w-full px-6 pb-20 pt-1 relative z-30 flex justify-center"
-                    style={{ background: 'linear-gradient(to top, #16181A 55%, rgba(22,24,26,0.9) 82%, transparent)' }}
-                  >
-                    <div className="w-full max-w-[760px]">
-                      <ClaudeChatInput
-                        onSendMessage={handleSend}
-                        models={MODELS.map((m) => ({ id: m.id, name: m.name, description: `${m.provider} · ${m.ctx}`, badge: m.badge, isFree: m.isFree, requiresAuth: !m.isFree }))}
-                        selectedModelId={selectedModelId}
-                        onSelectModel={setSelectedModelId}
-                        isLoading={isLoading}
-                        onStop={stop}
-                        placeholder="How can I help you today?"
-                        onSignInClick={user ? undefined : () => openAuthModal('signin')}
-                      />
-                    </div>
+              {/* Composer — strictly bottom anchored with safe-area padding */}
+              {!isEmpty && (
+                <div
+                  className="shrink-0 w-full px-3 sm:px-6 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-[#090909]/95 backdrop-blur-xl border-t border-white/[0.06] z-30 flex justify-center"
+                >
+                  <div className="w-full max-w-[760px]">
+                    <ClaudeChatInput
+                      onSendMessage={handleSend}
+                      models={MODELS.map((m) => ({ id: m.id, name: m.name, description: `${m.provider} · ${m.ctx}`, badge: m.badge, isFree: m.isFree, requiresAuth: !m.isFree }))}
+                      selectedModelId={selectedModelId}
+                      onSelectModel={setSelectedModelId}
+                      isLoading={isLoading}
+                      onStop={stop}
+                      placeholder="How can I help you today?"
+                      onSignInClick={user ? undefined : () => openAuthModal('signin')}
+                    />
                   </div>
-                )}
-              </motion.div>
-            )}
+                </div>
+              )}
+            </motion.div>
+          )}
 
-            {/* ── Image Canvas ── */}
-            {centerMode === 'image' && (
-              <motion.div key="image" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} className="absolute inset-0">
-                <ImageCanvas />
-              </motion.div>
-            )}
+          {/* ── Image Canvas ── */}
+          {centerMode === 'image' && (
+            <motion.div key="image" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} className="absolute inset-0">
+              <ImageCanvas />
+            </motion.div>
+          )}
 
             {/* ── Motion Studio ── */}
             {centerMode === 'video' && (

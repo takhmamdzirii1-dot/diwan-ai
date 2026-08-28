@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { VantraLogo } from '../VantraLogo';
 
 /* ── Design tokens (monochrome only) ───────────────────────
    #090909  canvas
@@ -32,7 +33,7 @@ export function TopBar({
 }) {
   return (
     <header
-      className="shrink-0 flex items-center gap-3 px-4 border-b border-white/[0.08] bg-[#0D0D0D]/80 backdrop-blur-xl"
+      className="shrink-0 flex items-center gap-3 px-4 border-b border-white/[0.08] bg-[#0D0D0D]/90 backdrop-blur-xl"
       style={{ height: SHELL_TOKENS.topBarHeight }}
     >
       {onOpenNav && (
@@ -40,7 +41,7 @@ export function TopBar({
           type="button"
           onClick={onOpenNav}
           aria-label="Open navigation"
-          className="lg:hidden shrink-0 h-9 w-9 -ms-1 flex items-center justify-center rounded-lg text-white/70 hover:text-white hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors cursor-pointer"
+          className="lg:hidden shrink-0 h-9 w-9 -ms-1 flex items-center justify-center rounded-lg bg-transparent border-none text-white/80 hover:text-white hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors cursor-pointer active:scale-95"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
@@ -48,9 +49,14 @@ export function TopBar({
         </button>
       )}
 
-      <div className="min-w-0 flex-1">
-        <h1 className="text-[14px] font-semibold text-white truncate leading-tight">{title}</h1>
-        {subtitle && <p className="text-[11.5px] text-white/40 truncate leading-tight mt-0.5">{subtitle}</p>}
+      <div className="min-w-0 flex-1 flex items-center gap-2">
+        <div className="h-7 w-7 rounded-lg border border-white/10 flex items-center justify-center bg-white/[0.04] lg:hidden shrink-0">
+          <VantraLogo className="w-3.5 h-3.5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-[14px] font-semibold text-white truncate leading-tight">{title}</h1>
+          {subtitle && <p className="text-[11.5px] text-white/40 truncate leading-tight mt-0.5">{subtitle}</p>}
+        </div>
       </div>
 
       {actions && <div className="shrink-0 flex items-center gap-2">{actions}</div>}
