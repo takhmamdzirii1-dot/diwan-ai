@@ -537,10 +537,10 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                     />
                 </div>
 
-                {/* Action bar — bottom padding lifts buttons off the edge */}
-                <div className="flex gap-2 w-full items-center px-1 pt-1">
-                    {/* Left tools */}
-                    <div className="relative flex-1 flex items-center shrink min-w-0 gap-1 ps-1">
+                {/* Action bar — bottom row perfectly balanced */}
+                <div className="flex items-center justify-between w-full px-1 pt-1">
+                    {/* Left side: action icons */}
+                    <div className="flex items-center shrink-0 gap-1 ps-1">
                         {/* Multimodal Dropdown Menu */}
                         <div className="relative" ref={menuRef}>
                             <button
@@ -653,8 +653,8 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                         </div>
                     </div>
 
-                    {/* Right tools — extra space from the right edge */}
-                    <div className="flex flex-row items-center shrink-0 gap-1.5 pe-1">
+                    {/* Right side: Model Selector dropdown AND Send button */}
+                    <div className="flex items-center shrink-0 gap-3 pe-1">
                         {models.length > 0 && (
                             <div className="shrink-0">
                                 <ModelSelector
@@ -662,6 +662,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                     selectedModel={selectedModelId || models[0]?.id}
                                     onSelect={(id) => onSelectModel?.(id)}
                                     onSignInClick={onSignInClick}
+                                    dropdownPosition="top"
                                 />
                             </div>
                         )}

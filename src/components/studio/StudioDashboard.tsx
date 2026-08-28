@@ -336,59 +336,16 @@ export default function StudioDashboard() {
 
       {/* Workspace */}
       <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
-        {/* Contextual Header (Main Workspace) */}
-        <header className="h-13 shrink-0 flex items-center justify-between border-b border-white/[0.05] px-6 bg-[#0A0A0B]/80 backdrop-blur-md z-40">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setIsMobileNavOpen(true)}
-              aria-label="Open navigation"
-              aria-expanded={isMobileNavOpen}
-              className="lg:hidden p-1.5 -ms-2 rounded-lg bg-transparent border-none text-white/70 hover:text-white hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer active:scale-95 transition-colors"
-            >
-              <Menu className="h-4.5 w-4.5" />
-            </button>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-white/80">
-                {centerMode === 'chat'
-                  ? 'Chat Studio'
-                  : centerMode === 'image'
-                  ? 'Image Canvas'
-                  : centerMode === 'video'
-                  ? 'Motion Studio'
-                  : 'Library'}
-              </span>
-              {centerMode === 'chat' && activeSessionId && (
-                <>
-                  <span className="text-white/20 text-xs">/</span>
-                  <span className="text-xs text-white/40 font-normal truncate max-w-[200px]">
-                    {sessions.find((s) => s.id === activeSessionId)?.title || 'Thread'}
-                  </span>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Top Context Actions: Model Selector */}
-          {centerMode === 'chat' && (
-            <div className="flex items-center gap-2">
-              <ModelSelector
-                models={MODELS.map((m) => ({
-                  id: m.id,
-                  name: m.name,
-                  description: `${m.provider} · ${m.ctx}`,
-                  badge: m.badge,
-                  isFree: m.isFree,
-                  requiresAuth: !m.isFree,
-                }))}
-                selectedModel={selectedModelId}
-                onSelect={(id) => setSelectedModelId(id)}
-                onSignInClick={user ? undefined : () => openAuthModal('signin')}
-                dropdownPosition="bottom"
-              />
-            </div>
-          )}
-        </header>
+        {/* Mobile Navigation Trigger (Subtle floating button, hidden on desktop) */}
+        <button
+          type="button"
+          onClick={() => setIsMobileNavOpen(true)}
+          aria-label="Open navigation"
+          aria-expanded={isMobileNavOpen}
+          className="lg:hidden absolute top-3.5 left-4 z-40 p-2 rounded-xl bg-[#111216]/80 border border-white/10 text-white/70 hover:text-white backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg"
+        >
+          <Menu className="h-4 w-4" />
+        </button>
 
         {/* Center content */}
         <div className="flex-1 relative min-h-0 overflow-hidden">
