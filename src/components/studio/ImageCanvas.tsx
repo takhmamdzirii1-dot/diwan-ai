@@ -213,49 +213,34 @@ export default function ImageCanvas() {
         </div>
       </div>
 
+      {/* ── 2. Image Composer (Strict Two-Row Structure) ── */}
       <div className="sticky bottom-0 w-full bg-gradient-to-t from-[#0A0A0B] via-[#0A0A0B] to-transparent pt-4 pb-6 z-20">
         <div className="mx-auto w-full max-w-4xl px-6">
           <div className="w-full border border-white/[0.08] bg-[#111216]/90 shadow-2xl backdrop-blur-xl transition-all duration-200 focus-within:border-white/[0.25] focus-within:bg-[#15161A]/90 rounded-2xl flex flex-col justify-between overflow-hidden">
-            <div className="p-3">
-              {referenceImage && (
-                <div className="flex items-center gap-2 mb-2 p-1.5 bg-white/[0.04] rounded-lg border border-white/[0.08] w-fit">
-                  <img src={referenceImage.url} alt="Reference" className="size-7 object-cover rounded-md" />
-                  <span className="text-xs text-white/70 truncate max-w-[160px]">{referenceImage.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => setReferenceImage(null)}
-                    aria-label="Remove reference image"
-                    className="text-white/40 hover:text-white p-0.5 rounded transition-colors cursor-pointer"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              )}
-
+            {/* Top Section (Input): Clean, full-width textarea with NO sibling elements */}
+            <div className="w-full">
               <textarea
                 ref={textareaRef}
                 value={prompt}
-                onChange={(e) => {
-                  setPrompt(e.target.value);
-                  autoGrow();
-                }}
+                onChange={(e) => setPrompt(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     handleGenerate();
                   }
                 }}
-                placeholder="Describe the image you want to create in vivid detail…"
-                dir="auto"
                 rows={2}
-                className="w-full bg-transparent border-0 outline-none text-white text-[15px] placeholder:text-white/30 resize-none overflow-y-auto leading-relaxed block antialiased font-sans px-1"
-                style={{ minHeight: '3em', maxHeight: '140px' }}
+                placeholder="Describe what you want to create..."
                 disabled={isGenerating}
+                className="w-full bg-transparent text-white/90 placeholder:text-white/40 text-sm focus:outline-none resize-none p-4 px-5 block"
               />
             </div>
 
-            <div className="flex items-center justify-between border-t border-white/[0.05] px-3 py-2.5 bg-white/[0.01]">
+            {/* Bottom Section (Toolbar) */}
+            <div className="flex items-center justify-between border-t border-white/[0.05] px-4 py-3 bg-white/[0.01]">
+              {/* Left side: Compact trigger buttons */}
               <div className="flex items-center gap-2">
+                {/* Reference Upload */}
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -272,6 +257,7 @@ export default function ImageCanvas() {
                   <span>Ref</span>
                 </button>
 
+                {/* Model Selector Trigger */}
                 <div className="relative" ref={modelMenuRef}>
                   <button
                     type="button"
@@ -311,6 +297,7 @@ export default function ImageCanvas() {
                   )}
                 </div>
 
+                {/* Ratio Selector Trigger */}
                 <div className="relative" ref={ratioMenuRef}>
                   <button
                     type="button"
@@ -348,6 +335,7 @@ export default function ImageCanvas() {
                 </div>
               </div>
 
+              {/* Right side: Generate Button or Cancel Button */}
               {isGenerating ? (
                 <button
                   type="button"
