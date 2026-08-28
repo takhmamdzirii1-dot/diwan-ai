@@ -1,9 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-import { Copy, Check, Terminal, Share, RefreshCw, Sparkles, Image as ImageIcon, FileText } from 'lucide-react';
+import { Copy, Check, Terminal, Share, RefreshCw, Sparkles, Image as ImageIcon, FileImage, FileText } from 'lucide-react';
 import type { Message } from '@ai-sdk/react';
 import { useSmoothText } from '../../hooks/useSmoothText';
 import { detectDir } from '../../lib/direction';
@@ -15,6 +15,56 @@ export interface MessageBubbleProps {
   isStreaming?: boolean;
   isThinking?: boolean;
   onRegenerate?: () => void;
+}
+
+function AttachmentThumbnail({ attachment }: { attachment: { name: string; url?: string | File | Blob } }) {
+  const [hasError, setHasError] = useState(false);
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!attachment.url) return;
+    if (typeof attachment.url === 'string') {
+      setObjectUrl(attachment.url);
+      setHasError(false);
+    } else if (typeof window !== 'undefined' && attachment.url && typeof attachment.url === 'object') {
+      try {
+        const raw = attachment.url as Blob;
+        if (raw instanceof Blob || (raw as any) instanceof File) {
+          const url = URL.createObjectURL(raw);
+          setObjectUrl(url);
+          setHasError(false);
+          return () => {
+            URL.revokeObjectURL(url);
+          };
+        }
+      } catch {
+        setHasError(true);
+      }
+    }
+  }, [attachment.url]);
+
+  if (hasError || (!objectUrl && !attachment.url)) {
+    return (
+      <div
+        className="size-20 flex flex-col items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] p-1.5 text-white/70"
+        title={attachment.name}
+      >
+        <FileImage className="size-6 text-white/40 shrink-0" />
+        <span className="text-[10px] font-mono text-white/45 truncate max-w-[64px] text-center">
+          {attachment.name || 'image'}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={objectUrl || (typeof attachment.url === 'string' ? attachment.url : '')}
+      alt="upload"
+      onError={() => setHasError(true)}
+      className="size-20 object-cover rounded-lg border border-white/10 bg-white/[0.02]"
+    />
+  );
 }
 
 export default function MessageBubble({ message, isLatest, isStreaming, isThinking, onRegenerate }: MessageBubbleProps) {
@@ -32,14 +82,14 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   const pastedTextRegex = /\[Pasted text\]\n?/g;
   
   const rawAttachments = isUser ? Array.from(message.content.matchAll(attachmentRegex)).map(m => m[1].trim()) : [];
-  const expAttachments = isUser ? (((message as any).experimental_attachments || []) as Array<{ name?: string; url?: string; contentType?: string }>) : [];
+  const expAttachments = isUser ? (((message as any).experimental_attachments || []) as Array<{ name?: string; url?: string | File | Blob; contentType?: string }>) : [];
   
   const cleanContent = isUser 
     ? message.content.replace(attachmentRegex, '').replace(pastedTextRegex, '').trim()
     : message.content;
 
-  const userImageAttachments: Array<{ name: string; url?: string }> = [];
-  const userOtherAttachments: Array<{ name: string; url?: string }> = [];
+  const userImageAttachments: Array<{ name: string; url?: string | File | Blob }> = [];
+  const userOtherAttachments: Array<{ name: string; url?: string | File | Blob }> = [];
 
   expAttachments.forEach(att => {
     const isImg = att.contentType?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg|avif)$/i.test(att.name || '');
@@ -117,30 +167,17 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
       )}
 
       {/* Bubble / Panel */}
-      <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
+      <div className={`w-full flex ${isUser ? 'justify-end' : 'justify-start'}`}>
         {isUser ? (
           <div
-            className="ml-auto self-end bg-[#1A1C20] text-white px-4 py-2.5 rounded-2xl rounded-tr-sm w-fit max-w-[85%] flex flex-col gap-3 border border-white/5"
+            className="w-fit max-w-[85%] bg-[#1A1C20] p-4 rounded-2xl rounded-tr-sm flex flex-col gap-3 border border-white/5 shadow-sm ml-auto self-end"
             dir={isRTL ? 'rtl' : 'ltr'}
           >
             {/* Visual Attachment Rendering */}
             {(userImageAttachments.length > 0 || userOtherAttachments.length > 0) && (
-              <div className="flex flex-row flex-wrap gap-2 w-full">
+              <div className="flex flex-row flex-wrap gap-2 w-full justify-end">
                 {userImageAttachments.map((img, idx) => (
-                  <div key={idx} className="relative overflow-hidden rounded-lg">
-                    {img.url ? (
-                      <img
-                        src={img.url}
-                        alt={img.name}
-                        className="h-24 w-auto rounded-lg object-cover border border-white/10"
-                      />
-                    ) : (
-                      <div className="h-24 px-3.5 flex flex-col items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] text-white/80">
-                        <ImageIcon className="w-5 h-5 text-white/60" />
-                        <span className="text-[11px] font-mono text-white/60 truncate max-w-[120px]">{img.name}</span>
-                      </div>
-                    )}
-                  </div>
+                  <AttachmentThumbnail key={idx} attachment={img} />
                 ))}
                 {userOtherAttachments.map((doc, idx) => (
                   <div
