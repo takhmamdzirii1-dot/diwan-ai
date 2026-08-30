@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 type Logo = {
   src: string;
   alt: string;
+  className?: string;
   width?: number;
   height?: number;
 };
@@ -23,11 +24,14 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
         className
       )}
     >
-      <InfiniteSlider gap={42} reverse duration={80} durationOnHover={25}>
+      <InfiniteSlider gap={42} reverse duration={48} durationOnHover={20}>
         {logos.map((logo) => (
           <img
             alt={logo.alt}
-            className='pointer-events-none h-4 select-none invert opacity-50 [filter:invert(1)_drop-shadow(0_0_6px_rgba(255,255,255,0.25))] md:h-5'
+            className={cn(
+              'pointer-events-none h-4 select-none opacity-80 md:h-5',
+              logo.className
+            )}
             height={logo.height || 'auto'}
             key={`logo-${logo.alt}`}
             loading='lazy'

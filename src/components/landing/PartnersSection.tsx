@@ -4,35 +4,39 @@ import { LogoCloud } from '@/components/ui/logo-cloud-3';
 
 const logos = [
   {
-    src: 'https://svgl.app/library/nvidia-wordmark-light.svg',
+    src: 'https://cdn.simpleicons.org/nvidia/76B900',
     alt: 'Nvidia Logo',
   },
   {
-    src: 'https://svgl.app/library/supabase_wordmark_light.svg',
+    src: 'https://cdn.simpleicons.org/supabase/3FCF8E',
     alt: 'Supabase Logo',
   },
   {
     src: 'https://svgl.app/library/openai_wordmark_light.svg',
     alt: 'OpenAI Logo',
+    className: 'invert',
   },
   {
     src: 'https://svgl.app/library/vercel_wordmark.svg',
     alt: 'Vercel Logo',
+    className: 'invert',
   },
   {
     src: 'https://svgl.app/library/github_wordmark_light.svg',
     alt: 'GitHub Logo',
+    className: 'invert',
   },
   {
-    src: 'https://svgl.app/library/claude-ai-wordmark-icon_light.svg',
+    src: 'https://cdn.simpleicons.org/anthropic/D97757',
     alt: 'Claude AI Logo',
   },
   {
     src: 'https://svgl.app/library/groq_wordmark_light.svg',
     alt: 'Groq Logo',
+    className: '[filter:brightness(0)_saturate(100%)_invert(42%)_sepia(95%)_saturate(1295%)_hue-rotate(344deg)_brightness(100%)_contrast(93%)]',
   },
   {
-    src: 'https://svgl.app/library/turso-wordmark-light.svg',
+    src: 'https://cdn.simpleicons.org/turso/4FF8D2',
     alt: 'Turso Logo',
   },
 ];
