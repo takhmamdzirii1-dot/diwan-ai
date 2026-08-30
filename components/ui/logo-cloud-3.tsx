@@ -47,7 +47,7 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
       </div>
       <style jsx>{`
         .logo-marquee-track {
-          animation: logo-marquee 28s linear infinite;
+          animation: logo-marquee 19s linear infinite;
         }
 
         @keyframes logo-marquee {
