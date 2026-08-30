@@ -10,6 +10,7 @@ import {
   useReducedMotion,
   useScroll,
   useTransform,
+  type MotionValue,
 } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
@@ -35,10 +36,40 @@ const MODES = [
   },
 ] as const;
 
+const INTRO_END = 0.25;
+const STATE_HYSTERESIS = 0.006;
+
+function ModeProgressLine({
+  active,
+  index,
+  progress,
+}: {
+  active: boolean;
+  index: number;
+  progress: MotionValue<number>;
+}) {
+  const localProgress = useTransform(progress, (value) =>
+    Math.max(0, Math.min(1, value * MODES.length - index))
+  );
+
+  return (
+    <span
+      aria-hidden="true"
+      className="mt-4 block h-px w-full overflow-hidden bg-white/10"
+    >
+      <motion.span
+        style={{ scaleX: active ? localProgress : 0 }}
+        className="block h-full origin-left bg-white/85"
+      />
+    </span>
+  );
+}
+
 export default function ShowcaseSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const stickyRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const introCompleteRef = useRef(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const reduceMotion = useReducedMotion();
   const introX = useMotionValue(0);
@@ -47,9 +78,13 @@ export default function ShowcaseSection() {
     target: sectionRef,
     offset: ['start start', 'end end'],
   });
-  const introProgress = useTransform(scrollYProgress, [0, 0.25], [0, 1], {
-    clamp: true,
-  });
+  const introProgress = useMotionValue(0);
+  const storyProgress = useTransform(
+    scrollYProgress,
+    [INTRO_END, 1],
+    [0, 1],
+    { clamp: true }
+  );
   const previewX = useTransform(
     [introProgress, introX],
     ([progress, startX]) => Number(startX) * (1 - Number(progress))
@@ -60,10 +95,10 @@ export default function ShowcaseSection() {
     ([progress, startScale]) =>
       1 + (Number(startScale) - 1) * (1 - Number(progress))
   );
-  const navigationOpacity = useTransform(scrollYProgress, [0.05, 0.22], [0, 1], {
+  const navigationOpacity = useTransform(introProgress, [0.2, 0.88], [0, 1], {
     clamp: true,
   });
-  const navigationX = useTransform(scrollYProgress, [0.05, 0.22], [-20, 0], {
+  const navigationX = useTransform(introProgress, [0.2, 0.88], [-20, 0], {
     clamp: true,
   });
 
@@ -99,12 +134,35 @@ export default function ShowcaseSection() {
   }, [introScale, introX]);
 
   useMotionValueEvent(scrollYProgress, 'change', (progress) => {
-    const showcaseProgress = Math.max(0, Math.min(1, (progress - 0.25) / 0.75));
-    const nextIndex = Math.min(
-      MODES.length - 1,
-      Math.floor(showcaseProgress * MODES.length)
+    if (!introCompleteRef.current) {
+      const nextIntroProgress = Math.max(0, Math.min(1, progress / INTRO_END));
+      introProgress.set(nextIntroProgress);
+
+      if (nextIntroProgress >= 1) introCompleteRef.current = true;
+    }
+
+    const normalizedProgress = Math.max(
+      0,
+      Math.min(1, (progress - INTRO_END) / (1 - INTRO_END))
     );
-    setActiveIndex((current) => (current === nextIndex ? current : nextIndex));
+    const rawIndex = Math.min(
+      MODES.length - 1,
+      Math.floor(normalizedProgress * MODES.length)
+    );
+
+    setActiveIndex((current) => {
+      if (rawIndex > current) {
+        const forwardBoundary = (current + 1) / MODES.length + STATE_HYSTERESIS;
+        return normalizedProgress >= forwardBoundary ? rawIndex : current;
+      }
+
+      if (rawIndex < current) {
+        const backwardBoundary = current / MODES.length - STATE_HYSTERESIS;
+        return normalizedProgress <= backwardBoundary ? rawIndex : current;
+      }
+
+      return current;
+    });
   });
 
   const activeMode = MODES[activeIndex];
@@ -151,16 +209,9 @@ export default function ShowcaseSection() {
                     aria-current={isActive ? 'step' : undefined}
                     className={cn(
                       'relative min-w-0 border-e border-white/[0.08] px-3 py-4 last:border-e-0 lg:border-e-0 lg:border-b lg:px-0 lg:py-6 lg:last:border-b-0',
-                      isActive ? 'text-white' : 'text-white/35'
+                      isActive ? 'font-semibold text-white' : 'font-medium text-white/35'
                     )}
                   >
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        'absolute start-0 top-0 h-px bg-white transition-[width,opacity] duration-300 lg:top-auto lg:bottom-0',
-                        isActive ? 'w-16 opacity-100' : 'w-0 opacity-0'
-                      )}
-                    />
                     <p className="text-lg font-medium tracking-tight transition-colors duration-300 sm:text-xl lg:text-2xl">
                       {mode.label}
                     </p>
@@ -179,6 +230,12 @@ export default function ShowcaseSection() {
                         </motion.p>
                       )}
                     </AnimatePresence>
+
+                    <ModeProgressLine
+                      active={isActive}
+                      index={index}
+                      progress={storyProgress}
+                    />
                   </div>
                 );
               })}
@@ -207,48 +264,28 @@ export default function ShowcaseSection() {
                 className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-1.5 sm:p-2"
               >
                 <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-[#070707] sm:aspect-[16/9] lg:aspect-[1.8/1]">
-                {MODES.map((mode, index) => {
-                  const isActive = index === activeIndex;
-
-                  return (
+                  <AnimatePresence initial={false} mode="sync">
                     <motion.div
-                      key={mode.key}
-                      aria-hidden={!isActive}
-                      initial={false}
-                      animate={
-                        isActive
-                          ? { opacity: 1, y: 0, scale: 1 }
-                          : { opacity: 0, y: index < activeIndex ? -10 : 14, scale: 0.99 }
-                      }
+                      key={activeMode.key}
+                      initial={reduceMotion ? false : { opacity: 0, y: 10, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -10, scale: 0.97 }}
                       transition={transition}
-                      className={cn('absolute inset-0', isActive ? 'z-10' : 'pointer-events-none z-0')}
+                      className="absolute inset-0"
                     >
                       <Image
-                        src={mode.image}
-                        alt={`${mode.label} preview in VANTRA Studio`}
+                        src={activeMode.image}
+                        alt={`${activeMode.label} preview in VANTRA Studio`}
                         fill
                         loading="eager"
                         sizes="(max-width: 1023px) 100vw, 75vw"
                         className="origin-right scale-[1.28] object-cover object-right"
                       />
                     </motion.div>
-                  );
-                })}
+                  </AnimatePresence>
                 </div>
               </motion.div>
             </div>
-          </div>
-
-          <div className="mt-5 flex items-center justify-center gap-2" aria-hidden="true">
-            {MODES.map((mode, index) => (
-              <span
-                key={`${mode.key}-progress`}
-                className={cn(
-                  'h-1 rounded-full transition-[width,background-color] duration-300',
-                  index === activeIndex ? 'w-8 bg-white/80' : 'w-2 bg-white/15'
-                )}
-              />
-            ))}
           </div>
         </div>
       </div>
