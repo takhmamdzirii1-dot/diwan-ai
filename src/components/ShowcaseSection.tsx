@@ -36,7 +36,7 @@ const MODES = [
   },
 ] as const;
 
-const INTRO_END = 0.25;
+const INTRO_END = 0.2;
 const STATE_HYSTERESIS = 0.006;
 
 function ModeProgressLine({
@@ -169,6 +169,9 @@ export default function ShowcaseSection() {
   const transition = reduceMotion
     ? { duration: 0 }
     : { duration: 0.4, ease: [0.22, 1, 0.36, 1] as const };
+  const descriptionTransition = reduceMotion
+    ? { duration: 0 }
+    : { duration: 0.22, ease: [0.22, 1, 0.36, 1] as const };
 
   return (
     <section
@@ -216,21 +219,6 @@ export default function ShowcaseSection() {
                       {mode.label}
                     </p>
 
-                    <AnimatePresence initial={false} mode="wait">
-                      {isActive && (
-                        <motion.p
-                          key={`${mode.key}-description`}
-                          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
-                          transition={transition}
-                          className="mt-3 hidden max-w-[245px] text-sm font-medium leading-6 text-white/60 lg:block"
-                        >
-                          {mode.description}
-                        </motion.p>
-                      )}
-                    </AnimatePresence>
-
                     <ModeProgressLine
                       active={isActive}
                       index={index}
@@ -240,18 +228,24 @@ export default function ShowcaseSection() {
                 );
               })}
 
-              <AnimatePresence initial={false} mode="wait">
-                <motion.p
-                  key={`${activeMode.key}-mobile-description`}
-                  initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
-                  transition={transition}
-                  className="col-span-3 border-t border-white/[0.08] py-4 text-sm leading-6 text-white/55 lg:hidden"
-                >
-                  {activeMode.description}
-                </motion.p>
-              </AnimatePresence>
+              <div
+                data-showcase-description-container
+                className="relative col-span-3 min-h-[72px] border-t border-white/[0.08] py-4 lg:mt-1 lg:min-h-[82px] lg:border-t-0 lg:py-5"
+              >
+                <AnimatePresence initial={false} mode="sync">
+                  <motion.p
+                    key={`${activeMode.key}-description`}
+                    data-showcase-description={activeMode.key}
+                    initial={reduceMotion ? false : { opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={descriptionTransition}
+                    className="absolute inset-x-0 top-4 max-w-[245px] text-sm font-medium leading-6 text-white/60 lg:top-5"
+                  >
+                    {activeMode.description}
+                  </motion.p>
+                </AnimatePresence>
+              </div>
             </motion.div>
 
             <div ref={previewRef} className="relative z-10 min-w-0">
