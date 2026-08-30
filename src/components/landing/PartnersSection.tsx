@@ -4,40 +4,36 @@ import { LogoCloud } from '@/components/ui/logo-cloud-3';
 
 const logos = [
   {
-    src: 'https://svgl.app/library/nvidia-wordmark-light.svg',
+    src: 'https://svgl.app/library/nvidia-wordmark-dark.svg',
     alt: 'Nvidia Logo',
-    iconSrc: 'https://cdn.simpleicons.org/nvidia/76B900',
   },
   {
-    src: 'https://svgl.app/library/supabase_wordmark_light.svg',
+    src: 'https://svgl.app/library/supabase_wordmark_dark.svg',
     alt: 'Supabase Logo',
-    iconSrc: 'https://cdn.simpleicons.org/supabase/3FCF8E',
   },
   {
-    src: 'https://svgl.app/library/openai_wordmark_light.svg',
+    src: 'https://svgl.app/library/openai_wordmark_dark.svg',
     alt: 'OpenAI Logo',
   },
   {
-    src: 'https://svgl.app/library/vercel_wordmark.svg',
+    src: 'https://svgl.app/library/vercel_wordmark_dark.svg',
     alt: 'Vercel Logo',
   },
   {
-    src: 'https://svgl.app/library/github_wordmark_light.svg',
+    src: 'https://svgl.app/library/github_wordmark_dark.svg',
     alt: 'GitHub Logo',
   },
   {
-    src: 'https://svgl.app/library/claude-ai-wordmark-icon_light.svg',
+    src: 'https://svgl.app/library/claude-ai-wordmark-icon_dark.svg',
     alt: 'Claude AI Logo',
-    iconSrc: 'https://cdn.simpleicons.org/anthropic/D97757',
   },
   {
-    src: 'https://svgl.app/library/groq_wordmark_light.svg',
+    src: 'https://svgl.app/library/groq_wordmark_dark.svg',
     alt: 'Groq Logo',
   },
   {
-    src: 'https://svgl.app/library/turso-wordmark-light.svg',
+    src: 'https://svgl.app/library/turso-wordmark-dark.svg',
     alt: 'Turso Logo',
-    iconSrc: 'https://cdn.simpleicons.org/turso/4FF8D2',
   },
 ];
 

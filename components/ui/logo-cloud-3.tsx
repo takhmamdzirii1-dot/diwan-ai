@@ -6,9 +6,6 @@ import { cn } from '@/lib/utils';
 type Logo = {
   src: string;
   alt: string;
-  iconSrc?: string;
-  iconClassName?: string;
-  className?: string;
   width?: number;
   height?: number;
 };
@@ -28,10 +25,15 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
     >
       <InfiniteSlider gap={42} reverse duration={28}>
         {logos.map((logo) => (
-          <span className='relative inline-flex h-4 items-center md:h-5' key={`logo-${logo.alt}`}>
-            <img alt={logo.alt} className='pointer-events-none h-full select-none invert opacity-80' height={logo.height || 'auto'} loading='lazy' src={logo.src} width={logo.width || 'auto'} />
-            {logo.iconSrc && <img alt='' aria-hidden='true' className={cn('pointer-events-none absolute start-0 h-full w-auto opacity-90', logo.iconClassName)} src={logo.iconSrc} />}
-          </span>
+          <img
+            alt={logo.alt}
+            className='pointer-events-none h-4 select-none opacity-80 md:h-5'
+            height={logo.height || 'auto'}
+            key={`logo-${logo.alt}`}
+            loading='lazy'
+            src={logo.src}
+            width={logo.width || 'auto'}
+          />
         ))}
       </InfiniteSlider>
     </div>
