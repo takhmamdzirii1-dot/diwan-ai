@@ -17,7 +17,7 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
   const logoGroup = (duplicate = false) => (
     <div
       aria-hidden={duplicate || undefined}
-      className='flex shrink-0 items-center gap-12 pe-12'
+      className='logo-marquee-group'
     >
       {logos.map((logo) => (
         <img
@@ -25,7 +25,7 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
           className='pointer-events-none h-5 w-auto shrink-0 select-none opacity-90 md:h-6'
           height={logo.height || 'auto'}
           key={`${duplicate ? 'duplicate-' : ''}logo-${logo.alt}`}
-          loading='lazy'
+          loading='eager'
           src={logo.src}
           width={logo.width || 'auto'}
         />
@@ -41,13 +41,28 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
         className
       )}
     >
-      <div className='logo-marquee-track flex w-max will-change-transform'>
+      <div className='logo-marquee-track'>
         {logoGroup()}
         {logoGroup(true)}
       </div>
-      <style jsx>{`
+      <style jsx global>{`
         .logo-marquee-track {
+          direction: ltr;
+          display: flex;
+          flex-wrap: nowrap;
+          width: max-content;
+          will-change: transform;
           animation: logo-marquee 19s linear infinite;
+        }
+
+        .logo-marquee-group {
+          box-sizing: border-box;
+          display: flex;
+          flex-shrink: 0;
+          align-items: center;
+          gap: 3rem;
+          padding-right: 3rem;
+          white-space: nowrap;
         }
 
         @keyframes logo-marquee {
