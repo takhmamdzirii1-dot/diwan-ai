@@ -307,6 +307,13 @@ html {
   color: var(--text);
 }
 
+/* Anchored sections land below the fixed navbar (h-16 + breathing room) */
+section[id],
+#models {
+  scroll-margin-top: 5.5rem;
+}
+
+
 body {
   background-color: var(--bg);
   color: var(--text);
@@ -3233,13 +3240,6 @@ html[lang="ar"] .lux-prose table,
   animation: lux-breathe 15s ease-in-out infinite alternate -6s;
 }
 
-/* Bronze metallic frame */
-.border border-white/10 {
-  border: 1px solid transparent;
-  background:
-    linear-gradient(180deg, rgba(13, 14, 18, 0.92), rgba(8, 9, 12, 0.96)) padding-box,
-    linear-gradient(135deg, rgba(255,255,255, 0.65) 0%, rgba(138, 109, 59, 0.2) 38%, rgba(255,255,255, 0.12) 62%, rgba(255,255,255, 0.5) 100%) border-box;
-}
 .text-gray-400 {
   background: linear-gradient(100deg, #6B7280 0%, #D1D5DB 45%, #F3F4F6 55%, #D1D5DB 65%, #6B7280 100%);
   -webkit-background-clip: text;
@@ -3364,4 +3364,43 @@ html[lang="ar"] .lux-prose table,
   color: rgba(255, 255, 255, 0.9);
   font-weight: 500;
   line-height: 1.625;
+}
+/* ── VANTRA Composer: breathing glow + orbiting border highlight ── */
+@keyframes composer-breathe {
+  0%, 100% { opacity: 0.06; transform: translateX(-50%) scaleY(0.85); }
+  50% { opacity: 0.14; transform: translateX(-50%) scaleY(1); }
+}
+@keyframes composer-orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.composer-glow-breathe {
+  animation: composer-breathe 3.5s ease-in-out infinite;
+}
+.composer-orbit-ring {
+  animation: composer-orbit 8s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .composer-glow-breathe { animation: none; opacity: 0.08; }
+  .composer-orbit-ring { animation: none; }
+}.composer-orbit-spin-fast {
+  animation: composer-orbit-spin 5s linear infinite;
+}
+/* ── VANTRA Composer Glow — breathing + orbiting border ── */
+@keyframes vantra-breathe {
+  0%, 100% { opacity: 0.22; transform: translateX(-50%) scaleX(0.92) scaleY(0.85); }
+  50% { opacity: 0.55; transform: translateX(-50%) scaleX(1.04) scaleY(1); }
+}
+@keyframes vantra-orbit {
+  to { transform: rotate(360deg); }
+}
+.vantra-glow-breathe {
+  animation: vantra-breathe 3.4s ease-in-out infinite;
+}
+.vantra-orbit-ring {
+  animation: vantra-orbit 8s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vantra-glow-breathe { animation: none; opacity: 0.15; }
+  .vantra-orbit-ring { animation: none; opacity: 0.3; }
 }

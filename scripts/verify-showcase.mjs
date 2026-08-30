@@ -1,0 +1,20 @@
+﻿import puppeteer from 'puppeteer-core';
+const b = await puppeteer.launch({ executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: 'new', args: ['--no-sandbox'] });
+const p = await b.newPage();
+await p.setViewport({ width: 1440, height: 950 });
+await p.goto('http://localhost:3000', { waitUntil: 'networkidle2', timeout: 60000 });
+await new Promise(r => setTimeout(r, 2200));
+const out = {};
+out.showcaseBelowHero = await p.evaluate(() => {
+  const hero = document.querySelector('#hero');
+  const show = document.querySelector('#showcase');
+  return hero && show && show.getBoundingClientRect().top >= hero.getBoundingClientRect().bottom - 5;
+});
+out.mockupPanes = await p.evaluate(() => [...document.querySelectorAll('#showcase span')].filter(s => /Chat Studio|Image Canvas/.test(s.textContent)).length);
+out.bentoCards = await p.evaluate(() => [...document.querySelectorAll('#showcase h3')].map(h => h.textContent.trim()));
+out.modelTags = await p.evaluate(() => [...document.querySelectorAll('#showcase span')].filter(s => /Claude 3.5|Flux.1 Pro|Edahabia|CIB|REST API|Nemotron|Midjourney|GLM/.test(s.textContent)).length);
+await p.evaluate(() => document.querySelector('#showcase')?.scrollIntoView());
+await new Promise(r => setTimeout(r, 1200));
+await p.screenshot({ path: 'C:/Users/VENOM/AppData/Local/Temp/opencode/showcase.png' });
+console.log(JSON.stringify(out, null, 2));
+await b.close();

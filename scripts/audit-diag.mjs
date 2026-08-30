@@ -1,0 +1,16 @@
+﻿import puppeteer from 'puppeteer-core';
+const b = await puppeteer.launch({ executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: 'new', args: ['--no-sandbox'] });
+const p = await b.newPage();
+await p.setViewport({ width: 1440, height: 900 });
+await p.goto('https://ai-alpha-delta-six.vercel.app/studio', { waitUntil: 'networkidle2', timeout: 90000 });
+await new Promise(r => setTimeout(r, 5000));
+const before = await p.evaluate(() => ({ url: location.href, bodyChildren: document.body.children.length, hasAside: !!document.querySelector('aside'), rootKids: document.querySelector('body > div')?.children.length }));
+await p.evaluate(() => [...document.querySelectorAll('aside button')].find(b => b.textContent.trim() === 'Image Canvas')?.click());
+await new Promise(r => setTimeout(r, 2000));
+const afterNav = await p.evaluate(() => ({ url: location.href, hasGenerate: !!document.querySelector('button[aria-label="Generate"]'), bodyKids: document.body.children.length }));
+await p.evaluate(() => [...document.querySelectorAll('button')].find(b => /Flux\.1 Pro ·/.test(b.textContent))?.click());
+await new Promise(r => setTimeout(r, 1500));
+const afterPill = await p.evaluate(() => ({ url: location.href, dialog: !!document.querySelector('[role="dialog"]'), bodyKids: document.body.children.length, rootHTML: document.querySelector('body > div')?.innerHTML.length }));
+console.log(JSON.stringify({ before, afterNav, afterPill }, null, 2));
+await p.screenshot({ path: 'C:/Users/VENOM/AppData/Local/Temp/opencode/prod-state.png' });
+await b.close();

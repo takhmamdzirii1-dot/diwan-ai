@@ -48,7 +48,7 @@ const INSTRUCTION_SUGGESTIONS = [
   'Professional tone',
 ];
 
-/* ── Primitives ─────────────────────────────────────────── */
+/* â”€â”€ Primitives â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 function Toggle({
   enabled,
@@ -138,7 +138,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-/* ── Panels ─────────────────────────────────────────────── */
+/* â”€â”€ Panels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 function ProfilePanel() {
   const { user } = useUser();
@@ -192,6 +192,151 @@ function ProfilePanel() {
           <p className="text-[11px] text-white/40 mt-1.5">{IMAGE_MODEL_HINTS[imageModel]}</p>
         </Field>
       </div>
+
+      {/* Connected providers â€” official BYOP flow */}
+      <ProviderConnections />
+    </div>
+  );
+}
+
+/** Pollinations BYOP — official OAuth Authorization Code + PKCE flow.
+ *  Connect launches /authorize (server 302 to enter.pollinations.ai);
+ *  the callback exchanges the code server-side and stores the encrypted
+ *  scoped sk_ key. The token never reaches the browser. */
+function ProviderConnections() {
+  const [status, setStatus] = useState<'loading' | 'connected' | 'disconnected' | 'expired'>('loading');
+  const [connectedAt, setConnectedAt] = useState<string | null>(null);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [msgTone, setMsgTone] = useState<'ok' | 'err'>('ok');
+
+  const refresh = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/provider-connections/pollinations');
+      if (res.status === 401) {
+        setStatus('disconnected');
+        return;
+      }
+      const data = await res.json();
+      if (data.connected && data.expired) {
+        setStatus('expired');
+      } else if (data.connected) {
+        setStatus('connected');
+      } else {
+        setStatus('disconnected');
+      }
+      setConnectedAt(data.connectedAt ?? null);
+      setExpiresAt(data.expiresAt ?? null);
+    } catch {
+      setStatus('disconnected');
+    }
+  }, []);
+
+  React.useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  // Flash result of the OAuth redirect, then clean the URL
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const connected = params.get('connected');
+    const providerError = params.get('provider_error');
+    if (connected === 'pollinations') {
+      setMsg('Pollinations connected — your scoped key is active for 7 days');
+      setMsgTone('ok');
+    } else if (providerError) {
+      const map: Record<string, string> = {
+        state_mismatch: 'Security check failed (state mismatch) — please retry',
+        token_exchange_failed: 'Could not complete the connection with Pollinations',
+        sign_in_required: 'Sign in to VANTRA first, then reconnect',
+        unexpected_token_type: 'Pollinations returned an unexpected key type',
+        storage_failed: 'Could not save the connection — try again',
+        access_denied: 'Authorization was declined on Pollinations',
+      };
+      setMsg(map[providerError] || 'Connection failed — please retry');
+      setMsgTone('err');
+    }
+    if (connected || providerError) {
+      params.delete('connected');
+      params.delete('provider_error');
+      const qs = params.toString();
+      window.history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : ''));
+    }
+  }, []);
+
+  const connect = () => {
+    setBusy(true);
+    // Server route validates the session, sets PKCE cookies, and 302s to Pollinations
+    window.location.href = '/api/provider-connections/pollinations/authorize';
+  };
+
+  const disconnect = async () => {
+    setBusy(true);
+    try {
+      await fetch('/api/provider-connections/pollinations', { method: 'DELETE' });
+      await refresh();
+    } catch {
+      setMsg('Failed to disconnect');
+      setMsgTone('err');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 space-y-4">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
+          <p className="text-[13.5px] font-medium text-white/90 flex items-center gap-2">
+            Pollinations
+            {status === 'connected' && (
+              <span className="text-[9.5px] font-mono px-1.5 py-0.5 rounded-full border border-white/20 text-white/70">
+                CONNECTED
+              </span>
+            )}
+            {status === 'expired' && (
+              <span className="text-[9.5px] font-mono px-1.5 py-0.5 rounded-full border border-white/20 text-white/50">
+                EXPIRED
+              </span>
+            )}
+          </p>
+          <p className="text-[12px] text-white/40 mt-0.5 leading-relaxed">
+            Connect your own Pollinations account — higher limits, no watermark. One click, official authorization.
+          </p>
+        </div>
+        {status === 'connected' && expiresAt && (
+          <span className="text-[10.5px] font-mono text-white/30 shrink-0">
+            renews {new Date(expiresAt).toLocaleDateString()}
+          </span>
+        )}
+      </div>
+
+      {msg && (
+        <p className={cn('text-[11.5px]', msgTone === 'err' ? 'text-red-400/90' : 'text-white/60')}>
+          {msg}
+        </p>
+      )}
+
+      {status === 'connected' ? (
+        <button
+          type="button"
+          onClick={disconnect}
+          disabled={busy}
+          className="inline-flex items-center gap-2 h-9 px-3.5 rounded-xl border border-white/10 text-[12px] font-medium text-white/60 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+        >
+          Disconnect
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={connect}
+          disabled={busy || status === 'loading'}
+          className="h-10 px-5 rounded-xl bg-white text-black text-[12.5px] font-semibold hover:bg-gray-200 transition-colors cursor-pointer active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+        >
+          {status === 'loading' ? 'Checking…' : 'Connect Pollinations'}
+        </button>
+      )}
     </div>
   );
 }
@@ -280,7 +425,7 @@ function BillingPanel() {
             </p>
             <p className="text-[19px] font-semibold text-white mt-1.5">Free Tier</p>
             <p className="text-[12px] text-white/40 mt-0.5">
-              {cycle === 'monthly' ? 'Billed monthly · cancel anytime' : 'Billed yearly · 20% saved'}
+              {cycle === 'monthly' ? 'Billed monthly Â· cancel anytime' : 'Billed yearly Â· 20% saved'}
             </p>
           </div>
 
@@ -299,7 +444,7 @@ function BillingPanel() {
                 {c}
                 {c === 'yearly' && cycle !== 'yearly' && (
                   <span className="absolute -top-2.5 -right-2 px-1.5 h-4 rounded-full bg-white text-black text-[9px] font-bold flex items-center">
-                    −20%
+                    âˆ’20%
                   </span>
                 )}
               </button>
@@ -341,7 +486,7 @@ function BillingPanel() {
         Upgrade to Pro
       </button>
       <p className="text-center text-[11.5px] text-white/35 -mt-3">
-        Unlimited generations · Priority rendering · Early access models
+        Unlimited generations Â· Priority rendering Â· Early access models
       </p>
     </div>
   );
@@ -412,7 +557,7 @@ function PrivacyPanel() {
   );
 }
 
-/* ── Modal shell ────────────────────────────────────────── */
+/* â”€â”€ Modal shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 export default function SettingsModal({
   open,

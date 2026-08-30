@@ -2,7 +2,8 @@
 
 import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clapperboard, Loader2, Sparkles } from 'lucide-react';
+import { Clapperboard, Loader2 } from 'lucide-react';
+import { LiquidMetalButton } from '@/components/ui/liquid-metal-button';
 import { cn } from '@/lib/utils';
 import { getModelCost } from '../../config/pricing';
 import VideoConfigPopover, {
@@ -150,76 +151,60 @@ export default function MotionStudio() {
         className="relative shrink-0"
       >
         <div className="max-w-3xl mx-auto px-4 pb-4 pt-2">
-          <div className="relative backdrop-blur-xl bg-black/60 border border-white/10 rounded-[26px] shadow-[0_0_40px_rgba(255,255,255,0.03)]">
-            <div className="p-4 space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <textarea
-                    ref={textareaRef}
-                    value={prompt}
-                    onChange={(e) => {
-                      setPrompt(e.target.value);
-                      autoGrow();
-                    }}
-                    placeholder="Describe the scene you want to film…"
-                    dir="auto"
-                    rows={2}
-                    disabled={isGenerating}
-                    className="w-full max-h-32 bg-transparent border-0 outline-none text-white text-[15px] placeholder:text-white/30 resize-none overflow-y-auto leading-relaxed block antialiased font-sans [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-                    style={{ minHeight: '3em', padding: '8px 8px 4px 4px' }}
-                  />
-                </div>
+          {/* Single-line glassmorphic command bar — VANTRA composer standard */}
+          <div className="relative backdrop-blur-xl bg-[#0A0A0B]/90 border border-white/5 rounded-2xl shadow-[0_0_40px_rgba(255,255,255,0.03)]">
+            <div className="flex flex-row items-center gap-2 px-3 py-2.5">
+              {/* Text input — flex-1 */}
+              <input
+                type="text"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && !isGenerating) {
+                    e.preventDefault();
+                    handleGenerate();
+                  }
+                }}
+                placeholder="Describe the scene you want to film…"
+                dir="auto"
+                disabled={isGenerating}
+                aria-label="Video prompt"
+                className="flex-1 min-w-0 bg-transparent border-0 outline-none text-white text-[14px] placeholder:text-white/30 antialiased font-sans"
+              />
 
-                {/* Settings pill + popover */}
-                <div className="relative shrink-0 pt-1">
-                  <VideoConfigPill
-                    config={config}
-                    open={configOpen}
-                    onToggle={() => setConfigOpen((v) => !v)}
-                  />
-                  <VideoConfigPopover
-                    open={configOpen}
-                    onClose={() => setConfigOpen(false)}
-                    config={config}
-                    onChange={setConfig}
-                  />
-                </div>
+              {/* Settings pill — subtle */}
+              <div className="relative shrink-0">
+                <VideoConfigPill
+                  config={config}
+                  open={configOpen}
+                  onToggle={() => setConfigOpen((v) => !v)}
+                />
+                <VideoConfigPopover
+                  open={configOpen}
+                  onClose={() => setConfigOpen(false)}
+                  config={config}
+                  onChange={setConfig}
+                />
               </div>
 
-              {genError && <p className="px-1 text-[11.5px] text-red-400/90">{genError}</p>}
-
-              <button
-                type="button"
-                onClick={handleGenerate}
-                disabled={isGenerating || !prompt.trim()}
-                className={cn(
-                  'w-full h-11 rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98]',
-                  isGenerating || !prompt.trim()
-                    ? 'bg-white/10 text-white/60 border border-white/10 cursor-default'
-                    : 'bg-white text-black hover:bg-gray-200 hover:scale-105 transition-transform shadow-[0_0_20px_-4px_rgba(255,255,255,0.3)]'
-                )}
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Rendering…</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4" />
-                    <span>Generate</span>
-                    <span
-                      className={cn(
-                        'text-[11px] font-normal',
-                        prompt.trim() ? 'text-black/45' : 'text-white/35'
-                      )}
-                    >
-                      {cost} pts
-                    </span>
-                  </>
-                )}
-              </button>
+              {/* Liquid metal generate — right edge */}
+              <div className="shrink-0">
+                <LiquidMetalButton
+                  viewMode="icon"
+                  label="Generate"
+                  onClick={handleGenerate}
+                />
+              </div>
             </div>
+
+            {genError && <p className="px-4 pb-2.5 -mt-1 text-[11.5px] text-red-400/90">{genError}</p>}
+          </div>
+
+          {/* Cost — outside the bar, right-aligned, tiny */}
+          <div className="flex justify-end px-2 pt-2">
+            <span className="text-[10px] text-white/30 uppercase tracking-widest">
+              {cost} pts
+            </span>
           </div>
         </div>
       </motion.div>

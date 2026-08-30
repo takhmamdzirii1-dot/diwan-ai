@@ -26,8 +26,17 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'VANTRA — Algerian AI Gateway • Pay in DZD with Edahabia & CIB',
-  description: 'Unify access to Claude 3.5 Sonnet, Flux 4K, Kling AI, GPT-4o, DeepSeek and frontier AI models in Algeria with local DZD payment.',
+  title: 'VANTRA | Next-Generation AI Studio',
+  description:
+    "From thought to artifact in three moves. Generate text, images, and video with the world's most powerful AI models in one unified workspace.",
+  icons: {
+    icon: '/icon.svg',
+  },
+  openGraph: {
+    title: 'VANTRA Studio',
+    description: 'The ultimate AI workspace for creators.',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({

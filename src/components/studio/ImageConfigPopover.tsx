@@ -18,10 +18,66 @@ export type ImageModelId = (typeof IMAGE_MODELS)[number]['id'];
 export type AspectRatio = (typeof ASPECT_RATIOS)[number];
 export type GenCount = (typeof GEN_COUNTS)[number];
 
+export type ImageProviderId = 'auto' | 'puter' | 'pollinations' | 'mock';
+
 export interface ImageConfig {
-  model: ImageModelId;
+  model: string;
   ratio: AspectRatio;
   count: GenCount;
+  provider: ImageProviderId;
+}
+
+/** Provider metadata — mirrors lib/ai/image-providers capabilities. */
+export const PROVIDERS: {
+  id: ImageProviderId;
+  name: string;
+  note: string;
+  models: { id: string; name: string }[];
+}[] = [
+  {
+    id: 'auto',
+    name: 'Automatic',
+    note: 'Free tier with automatic fallback',
+    models: [
+      { id: 'flux', name: 'Flux' },
+      { id: 'turbo', name: 'Turbo' },
+    ],
+  },
+  {
+    id: 'puter',
+    name: 'Puter',
+    note: 'Uses your own Puter account — free for VANTRA',
+    models: [
+      { id: 'gpt-image-2', name: 'GPT Image 2' },
+      { id: 'gpt-image-1.5', name: 'GPT Image 1.5' },
+      { id: 'gpt-image-1-mini', name: 'GPT Image 1 Mini' },
+    ],
+  },
+  {
+    id: 'pollinations',
+    name: 'Pollinations',
+    note: 'Free public tier — 1 render / 15s',
+    models: [
+      { id: 'flux', name: 'Flux' },
+      { id: 'turbo', name: 'Turbo' },
+      { id: 'kontext', name: 'Kontext (img2img)' },
+    ],
+  },
+  {
+    id: 'mock',
+    name: 'Preview (offline)',
+    note: 'Placeholder renders, zero cost',
+    models: [{ id: 'placeholder', name: 'Placeholder' }],
+  },
+];
+
+export function modelsForProvider(provider: ImageProviderId) {
+  return PROVIDERS.find((p) => p.id === provider)?.models ?? PROVIDERS[0].models;
+}
+
+export function providerLabel(provider: ImageProviderId) {
+  if (provider === 'auto') return 'Auto';
+  return PROVIDERS.find((p) => p.id === provider)?.name ?? 'Auto';
 }
 
 interface ImageConfigPopoverProps {
@@ -76,11 +132,47 @@ export default function ImageConfigPopover({
           role="dialog"
           aria-label="Image generation settings"
         >
-          {/* Model */}
+          {/* Provider */}
+          <div>
+            <SectionLabel>Provider</SectionLabel>
+            <div className="space-y-1">
+              {PROVIDERS.map((pr) => {
+                const active = config.provider === pr.id;
+                return (
+                  <button
+                    key={pr.id}
+                    type="button"
+                    onClick={() =>
+                      onChange({
+                        ...config,
+                        provider: pr.id,
+                        // Reset model when the provider changes — model ids differ
+                        model: modelsForProvider(pr.id)[0].id,
+                      })
+                    }
+                    className={cn(
+                      'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-colors cursor-pointer',
+                      active ? 'bg-white/10' : 'hover:bg-white/5'
+                    )}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className={cn('text-[12.5px] truncate', active ? 'text-white font-medium' : 'text-white/70')}>
+                        {pr.name}
+                      </p>
+                      <p className="text-[10.5px] text-white/40 truncate">{pr.note}</p>
+                    </div>
+                    {active && <Check className="h-4 w-4 shrink-0 text-white" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Model — scoped to the selected provider */}
           <div>
             <SectionLabel>Model</SectionLabel>
             <div className="space-y-1">
-              {IMAGE_MODELS.map((m) => {
+              {modelsForProvider(config.provider).map((m) => {
                 const active = config.model === m.id;
                 return (
                   <button
@@ -92,12 +184,9 @@ export default function ImageConfigPopover({
                       active ? 'bg-white/10' : 'hover:bg-white/5'
                     )}
                   >
-                    <div className="min-w-0 flex-1">
-                      <p className={cn('text-[13px] truncate', active ? 'text-white font-medium' : 'text-white/70')}>
-                        {m.name}
-                      </p>
-                      <p className="text-[11px] text-white/40 truncate">{m.label}</p>
-                    </div>
+                    <p className={cn('min-w-0 flex-1 text-[13px] truncate', active ? 'text-white font-medium' : 'text-white/70')}>
+                      {m.name}
+                    </p>
                     {active && <Check className="h-4 w-4 shrink-0 text-white" />}
                   </button>
                 );
@@ -189,7 +278,9 @@ export function ImageConfigPill({
   open: boolean;
   onToggle: () => void;
 }) {
-  const modelName = IMAGE_MODELS.find((m) => m.id === config.model)?.name ?? 'Model';
+  const modelName =
+    modelsForProvider(config.provider).find((m) => m.id === config.model)?.name ??
+    providerLabel(config.provider);
   return (
     <button
       type="button"

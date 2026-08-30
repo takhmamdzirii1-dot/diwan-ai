@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Plus, ChevronDown, ArrowUp, Square, X, FileText, Loader2, Check, Archive, Sparkles, Image as ImageIcon, Layers } from "lucide-react";
+import { Plus, ChevronDown, Square, X, FileText, Loader2, Check, Archive, Sparkles, Image as ImageIcon, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LiquidMetalButton } from './liquid-metal-button';
 
 /* ------------------------------------------------------------------
    VANTRA glass adaptation of the Claude chat composer.
@@ -221,7 +222,7 @@ export const ModelSelector: React.FC<{
                     "inline-flex items-center relative shrink-0 transition-all duration-200 h-8 rounded-lg px-2.5 active:scale-[0.98] whitespace-nowrap text-xs gap-1.5 cursor-pointer max-w-[200px] border border-white/[0.08] hover:border-white/[0.15] bg-white/[0.03]",
                     isOpen
                         ? "bg-white/[0.08] border-white/[0.2] text-white"
-                        : "text-white/70 hover:text-white"
+                        : "text-white/45 hover:text-white/80"
                 )}
             >
                 {!currentModel?.isFree && (
@@ -248,7 +249,7 @@ export const ModelSelector: React.FC<{
                         <>
                             <div className="h-px bg-white/[0.07] my-1.5 mx-2" />
                             <div className="px-3 pb-1.5 text-[9px] font-mono uppercase tracking-[0.22em] text-[#FFFFFF]/50 flex items-center justify-between">
-                                <span>Premium · Sign in</span>
+                                <span>Premium Â· Sign in</span>
                                 <Sparkles className="h-3 w-3" />
                             </div>
                             {premiumModels.map(m => renderItem(m, !!(m.requiresAuth && onSignInClick)))}
@@ -316,7 +317,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
 
                 const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
                 if (blob.size < 2048) {
-                    voiceStatusError('Recording too short — hold the mic longer');
+                    voiceStatusError('Recording too short â€” hold the mic longer');
                     return;
                 }
 
@@ -340,7 +341,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
             recorder.onerror = () => {
                 stream.getTracks().forEach((t) => t.stop());
                 setIsRecording(false);
-                voiceStatusError('Recording error — please try again');
+                voiceStatusError('Recording error â€” please try again');
             };
 
             recorder.start();
@@ -376,9 +377,22 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = "auto";
-            textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 240) + "px";
+            textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 384) + "px";
         }
     }, [message]);
+
+    // Landing â†’ Studio bridge: receive a stashed hero prompt
+    useEffect(() => {
+        const onPrefill = (e: Event) => {
+            const detail = (e as CustomEvent).detail;
+            if (detail?.prompt) {
+                setMessage(detail.prompt);
+                textareaRef.current?.focus();
+            }
+        };
+        window.addEventListener('vantra-prefill-prompt', onPrefill);
+        return () => window.removeEventListener('vantra-prefill-prompt', onPrefill);
+    }, []);
 
     // Revoke blob object URLs whenever the attachment list changes or on unmount,
     // preventing browser memory leaks from accumulated preview blobs.
@@ -461,9 +475,11 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
         }
         if (!message.trim() && files.length === 0 && pastedContent.length === 0) return;
 
+        // Don't include [Attachment: filename] in the prompt — text-only models
+        // would try to "read" the filename and produce confusing errors like
+        // "Cannot read image.png (this model does not support image input)".
         const textWithAttachments = [
             ...pastedContent.map(p => `[Pasted text]\n${p.content}`),
-            ...files.map(f => `[Attachment: ${f.file.name}]`),
             message.trim()
         ].filter(Boolean).join('\n\n');
 
@@ -489,16 +505,55 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
     };
 
     const hasContent = !!(message.trim() || files.length > 0 || pastedContent.length > 0);
+    const [isFocused, setIsFocused] = useState(false);
+    const glowActive = isFocused || message.trim().length > 0 || isLoading;
 
     return (
         <div
-            className={cn("relative w-full transition-all duration-300", className)}
+            className={cn("relative isolate w-full", className)}
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
             onDrop={onDrop}
         >
-            {/* Single refined outer container */}
-            <div className="w-full border border-white/[0.08] bg-[#111216]/90 shadow-2xl backdrop-blur-xl transition-all duration-200 focus-within:border-white/[0.25] focus-within:bg-[#15161A]/90 rounded-2xl flex flex-col justify-between min-h-[104px] max-h-[360px] p-3">
+                {/* ── Bottom breathing glow ── */}
+                <div
+                    aria-hidden="true"
+                    className={cn(
+                        "pointer-events-none absolute left-[10%] right-[10%] -bottom-[18px] h-[36px] z-0 transition-opacity duration-300",
+                        glowActive ? "vantra-glow-breathe opacity-100" : "opacity-0"
+                    )}
+                    style={{
+                        background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.16) 0%, rgba(220,225,235,0.08) 35%, transparent 72%)',
+                        filter: 'blur(18px)',
+                    }}
+                />
+
+                {/* ── Orbiting border highlight ── */}
+                <div
+                    aria-hidden="true"
+                    className={cn(
+                        "pointer-events-none absolute inset-[-1px] rounded-[inherit] p-[1px] z-0 transition-opacity duration-300 overflow-hidden",
+                        glowActive ? "opacity-100" : "opacity-0"
+                    )}
+                    style={{
+                        WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                        WebkitMaskComposite: 'xor',
+                        maskComposite: 'exclude',
+                    }}
+                >
+                    <div
+                        className="vantra-orbit-ring absolute inset-[-200%]"
+                        style={{
+                            background: 'conic-gradient(from 0deg, transparent 0deg 320deg, rgba(255,255,255,0.03) 327deg, rgba(255,255,255,1) 338deg, rgba(255,255,255,0.10) 347deg, transparent 355deg 360deg)',
+                        }}
+                    />
+                </div>
+
+                {/* ── Real composer surface ── */}
+                <div className={cn(
+                    "relative z-10 w-full border bg-[#0A0A0B] shadow-2xl backdrop-blur-xl transition-colors duration-300 rounded-2xl flex flex-col justify-between min-h-[104px] max-h-[360px] p-3",
+                    glowActive ? "border-white/[0.18]" : "border-white/5"
+                )}>
 
                 {/* Attachments above input */}
                 {(files.length > 0 || pastedContent.length > 0) && (
@@ -522,13 +577,15 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
 
                 {/* Input area */}
                 <div className="relative flex-1 min-h-[44px] flex items-center" dir="auto">
-                    <textarea
-                        ref={textareaRef}
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        onPaste={handlePaste}
-                        onKeyDown={handleKeyDown}
-                        placeholder={placeholder}
+                        <textarea
+                            ref={textareaRef}
+                            value={message}
+                            onChange={(e) => setMessage(e.target.value)}
+                            onPaste={handlePaste}
+                            onKeyDown={handleKeyDown}
+                            onFocus={() => setIsFocused(true)}
+                            onBlur={() => setIsFocused(false)}
+                            placeholder={placeholder}
                         dir="auto"
                         autoFocus={autoFocus}
                         className="w-full bg-transparent border-0 outline-none text-white text-[15px] sm:text-[16px] placeholder:text-white/30 resize-none overflow-y-auto custom-scrollbar-thin leading-relaxed block antialiased px-3 py-1.5"
@@ -537,7 +594,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                     />
                 </div>
 
-                {/* Action bar — bottom row perfectly balanced */}
+                {/* Action bar â€” bottom row perfectly balanced */}
                 <div className="flex items-center justify-between w-full px-1 pt-1">
                     {/* Left side: action icons */}
                     <div className="flex items-center shrink-0 gap-1 ps-1">
@@ -619,12 +676,12 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
 
                                 <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2.5 py-1 glass-pop rounded-md text-[11px] font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 flex items-center gap-1.5">
                                     <span className="text-white/85">Extended thinking</span>
-                                    <span className="text-white/35" style={{ fontSize: '10px' }}>⇧+Ctrl+E</span>
+                                    <span className="text-white/35" style={{ fontSize: '10px' }}>â‡§+Ctrl+E</span>
                                 </div>
                             </button>
                         </div>
 
-                        {/* Voice input — Groq Whisper via /api/transcribe */}
+                        {/* Voice input â€” Groq Whisper via /api/transcribe */}
                         <div className="flex shrink-0 items-center gap-1">
                             {voiceError && (
                                 <span className="text-[10.5px] text-red-400/90 max-w-[140px] truncate animate-fade-in" role="status">
@@ -671,26 +728,17 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                             <button
                                 type="button"
                                 onClick={onStop}
-                                className="inline-flex items-center justify-center h-8 w-8 shrink-0 rounded-lg bg-white text-black hover:bg-white/90 active:scale-95 transition-all cursor-pointer shadow-sm"
+                                className="inline-flex items-center justify-center h-8 w-8 shrink-0 rounded-lg bg-white/10 border border-white/15 text-white/80 hover:bg-white/20 active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
                                 aria-label="Stop generating"
                             >
                                 <Square className="w-3.5 h-3.5 fill-current" />
                             </button>
                         ) : (
-                            <button
-                                type="button"
+                            <LiquidMetalButton
+                                viewMode="icon"
+                                label="Send"
                                 onClick={handleSend}
-                                disabled={!hasContent}
-                                className={cn(
-                                    "inline-flex items-center justify-center h-8 w-8 shrink-0 rounded-lg transition-all duration-200 active:scale-95",
-                                    hasContent
-                                        ? 'bg-white text-black hover:bg-white/90 cursor-pointer opacity-100 shadow-sm'
-                                        : 'bg-white text-black cursor-not-allowed opacity-30'
-                                )}
-                                aria-label="Send message"
-                            >
-                                <ArrowUp className="w-4 h-4 stroke-[2.5]" />
-                            </button>
+                            />
                         )}
                     </div>
                 </div>

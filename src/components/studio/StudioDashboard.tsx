@@ -106,6 +106,20 @@ export default function StudioDashboard() {
     setActiveSessionId(`draft-${Date.now()}`);
   }, []);
 
+  // Landing → Studio bridge: prefill the composer with a stashed hero prompt
+  useEffect(() => {
+    try {
+      const pending = sessionStorage.getItem('vantra_pending_prompt');
+      if (pending) {
+        sessionStorage.removeItem('vantra_pending_prompt');
+        const t = setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('vantra-prefill-prompt', { detail: { prompt: pending } }));
+        }, 900);
+        return () => clearTimeout(t);
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     // Debounced + capped: keep max 30 sessions, never block main thread per keystroke
     const t = setTimeout(() => {
@@ -316,7 +330,7 @@ export default function StudioDashboard() {
   const isEmpty = messages.length === 0;
 
   return (
-    <div className="relative flex h-[100dvh] w-full overflow-hidden obsidian-bg text-white font-sans">
+    <div className="relative flex h-[100dvh] w-full overflow-hidden bg-black text-white font-sans">
       {/* Sidebar */}
       <DashboardSidebar
         activeWorkspace={centerMode}
@@ -334,9 +348,12 @@ export default function StudioDashboard() {
         onCloseMobile={() => setIsMobileNavOpen(false)}
       />
 
-      {/* Workspace */}
-      <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
-        {/* Mobile Navigation Trigger (Subtle floating button, hidden on desktop) */}
+      {/* Workspace — absolute black + bottom glow behind all content */}
+      <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative bg-black">
+        {/* Bottom glow — restricted to bottom half, pure white 3% */}
+        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-[radial-gradient(ellipse_at_bottom,rgba(255,255,255,0.03)_0%,transparent_100%)] pointer-events-none z-0" aria-hidden="true" />
+
+        {/* Mobile Navigation Trigger */}
         <button
           type="button"
           onClick={() => setIsMobileNavOpen(true)}
