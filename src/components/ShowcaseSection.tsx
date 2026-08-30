@@ -1,13 +1,15 @@
 'use client';
 
 import Image from 'next/image';
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import {
   AnimatePresence,
   motion,
+  useMotionValue,
   useMotionValueEvent,
   useReducedMotion,
   useScroll,
+  useTransform,
 } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
@@ -35,15 +37,73 @@ const MODES = [
 
 export default function ShowcaseSection() {
   const sectionRef = useRef<HTMLElement>(null);
+  const stickyRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const reduceMotion = useReducedMotion();
+  const introX = useMotionValue(0);
+  const introScale = useMotionValue(1);
   const { scrollYProgress } = useScroll({
     target: sectionRef,
     offset: ['start start', 'end end'],
   });
+  const introProgress = useTransform(scrollYProgress, [0, 0.25], [0, 1], {
+    clamp: true,
+  });
+  const previewX = useTransform(
+    [introProgress, introX],
+    ([progress, startX]) => Number(startX) * (1 - Number(progress))
+  );
+  const previewY = useTransform(introProgress, [0, 1], [-12, 0]);
+  const previewScale = useTransform(
+    [introProgress, introScale],
+    ([progress, startScale]) =>
+      1 + (Number(startScale) - 1) * (1 - Number(progress))
+  );
+  const navigationOpacity = useTransform(scrollYProgress, [0.05, 0.22], [0, 1], {
+    clamp: true,
+  });
+  const navigationX = useTransform(scrollYProgress, [0.05, 0.22], [-20, 0], {
+    clamp: true,
+  });
+
+  useLayoutEffect(() => {
+    const sticky = stickyRef.current;
+    const preview = previewRef.current;
+
+    if (!sticky || !preview) return;
+
+    const measure = () => {
+      const stickyRect = sticky.getBoundingClientRect();
+      const previewRect = preview.getBoundingClientRect();
+      const isDesktop = stickyRect.width >= 1024;
+
+      if (!isDesktop) {
+        introX.set(0);
+        introScale.set(1.06);
+        return;
+      }
+
+      const targetWidth = Math.min(stickyRect.width * 0.82, 1320);
+      introX.set(stickyRect.left + stickyRect.width / 2 - (previewRect.left + previewRect.width / 2));
+      introScale.set(Math.min(1.35, Math.max(1, targetWidth / previewRect.width)));
+    };
+
+    measure();
+
+    const resizeObserver = new ResizeObserver(measure);
+    resizeObserver.observe(sticky);
+    resizeObserver.observe(preview);
+
+    return () => resizeObserver.disconnect();
+  }, [introScale, introX]);
 
   useMotionValueEvent(scrollYProgress, 'change', (progress) => {
-    const nextIndex = Math.min(MODES.length - 1, Math.floor(progress * MODES.length));
+    const showcaseProgress = Math.max(0, Math.min(1, (progress - 0.25) / 0.75));
+    const nextIndex = Math.min(
+      MODES.length - 1,
+      Math.floor(showcaseProgress * MODES.length)
+    );
     setActiveIndex((current) => (current === nextIndex ? current : nextIndex));
   });
 
@@ -57,9 +117,13 @@ export default function ShowcaseSection() {
       ref={sectionRef}
       id="showcase"
       aria-label="VANTRA Chat, Image, and Video showcase"
-      className="relative h-[300vh] bg-[#050505]"
+      className="relative h-[400vh] bg-[#050505]"
     >
-      <div id="models" className="sticky top-0 flex h-screen min-h-[640px] items-center overflow-hidden py-10 lg:py-12">
+      <div
+        ref={stickyRef}
+        id="models"
+        className="sticky top-0 flex h-screen min-h-[640px] items-center overflow-hidden py-10 lg:py-12"
+      >
         <div className="mx-auto w-full max-w-[1440px] px-5 sm:px-8 lg:px-12">
           <header className="mb-7 text-center lg:mb-8">
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/35">
@@ -74,7 +138,10 @@ export default function ShowcaseSection() {
           </header>
 
           <div className="grid items-center gap-8 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-12 xl:gap-16">
-            <div className="grid grid-cols-3 border-y border-white/[0.08] lg:block lg:border-y-0">
+            <motion.div
+              style={reduceMotion ? undefined : { opacity: navigationOpacity, x: navigationX }}
+              className="grid grid-cols-3 border-y border-white/[0.08] lg:block lg:border-y-0"
+            >
               {MODES.map((mode, index) => {
                 const isActive = index === activeIndex;
 
@@ -128,10 +195,18 @@ export default function ShowcaseSection() {
                   {activeMode.description}
                 </motion.p>
               </AnimatePresence>
-            </div>
+            </motion.div>
 
-            <div className="relative min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-1.5 sm:p-2">
-              <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-[#070707] sm:aspect-[16/9] lg:aspect-[1.8/1]">
+            <div ref={previewRef} className="relative z-10 min-w-0">
+              <motion.div
+                style={
+                  reduceMotion
+                    ? undefined
+                    : { x: previewX, y: previewY, scale: previewScale }
+                }
+                className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-1.5 sm:p-2"
+              >
+                <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-[#070707] sm:aspect-[16/9] lg:aspect-[1.8/1]">
                 {MODES.map((mode, index) => {
                   const isActive = index === activeIndex;
 
@@ -159,7 +234,8 @@ export default function ShowcaseSection() {
                     </motion.div>
                   );
                 })}
-              </div>
+                </div>
+              </motion.div>
             </div>
           </div>
 
