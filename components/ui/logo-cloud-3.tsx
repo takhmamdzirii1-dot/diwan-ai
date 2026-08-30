@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+
 import { cn } from '@/lib/utils';
 
 type Logo = {
@@ -14,17 +16,76 @@ type LogoCloudProps = React.ComponentProps<'div'> & {
 };
 
 export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
-  const logoGroup = (duplicate = false) => (
+  const sequenceRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const sequence = sequenceRef.current;
+    const track = trackRef.current;
+
+    if (!sequence || !track) return;
+
+    const cycleDuration = 19_000;
+    let frameId = 0;
+    let lastTime: number | null = null;
+    let offset = 0;
+    let sequenceWidth = 0;
+
+    const render = () => {
+      track.style.transform = `translate3d(${offset - sequenceWidth}px, 0, 0)`;
+    };
+
+    const measure = () => {
+      const nextWidth = sequence.getBoundingClientRect().width;
+
+      if (nextWidth <= 0 || nextWidth === sequenceWidth) return;
+
+      const progress = sequenceWidth > 0 ? offset / sequenceWidth : 0;
+      sequenceWidth = nextWidth;
+      offset = progress * sequenceWidth;
+      render();
+    };
+
+    const animate = (time: number) => {
+      if (lastTime === null) lastTime = time;
+
+      const elapsed = time - lastTime;
+      lastTime = time;
+
+      if (sequenceWidth > 0) {
+        offset =
+          (offset + (sequenceWidth * elapsed) / cycleDuration) % sequenceWidth;
+        render();
+      }
+
+      frameId = requestAnimationFrame(animate);
+    };
+
+    measure();
+
+    const resizeObserver = new ResizeObserver(measure);
+    resizeObserver.observe(sequence);
+    frameId = requestAnimationFrame(animate);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  const logoGroup = (index: number) => (
     <div
-      aria-hidden={duplicate || undefined}
+      aria-hidden={index > 0 || undefined}
       className='logo-marquee-group'
+      ref={index === 0 ? sequenceRef : undefined}
+      key={`logo-group-${index}`}
     >
       {logos.map((logo) => (
         <img
-          alt={duplicate ? '' : logo.alt}
+          alt={index > 0 ? '' : logo.alt}
           className='pointer-events-none h-5 w-auto shrink-0 select-none opacity-90 md:h-6'
           height={logo.height || 'auto'}
-          key={`${duplicate ? 'duplicate-' : ''}logo-${logo.alt}`}
+          key={`group-${index}-logo-${logo.alt}`}
           loading='eager'
           src={logo.src}
           width={logo.width || 'auto'}
@@ -41,9 +102,8 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
         className
       )}
     >
-      <div className='logo-marquee-track'>
-        {logoGroup()}
-        {logoGroup(true)}
+      <div className='logo-marquee-track' ref={trackRef}>
+        {Array.from({ length: 4 }, (_, index) => logoGroup(index))}
       </div>
       <style jsx global>{`
         .logo-marquee-track {
@@ -52,7 +112,8 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
           flex-wrap: nowrap;
           width: max-content;
           will-change: transform;
-          animation: logo-marquee 19s linear infinite reverse;
+          transform: translate3d(-25%, 0, 0);
+          transition: none;
         }
 
         .logo-marquee-group {
@@ -63,15 +124,6 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
           gap: 3rem;
           padding-right: 3rem;
           white-space: nowrap;
-        }
-
-        @keyframes logo-marquee {
-          from {
-            transform: translate3d(0, 0, 0);
-          }
-          to {
-            transform: translate3d(-50%, 0, 0);
-          }
         }
       `}</style>
     </div>
