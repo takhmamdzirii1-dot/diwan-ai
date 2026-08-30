@@ -52,7 +52,7 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
           flex-wrap: nowrap;
           width: max-content;
           will-change: transform;
-          animation: logo-marquee 19s linear infinite;
+          animation: logo-marquee 19s linear infinite reverse;
         }
 
         .logo-marquee-group {
@@ -67,10 +67,10 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
 
         @keyframes logo-marquee {
           from {
-            transform: translate3d(-50%, 0, 0);
+            transform: translate3d(0, 0, 0);
           }
           to {
-            transform: translate3d(0, 0, 0);
+            transform: translate3d(-50%, 0, 0);
           }
         }
       `}</style>
