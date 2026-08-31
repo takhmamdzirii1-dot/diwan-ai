@@ -530,7 +530,8 @@ export default function StudioDashboard() {
                           </div>
                         )}
 
-                        <div ref={messagesEndRef} className="h-2 w-full shrink-0" />
+                        {/* Spacer to push text above the floating composer */}
+                        <div ref={messagesEndRef} className="h-32 w-full flex-shrink-0" />
                       </div>
                     </div>
                   </div>
