@@ -1,17 +1,8 @@
 'use client';
 
 import Image from 'next/image';
-import { useLayoutEffect, useRef, useState } from 'react';
-import {
-  AnimatePresence,
-  motion,
-  useMotionValue,
-  useMotionValueEvent,
-  useReducedMotion,
-  useScroll,
-  useTransform,
-  type MotionValue,
-} from 'framer-motion';
+import { useEffect, useRef } from 'react';
+import { useMotionValue } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
 
@@ -36,179 +27,58 @@ const MODES = [
   },
 ] as const;
 
-const INTRO_END = 0.2;
-const CHAT_PLATEAU_END = 0.42;
-const CHAT_HORIZONTAL_END = 0.7;
-const CONTENT_CROSSFADE_END = 0.84;
-const DISPLAY_SWAP = (CHAT_HORIZONTAL_END + CONTENT_CROSSFADE_END) / 2;
-
-type ShowcasePhase = 'intro' | 'chat' | 'image' | 'video';
-
 function clampProgress(value: number) {
   return Math.max(0, Math.min(1, value));
 }
 
-function easeOutCubic(value: number) {
-  return 1 - (1 - value) ** 3;
-}
-
-function easeInOutCubic(value: number) {
-  return value < 0.5
-    ? 4 * value ** 3
-    : 1 - (-2 * value + 2) ** 3 / 2;
-}
-
-function smoothstep(start: number, end: number, value: number) {
-  const progress = clampProgress((value - start) / (end - start));
-  return progress * progress * (3 - 2 * progress);
-}
-
-function ModeProgressLine({
-  progress,
-  range,
-}: {
-  progress: MotionValue<number>;
-  range: [number, number];
-}) {
-  const localProgress = useTransform(progress, range, [0, 1], { clamp: true });
-
-  return (
-    <span
-      aria-hidden="true"
-      className="mt-4 block h-px w-full overflow-hidden bg-white/10"
-    >
-      <motion.span
-        style={{ scaleX: localProgress }}
-        className="block h-full origin-left bg-white/85"
-      />
-    </span>
-  );
-}
-
 export default function ShowcaseSection() {
   const sectionRef = useRef<HTMLElement>(null);
-  const stickyRef = useRef<HTMLDivElement>(null);
-  const previewRef = useRef<HTMLDivElement>(null);
-  const [activePhase, setActivePhase] = useState<ShowcasePhase>('intro');
-  const reduceMotion = useReducedMotion();
-  const introX = useMotionValue(0);
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ['start start', 'end end'],
-  });
-  const frameX = useTransform([scrollYProgress, introX], ([progress, startX]) => {
-    const horizontalProgress = easeInOutCubic(
-      clampProgress(
-        (Number(progress) - CHAT_PLATEAU_END) /
-          (CHAT_HORIZONTAL_END - CHAT_PLATEAU_END)
-      )
-    );
+  const sectionProgress = useMotionValue(0);
 
-    return Number(startX) * (1 - horizontalProgress);
-  });
-  const frameY = useTransform(scrollYProgress, (progress) => {
-    const entryProgress = easeOutCubic(clampProgress(progress / INTRO_END));
-    const horizontalProgress = easeInOutCubic(
-      clampProgress(
-        (progress - CHAT_PLATEAU_END) /
-          (CHAT_HORIZONTAL_END - CHAT_PLATEAU_END)
-      )
-    );
+  useEffect(() => {
+    let frameId: number | null = null;
 
-    return 120 * (1 - entryProgress) + 8 * horizontalProgress;
-  });
-  const frameScale = useTransform(scrollYProgress, (progress) => {
-    const entryProgress = easeOutCubic(clampProgress(progress / INTRO_END));
-    const horizontalProgress = easeInOutCubic(
-      clampProgress(
-        (progress - CHAT_PLATEAU_END) /
-          (CHAT_HORIZONTAL_END - CHAT_PLATEAU_END)
-      )
-    );
+    const updateProgress = () => {
+      frameId = null;
+      const section = sectionRef.current;
 
-    return 0.94 + 0.06 * entryProgress - 0.04 * horizontalProgress;
-  });
-  const frameOpacity = useTransform(scrollYProgress, (progress) =>
-    smoothstep(0, 0.12, progress)
-  );
-  const contentCrossfade = useTransform(scrollYProgress, (progress) =>
-    smoothstep(CHAT_HORIZONTAL_END, CONTENT_CROSSFADE_END, progress)
-  );
-  const chatPanelOpacity = useTransform(contentCrossfade, (value) => 1 - value);
-  const imagePanelOpacity = contentCrossfade;
-  const videoPanelOpacity = useTransform(scrollYProgress, () => 0);
-  const chatPanelY = useTransform(contentCrossfade, (value) => -8 * value);
-  const imagePanelY = useTransform(contentCrossfade, (value) => 8 * (1 - value));
-  const chatPanelScale = useTransform(contentCrossfade, (value) => 1 - 0.02 * value);
-  const imagePanelScale = useTransform(contentCrossfade, (value) => 0.98 + 0.02 * value);
-  const navigationOpacity = useTransform(scrollYProgress, [0.04, 0.18], [0, 1], {
-    clamp: true,
-  });
-  const navigationX = useTransform(scrollYProgress, [0.04, 0.18], [-20, 0], {
-    clamp: true,
-  });
+      if (!section) return;
 
-  useLayoutEffect(() => {
-    const sticky = stickyRef.current;
-    const preview = previewRef.current;
-
-    if (!sticky || !preview) return;
-
-    const measure = () => {
-      const stickyRect = sticky.getBoundingClientRect();
-      const previewRect = preview.getBoundingClientRect();
-      const isDesktop = stickyRect.width >= 1024;
-
-      if (!isDesktop) {
-        introX.set(0);
-        return;
-      }
-
-      introX.set(
-        stickyRect.left +
-          stickyRect.width / 2 -
-          (previewRect.left + previewRect.width / 2)
+      const sectionTop = window.scrollY + section.getBoundingClientRect().top;
+      const sectionHeight = section.offsetHeight;
+      const viewportHeight = window.innerHeight;
+      const nextProgress = clampProgress(
+        (window.scrollY - sectionTop) /
+          Math.max(1, sectionHeight - viewportHeight)
       );
+
+      sectionProgress.set(nextProgress);
     };
 
-    measure();
+    const requestProgressUpdate = () => {
+      if (frameId === null) frameId = window.requestAnimationFrame(updateProgress);
+    };
 
-    const resizeObserver = new ResizeObserver(measure);
-    resizeObserver.observe(sticky);
-    resizeObserver.observe(preview);
+    requestProgressUpdate();
+    window.addEventListener('scroll', requestProgressUpdate, { passive: true });
+    window.addEventListener('resize', requestProgressUpdate);
 
-    return () => resizeObserver.disconnect();
-  }, [introX]);
-
-  useMotionValueEvent(scrollYProgress, 'change', (progress) => {
-    const nextPhase: ShowcasePhase =
-      progress < INTRO_END
-        ? 'intro'
-        : progress < DISPLAY_SWAP
-          ? 'chat'
-          : 'image';
-
-    setActivePhase((current) => (current === nextPhase ? current : nextPhase));
-  });
-
-  const activeIndex =
-    activePhase === 'image' ? 1 : activePhase === 'video' ? 2 : 0;
-  const activeMode = MODES[activeIndex];
-  const descriptionTransition = reduceMotion
-    ? { duration: 0 }
-    : { duration: 0.22, ease: [0.22, 1, 0.36, 1] as const };
+    return () => {
+      window.removeEventListener('scroll', requestProgressUpdate);
+      window.removeEventListener('resize', requestProgressUpdate);
+      if (frameId !== null) window.cancelAnimationFrame(frameId);
+    };
+  }, [sectionProgress]);
 
   return (
     <section
       ref={sectionRef}
       id="showcase"
       data-studio-scroll-section
-      data-showcase-phase={activePhase}
       aria-label="VANTRA Chat, Image, and Video showcase"
       className="relative h-[400vh] bg-[#050505]"
     >
       <div
-        ref={stickyRef}
         id="models"
         data-sticky-scene
         className="sticky top-0 flex h-[100svh] min-h-[640px] items-center overflow-hidden py-10 lg:py-12"
@@ -227,19 +97,9 @@ export default function ShowcaseSection() {
           </header>
 
           <div className="grid items-center gap-8 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-12 xl:gap-16">
-            <motion.div
-              data-tab-rail
-              style={reduceMotion ? undefined : { opacity: navigationOpacity, x: navigationX }}
-              className="grid grid-cols-3 border-y border-white/[0.08] lg:block lg:border-y-0"
-            >
+            <div data-tab-rail className="grid grid-cols-3 border-y border-white/[0.08] lg:block lg:border-y-0">
               {MODES.map((mode, index) => {
-                const isActive = activePhase !== 'intro' && index === activeIndex;
-                const progressRange =
-                  index === 0
-                    ? ([INTRO_END, CHAT_HORIZONTAL_END] as [number, number])
-                    : index === 1
-                      ? ([CONTENT_CROSSFADE_END, 1] as [number, number])
-                      : ([1, 1.0001] as [number, number]);
+                const isActive = index === 0;
 
                 return (
                   <div
@@ -254,10 +114,7 @@ export default function ShowcaseSection() {
                       {mode.label}
                     </p>
 
-                    <ModeProgressLine
-                      progress={scrollYProgress}
-                      range={progressRange}
-                    />
+                    <span aria-hidden="true" className="mt-4 block h-px w-full bg-white/10" />
                   </div>
                 );
               })}
@@ -266,65 +123,36 @@ export default function ShowcaseSection() {
                 data-showcase-description-container
                 className="relative col-span-3 min-h-[72px] border-t border-white/[0.08] py-4 lg:mt-1 lg:min-h-[82px] lg:border-t-0 lg:py-5"
               >
-                <AnimatePresence initial={false} mode="sync">
-                  {activePhase !== 'intro' && (
-                    <motion.p
-                      key={`${activeMode.key}-description`}
-                      data-showcase-description={activeMode.key}
-                      initial={reduceMotion ? false : { opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={descriptionTransition}
-                      className="absolute inset-x-0 top-4 max-w-[245px] text-sm font-medium leading-6 text-white/60 lg:top-5"
-                    >
-                      {activeMode.description}
-                    </motion.p>
-                  )}
-                </AnimatePresence>
+                <p
+                  data-showcase-description="chat"
+                  className="absolute inset-x-0 top-4 max-w-[245px] text-sm font-medium leading-6 text-white/60 lg:top-5"
+                >
+                  {MODES[0].description}
+                </p>
               </div>
-            </motion.div>
+            </div>
 
             <div
-              ref={previewRef}
               data-demo-viewport
-              className="relative z-10 min-w-0"
+              className="relative z-10 min-w-0 overflow-hidden"
             >
-              <motion.div
+              <div
                 data-demo-frame
-                style={
-                  reduceMotion
-                    ? undefined
-                    : { x: frameX, y: frameY, scale: frameScale, opacity: frameOpacity }
-                }
+                style={{ willChange: 'transform' }}
                 className="relative w-full overflow-hidden rounded-2xl bg-[#090909] p-1.5 [will-change:transform,opacity] sm:p-2"
               >
                 <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-[#070707] sm:aspect-[16/9] lg:aspect-[1.8/1]">
                   {MODES.map((mode, index) => {
-                    const isActivePanel = index === activeIndex;
-                    const panelStyle =
-                      index === 0
-                        ? {
-                            opacity: chatPanelOpacity,
-                            y: chatPanelY,
-                            scale: chatPanelScale,
-                          }
-                        : index === 1
-                          ? {
-                              opacity: imagePanelOpacity,
-                              y: imagePanelY,
-                              scale: imagePanelScale,
-                            }
-                          : { opacity: videoPanelOpacity };
-
                     return (
-                    <motion.div
+                    <div
                       key={mode.key}
                       data-demo-panel={mode.key}
-                      initial={false}
-                      style={reduceMotion ? undefined : panelStyle}
-                      animate={reduceMotion ? { opacity: isActivePanel ? 1 : 0 } : undefined}
-                      className="absolute inset-0 pointer-events-none"
-                      aria-hidden={!isActivePanel}
+                      className={cn(
+                        'pointer-events-none absolute inset-0',
+                        index === 0 ? 'opacity-100' : 'opacity-0'
+                      )}
+                      style={{ transition: 'none', willChange: 'opacity' }}
+                      aria-hidden={index !== 0}
                     >
                       <Image
                         src={mode.image}
@@ -334,7 +162,7 @@ export default function ShowcaseSection() {
                         sizes="(max-width: 1023px) 100vw, 75vw"
                         className="origin-right scale-[1.28] object-cover object-right"
                       />
-                    </motion.div>
+                    </div>
                     );
                   })}
                 </div>
@@ -343,7 +171,7 @@ export default function ShowcaseSection() {
                   data-frame-overlay
                   className="pointer-events-none absolute inset-0 rounded-2xl border border-white/10"
                 />
-              </motion.div>
+              </div>
             </div>
           </div>
         </div>
