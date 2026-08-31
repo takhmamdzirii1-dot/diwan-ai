@@ -41,15 +41,13 @@ export function CinematicScrollMockup() {
     offset: ["start start", "end end"],
   });
 
-  const scale = useTransform(scrollYProgress, [0, 0.15], [1.6, 0.85]);
-  const x = useTransform(scrollYProgress, [0, 0.15], ["0%", "25%"]);
-  const textOpacity = useTransform(scrollYProgress, [0.1, 0.15], [0, 1], {
-    clamp: true,
-  });
+  const scale = useTransform(scrollYProgress, [0, 0.25], [1.6, 0.85]);
+  const x = useTransform(scrollYProgress, [0, 0.25], ["0%", "25%"]);
+  const textOpacity = useTransform(scrollYProgress, [0.15, 0.25], [0, 1]);
 
   useMotionValueEvent(scrollYProgress, "change", (latest) => {
-    if (latest < 0.4) setActiveIndex(0);
-    else if (latest < 0.7) setActiveIndex(1);
+    if (latest < 0.45) setActiveIndex(0);
+    else if (latest < 0.75) setActiveIndex(1);
     else setActiveIndex(2);
   });
 
@@ -57,7 +55,7 @@ export function CinematicScrollMockup() {
     <section
       ref={containerRef}
       aria-label="VANTRA unified AI studio"
-      className="relative h-[500vh] bg-black"
+      className="relative h-[250vh] bg-black"
     >
       <div className="sticky top-0 flex h-screen w-full items-center justify-center overflow-hidden bg-black supports-[height:100svh]:h-[100svh]">
         <motion.div
