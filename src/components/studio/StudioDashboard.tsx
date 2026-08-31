@@ -316,10 +316,43 @@ export default function StudioDashboard() {
     [append, selectedModelId, activeSessionId, sessions, activeModel.isFree, user, openAuthModal]
   );
 
+  /** Direct append for suggested prompts — bypasses handleSend's
+   *  session creation + state updates that could abort the stream.
+   *  Session materialisation happens via the `sessions` dependency effect
+   *  and the debounced persistence — not inline before the append call. */
+  const handleSuggestedPrompt = useCallback(
+    (text: string) => {
+      if (!user && !activeModel.isFree) {
+        openAuthModal('signin');
+        return;
+      }
+      // Lazy session materialisation — fire-and-forget, does NOT block append
+      if (activeSessionId) {
+        const exists = sessions.some((s) => s.id === activeSessionId);
+        if (!exists) {
+          const t = content_title(text);
+          setSessions((prev) =>
+            [{ id: activeSessionId, title: t, createdAt: Date.now() }, ...prev].slice(0, 30)
+          );
+        }
+      }
+      sendStartRef.current = performance.now();
+      append(
+        { role: 'user', content: text },
+        { body: { model: selectedModelId } }
+      );
+    },
+    [append, selectedModelId, activeSessionId, sessions, activeModel.isFree, user, openAuthModal]
+  );
+
   const totalTokens = useMemo(
     () => Math.ceil(messages.reduce((acc, m) => acc + (m.content?.length || 0), 0) / 4),
     [messages]
   );
+
+  function content_title(text: string) {
+    return text.length > 42 ? `${text.slice(0, 42).trimEnd()}…` : text || 'New Chat';
+  }
 
   const isEmpty = messages.length === 0;
 
@@ -422,7 +455,7 @@ export default function StudioDashboard() {
                                     <button
                                       key={skill.title}
                                       type="button"
-                                      onClick={() => handleSend({ message: skill.prompt, isThinkingEnabled: false })}
+                                      onClick={() => handleSuggestedPrompt(skill.prompt)}
                                       className="flex flex-col gap-2 p-4 rounded-xl border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.06] hover:border-white/[0.1] transition-all cursor-pointer text-sm text-white/70 hover:text-white text-start group active:scale-[0.99]"
                                     >
                                       <div className="flex items-center gap-2.5">
