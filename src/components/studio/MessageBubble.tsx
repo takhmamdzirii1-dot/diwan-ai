@@ -170,7 +170,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
       <div className={`w-full flex ${isUser ? 'justify-end' : 'justify-start'}`}>
         {isUser ? (
           <div
-            className="w-fit max-w-[85%] bg-[#1A1C20] p-4 rounded-2xl rounded-tr-sm flex flex-col gap-3 border border-white/5 shadow-sm ml-auto self-end"
+            className="w-fit flex flex-col gap-3 ml-auto self-end bg-white/[0.05] border border-white/[0.02] text-white/90 px-5 py-3 rounded-3xl rounded-br-sm shadow-sm backdrop-blur-sm max-w-[80%]"
             dir={isRTL ? 'rtl' : 'ltr'}
           >
             {/* Visual Attachment Rendering */}
