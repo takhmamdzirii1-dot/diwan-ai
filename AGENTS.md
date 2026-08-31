@@ -115,6 +115,7 @@ If a build fails after pulling:
 1. Never claim "done" without proof: screenshot + computed-style numbers from the live page.
 2. Run `npm run lint` and `npm run build` before any deploy.
 3. Follow installed skills (emil-design-eng values, improve-animations audit values) — never invent motion values.
-4. Always `git add` + `git commit` after completing significant work (user approved this standing instruction).
+4. Always `git add` + `git commit` + `git push origin main` after completing significant work. **Push is NOT optional.** The user approved this as a standing instruction. Forgetting push = forgetting the work.
 5. Always `graphify update .` after code changes (post-commit hook also does this).
 6. AUTO-DEPLOY ALWAYS (user standing instruction): after completing any code change — run `npm run lint` + `npm run build`, then immediately `vercel deploy --prod --yes` WITHOUT waiting for the user to ask. Retry once on transient `fetch failed`. Verify the production URL afterwards.
+7. **After EVERY deploy**: `graphify update .` must also run. Never deploy without updating the graph.
