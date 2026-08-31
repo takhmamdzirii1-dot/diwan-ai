@@ -160,16 +160,42 @@
       "source_location": "L30"
     },
     {
+      "id": "components_ui_textarea_textareaprops",
+      "label": "TextareaProps",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "lib/utils.ts",
+      "file_type": "code",
+      "norm_label": "textareaprops",
+      "source_file": "components/ui/textarea.tsx",
+      "source_location": "L5"
+    },
+    {
       "id": "src_components_globalpricing_pricingtier",
       "label": "PricingTier",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "GlobalPricing.tsx",
+      "community_name": "lib/utils.ts",
       "file_type": "code",
       "norm_label": "pricingtier",
       "source_file": "src/components/GlobalPricing.tsx",
+      "source_location": "L8"
+    },
+    {
+      "id": "src_components_ui_infinite_slider_infinitesliderprops",
+      "label": "InfiniteSliderProps",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "lib/utils.ts",
+      "file_type": "code",
+      "norm_label": "infinitesliderprops",
+      "source_file": "src/components/ui/infinite-slider.tsx",
       "source_location": "L8"
     },
     {
@@ -394,6 +420,32 @@
       "source_location": "L13"
     },
     {
+      "id": "components_ui_liquid_metal_button_liquidmetalbuttonprops",
+      "label": "LiquidMetalButtonProps",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "MotionStudio.tsx",
+      "file_type": "code",
+      "norm_label": "liquidmetalbuttonprops",
+      "source_file": "components/ui/liquid-metal-button.tsx",
+      "source_location": "L6"
+    },
+    {
+      "id": "src_components_herosection_herosectionprops",
+      "label": "HeroSectionProps",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "MotionStudio.tsx",
+      "file_type": "code",
+      "norm_label": "herosectionprops",
+      "source_file": "src/components/HeroSection.tsx",
+      "source_location": "L9"
+    },
+    {
       "id": "src_components_studio_videoconfigpopover_cameramotion",
       "label": "CameraMotion",
       "_callable": true,
@@ -452,23 +504,10 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 33,
-      "community_name": "lib/utils.ts",
+      "community_name": "src/components/ui/logo-cloud-3.tsx",
       "file_type": "code",
       "norm_label": "infinitesliderprops",
       "source_file": "components/ui/infinite-slider.tsx",
-      "source_location": "L8"
-    },
-    {
-      "id": "src_components_ui_infinite_slider_infinitesliderprops",
-      "label": "InfiniteSliderProps",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 33,
-      "community_name": "lib/utils.ts",
-      "file_type": "code",
-      "norm_label": "infinitesliderprops",
-      "source_file": "src/components/ui/infinite-slider.tsx",
       "source_location": "L8"
     },
     {
@@ -478,7 +517,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 33,
-      "community_name": "lib/utils.ts",
+      "community_name": "src/components/ui/logo-cloud-3.tsx",
       "file_type": "code",
       "norm_label": "logo",
       "source_file": "src/components/ui/logo-cloud-3.tsx",
@@ -491,7 +530,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 33,
-      "community_name": "lib/utils.ts",
+      "community_name": "src/components/ui/logo-cloud-3.tsx",
       "file_type": "code",
       "norm_label": "logocloudprops",
       "source_file": "src/components/ui/logo-cloud-3.tsx",
@@ -706,19 +745,6 @@
       "source_location": "L13"
     },
     {
-      "id": "components_ui_textarea_textareaprops",
-      "label": "TextareaProps",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 69,
-      "community_name": "cn",
-      "file_type": "code",
-      "norm_label": "textareaprops",
-      "source_file": "components/ui/textarea.tsx",
-      "source_location": "L5"
-    },
-    {
       "id": "src_components_studio_settingsmodal_tabid",
       "label": "TabId",
       "_callable": true,
@@ -730,19 +756,6 @@
       "norm_label": "tabid",
       "source_file": "src/components/studio/SettingsModal.tsx",
       "source_location": "L20"
-    },
-    {
-      "id": "components_ui_liquid_metal_button_liquidmetalbuttonprops",
-      "label": "LiquidMetalButtonProps",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 79,
-      "community_name": "ImageCanvas.tsx",
-      "file_type": "code",
-      "norm_label": "liquidmetalbuttonprops",
-      "source_file": "components/ui/liquid-metal-button.tsx",
-      "source_location": "L6"
     },
     {
       "id": "lib_ai_provider_connections_storedconnection",
@@ -782,19 +795,6 @@
       "norm_label": "logocloudprops",
       "source_file": "components/ui/logo-cloud-3.tsx",
       "source_location": "L14"
-    },
-    {
-      "id": "src_components_herosection_herosectionprops",
-      "label": "HeroSectionProps",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 9,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "herosectionprops",
-      "source_file": "src/components/HeroSection.tsx",
-      "source_location": "L9"
     },
     {
       "id": "src_components_landing_landingheader_landingheaderprops",
@@ -961,11 +961,23 @@
       "_callable": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "GlobalPricing.tsx",
+      "community_name": "lib/utils.ts",
       "file_type": "code",
       "norm_label": "globalpricing()",
       "source_file": "src/components/GlobalPricing.tsx",
       "source_location": "L56"
+    },
+    {
+      "id": "src_components_ui_infinite_slider_infiniteslider",
+      "label": "InfiniteSlider()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "lib/utils.ts",
+      "file_type": "code",
+      "norm_label": "infiniteslider()",
+      "source_file": "src/components/ui/infinite-slider.tsx",
+      "source_location": "L18"
     },
     {
       "id": "src_components_motion_heroentrance_heroentrance",
@@ -990,66 +1002,6 @@
       "norm_label": "graphifyplugin()",
       "source_file": ".opencode/plugins/graphify.js",
       "source_location": "L12"
-    },
-    {
-      "id": "src_components_showcasesection_clamp",
-      "label": "clamp()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 135,
-      "community_name": "ShowcaseSection.tsx",
-      "file_type": "code",
-      "norm_label": "clamp()",
-      "source_file": "src/components/ShowcaseSection.tsx",
-      "source_location": "L27"
-    },
-    {
-      "id": "src_components_showcasesection_cn",
-      "label": "cn()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 135,
-      "community_name": "ShowcaseSection.tsx",
-      "file_type": "code",
-      "norm_label": "cn()",
-      "source_file": "src/components/ShowcaseSection.tsx",
-      "source_location": "L255"
-    },
-    {
-      "id": "src_components_showcasesection_easeout",
-      "label": "easeOut()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 135,
-      "community_name": "ShowcaseSection.tsx",
-      "file_type": "code",
-      "norm_label": "easeout()",
-      "source_file": "src/components/ShowcaseSection.tsx",
-      "source_location": "L36"
-    },
-    {
-      "id": "src_components_showcasesection_phase",
-      "label": "phase()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 135,
-      "community_name": "ShowcaseSection.tsx",
-      "file_type": "code",
-      "norm_label": "phase()",
-      "source_file": "src/components/ShowcaseSection.tsx",
-      "source_location": "L32"
-    },
-    {
-      "id": "src_components_showcasesection_showcasesection",
-      "label": "ShowcaseSection()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 135,
-      "community_name": "ShowcaseSection.tsx",
-      "file_type": "code",
-      "norm_label": "showcasesection()",
-      "source_file": "src/components/ShowcaseSection.tsx",
-      "source_location": "L40"
     },
     {
       "id": "src_components_motion_ambientmeshglow_ambientmeshglow",
@@ -1292,6 +1244,66 @@
       "source_location": "L185"
     },
     {
+      "id": "components_ui_liquid_metal_button_liquidmetalbutton",
+      "label": "LiquidMetalButton()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "MotionStudio.tsx",
+      "file_type": "code",
+      "norm_label": "liquidmetalbutton()",
+      "source_file": "components/ui/liquid-metal-button.tsx",
+      "source_location": "L12"
+    },
+    {
+      "id": "src_components_herosection_hashseed",
+      "label": "hashSeed()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "MotionStudio.tsx",
+      "file_type": "code",
+      "norm_label": "hashseed()",
+      "source_file": "src/components/HeroSection.tsx",
+      "source_location": "L313"
+    },
+    {
+      "id": "src_components_herosection_herosection",
+      "label": "HeroSection()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "MotionStudio.tsx",
+      "file_type": "code",
+      "norm_label": "herosection()",
+      "source_file": "src/components/HeroSection.tsx",
+      "source_location": "L29"
+    },
+    {
+      "id": "src_components_studio_imagecanvas_imagecanvas",
+      "label": "ImageCanvas()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "MotionStudio.tsx",
+      "file_type": "code",
+      "norm_label": "imagecanvas()",
+      "source_file": "src/components/studio/ImageCanvas.tsx",
+      "source_location": "L10"
+    },
+    {
+      "id": "src_components_studio_imagecanvas_imagecanvas_handleclickoutside",
+      "label": "handleClickOutside()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "MotionStudio.tsx",
+      "file_type": "code",
+      "norm_label": "handleclickoutside()",
+      "source_file": "src/components/studio/ImageCanvas.tsx",
+      "source_location": "L59"
+    },
+    {
       "id": "src_components_studio_videoconfigpopover_sectionlabel",
       "label": "SectionLabel()",
       "_callable": true,
@@ -1333,22 +1345,10 @@
       "_callable": true,
       "_origin": "ast",
       "community": 33,
-      "community_name": "lib/utils.ts",
+      "community_name": "src/components/ui/logo-cloud-3.tsx",
       "file_type": "code",
       "norm_label": "infiniteslider()",
       "source_file": "components/ui/infinite-slider.tsx",
-      "source_location": "L18"
-    },
-    {
-      "id": "src_components_ui_infinite_slider_infiniteslider",
-      "label": "InfiniteSlider()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 33,
-      "community_name": "lib/utils.ts",
-      "file_type": "code",
-      "norm_label": "infiniteslider()",
-      "source_file": "src/components/ui/infinite-slider.tsx",
       "source_location": "L18"
     },
     {
@@ -1357,7 +1357,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 33,
-      "community_name": "lib/utils.ts",
+      "community_name": "src/components/ui/logo-cloud-3.tsx",
       "file_type": "code",
       "norm_label": "logocloud()",
       "source_file": "src/components/ui/logo-cloud-3.tsx",
@@ -1952,42 +1952,6 @@
       "source_location": "L20"
     },
     {
-      "id": "components_ui_liquid_metal_button_liquidmetalbutton",
-      "label": "LiquidMetalButton()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 79,
-      "community_name": "ImageCanvas.tsx",
-      "file_type": "code",
-      "norm_label": "liquidmetalbutton()",
-      "source_file": "components/ui/liquid-metal-button.tsx",
-      "source_location": "L12"
-    },
-    {
-      "id": "src_components_studio_imagecanvas_imagecanvas",
-      "label": "ImageCanvas()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 79,
-      "community_name": "ImageCanvas.tsx",
-      "file_type": "code",
-      "norm_label": "imagecanvas()",
-      "source_file": "src/components/studio/ImageCanvas.tsx",
-      "source_location": "L10"
-    },
-    {
-      "id": "src_components_studio_imagecanvas_imagecanvas_handleclickoutside",
-      "label": "handleClickOutside()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 79,
-      "community_name": "ImageCanvas.tsx",
-      "file_type": "code",
-      "norm_label": "handleclickoutside()",
-      "source_file": "src/components/studio/ImageCanvas.tsx",
-      "source_location": "L59"
-    },
-    {
       "id": "app_api_generate_chat_route_post",
       "label": "POST()",
       "_callable": true,
@@ -2252,30 +2216,6 @@
       "source_location": "L13"
     },
     {
-      "id": "src_components_herosection_hashseed",
-      "label": "hashSeed()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 9,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "hashseed()",
-      "source_file": "src/components/HeroSection.tsx",
-      "source_location": "L313"
-    },
-    {
-      "id": "src_components_herosection_herosection",
-      "label": "HeroSection()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 9,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "herosection()",
-      "source_file": "src/components/HeroSection.tsx",
-      "source_location": "L29"
-    },
-    {
       "id": "src_components_landing_cinematicenter_cinematicenter",
       "label": "CinematicEnter()",
       "_callable": true,
@@ -2430,6 +2370,66 @@
       "norm_label": "spotlightcard()",
       "source_file": "src/components/landing/ui.tsx",
       "source_location": "L45"
+    },
+    {
+      "id": "src_components_showcasesection_clamp",
+      "label": "clamp()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 9,
+      "community_name": "src/components/OriginalLandingPage.tsx",
+      "file_type": "code",
+      "norm_label": "clamp()",
+      "source_file": "src/components/ShowcaseSection.tsx",
+      "source_location": "L27"
+    },
+    {
+      "id": "src_components_showcasesection_cn",
+      "label": "cn()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 9,
+      "community_name": "src/components/OriginalLandingPage.tsx",
+      "file_type": "code",
+      "norm_label": "cn()",
+      "source_file": "src/components/ShowcaseSection.tsx",
+      "source_location": "L255"
+    },
+    {
+      "id": "src_components_showcasesection_easeout",
+      "label": "easeOut()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 9,
+      "community_name": "src/components/OriginalLandingPage.tsx",
+      "file_type": "code",
+      "norm_label": "easeout()",
+      "source_file": "src/components/ShowcaseSection.tsx",
+      "source_location": "L36"
+    },
+    {
+      "id": "src_components_showcasesection_phase",
+      "label": "phase()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 9,
+      "community_name": "src/components/OriginalLandingPage.tsx",
+      "file_type": "code",
+      "norm_label": "phase()",
+      "source_file": "src/components/ShowcaseSection.tsx",
+      "source_location": "L32"
+    },
+    {
+      "id": "src_components_showcasesection_showcasesection",
+      "label": "ShowcaseSection()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 9,
+      "community_name": "src/components/OriginalLandingPage.tsx",
+      "file_type": "code",
+      "norm_label": "showcasesection()",
+      "source_file": "src/components/ShowcaseSection.tsx",
+      "source_location": "L40"
     },
     {
       "id": "src_components_vantralogo_vantralogo",
@@ -2764,11 +2764,44 @@
       "source_location": "L21"
     },
     {
+      "id": "components_ui_textarea",
+      "label": "textarea.tsx",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "lib/utils.ts",
+      "file_type": "code",
+      "norm_label": "textarea.tsx",
+      "source_file": "components/ui/textarea.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "components_ui_textarea_textarea",
+      "label": "Textarea",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "lib/utils.ts",
+      "file_type": "code",
+      "norm_label": "textarea",
+      "source_file": "components/ui/textarea.tsx",
+      "source_location": "L8"
+    },
+    {
+      "id": "lib_utils",
+      "label": "lib/utils.ts",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "lib/utils.ts",
+      "file_type": "code",
+      "norm_label": "lib/utils.ts",
+      "source_file": "lib/utils.ts",
+      "source_location": "L1"
+    },
+    {
       "id": "src_components_globalpricing",
       "label": "GlobalPricing.tsx",
       "_origin": "ast",
       "community": 10,
-      "community_name": "GlobalPricing.tsx",
+      "community_name": "lib/utils.ts",
       "file_type": "code",
       "norm_label": "globalpricing.tsx",
       "source_file": "src/components/GlobalPricing.tsx",
@@ -2779,11 +2812,22 @@
       "label": "TIERS",
       "_origin": "ast",
       "community": 10,
-      "community_name": "GlobalPricing.tsx",
+      "community_name": "lib/utils.ts",
       "file_type": "code",
       "norm_label": "tiers",
       "source_file": "src/components/GlobalPricing.tsx",
       "source_location": "L18"
+    },
+    {
+      "id": "src_components_ui_infinite_slider",
+      "label": "src/components/ui/infinite-slider.tsx",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "lib/utils.ts",
+      "file_type": "code",
+      "norm_label": "src/components/ui/infinite-slider.tsx",
+      "source_file": "src/components/ui/infinite-slider.tsx",
+      "source_location": "L1"
     },
     {
       "id": "scripts_verify_lm3",
@@ -2839,28 +2883,6 @@
       "norm_label": "verify-lm.mjs",
       "source_file": "scripts/verify-lm.mjs",
       "source_location": "L1"
-    },
-    {
-      "id": "package_dependencies_framer_motion",
-      "label": "framer-motion",
-      "_origin": "ast",
-      "community": 104,
-      "community_name": "framer-motion",
-      "file_type": "code",
-      "norm_label": "framer-motion",
-      "source_file": "package.json",
-      "source_location": "L28"
-    },
-    {
-      "id": "framer_motion",
-      "label": "framer-motion",
-      "_origin": "ast",
-      "community": 104,
-      "community_name": "framer-motion",
-      "file_type": "concept",
-      "norm_label": "framer-motion",
-      "source_file": "package.json",
-      "source_location": "L28"
     },
     {
       "id": "scripts_verify_journey",
@@ -3457,17 +3479,6 @@
       "source_location": "L4"
     },
     {
-      "id": "next_next",
-      "label": "next",
-      "_origin": "ast",
-      "community": 132,
-      "community_name": "next",
-      "confidence": "EXTRACTED",
-      "file_type": "code",
-      "norm_label": "next",
-      "source_file": "next"
-    },
-    {
       "id": "scripts_verify_navbar",
       "label": "verify-navbar.mjs",
       "_origin": "ast",
@@ -3488,39 +3499,6 @@
       "norm_label": "out",
       "source_file": "scripts/verify-navbar.mjs",
       "source_location": "L4"
-    },
-    {
-      "id": "tailwindcss_tailwindcss",
-      "label": "tailwindcss",
-      "_origin": "ast",
-      "community": 134,
-      "community_name": "tailwindcss",
-      "confidence": "EXTRACTED",
-      "file_type": "code",
-      "norm_label": "tailwindcss",
-      "source_file": "tailwindcss"
-    },
-    {
-      "id": "src_components_showcasesection",
-      "label": "ShowcaseSection.tsx",
-      "_origin": "ast",
-      "community": 135,
-      "community_name": "ShowcaseSection.tsx",
-      "file_type": "code",
-      "norm_label": "showcasesection.tsx",
-      "source_file": "src/components/ShowcaseSection.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_showcasesection_modes",
-      "label": "MODES",
-      "_origin": "ast",
-      "community": 135,
-      "community_name": "ShowcaseSection.tsx",
-      "file_type": "code",
-      "norm_label": "modes",
-      "source_file": "src/components/ShowcaseSection.tsx",
-      "source_location": "L6"
     },
     {
       "id": "package_dependencies_ai_sdk_openai",
@@ -4560,15 +4538,15 @@
       "source_location": "L12"
     },
     {
-      "id": "package_dependencies_ai",
-      "label": "ai",
+      "id": "package_dependencies_framer_motion",
+      "label": "framer-motion",
       "_origin": "ast",
       "community": 30,
       "community_name": "dependencies",
       "file_type": "code",
-      "norm_label": "ai",
+      "norm_label": "framer-motion",
       "source_file": "package.json",
-      "source_location": "L24"
+      "source_location": "L28"
     },
     {
       "id": "package_dependencies_react_dom",
@@ -4604,15 +4582,15 @@
       "source_location": "L18"
     },
     {
-      "id": "ai",
-      "label": "ai",
+      "id": "framer_motion",
+      "label": "framer-motion",
       "_origin": "ast",
       "community": 30,
       "community_name": "dependencies",
       "file_type": "concept",
-      "norm_label": "ai",
+      "norm_label": "framer-motion",
       "source_file": "package.json",
-      "source_location": "L24"
+      "source_location": "L28"
     },
     {
       "id": "react_dom",
@@ -4703,6 +4681,72 @@
       "source_location": "L29"
     },
     {
+      "id": "components_ui_liquid_metal_button",
+      "label": "liquid-metal-button.tsx",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "MotionStudio.tsx",
+      "file_type": "code",
+      "norm_label": "liquid-metal-button.tsx",
+      "source_file": "components/ui/liquid-metal-button.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_ai_image_providers_router_provider_registry",
+      "label": "PROVIDER_REGISTRY",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "MotionStudio.tsx",
+      "file_type": "code",
+      "norm_label": "provider_registry",
+      "source_file": "lib/ai/image-providers/router.ts",
+      "source_location": "L20"
+    },
+    {
+      "id": "src_components_herosection",
+      "label": "HeroSection.tsx",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "MotionStudio.tsx",
+      "file_type": "code",
+      "norm_label": "herosection.tsx",
+      "source_file": "src/components/HeroSection.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_herosection_paths",
+      "label": "PATHS",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "MotionStudio.tsx",
+      "file_type": "code",
+      "norm_label": "paths",
+      "source_file": "src/components/HeroSection.tsx",
+      "source_location": "L16"
+    },
+    {
+      "id": "src_components_herosection_stats",
+      "label": "STATS",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "MotionStudio.tsx",
+      "file_type": "code",
+      "norm_label": "stats",
+      "source_file": "src/components/HeroSection.tsx",
+      "source_location": "L22"
+    },
+    {
+      "id": "src_components_studio_imagecanvas",
+      "label": "ImageCanvas.tsx",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "MotionStudio.tsx",
+      "file_type": "code",
+      "norm_label": "imagecanvas.tsx",
+      "source_file": "src/components/studio/ImageCanvas.tsx",
+      "source_location": "L1"
+    },
+    {
       "id": "src_components_studio_motionstudio",
       "label": "MotionStudio.tsx",
       "_origin": "ast",
@@ -4762,32 +4806,10 @@
       "label": "components/ui/infinite-slider.tsx",
       "_origin": "ast",
       "community": 33,
-      "community_name": "lib/utils.ts",
+      "community_name": "src/components/ui/logo-cloud-3.tsx",
       "file_type": "code",
       "norm_label": "components/ui/infinite-slider.tsx",
       "source_file": "components/ui/infinite-slider.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_utils",
-      "label": "lib/utils.ts",
-      "_origin": "ast",
-      "community": 33,
-      "community_name": "lib/utils.ts",
-      "file_type": "code",
-      "norm_label": "lib/utils.ts",
-      "source_file": "lib/utils.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_ui_infinite_slider",
-      "label": "src/components/ui/infinite-slider.tsx",
-      "_origin": "ast",
-      "community": 33,
-      "community_name": "lib/utils.ts",
-      "file_type": "code",
-      "norm_label": "src/components/ui/infinite-slider.tsx",
-      "source_file": "src/components/ui/infinite-slider.tsx",
       "source_location": "L1"
     },
     {
@@ -4795,7 +4817,7 @@
       "label": "src/components/ui/logo-cloud-3.tsx",
       "_origin": "ast",
       "community": 33,
-      "community_name": "lib/utils.ts",
+      "community_name": "src/components/ui/logo-cloud-3.tsx",
       "file_type": "code",
       "norm_label": "src/components/ui/logo-cloud-3.tsx",
       "source_file": "src/components/ui/logo-cloud-3.tsx",
@@ -5792,17 +5814,6 @@
       "source_location": "L1"
     },
     {
-      "id": "puter_js",
-      "label": "@heyputer/puter.js",
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "router.ts",
-      "confidence": "EXTRACTED",
-      "file_type": "code",
-      "norm_label": "@heyputer/puter.js",
-      "source_file": "@heyputer/puter.js"
-    },
-    {
       "id": "lib_ai_image_providers_mock",
       "label": "mock.ts",
       "_origin": "ast",
@@ -6249,28 +6260,6 @@
       "source_location": "L91"
     },
     {
-      "id": "components_ui_textarea",
-      "label": "textarea.tsx",
-      "_origin": "ast",
-      "community": 69,
-      "community_name": "cn",
-      "file_type": "code",
-      "norm_label": "textarea.tsx",
-      "source_file": "components/ui/textarea.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "components_ui_textarea_textarea",
-      "label": "Textarea",
-      "_origin": "ast",
-      "community": 69,
-      "community_name": "cn",
-      "file_type": "code",
-      "norm_label": "textarea",
-      "source_file": "components/ui/textarea.tsx",
-      "source_location": "L8"
-    },
-    {
       "id": "src_components_studio_appshell",
       "label": "AppShell.tsx",
       "_origin": "ast",
@@ -6525,37 +6514,26 @@
       "source_location": "L4"
     },
     {
-      "id": "components_ui_liquid_metal_button",
-      "label": "liquid-metal-button.tsx",
+      "id": "package_dependencies_ai",
+      "label": "ai",
       "_origin": "ast",
       "community": 79,
-      "community_name": "ImageCanvas.tsx",
+      "community_name": "ai",
       "file_type": "code",
-      "norm_label": "liquid-metal-button.tsx",
-      "source_file": "components/ui/liquid-metal-button.tsx",
-      "source_location": "L1"
+      "norm_label": "ai",
+      "source_file": "package.json",
+      "source_location": "L24"
     },
     {
-      "id": "lib_ai_image_providers_router_provider_registry",
-      "label": "PROVIDER_REGISTRY",
+      "id": "ai",
+      "label": "ai",
       "_origin": "ast",
       "community": 79,
-      "community_name": "ImageCanvas.tsx",
-      "file_type": "code",
-      "norm_label": "provider_registry",
-      "source_file": "lib/ai/image-providers/router.ts",
-      "source_location": "L20"
-    },
-    {
-      "id": "src_components_studio_imagecanvas",
-      "label": "ImageCanvas.tsx",
-      "_origin": "ast",
-      "community": 79,
-      "community_name": "ImageCanvas.tsx",
-      "file_type": "code",
-      "norm_label": "imagecanvas.tsx",
-      "source_file": "src/components/studio/ImageCanvas.tsx",
-      "source_location": "L1"
+      "community_name": "ai",
+      "file_type": "concept",
+      "norm_label": "ai",
+      "source_file": "package.json",
+      "source_location": "L24"
     },
     {
       "id": "scripts_verify_feed",
@@ -6699,17 +6677,6 @@
       "norm_label": "verify-flow.mjs",
       "source_file": "scripts/verify-flow.mjs",
       "source_location": "L1"
-    },
-    {
-      "id": "headers",
-      "label": "next/headers",
-      "_origin": "ast",
-      "community": 89,
-      "community_name": "generate-image/route.ts",
-      "confidence": "EXTRACTED",
-      "file_type": "code",
-      "norm_label": "next/headers",
-      "source_file": "next/headers"
     },
     {
       "id": "app_api_generate_chat_route",
@@ -7009,39 +6976,6 @@
       "source_location": "L6"
     },
     {
-      "id": "src_components_herosection",
-      "label": "HeroSection.tsx",
-      "_origin": "ast",
-      "community": 9,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "herosection.tsx",
-      "source_file": "src/components/HeroSection.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_herosection_paths",
-      "label": "PATHS",
-      "_origin": "ast",
-      "community": 9,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "paths",
-      "source_file": "src/components/HeroSection.tsx",
-      "source_location": "L16"
-    },
-    {
-      "id": "src_components_herosection_stats",
-      "label": "STATS",
-      "_origin": "ast",
-      "community": 9,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "stats",
-      "source_file": "src/components/HeroSection.tsx",
-      "source_location": "L22"
-    },
-    {
       "id": "src_components_landing_cinematicenter",
       "label": "CinematicEnter.tsx",
       "_origin": "ast",
@@ -7238,6 +7172,28 @@
       "norm_label": "src/components/originallandingpage.tsx",
       "source_file": "src/components/OriginalLandingPage.tsx",
       "source_location": "L1"
+    },
+    {
+      "id": "src_components_showcasesection",
+      "label": "ShowcaseSection.tsx",
+      "_origin": "ast",
+      "community": 9,
+      "community_name": "src/components/OriginalLandingPage.tsx",
+      "file_type": "code",
+      "norm_label": "showcasesection.tsx",
+      "source_file": "src/components/ShowcaseSection.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_showcasesection_modes",
+      "label": "MODES",
+      "_origin": "ast",
+      "community": 9,
+      "community_name": "src/components/OriginalLandingPage.tsx",
+      "file_type": "code",
+      "norm_label": "modes",
+      "source_file": "src/components/ShowcaseSection.tsx",
+      "source_location": "L6"
     },
     {
       "id": "src_components_vantralogo",
@@ -17068,15 +17024,6 @@
       "weight": 1.0
     },
     {
-      "source": "lib_ai_image_providers_puter",
-      "target": "puter_js",
-      "relation": "dynamic_import",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ai/image-providers/puter.ts"
-    },
-    {
       "source": "lib_ai_provider_connections",
       "target": "lib_supabase_server",
       "relation": "dynamic_import",
@@ -17084,15 +17031,6 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ai/provider-connections.ts"
-    },
-    {
-      "source": "src_lib_supabase_server",
-      "target": "headers",
-      "relation": "dynamic_import",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/lib/supabase/server.ts"
     },
     {
       "source": "lib_ai_image_providers_types_imageprovider",
@@ -17165,5 +17103,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "1c066c2bd23d1605ff224eb553c3bb0b29103b06"
+  "built_at_commit": "c1f183e65623f945f82234d8693bd0c4d2c60d2c"
 }

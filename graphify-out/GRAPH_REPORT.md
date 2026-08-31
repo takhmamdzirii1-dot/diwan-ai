@@ -5,12 +5,12 @@
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 646 nodes · 847 edges · 137 communities (87 shown, 50 thin omitted)
+- 642 nodes · 845 edges · 133 communities (83 shown, 50 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 3 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `1c066c2b`
+- Built from commit: `c1f183e6`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -25,7 +25,7 @@
 - SettingsModal.tsx
 - verify-feed.mjs
 - src/components/OriginalLandingPage.tsx
-- GlobalPricing.tsx
+- lib/utils.ts
 - HeroEntrance.tsx
 - lib/supabase.ts
 - graphify.js
@@ -47,7 +47,7 @@
 - dependencies
 - MediaLibrary.tsx
 - MotionStudio.tsx
-- lib/utils.ts
+- src/components/ui/logo-cloud-3.tsx
 - @supabase/supabase-js
 - tailwind-merge
 - @tailwindcss/postcss
@@ -60,7 +60,7 @@
 - cn
 - puppeteer-core
 - transcribe/route.ts
-- ImageCanvas.tsx
+- ai
 - verify-showcase.mjs
 - clsx
 - generate-image/route.ts
@@ -70,7 +70,6 @@
 - modelsData.js
 - translations.js
 - verify-lm3.mjs
-- framer-motion
 - verify-journey.mjs
 - remark-gfm
 - verify-standard.mjs
@@ -89,7 +88,6 @@
 - react-use-measure
 - verify-hero-copy.mjs
 - verify-navbar.mjs
-- ShowcaseSection.tsx
 - @ai-sdk/openai
 
 ## God Nodes (most connected - your core abstractions)
@@ -102,24 +100,24 @@
 7. `أوامر المتابعة بعد تقرير التشخيص` - 8 edges
 8. `VantraLogo()` - 7 edges
 9. `المرحلة الأولى: إنشاء تقرير تشخيص فقط` - 7 edges
-10. `POST()` - 6 edges
+10. `ImageGenerateParams` - 6 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `SpotlightCard()` --calls--> `cn()`  [EXTRACTED]
-  src/components/landing/ui.tsx → lib/utils.ts
 - `ImageResultCard()` --calls--> `cn()`  [EXTRACTED]
   src/components/studio/ImageResultCard.tsx → lib/utils.ts
-- `BillingPanel()` --calls--> `cn()`  [EXTRACTED]
-  src/components/studio/SettingsModal.tsx → lib/utils.ts
-- `PrivacyPanel()` --calls--> `cn()`  [EXTRACTED]
-  src/components/studio/SettingsModal.tsx → lib/utils.ts
-- `ProviderConnections()` --calls--> `cn()`  [EXTRACTED]
-  src/components/studio/SettingsModal.tsx → lib/utils.ts
+- `InfiniteSlider()` --calls--> `cn()`  [EXTRACTED]
+  src/components/ui/infinite-slider.tsx → lib/utils.ts
+- `LogoCloud()` --calls--> `cn()`  [EXTRACTED]
+  src/components/ui/logo-cloud-3.tsx → lib/utils.ts
+- `Textarea` --calls--> `cn()`  [EXTRACTED]
+  components/ui/textarea.tsx → lib/utils.ts
+- `SpotlightCard()` --calls--> `cn()`  [EXTRACTED]
+  src/components/landing/ui.tsx → lib/utils.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (137 total, 50 thin omitted)
+## Communities (133 total, 50 thin omitted)
 
 ### Community 0 - "src/components/LiveLedgerCard.tsx"
 Cohesion: 0.06
@@ -151,11 +149,11 @@ Nodes (11): BillingPanel(), IMAGE_MODEL_HINTS, IMAGE_MODELS, INSTRUCTION_SUGGEST
 
 ### Community 9 - "src/components/OriginalLandingPage.tsx"
 Cohesion: 0.06
-Nodes (34): Logo, LogoCloud(), LogoCloudProps, GlobalFooter(), LINKS, hashSeed(), HeroSection(), HeroSectionProps (+26 more)
+Nodes (35): Logo, LogoCloud(), LogoCloudProps, GlobalFooter(), LINKS, CinematicEnter(), Faq(), FAQS (+27 more)
 
-### Community 10 - "GlobalPricing.tsx"
-Cohesion: 0.50
-Nodes (3): GlobalPricing(), PricingTier, TIERS
+### Community 10 - "lib/utils.ts"
+Cohesion: 0.18
+Nodes (7): Textarea, TextareaProps, GlobalPricing(), PricingTier, TIERS, InfiniteSlider(), InfiniteSliderProps
 
 ### Community 11 - "HeroEntrance.tsx"
 Cohesion: 0.40
@@ -179,19 +177,19 @@ Nodes (8): AttachedFile, ChatModelOption, ClaudeChatInput(), ClaudeChatInputProp
 
 ### Community 30 - "dependencies"
 Cohesion: 0.22
-Nodes (9): ai, dependencies, ai, react-dom, react-markdown, @supabase/ssr, react-dom, react-markdown (+1 more)
+Nodes (9): framer-motion, dependencies, framer-motion, react-dom, react-markdown, @supabase/ssr, react-dom, react-markdown (+1 more)
 
 ### Community 31 - "MediaLibrary.tsx"
 Cohesion: 0.19
 Nodes (13): appendToImageLibrary(), GeneratedImage, IMAGE_LIBRARY_KEY, ImageResultCard(), readImageLibrary(), DUMMY_MEDIA, FilterKey, FILTERS (+5 more)
 
 ### Community 32 - "MotionStudio.tsx"
-Cohesion: 0.23
-Nodes (9): CAMERA_MOTIONS, CameraMotion, DURATIONS, VIDEO_MODELS, VideoConfig, VideoConfigPill(), VideoConfigPopover(), VideoDuration (+1 more)
+Cohesion: 0.11
+Nodes (18): LiquidMetalButton(), LiquidMetalButtonProps, PROVIDER_REGISTRY, hashSeed(), HeroSection(), HeroSectionProps, PATHS, STATS (+10 more)
 
-### Community 33 - "lib/utils.ts"
-Cohesion: 0.22
-Nodes (7): InfiniteSlider(), InfiniteSliderProps, InfiniteSlider(), InfiniteSliderProps, Logo, LogoCloud(), LogoCloudProps
+### Community 33 - "src/components/ui/logo-cloud-3.tsx"
+Cohesion: 0.33
+Nodes (5): InfiniteSlider(), InfiniteSliderProps, Logo, LogoCloud(), LogoCloudProps
 
 ### Community 40 - "MessageBubble.tsx"
 Cohesion: 0.39
@@ -206,38 +204,30 @@ Cohesion: 0.18
 Nodes (10): Critical CSS Lessons (NEVER REPEAT), Deploy, Design Rules (NEVER VIOLATE), Graphify Protocol (MANDATORY — never skip), Key Architectural Patterns, Project Structure, Tech Stack, This is NOT the Next.js you know (+2 more)
 
 ### Community 69 - "cn"
-Cohesion: 0.23
-Nodes (11): Textarea, TextareaProps, cn(), GhostButton(), PanelLabel(), PrimaryButton(), ScrollArea, Segmented() (+3 more)
+Cohesion: 0.31
+Nodes (9): cn(), GhostButton(), PanelLabel(), PrimaryButton(), ScrollArea, Segmented(), SHELL_TOKENS, StateBlock() (+1 more)
 
 ### Community 78 - "transcribe/route.ts"
 Cohesion: 0.40
 Nodes (3): ALLOWED_MIME, dynamic, maxDuration
 
-### Community 79 - "ImageCanvas.tsx"
-Cohesion: 0.33
-Nodes (4): LiquidMetalButton(), LiquidMetalButtonProps, PROVIDER_REGISTRY, ImageCanvas()
-
 ### Community 89 - "generate-image/route.ts"
 Cohesion: 0.08
 Nodes (35): dynamic, maxDuration, POST(), ALLOWED_PROVIDERS, ALLOWED_RATIOS, dynamic, inFlight, lastRequestAt (+27 more)
 
-### Community 135 - "ShowcaseSection.tsx"
-Cohesion: 0.52
-Nodes (6): clamp(), cn(), easeOut(), MODES, phase(), ShowcaseSection()
-
 ## Knowledge Gaps
-- **250 isolated node(s):** `dynamic`, `maxDuration`, `RATIO_DIMENSIONS`, `PROVIDER_MODELS`, `ALLOWED_RATIOS` (+245 more)
+- **250 isolated node(s):** `MODES`, `AmbientMotionBackgroundProps`, `HeroCinematicBackgroundProps`, `CategoryType`, `LiveLedgerCardProps` (+245 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **50 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `cn()` connect `cn` to `MotionStudio.tsx`, `lib/utils.ts`, `StudioDashboard.tsx`, `src/context/ModalContext.tsx`, `SettingsModal.tsx`, `MessageBubble.tsx`, `src/components/OriginalLandingPage.tsx`, `GlobalPricing.tsx`, `ImageCanvas.tsx`, `ImageConfigPopover.tsx`, `claude-style-chat-input.tsx`, `MediaLibrary.tsx`?**
+- **Why does `cn()` connect `cn` to `MotionStudio.tsx`, `src/components/ui/logo-cloud-3.tsx`, `StudioDashboard.tsx`, `src/context/ModalContext.tsx`, `SettingsModal.tsx`, `MessageBubble.tsx`, `src/components/OriginalLandingPage.tsx`, `lib/utils.ts`, `ImageConfigPopover.tsx`, `claude-style-chat-input.tsx`, `MediaLibrary.tsx`?**
   _High betweenness centrality (0.086) - this node is a cross-community bridge._
 - **Why does `useUser()` connect `src/context/ModalContext.tsx` to `src/components/LiveLedgerCard.tsx`, `src/components/OriginalLandingPage.tsx`, `StudioDashboard.tsx`, `SettingsModal.tsx`?**
-  _High betweenness centrality (0.022) - this node is a cross-community bridge._
-- **What connects `dynamic`, `maxDuration`, `RATIO_DIMENSIONS` to the rest of the system?**
+  _High betweenness centrality (0.023) - this node is a cross-community bridge._
+- **What connects `MODES`, `AmbientMotionBackgroundProps`, `HeroCinematicBackgroundProps` to the rest of the system?**
   _250 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `src/components/LiveLedgerCard.tsx` be split into smaller, more focused modules?**
   _Cohesion score 0.06456456456456457 - nodes in this community are weakly interconnected._

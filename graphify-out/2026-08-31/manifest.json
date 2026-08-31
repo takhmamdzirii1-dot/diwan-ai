@@ -774,9 +774,9 @@
     "semantic_hash": ""
   },
   "src/components/ShowcaseSection.tsx": {
-    "mtime": 1788150111.9364717,
-    "seen": 1788150271.644838,
-    "ast_hash": "678c460ad5f8ac8d4a41eee38029f442",
+    "mtime": 1788157219.9330883,
+    "seen": 1788157397.5980937,
+    "ast_hash": "94e1f354a8a3d0782c6faf556eb0dd5d",
     "semantic_hash": ""
   },
   "scripts/verify-global.mjs": {
