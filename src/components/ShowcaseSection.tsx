@@ -37,10 +37,10 @@ const MODES = [
 ] as const;
 
 const INTRO_END = 0.2;
-const CHAT_END = 0.46;
-const IMAGE_END = 0.73;
 const CHAT_PLATEAU_END = 0.42;
 const CHAT_HORIZONTAL_END = 0.7;
+const CONTENT_CROSSFADE_END = 0.84;
+const DISPLAY_SWAP = (CHAT_HORIZONTAL_END + CONTENT_CROSSFADE_END) / 2;
 
 type ShowcasePhase = 'intro' | 'chat' | 'image' | 'video';
 
@@ -56,6 +56,11 @@ function easeInOutCubic(value: number) {
   return value < 0.5
     ? 4 * value ** 3
     : 1 - (-2 * value + 2) ** 3 / 2;
+}
+
+function smoothstep(start: number, end: number, value: number) {
+  const progress = clampProgress((value - start) / (end - start));
+  return progress * progress * (3 - 2 * progress);
 }
 
 function ModeProgressLine({
@@ -124,8 +129,18 @@ export default function ShowcaseSection() {
     return 0.94 + 0.06 * entryProgress - 0.04 * horizontalProgress;
   });
   const frameOpacity = useTransform(scrollYProgress, (progress) =>
-    clampProgress(progress / 0.12)
+    smoothstep(0, 0.12, progress)
   );
+  const contentCrossfade = useTransform(scrollYProgress, (progress) =>
+    smoothstep(CHAT_HORIZONTAL_END, CONTENT_CROSSFADE_END, progress)
+  );
+  const chatPanelOpacity = useTransform(contentCrossfade, (value) => 1 - value);
+  const imagePanelOpacity = contentCrossfade;
+  const videoPanelOpacity = useTransform(scrollYProgress, () => 0);
+  const chatPanelY = useTransform(contentCrossfade, (value) => -8 * value);
+  const imagePanelY = useTransform(contentCrossfade, (value) => 8 * (1 - value));
+  const chatPanelScale = useTransform(contentCrossfade, (value) => 1 - 0.02 * value);
+  const imagePanelScale = useTransform(contentCrossfade, (value) => 0.98 + 0.02 * value);
   const navigationOpacity = useTransform(scrollYProgress, [0.04, 0.18], [0, 1], {
     clamp: true,
   });
@@ -169,11 +184,9 @@ export default function ShowcaseSection() {
     const nextPhase: ShowcasePhase =
       progress < INTRO_END
         ? 'intro'
-        : progress < CHAT_END
+        : progress < DISPLAY_SWAP
           ? 'chat'
-          : progress < IMAGE_END
-            ? 'image'
-            : 'video';
+          : 'image';
 
     setActivePhase((current) => (current === nextPhase ? current : nextPhase));
   });
@@ -181,9 +194,6 @@ export default function ShowcaseSection() {
   const activeIndex =
     activePhase === 'image' ? 1 : activePhase === 'video' ? 2 : 0;
   const activeMode = MODES[activeIndex];
-  const transition = reduceMotion
-    ? { duration: 0 }
-    : { duration: 0.4, ease: [0.22, 1, 0.36, 1] as const };
   const descriptionTransition = reduceMotion
     ? { duration: 0 }
     : { duration: 0.22, ease: [0.22, 1, 0.36, 1] as const };
@@ -226,10 +236,10 @@ export default function ShowcaseSection() {
                 const isActive = activePhase !== 'intro' && index === activeIndex;
                 const progressRange =
                   index === 0
-                    ? ([INTRO_END, CHAT_END] as [number, number])
+                    ? ([INTRO_END, CHAT_HORIZONTAL_END] as [number, number])
                     : index === 1
-                      ? ([CHAT_END, IMAGE_END] as [number, number])
-                      : ([IMAGE_END, 1] as [number, number]);
+                      ? ([CONTENT_CROSSFADE_END, 1] as [number, number])
+                      : ([1, 1.0001] as [number, number]);
 
                 return (
                   <div
@@ -291,20 +301,28 @@ export default function ShowcaseSection() {
                 <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-[#070707] sm:aspect-[16/9] lg:aspect-[1.8/1]">
                   {MODES.map((mode, index) => {
                     const isActivePanel = index === activeIndex;
+                    const panelStyle =
+                      index === 0
+                        ? {
+                            opacity: chatPanelOpacity,
+                            y: chatPanelY,
+                            scale: chatPanelScale,
+                          }
+                        : index === 1
+                          ? {
+                              opacity: imagePanelOpacity,
+                              y: imagePanelY,
+                              scale: imagePanelScale,
+                            }
+                          : { opacity: videoPanelOpacity };
 
                     return (
                     <motion.div
                       key={mode.key}
                       data-demo-panel={mode.key}
                       initial={false}
-                      animate={
-                        isActivePanel
-                          ? { opacity: 1, y: 0, scale: 1 }
-                          : reduceMotion
-                            ? { opacity: 0 }
-                            : { opacity: 0, y: -8, scale: 0.98 }
-                      }
-                      transition={transition}
+                      style={reduceMotion ? undefined : panelStyle}
+                      animate={reduceMotion ? { opacity: isActivePanel ? 1 : 0 } : undefined}
                       className="absolute inset-0 pointer-events-none"
                       aria-hidden={!isActivePanel}
                     >
