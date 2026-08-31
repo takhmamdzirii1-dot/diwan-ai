@@ -600,9 +600,9 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1788056011.8022642,
-    "seen": 1788056686.048102,
-    "ast_hash": "9343cd7025ac3e490286da980491d7bf",
+    "mtime": 1788162924.9869747,
+    "seen": 1788162968.0977306,
+    "ast_hash": "73beaa0b18271cb1adb7c9f86ffc46fe",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
@@ -774,9 +774,9 @@
     "semantic_hash": ""
   },
   "src/components/ShowcaseSection.tsx": {
-    "mtime": 1788157219.9330883,
-    "seen": 1788157397.5980937,
-    "ast_hash": "94e1f354a8a3d0782c6faf556eb0dd5d",
+    "mtime": 1788163162.021514,
+    "seen": 1788163299.6424239,
+    "ast_hash": "cedaec41f5e6c0ea1cba65269a731c58",
     "semantic_hash": ""
   },
   "scripts/verify-global.mjs": {
@@ -1129,8 +1129,8 @@
   },
   "supabase/migrations/user_provider_connections.sql": {
     "mtime": 1787985901.4500034,
-    "seen": 1788142701.1300895,
-    "ast_hash": "",
+    "seen": 1788161757.446238,
+    "ast_hash": "4cf1f8dc6e37eac4a6f8e7784666875b",
     "semantic_hash": ""
   },
   "public/showcase/chat-preview.png": {
