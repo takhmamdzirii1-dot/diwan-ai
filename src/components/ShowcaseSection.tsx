@@ -154,6 +154,7 @@ export default function ShowcaseSection() {
     <section
       ref={sectionRef}
       id="showcase"
+      data-studio-scroll-section
       data-showcase-phase={activePhase}
       aria-label="VANTRA Chat, Image, and Video showcase"
       className="relative h-[400vh] bg-[#050505]"
@@ -161,10 +162,11 @@ export default function ShowcaseSection() {
       <div
         ref={stickyRef}
         id="models"
-        className="sticky top-0 flex h-screen min-h-[640px] items-center overflow-hidden py-10 lg:py-12"
+        data-sticky-scene
+        className="sticky top-0 flex h-[100svh] min-h-[640px] items-center overflow-hidden py-10 lg:py-12"
       >
         <div className="mx-auto w-full max-w-[1440px] px-5 sm:px-8 lg:px-12">
-          <header className="mb-7 text-center lg:mb-8">
+          <header data-scene-header className="mb-7 text-center lg:mb-8">
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/35">
               The VANTRA workspace
             </p>
@@ -178,6 +180,7 @@ export default function ShowcaseSection() {
 
           <div className="grid items-center gap-8 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-12 xl:gap-16">
             <motion.div
+              data-tab-rail
               style={reduceMotion ? undefined : { opacity: navigationOpacity, x: navigationX }}
               className="grid grid-cols-3 border-y border-white/[0.08] lg:block lg:border-y-0"
             >
@@ -233,36 +236,57 @@ export default function ShowcaseSection() {
               </div>
             </motion.div>
 
-            <div ref={previewRef} className="relative z-10 min-w-0">
+            <div
+              ref={previewRef}
+              data-demo-viewport
+              className="relative z-10 min-w-0"
+            >
               <motion.div
+                data-demo-frame
                 style={
                   reduceMotion
                     ? undefined
                     : { x: previewX, y: previewY, scale: previewScale }
                 }
-                className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-1.5 sm:p-2"
+                className="relative w-full overflow-hidden rounded-2xl bg-[#090909] p-1.5 sm:p-2"
               >
                 <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-[#070707] sm:aspect-[16/9] lg:aspect-[1.8/1]">
-                  <AnimatePresence initial={false} mode="sync">
+                  {MODES.map((mode, index) => {
+                    const isActivePanel = index === activeIndex;
+
+                    return (
                     <motion.div
-                      key={activeMode.key}
-                      initial={reduceMotion ? false : { opacity: 0, y: 8, scale: 0.98 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }}
+                      key={mode.key}
+                      data-demo-panel={mode.key}
+                      initial={false}
+                      animate={
+                        isActivePanel
+                          ? { opacity: 1, y: 0, scale: 1 }
+                          : reduceMotion
+                            ? { opacity: 0 }
+                            : { opacity: 0, y: -8, scale: 0.98 }
+                      }
                       transition={transition}
-                      className="absolute inset-0"
+                      className="absolute inset-0 pointer-events-none"
+                      aria-hidden={!isActivePanel}
                     >
                       <Image
-                        src={activeMode.image}
-                        alt={`${activeMode.label} preview in VANTRA Studio`}
+                        src={mode.image}
+                        alt={`${mode.label} preview in VANTRA Studio`}
                         fill
                         loading="eager"
                         sizes="(max-width: 1023px) 100vw, 75vw"
                         className="origin-right scale-[1.28] object-cover object-right"
                       />
                     </motion.div>
-                  </AnimatePresence>
+                    );
+                  })}
                 </div>
+                <div
+                  aria-hidden="true"
+                  data-frame-overlay
+                  className="pointer-events-none absolute inset-0 rounded-2xl border border-white/10"
+                />
               </motion.div>
             </div>
           </div>
