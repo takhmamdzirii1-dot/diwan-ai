@@ -1,7 +1,7 @@
 # Graph Report - diwan-ai-main  (2026-08-30)
 
 ## Corpus Check
-- 185 files · ~65,321 words
+- 185 files · ~65,328 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary

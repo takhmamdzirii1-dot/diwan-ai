@@ -252,8 +252,8 @@
     "semantic_hash": "76c1054e7abc1e30094a5558600705e2"
   },
   "next-env.d.ts": {
-    "mtime": 1788055763.2788606,
-    "seen": 1788055954.6868284,
+    "mtime": 1788056549.0630884,
+    "seen": 1788056686.0132265,
     "ast_hash": "aa94238a90e7d04b7a47ecc3145ba6a0",
     "semantic_hash": ""
   },
@@ -366,9 +366,9 @@
     "semantic_hash": "88929ce10deff03a7978c0141306a4f6"
   },
   "src/components/HeroSection.tsx": {
-    "mtime": 1788054361.665268,
-    "seen": 1788054478.5321767,
-    "ast_hash": "f9ac0384a72e37c84e4fc209a77dd93a",
+    "mtime": 1788056481.1720424,
+    "seen": 1788056686.0337293,
+    "ast_hash": "6ca9779788dd8851f9a7801d7cf39256",
     "semantic_hash": ""
   },
   "src/components/HowItWorksSection.tsx": {
@@ -600,9 +600,9 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1788050764.401106,
-    "seen": 1788051382.5827801,
-    "ast_hash": "8f0dc1fc4dd2c1a7a2d4696706877653",
+    "mtime": 1788056011.8022642,
+    "seen": 1788056686.048102,
+    "ast_hash": "9343cd7025ac3e490286da980491d7bf",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
@@ -870,9 +870,9 @@
     "semantic_hash": ""
   },
   "components/ui/liquid-metal-button.tsx": {
-    "mtime": 1788055701.3709896,
-    "seen": 1788055954.6796958,
-    "ast_hash": "f1b5e7cd07f814e156d06c667aa318e9",
+    "mtime": 1788056484.8656888,
+    "seen": 1788056686.0056105,
+    "ast_hash": "83cce689d5ddf365b0cdeb1645f03945",
     "semantic_hash": ""
   },
   "scripts/verify-liquid.mjs": {

@@ -1829,7 +1829,7 @@
       "file_type": "code",
       "norm_label": "hashseed()",
       "source_file": "src/components/HeroSection.tsx",
-      "source_location": "L315"
+      "source_location": "L313"
     },
     {
       "id": "src_components_herosection_herosection",
@@ -15063,7 +15063,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/HeroSection.tsx",
-      "source_location": "L315",
+      "source_location": "L313",
       "weight": 1.0
     },
     {

@@ -108,9 +108,9 @@
     "semantic_hash": "d2f30524e07674a0507496a839fefa19"
   },
   "components/ui/claude-style-chat-input.tsx": {
-    "mtime": 1788048350.2581522,
-    "seen": 1788049594.5152268,
-    "ast_hash": "47516b93d39f964eb561c650463af18d",
+    "mtime": 1788059507.2668037,
+    "seen": 1788059879.7617261,
+    "ast_hash": "2475a36f27554d65bb665eb9914502b9",
     "semantic_hash": ""
   },
   "components/ui/textarea.tsx": {
@@ -252,9 +252,9 @@
     "semantic_hash": "76c1054e7abc1e30094a5558600705e2"
   },
   "next-env.d.ts": {
-    "mtime": 1788056549.0630884,
-    "seen": 1788056686.0132265,
-    "ast_hash": "aa94238a90e7d04b7a47ecc3145ba6a0",
+    "mtime": 1788059552.1585715,
+    "seen": 1788059879.7690518,
+    "ast_hash": "8195d2c60ce847a459ae9d308d6a5724",
     "semantic_hash": ""
   },
   "next.config.mjs": {
@@ -366,9 +366,9 @@
     "semantic_hash": "88929ce10deff03a7978c0141306a4f6"
   },
   "src/components/HeroSection.tsx": {
-    "mtime": 1788056481.1720424,
-    "seen": 1788056686.0337293,
-    "ast_hash": "6ca9779788dd8851f9a7801d7cf39256",
+    "mtime": 1788058267.8944743,
+    "seen": 1788059879.7859862,
+    "ast_hash": "51ed9835b6d73bcca4a39a324d1990f4",
     "semantic_hash": ""
   },
   "src/components/HowItWorksSection.tsx": {
@@ -864,15 +864,15 @@
     "semantic_hash": ""
   },
   "src/components/landing/LandingHeader.tsx": {
-    "mtime": 1788053096.913867,
-    "seen": 1788053281.3356726,
-    "ast_hash": "6bdfed401fd3bdebb2f0132636573bae",
+    "mtime": 1788059006.2728472,
+    "seen": 1788059879.7896616,
+    "ast_hash": "81a3f23eea842b26def0f1dcd629151e",
     "semantic_hash": ""
   },
   "components/ui/liquid-metal-button.tsx": {
-    "mtime": 1788056484.8656888,
-    "seen": 1788056686.0056105,
-    "ast_hash": "83cce689d5ddf365b0cdeb1645f03945",
+    "mtime": 1788057252.6393652,
+    "seen": 1788059879.76201,
+    "ast_hash": "0b8f9df99ea180ebb7f4c5064b5d363e",
     "semantic_hash": ""
   },
   "scripts/verify-liquid.mjs": {
@@ -1119,6 +1119,12 @@
     "mtime": 1788055899.6008594,
     "seen": 1788055954.6917243,
     "ast_hash": "8cecc2f51051023d8d0cea5a03f5c4cf",
+    "semantic_hash": ""
+  },
+  "scripts/verify-glow.mjs": {
+    "mtime": 1788059662.3387535,
+    "seen": 1788059879.7761476,
+    "ast_hash": "215b7a0fd8560fa893d8e66c8b571196",
     "semantic_hash": ""
   }
 }

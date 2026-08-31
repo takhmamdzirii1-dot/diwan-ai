@@ -33,9 +33,9 @@ export default function ImageCanvas() {
     'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop'
   );
   const [sessionHistory, setSessionHistory] = useState<string[]>([
-    'https://picsum.photos/seed/vantra-h1/256/256',
-    'https://picsum.photos/seed/vantra-h2/256/256',
-    'https://picsum.photos/seed/vantra-h3/256/256',
+    'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=200&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=200&auto=format&fit=crop&h=200',
+    'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=200&auto=format&fit=crop&crop=entropy',
   ]);
 
 
