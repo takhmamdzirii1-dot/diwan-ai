@@ -37,20 +37,19 @@ const MODES = [
 ] as const;
 
 const INTRO_END = 0.2;
-const STATE_HYSTERESIS = 0.006;
+const CHAT_END = 0.46;
+const IMAGE_END = 0.73;
+
+type ShowcasePhase = 'intro' | 'chat' | 'image' | 'video';
 
 function ModeProgressLine({
-  active,
-  index,
   progress,
+  range,
 }: {
-  active: boolean;
-  index: number;
   progress: MotionValue<number>;
+  range: [number, number];
 }) {
-  const localProgress = useTransform(progress, (value) =>
-    Math.max(0, Math.min(1, value * MODES.length - index))
-  );
+  const localProgress = useTransform(progress, range, [0, 1], { clamp: true });
 
   return (
     <span
@@ -58,7 +57,7 @@ function ModeProgressLine({
       className="mt-4 block h-px w-full overflow-hidden bg-white/10"
     >
       <motion.span
-        style={{ scaleX: active ? localProgress : 0 }}
+        style={{ scaleX: localProgress }}
         className="block h-full origin-left bg-white/85"
       />
     </span>
@@ -69,8 +68,7 @@ export default function ShowcaseSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const stickyRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
-  const introCompleteRef = useRef(false);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activePhase, setActivePhase] = useState<ShowcasePhase>('intro');
   const reduceMotion = useReducedMotion();
   const introX = useMotionValue(0);
   const introScale = useMotionValue(1);
@@ -78,13 +76,9 @@ export default function ShowcaseSection() {
     target: sectionRef,
     offset: ['start start', 'end end'],
   });
-  const introProgress = useMotionValue(0);
-  const storyProgress = useTransform(
-    scrollYProgress,
-    [INTRO_END, 1],
-    [0, 1],
-    { clamp: true }
-  );
+  const introProgress = useTransform(scrollYProgress, [0, INTRO_END], [0, 1], {
+    clamp: true,
+  });
   const previewX = useTransform(
     [introProgress, introX],
     ([progress, startX]) => Number(startX) * (1 - Number(progress))
@@ -134,37 +128,20 @@ export default function ShowcaseSection() {
   }, [introScale, introX]);
 
   useMotionValueEvent(scrollYProgress, 'change', (progress) => {
-    if (!introCompleteRef.current) {
-      const nextIntroProgress = Math.max(0, Math.min(1, progress / INTRO_END));
-      introProgress.set(nextIntroProgress);
+    const nextPhase: ShowcasePhase =
+      progress < INTRO_END
+        ? 'intro'
+        : progress < CHAT_END
+          ? 'chat'
+          : progress < IMAGE_END
+            ? 'image'
+            : 'video';
 
-      if (nextIntroProgress >= 1) introCompleteRef.current = true;
-    }
-
-    const normalizedProgress = Math.max(
-      0,
-      Math.min(1, (progress - INTRO_END) / (1 - INTRO_END))
-    );
-    const rawIndex = Math.min(
-      MODES.length - 1,
-      Math.floor(normalizedProgress * MODES.length)
-    );
-
-    setActiveIndex((current) => {
-      if (rawIndex > current) {
-        const forwardBoundary = (current + 1) / MODES.length + STATE_HYSTERESIS;
-        return normalizedProgress >= forwardBoundary ? rawIndex : current;
-      }
-
-      if (rawIndex < current) {
-        const backwardBoundary = current / MODES.length - STATE_HYSTERESIS;
-        return normalizedProgress <= backwardBoundary ? rawIndex : current;
-      }
-
-      return current;
-    });
+    setActivePhase((current) => (current === nextPhase ? current : nextPhase));
   });
 
+  const activeIndex =
+    activePhase === 'image' ? 1 : activePhase === 'video' ? 2 : 0;
   const activeMode = MODES[activeIndex];
   const transition = reduceMotion
     ? { duration: 0 }
@@ -177,6 +154,7 @@ export default function ShowcaseSection() {
     <section
       ref={sectionRef}
       id="showcase"
+      data-showcase-phase={activePhase}
       aria-label="VANTRA Chat, Image, and Video showcase"
       className="relative h-[400vh] bg-[#050505]"
     >
@@ -204,7 +182,13 @@ export default function ShowcaseSection() {
               className="grid grid-cols-3 border-y border-white/[0.08] lg:block lg:border-y-0"
             >
               {MODES.map((mode, index) => {
-                const isActive = index === activeIndex;
+                const isActive = activePhase !== 'intro' && index === activeIndex;
+                const progressRange =
+                  index === 0
+                    ? ([INTRO_END, CHAT_END] as [number, number])
+                    : index === 1
+                      ? ([CHAT_END, IMAGE_END] as [number, number])
+                      : ([IMAGE_END, 1] as [number, number]);
 
                 return (
                   <div
@@ -220,9 +204,8 @@ export default function ShowcaseSection() {
                     </p>
 
                     <ModeProgressLine
-                      active={isActive}
-                      index={index}
-                      progress={storyProgress}
+                      progress={scrollYProgress}
+                      range={progressRange}
                     />
                   </div>
                 );
@@ -233,17 +216,19 @@ export default function ShowcaseSection() {
                 className="relative col-span-3 min-h-[72px] border-t border-white/[0.08] py-4 lg:mt-1 lg:min-h-[82px] lg:border-t-0 lg:py-5"
               >
                 <AnimatePresence initial={false} mode="sync">
-                  <motion.p
-                    key={`${activeMode.key}-description`}
-                    data-showcase-description={activeMode.key}
-                    initial={reduceMotion ? false : { opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={descriptionTransition}
-                    className="absolute inset-x-0 top-4 max-w-[245px] text-sm font-medium leading-6 text-white/60 lg:top-5"
-                  >
-                    {activeMode.description}
-                  </motion.p>
+                  {activePhase !== 'intro' && (
+                    <motion.p
+                      key={`${activeMode.key}-description`}
+                      data-showcase-description={activeMode.key}
+                      initial={reduceMotion ? false : { opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={descriptionTransition}
+                      className="absolute inset-x-0 top-4 max-w-[245px] text-sm font-medium leading-6 text-white/60 lg:top-5"
+                    >
+                      {activeMode.description}
+                    </motion.p>
+                  )}
                 </AnimatePresence>
               </div>
             </motion.div>
@@ -261,9 +246,9 @@ export default function ShowcaseSection() {
                   <AnimatePresence initial={false} mode="sync">
                     <motion.div
                       key={activeMode.key}
-                      initial={reduceMotion ? false : { opacity: 0, y: 10, scale: 0.97 }}
+                      initial={reduceMotion ? false : { opacity: 0, y: 8, scale: 0.98 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -10, scale: 0.97 }}
+                      exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }}
                       transition={transition}
                       className="absolute inset-0"
                     >
