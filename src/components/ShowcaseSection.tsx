@@ -1,10 +1,13 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useRef } from 'react';
-import { motion, useMotionValue, useTransform } from 'framer-motion';
-
-import { cn } from '@/lib/utils';
+import { useEffect, useRef, useState } from 'react';
+import {
+  motion,
+  useMotionValue,
+  useMotionValueEvent,
+  useTransform,
+} from 'framer-motion';
 
 const MODES = [
   {
@@ -35,19 +38,147 @@ function easeOutCubic(value: number) {
   return 1 - (1 - value) ** 3;
 }
 
+function easeInOutCubic(value: number) {
+  return value < 0.5
+    ? 4 * value ** 3
+    : 1 - (-2 * value + 2) ** 3 / 2;
+}
+
+function rangeProgress(value: number, start: number, end: number) {
+  return clampProgress((value - start) / (end - start));
+}
+
+function smoothstep(value: number, start: number, end: number) {
+  const progress = rangeProgress(value, start, end);
+  return progress * progress * (3 - 2 * progress);
+}
+
 export default function ShowcaseSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const stickyRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
   const sectionProgress = useMotionValue(0);
   const introCenterOffset = useMotionValue(0);
-  const introProgress = useTransform(sectionProgress, (progress) =>
-    easeOutCubic(clampProgress(progress / 0.25))
+  const frameX = useTransform(
+    [sectionProgress, introCenterOffset],
+    ([progress, centerOffset]) => {
+      const dock = easeInOutCubic(
+        rangeProgress(Number(progress), 0.34, 0.5)
+      );
+      return Number(centerOffset) * (1 - dock);
+    }
   );
-  const frameX = useTransform(introCenterOffset, (offset) => offset);
-  const frameY = useTransform(introProgress, (progress) => 100 * (1 - progress));
-  const frameScale = useTransform(introProgress, (progress) => 0.94 + 0.06 * progress);
-  const frameOpacity = introProgress;
+  const frameY = useTransform(sectionProgress, (progress) => {
+    const reveal = easeOutCubic(rangeProgress(progress, 0, 0.22));
+    const dock = easeInOutCubic(rangeProgress(progress, 0.34, 0.5));
+    return 100 * (1 - reveal) + 8 * dock;
+  });
+  const frameScale = useTransform(sectionProgress, (progress) => {
+    const reveal = easeOutCubic(rangeProgress(progress, 0, 0.22));
+    const dock = easeInOutCubic(rangeProgress(progress, 0.34, 0.5));
+    return 0.94 + 0.06 * reveal - 0.18 * dock;
+  });
+  const frameOpacity = useTransform(sectionProgress, (progress) =>
+    easeOutCubic(rangeProgress(progress, 0, 0.22))
+  );
+
+  const railOpacity = useTransform(sectionProgress, (progress) =>
+    smoothstep(progress, 0.38, 0.46)
+  );
+  const railY = useTransform(railOpacity, (opacity) => 16 * (1 - opacity));
+  const chatDescriptionDockOpacity = useTransform(sectionProgress, (progress) =>
+    smoothstep(progress, 0.452, 0.5)
+  );
+
+  const chatToImage = useTransform(sectionProgress, (progress) =>
+    smoothstep(progress, 0.61, 0.68)
+  );
+  const imageToVideo = useTransform(sectionProgress, (progress) =>
+    smoothstep(progress, 0.75, 0.82)
+  );
+
+  const chatPanelOpacity = useTransform(chatToImage, (progress) => 1 - progress);
+  const chatPanelScale = useTransform(chatToImage, (progress) => 1 - 0.015 * progress);
+  const chatPanelY = useTransform(chatToImage, (progress) => -6 * progress);
+  const imagePanelOpacity = useTransform(
+    [chatToImage, imageToVideo],
+    ([enter, exit]) => Number(enter) * (1 - Number(exit))
+  );
+  const imagePanelScale = useTransform(
+    [chatToImage, imageToVideo],
+    ([enter, exit]) =>
+      0.985 + 0.015 * Number(enter) - 0.015 * Number(exit)
+  );
+  const imagePanelY = useTransform(
+    [chatToImage, imageToVideo],
+    ([enter, exit]) => 6 * (1 - Number(enter)) - 6 * Number(exit)
+  );
+  const videoPanelOpacity = imageToVideo;
+  const videoPanelScale = useTransform(
+    imageToVideo,
+    (progress) => 0.985 + 0.015 * progress
+  );
+  const videoPanelY = useTransform(imageToVideo, (progress) => 6 * (1 - progress));
+
+  const chatDescriptionOpacity = useTransform(
+    [chatDescriptionDockOpacity, chatToImage],
+    ([dock, exit]) => Number(dock) * (1 - Number(exit))
+  );
+  const imageDescriptionOpacity = imagePanelOpacity;
+  const videoDescriptionOpacity = videoPanelOpacity;
+
+  const chatRailEmphasis = useTransform(chatToImage, (progress) => 1 - 0.65 * progress);
+  const imageRailEmphasis = useTransform(
+    [chatToImage, imageToVideo],
+    ([enter, exit]) => 0.35 + 0.65 * Number(enter) - 0.65 * Number(exit)
+  );
+  const videoRailEmphasis = useTransform(
+    imageToVideo,
+    (progress) => 0.35 + 0.65 * progress
+  );
+  const chatLineProgress = useTransform(sectionProgress, (progress) =>
+    rangeProgress(progress, 0.5, 0.61)
+  );
+  const imageLineProgress = useTransform(sectionProgress, (progress) =>
+    rangeProgress(progress, 0.61, 0.75)
+  );
+  const videoLineProgress = useTransform(sectionProgress, (progress) =>
+    rangeProgress(progress, 0.75, 0.84)
+  );
+
+  const compositionY = useTransform(sectionProgress, (progress) =>
+    -80 * easeInOutCubic(rangeProgress(progress, 0.84, 1))
+  );
+  const compositionOpacity = useTransform(sectionProgress, (progress) =>
+    1 - smoothstep(progress, 0.84, 1)
+  );
+
+  const panelStyles = [
+    { opacity: chatPanelOpacity, scale: chatPanelScale, y: chatPanelY },
+    { opacity: imagePanelOpacity, scale: imagePanelScale, y: imagePanelY },
+    { opacity: videoPanelOpacity, scale: videoPanelScale, y: videoPanelY },
+  ];
+  const descriptionOpacities = [
+    chatDescriptionOpacity,
+    imageDescriptionOpacity,
+    videoDescriptionOpacity,
+  ];
+  const railEmphases = [
+    chatRailEmphasis,
+    imageRailEmphasis,
+    videoRailEmphasis,
+  ];
+  const lineProgresses = [
+    chatLineProgress,
+    imageLineProgress,
+    videoLineProgress,
+  ];
+
+  useMotionValueEvent(sectionProgress, 'change', (progress) => {
+    const nextIndex = progress < 0.645 ? 0 : progress < 0.785 ? 1 : 2;
+    setActiveIndex((current) => (current === nextIndex ? current : nextIndex));
+  });
 
   useEffect(() => {
     let frameId: number | null = null;
@@ -110,7 +241,10 @@ export default function ShowcaseSection() {
         data-sticky-scene
         className="sticky top-0 flex h-[100svh] min-h-[640px] items-center overflow-hidden py-10 lg:py-12"
       >
-        <div className="mx-auto w-full max-w-[1440px] px-5 sm:px-8 lg:px-12">
+        <motion.div
+          style={{ y: compositionY, opacity: compositionOpacity }}
+          className="mx-auto w-full max-w-[1440px] px-5 sm:px-8 lg:px-12"
+        >
           <header data-scene-header className="mb-7 text-center lg:mb-8">
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/35">
               The VANTRA workspace
@@ -124,28 +258,35 @@ export default function ShowcaseSection() {
           </header>
 
           <div className="grid items-center gap-8 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-12 xl:gap-16">
-            <div
+            <motion.div
               data-tab-rail
-              className="pointer-events-none grid grid-cols-3 border-y border-white/[0.08] opacity-0 lg:block lg:border-y-0"
+              style={{ opacity: railOpacity, y: railY }}
+              className="grid grid-cols-3 border-y border-white/[0.08] lg:block lg:border-y-0"
             >
               {MODES.map((mode, index) => {
-                const isActive = index === 0;
+                const isActive = index === activeIndex;
 
                 return (
-                  <div
+                  <motion.div
                     key={mode.key}
                     aria-current={isActive ? 'step' : undefined}
-                    className={cn(
-                      'relative min-w-0 border-e border-white/[0.08] px-3 py-4 last:border-e-0 lg:border-e-0 lg:border-b lg:px-0 lg:py-6 lg:last:border-b-0',
-                      isActive ? 'font-semibold text-white' : 'font-medium text-white/35'
-                    )}
+                    style={{ opacity: railEmphases[index] }}
+                    className="relative min-w-0 border-e border-white/[0.08] px-3 py-4 text-white last:border-e-0 lg:border-e-0 lg:border-b lg:px-0 lg:py-6 lg:last:border-b-0"
                   >
-                    <p className="text-lg font-medium tracking-tight transition-colors duration-300 sm:text-xl lg:text-2xl">
+                    <p className="text-lg font-medium tracking-tight sm:text-xl lg:text-2xl">
                       {mode.label}
                     </p>
 
-                    <span aria-hidden="true" className="mt-4 block h-px w-full bg-white/10" />
-                  </div>
+                    <span
+                      aria-hidden="true"
+                      className="mt-4 block h-px w-full overflow-hidden bg-white/10"
+                    >
+                      <motion.span
+                        style={{ scaleX: lineProgresses[index] }}
+                        className="block h-full origin-left bg-white/85"
+                      />
+                    </span>
+                  </motion.div>
                 );
               })}
 
@@ -153,14 +294,19 @@ export default function ShowcaseSection() {
                 data-showcase-description-container
                 className="relative col-span-3 min-h-[72px] border-t border-white/[0.08] py-4 lg:mt-1 lg:min-h-[82px] lg:border-t-0 lg:py-5"
               >
-                <p
-                  data-showcase-description="chat"
-                  className="absolute inset-x-0 top-4 max-w-[245px] text-sm font-medium leading-6 text-white/60 lg:top-5"
-                >
-                  {MODES[0].description}
-                </p>
+                {MODES.map((mode, index) => (
+                  <motion.p
+                    key={mode.key}
+                    data-showcase-description={mode.key}
+                    style={{ opacity: descriptionOpacities[index] }}
+                    className="absolute inset-x-0 top-4 max-w-[245px] text-sm font-medium leading-6 text-white/60 lg:top-5"
+                    aria-hidden={index !== activeIndex}
+                  >
+                    {mode.description}
+                  </motion.p>
+                ))}
               </div>
-            </div>
+            </motion.div>
 
             <div
               ref={viewportRef}
@@ -181,15 +327,16 @@ export default function ShowcaseSection() {
                 <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-[#070707] sm:aspect-[16/9] lg:aspect-[1.8/1]">
                   {MODES.map((mode, index) => {
                     return (
-                    <div
+                    <motion.div
                       key={mode.key}
                       data-demo-panel={mode.key}
-                      className={cn(
-                        'pointer-events-none absolute inset-0',
-                        index === 0 ? 'opacity-100' : 'opacity-0'
-                      )}
-                      style={{ transition: 'none', willChange: 'opacity' }}
-                      aria-hidden={index !== 0}
+                      style={{
+                        ...panelStyles[index],
+                        transition: 'none',
+                        willChange: 'opacity, transform',
+                      }}
+                      className="pointer-events-none absolute inset-0"
+                      aria-hidden={index !== activeIndex}
                     >
                       <Image
                         src={mode.image}
@@ -199,7 +346,7 @@ export default function ShowcaseSection() {
                         sizes="(max-width: 1023px) 100vw, 75vw"
                         className="origin-right scale-[1.28] object-cover object-right"
                       />
-                    </div>
+                    </motion.div>
                     );
                   })}
                 </div>
@@ -211,7 +358,7 @@ export default function ShowcaseSection() {
               </motion.div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </section>
   );
