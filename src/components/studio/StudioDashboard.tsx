@@ -15,7 +15,7 @@ import MotionStudio from './MotionStudio';
 import MediaLibrary from './MediaLibrary';
 import { VantraLogo } from '../VantraLogo';
 import { cn } from '@/lib/utils';
-import { ScrollArea, GhostButton } from './AppShell';
+import { GhostButton } from './AppShell';
 
 /* Real data pulled from the OpenRouter catalog */
 const MODELS = [
@@ -210,7 +210,6 @@ export default function StudioDashboard() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const [isNearBottom, setIsNearBottom] = useState(true);
 
   /* ---- Smart auto-scroll management (No scroll hijacking) ---- */
 
@@ -222,32 +221,27 @@ export default function StudioDashboard() {
     const atBottom = distance <= 100;
 
     isAtBottomRef.current = atBottom;
-    setIsNearBottom(atBottom);
     setShowScrollButton(distance > 100);
   }, []);
 
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    container.addEventListener('scroll', handleScroll, { passive: true });
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, [handleScroll]);
-
-  const scrollToBottom = useCallback((smooth = true) => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
+  const scrollToBottom = useCallback(() => {
     isAtBottomRef.current = true;
-    setIsNearBottom(true);
     setShowScrollButton(false);
-    container.scrollTo({ top: container.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  const jumpToBottom = useCallback(() => {
+    isAtBottomRef.current = true;
+    setShowScrollButton(false);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
   }, []);
 
   // Force bottom the moment a new send exchange starts
   useEffect(() => {
     if (isLoading) {
-      scrollToBottom(false);
+      jumpToBottom();
     }
-  }, [isLoading, scrollToBottom]);
+  }, [isLoading, jumpToBottom]);
 
   // When messages or streaming tokens update:
   // ONLY auto-scroll if the user is already near the bottom.
@@ -261,9 +255,9 @@ export default function StudioDashboard() {
 
   // Jump to bottom when switching sessions
   useEffect(() => {
-    const t = setTimeout(() => scrollToBottom(false), 80);
+    const t = setTimeout(jumpToBottom, 80);
     return () => clearTimeout(t);
-  }, [activeSessionId, scrollToBottom]);
+  }, [activeSessionId, jumpToBottom]);
 
   const handleSend = useCallback(
     async (data: { message: string; isThinkingEnabled: boolean; files?: Array<{ file: File; preview?: string | null; type: string }> }) => {
@@ -379,9 +373,10 @@ export default function StudioDashboard() {
               >
                 {/* Scrollable Message Timeline Area */}
                 <div className="flex-1 min-h-0 relative flex flex-col overflow-hidden">
-                  <ScrollArea
+                  <div
                     ref={scrollContainerRef}
-                    className="flex-1 min-h-0"
+                    onScroll={handleScroll}
+                    className="chat-scrollbar flex-1 min-h-0 overflow-y-auto"
                     style={{ overflowAnchor: 'none' }}
                   >
                     <div className={cn(
@@ -505,7 +500,7 @@ export default function StudioDashboard() {
                         <div ref={messagesEndRef} className="h-2 w-full shrink-0" />
                       </div>
                     </div>
-                  </ScrollArea>
+                  </div>
 
                   {/* Floating "Scroll to Bottom" Action Button */}
                   <AnimatePresence>
@@ -515,13 +510,13 @@ export default function StudioDashboard() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 8, scale: 0.9 }}
                         transition={{ duration: 0.18, ease: 'easeOut' }}
-                        className="absolute bottom-28 sm:bottom-32 left-1/2 -translate-x-1/2 z-40 pointer-events-auto"
+                        className="absolute bottom-28 left-1/2 z-50 -translate-x-1/2 pointer-events-auto"
                       >
                         <button
                           type="button"
-                          onClick={() => scrollToBottom(true)}
+                          onClick={scrollToBottom}
                           aria-label="Scroll to bottom"
-                          className="flex items-center justify-center p-2 rounded-full backdrop-blur-md bg-white/10 border border-white/20 text-white hover:bg-white/20 shadow-lg shadow-black/40 cursor-pointer active:scale-95 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                          className="flex items-center justify-center rounded-full border border-white/10 bg-[#0A0A0B]/80 p-2 text-white/50 shadow-xl backdrop-blur-md transition-[color,background-color,transform] duration-300 hover:bg-white/10 hover:text-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
                         >
                           <ArrowDown className="h-4 w-4" />
                         </button>
