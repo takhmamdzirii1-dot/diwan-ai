@@ -39,8 +39,24 @@ const MODES = [
 const INTRO_END = 0.2;
 const CHAT_END = 0.46;
 const IMAGE_END = 0.73;
+const CHAT_PLATEAU_END = 0.42;
+const CHAT_HORIZONTAL_END = 0.7;
 
 type ShowcasePhase = 'intro' | 'chat' | 'image' | 'video';
+
+function clampProgress(value: number) {
+  return Math.max(0, Math.min(1, value));
+}
+
+function easeOutCubic(value: number) {
+  return 1 - (1 - value) ** 3;
+}
+
+function easeInOutCubic(value: number) {
+  return value < 0.5
+    ? 4 * value ** 3
+    : 1 - (-2 * value + 2) ** 3 / 2;
+}
 
 function ModeProgressLine({
   progress,
@@ -71,28 +87,49 @@ export default function ShowcaseSection() {
   const [activePhase, setActivePhase] = useState<ShowcasePhase>('intro');
   const reduceMotion = useReducedMotion();
   const introX = useMotionValue(0);
-  const introScale = useMotionValue(1);
   const { scrollYProgress } = useScroll({
     target: sectionRef,
     offset: ['start start', 'end end'],
   });
-  const introProgress = useTransform(scrollYProgress, [0, INTRO_END], [0, 1], {
+  const frameX = useTransform([scrollYProgress, introX], ([progress, startX]) => {
+    const horizontalProgress = easeInOutCubic(
+      clampProgress(
+        (Number(progress) - CHAT_PLATEAU_END) /
+          (CHAT_HORIZONTAL_END - CHAT_PLATEAU_END)
+      )
+    );
+
+    return Number(startX) * (1 - horizontalProgress);
+  });
+  const frameY = useTransform(scrollYProgress, (progress) => {
+    const entryProgress = easeOutCubic(clampProgress(progress / INTRO_END));
+    const horizontalProgress = easeInOutCubic(
+      clampProgress(
+        (progress - CHAT_PLATEAU_END) /
+          (CHAT_HORIZONTAL_END - CHAT_PLATEAU_END)
+      )
+    );
+
+    return 120 * (1 - entryProgress) + 8 * horizontalProgress;
+  });
+  const frameScale = useTransform(scrollYProgress, (progress) => {
+    const entryProgress = easeOutCubic(clampProgress(progress / INTRO_END));
+    const horizontalProgress = easeInOutCubic(
+      clampProgress(
+        (progress - CHAT_PLATEAU_END) /
+          (CHAT_HORIZONTAL_END - CHAT_PLATEAU_END)
+      )
+    );
+
+    return 0.94 + 0.06 * entryProgress - 0.04 * horizontalProgress;
+  });
+  const frameOpacity = useTransform(scrollYProgress, (progress) =>
+    clampProgress(progress / 0.12)
+  );
+  const navigationOpacity = useTransform(scrollYProgress, [0.04, 0.18], [0, 1], {
     clamp: true,
   });
-  const previewX = useTransform(
-    [introProgress, introX],
-    ([progress, startX]) => Number(startX) * (1 - Number(progress))
-  );
-  const previewY = useTransform(introProgress, [0, 1], [-12, 0]);
-  const previewScale = useTransform(
-    [introProgress, introScale],
-    ([progress, startScale]) =>
-      1 + (Number(startScale) - 1) * (1 - Number(progress))
-  );
-  const navigationOpacity = useTransform(introProgress, [0.2, 0.88], [0, 1], {
-    clamp: true,
-  });
-  const navigationX = useTransform(introProgress, [0.2, 0.88], [-20, 0], {
+  const navigationX = useTransform(scrollYProgress, [0.04, 0.18], [-20, 0], {
     clamp: true,
   });
 
@@ -109,13 +146,14 @@ export default function ShowcaseSection() {
 
       if (!isDesktop) {
         introX.set(0);
-        introScale.set(1.06);
         return;
       }
 
-      const targetWidth = Math.min(stickyRect.width * 0.82, 1320);
-      introX.set(stickyRect.left + stickyRect.width / 2 - (previewRect.left + previewRect.width / 2));
-      introScale.set(Math.min(1.35, Math.max(1, targetWidth / previewRect.width)));
+      introX.set(
+        stickyRect.left +
+          stickyRect.width / 2 -
+          (previewRect.left + previewRect.width / 2)
+      );
     };
 
     measure();
@@ -125,7 +163,7 @@ export default function ShowcaseSection() {
     resizeObserver.observe(preview);
 
     return () => resizeObserver.disconnect();
-  }, [introScale, introX]);
+  }, [introX]);
 
   useMotionValueEvent(scrollYProgress, 'change', (progress) => {
     const nextPhase: ShowcasePhase =
@@ -246,9 +284,9 @@ export default function ShowcaseSection() {
                 style={
                   reduceMotion
                     ? undefined
-                    : { x: previewX, y: previewY, scale: previewScale }
+                    : { x: frameX, y: frameY, scale: frameScale, opacity: frameOpacity }
                 }
-                className="relative w-full overflow-hidden rounded-2xl bg-[#090909] p-1.5 sm:p-2"
+                className="relative w-full overflow-hidden rounded-2xl bg-[#090909] p-1.5 [will-change:transform,opacity] sm:p-2"
               >
                 <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-[#070707] sm:aspect-[16/9] lg:aspect-[1.8/1]">
                   {MODES.map((mode, index) => {
