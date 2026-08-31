@@ -376,12 +376,12 @@ export default function StudioDashboard() {
                   <div
                     ref={scrollContainerRef}
                     onScroll={handleScroll}
-                    className="chat-scrollbar flex-1 min-h-0 overflow-y-auto"
+                    className="chat-scrollbar flex-1 h-full overflow-y-auto pb-40 [-webkit-mask-image:linear-gradient(to_bottom,black_75%,transparent_100%)] [mask-image:linear-gradient(to_bottom,black_75%,transparent_100%)]"
                     style={{ overflowAnchor: 'none' }}
                   >
                     <div className={cn(
                       'w-full flex justify-center transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]',
-                      isEmpty ? 'min-h-full items-center py-6' : 'pt-6 pb-36 sm:pb-40'
+                      isEmpty ? 'min-h-full items-center py-6' : 'pt-6'
                     )}>
                       <div className="mx-auto w-full max-w-4xl px-6 flex flex-col gap-y-8">
                         {/* Empty State: Headline & Magic Skills Cards (Animated Exit) */}
@@ -525,9 +525,9 @@ export default function StudioDashboard() {
                   </AnimatePresence>
                 </div>
 
-                {/* 3rd (Bottom): Seamless Sticky Composer matching EXACT timeline bounding box */}
-                <div className="sticky bottom-0 w-full bg-gradient-to-t from-[#0A0A0B] via-[#0A0A0B] to-transparent pt-6 pb-6 z-20">
-                  <div className="mx-auto w-full max-w-4xl px-6">
+                {/* 3rd (Bottom): Floating composer over the fading message timeline */}
+                <div className="absolute bottom-0 left-0 flex w-full justify-center bg-transparent p-4 pb-6 pointer-events-none">
+                  <div className="pointer-events-auto mx-auto w-full max-w-4xl px-6">
                     <ClaudeChatInput
                       onSendMessage={handleSend}
                       models={MODELS.map((m) => ({
