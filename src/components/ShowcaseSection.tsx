@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useEffect, useRef } from 'react';
-import { useMotionValue } from 'framer-motion';
+import { motion, useMotionValue, useTransform } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
 
@@ -31,9 +31,40 @@ function clampProgress(value: number) {
   return Math.max(0, Math.min(1, value));
 }
 
+function easeOutCubic(value: number) {
+  return 1 - (1 - value) ** 3;
+}
+
+function easeInOutCubic(value: number) {
+  return value < 0.5
+    ? 4 * value ** 3
+    : 1 - (-2 * value + 2) ** 3 / 2;
+}
+
 export default function ShowcaseSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const sectionProgress = useMotionValue(0);
+  const viewportWidth = useMotionValue(0);
+  const frameY = useTransform(sectionProgress, (progress) =>
+    120 * (1 - easeOutCubic(clampProgress(progress / 0.2)))
+  );
+  const frameScale = useTransform(sectionProgress, (progress) => {
+    const entrance = easeOutCubic(clampProgress(progress / 0.2));
+    const horizontal = easeInOutCubic(clampProgress((progress - 0.42) / 0.28));
+
+    return 0.94 + 0.06 * entrance - 0.03 * horizontal;
+  });
+  const frameOpacity = useTransform(sectionProgress, (progress) =>
+    easeOutCubic(clampProgress(progress / 0.2))
+  );
+  const frameX = useTransform([sectionProgress, viewportWidth], ([progress, width]) => {
+    const horizontal = easeInOutCubic(
+      clampProgress((Number(progress) - 0.42) / 0.28)
+    );
+    const target = Math.min(260, Math.max(90, Number(width) * 0.18));
+
+    return target * horizontal;
+  });
 
   useEffect(() => {
     let frameId: number | null = null;
@@ -53,6 +84,7 @@ export default function ShowcaseSection() {
       );
 
       sectionProgress.set(nextProgress);
+      viewportWidth.set(window.innerWidth);
     };
 
     const requestProgressUpdate = () => {
@@ -68,7 +100,7 @@ export default function ShowcaseSection() {
       window.removeEventListener('resize', requestProgressUpdate);
       if (frameId !== null) window.cancelAnimationFrame(frameId);
     };
-  }, [sectionProgress]);
+  }, [sectionProgress, viewportWidth]);
 
   return (
     <section
@@ -136,9 +168,9 @@ export default function ShowcaseSection() {
               data-demo-viewport
               className="relative z-10 min-w-0 overflow-hidden"
             >
-              <div
+              <motion.div
                 data-demo-frame
-                style={{ willChange: 'transform' }}
+                style={{ x: frameX, y: frameY, scale: frameScale, opacity: frameOpacity, willChange: 'transform, opacity' }}
                 className="relative w-full overflow-hidden rounded-2xl bg-[#090909] p-1.5 [will-change:transform,opacity] sm:p-2"
               >
                 <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-[#070707] sm:aspect-[16/9] lg:aspect-[1.8/1]">
@@ -171,7 +203,7 @@ export default function ShowcaseSection() {
                   data-frame-overlay
                   className="pointer-events-none absolute inset-0 rounded-2xl border border-white/10"
                 />
-              </div>
+              </motion.div>
             </div>
           </div>
         </div>
