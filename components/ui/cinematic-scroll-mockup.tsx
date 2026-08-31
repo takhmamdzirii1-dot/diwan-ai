@@ -41,13 +41,13 @@ export function CinematicScrollMockup() {
     offset: ["start start", "end end"],
   });
 
-  const scale = useTransform(scrollYProgress, [0, 0.25], [1.6, 0.85]);
-  const x = useTransform(scrollYProgress, [0, 0.25], ["0%", "25%"]);
-  const textOpacity = useTransform(scrollYProgress, [0.15, 0.25], [0, 1]);
+  const scale = useTransform(scrollYProgress, [0, 0.2], [1.3, 0.9]);
+  const x = useTransform(scrollYProgress, [0, 0.2], ["0%", "20%"]);
+  const textOpacity = useTransform(scrollYProgress, [0.1, 0.2], [0, 1]);
 
   useMotionValueEvent(scrollYProgress, "change", (latest) => {
-    if (latest < 0.45) setActiveIndex(0);
-    else if (latest < 0.75) setActiveIndex(1);
+    if (latest < 0.35) setActiveIndex(0);
+    else if (latest < 0.7) setActiveIndex(1);
     else setActiveIndex(2);
   });
 
@@ -55,9 +55,9 @@ export function CinematicScrollMockup() {
     <section
       ref={containerRef}
       aria-label="VANTRA unified AI studio"
-      className="relative h-[250vh] bg-black"
+      className="relative h-[350vh] bg-black"
     >
-      <div className="sticky top-0 flex h-screen w-full items-center justify-center overflow-hidden bg-black supports-[height:100svh]:h-[100svh]">
+      <div className="sticky top-0 flex h-screen w-full max-w-[100vw] items-center justify-center overflow-hidden bg-black supports-[height:100svh]:h-[100svh]">
         <motion.div
           data-cinematic-copy
           style={{
@@ -118,13 +118,13 @@ export function CinematicScrollMockup() {
           data-cinematic-mockup
           data-active-index={activeIndex}
           style={{
-            scale: prefersReducedMotion ? 0.85 : scale,
-            x: prefersReducedMotion ? "25%" : x,
+            scale: prefersReducedMotion ? 0.9 : scale,
+            x: prefersReducedMotion ? "20%" : x,
             willChange: "transform",
           }}
-          className="relative z-10 w-[min(92vw,1180px)] origin-center"
+          className="relative z-10 aspect-video w-[95vw] max-w-6xl origin-center overflow-hidden rounded-2xl border border-white/10 bg-black/60 shadow-[0_0_50px_rgba(255,255,255,0.05)] backdrop-blur-xl md:w-[70vw] lg:w-[55vw]"
         >
-          <div className="overflow-hidden rounded-[28px] border border-white/10 bg-black/60 p-2 shadow-[0_0_50px_rgba(255,255,255,0.05)] backdrop-blur-xl sm:p-3">
+          <div className="flex h-full flex-col p-2 sm:p-3">
             <div className="flex h-10 items-center justify-between border-b border-white/[0.06] px-3 sm:h-12 sm:px-4">
               <div aria-hidden="true" className="flex items-center gap-2">
                 <span className="size-2 rounded-full bg-white/15" />
@@ -139,7 +139,7 @@ export function CinematicScrollMockup() {
               <span aria-hidden="true" className="w-10" />
             </div>
 
-            <div className="relative aspect-[16/10] overflow-hidden rounded-b-[20px] bg-[#050505] sm:aspect-video">
+            <div className="relative min-h-0 flex-1 overflow-hidden rounded-b-xl bg-[#050505]">
               {FEATURES.map((feature, index) => (
                 <motion.div
                   key={feature.label}
