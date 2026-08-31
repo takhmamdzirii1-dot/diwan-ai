@@ -3,8 +3,8 @@
 import React, { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, useScroll, useSpring } from 'framer-motion';
+import { CinematicScrollMockup } from '@/components/ui/cinematic-scroll-mockup';
 import HeroSection from './HeroSection';
-import ShowcaseSection from './ShowcaseSection';
 import HowItWorks from './landing/HowItWorks';
 import TerminalShowcase from './landing/TerminalShowcase';
 import Testimonials from './landing/Testimonials';
@@ -71,7 +71,7 @@ export default function OriginalLandingPage() {
       />
 
       <PartnersSection />
-      <ShowcaseSection />
+      <CinematicScrollMockup />
       <HowItWorks />
       <TerminalShowcase />
       <Testimonials />
