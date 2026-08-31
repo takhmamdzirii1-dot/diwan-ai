@@ -88,6 +88,28 @@ Before reading ANY project files, query the Graphify graph first and prefer its 
 
 Read full files ONLY when the graph lacks the detail. This saves tokens and speeds up every session.
 
+## GIT SYNC RULES (follow every session)
+
+1. START: `git pull origin main` — if conflicts: `git stash` → `git pull` → `git stash pop`
+2. WORK: make your changes
+3. CHECK: `git diff` — review what changed, make sure nothing is broken
+4. COMMIT: `git add .` → `git commit -m "clear description of what changed"`
+5. PUSH: `git push origin main`
+6. NEVER skip step 1. NEVER sit on uncommitted changes. NEVER force push.
+
+If `git pull` causes conflicts:
+
+- Read the conflicted files carefully.
+- Keep BOTH changes if they don't overlap.
+- Keep the NEWER change if they do.
+- Ask the team lead if unsure.
+
+If a build fails after pulling:
+
+- Run `npm run build` to find the error.
+- Fix it before pushing.
+- If you cannot fix it: `git revert` and ask for help.
+
 ## Work Protocol
 
 1. Never claim "done" without proof: screenshot + computed-style numbers from the live page.
