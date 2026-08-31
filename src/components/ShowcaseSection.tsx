@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useEffect, useRef } from 'react';
-import { useMotionValue } from 'framer-motion';
+import { motion, useMotionValue, useTransform } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
 
@@ -31,9 +31,23 @@ function clampProgress(value: number) {
   return Math.max(0, Math.min(1, value));
 }
 
+function easeOutCubic(value: number) {
+  return 1 - (1 - value) ** 3;
+}
+
 export default function ShowcaseSection() {
   const sectionRef = useRef<HTMLElement>(null);
+  const stickyRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
   const sectionProgress = useMotionValue(0);
+  const introCenterOffset = useMotionValue(0);
+  const introProgress = useTransform(sectionProgress, (progress) =>
+    easeOutCubic(clampProgress(progress / 0.25))
+  );
+  const frameX = useTransform(introCenterOffset, (offset) => offset);
+  const frameY = useTransform(introProgress, (progress) => 100 * (1 - progress));
+  const frameScale = useTransform(introProgress, (progress) => 0.94 + 0.06 * progress);
+  const frameOpacity = introProgress;
 
   useEffect(() => {
     let frameId: number | null = null;
@@ -41,6 +55,8 @@ export default function ShowcaseSection() {
     const updateProgress = () => {
       frameId = null;
       const section = sectionRef.current;
+      const sticky = stickyRef.current;
+      const viewport = viewportRef.current;
 
       if (!section) return;
 
@@ -53,6 +69,16 @@ export default function ShowcaseSection() {
       );
 
       sectionProgress.set(nextProgress);
+
+      if (sticky && viewport) {
+        const stickyRect = sticky.getBoundingClientRect();
+        const viewportRect = viewport.getBoundingClientRect();
+        introCenterOffset.set(
+          stickyRect.left +
+            stickyRect.width / 2 -
+            (viewportRect.left + viewportRect.width / 2)
+        );
+      }
     };
 
     const requestProgressUpdate = () => {
@@ -68,7 +94,7 @@ export default function ShowcaseSection() {
       window.removeEventListener('resize', requestProgressUpdate);
       if (frameId !== null) window.cancelAnimationFrame(frameId);
     };
-  }, [sectionProgress]);
+  }, [introCenterOffset, sectionProgress]);
 
   return (
     <section
@@ -79,6 +105,7 @@ export default function ShowcaseSection() {
       className="relative h-[400vh] bg-[#050505]"
     >
       <div
+        ref={stickyRef}
         id="models"
         data-sticky-scene
         className="sticky top-0 flex h-[100svh] min-h-[640px] items-center overflow-hidden py-10 lg:py-12"
@@ -97,7 +124,10 @@ export default function ShowcaseSection() {
           </header>
 
           <div className="grid items-center gap-8 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-12 xl:gap-16">
-            <div data-tab-rail className="grid grid-cols-3 border-y border-white/[0.08] lg:block lg:border-y-0">
+            <div
+              data-tab-rail
+              className="pointer-events-none grid grid-cols-3 border-y border-white/[0.08] opacity-0 lg:block lg:border-y-0"
+            >
               {MODES.map((mode, index) => {
                 const isActive = index === 0;
 
@@ -133,12 +163,19 @@ export default function ShowcaseSection() {
             </div>
 
             <div
+              ref={viewportRef}
               data-demo-viewport
               className="relative z-10 min-w-0 overflow-hidden"
             >
-              <div
+              <motion.div
                 data-demo-frame
-                style={{ willChange: 'transform' }}
+                style={{
+                  x: frameX,
+                  y: frameY,
+                  scale: frameScale,
+                  opacity: frameOpacity,
+                  willChange: 'transform, opacity',
+                }}
                 className="relative w-full overflow-hidden rounded-2xl bg-[#090909] p-1.5 [will-change:transform,opacity] sm:p-2"
               >
                 <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-[#070707] sm:aspect-[16/9] lg:aspect-[1.8/1]">
@@ -171,7 +208,7 @@ export default function ShowcaseSection() {
                   data-frame-overlay
                   className="pointer-events-none absolute inset-0 rounded-2xl border border-white/10"
                 />
-              </div>
+              </motion.div>
             </div>
           </div>
         </div>
