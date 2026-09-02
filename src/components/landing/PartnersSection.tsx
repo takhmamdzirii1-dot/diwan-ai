@@ -40,11 +40,11 @@ const logos = [
 export default function PartnersSection() {
   return (
     <section
-      aria-label='Technology partners'
-      className='relative -mt-[180px] bg-[#050505] py-14 border-b border-white/[0.04] overflow-hidden'
+      aria-label='VANTRA technology ecosystem'
+      className='relative -mt-[180px] bg-[#050505] !py-12 md:!py-14 border-b border-white/[0.04] overflow-hidden'
     >
-      <p className='text-center text-[10.5px] font-semibold tracking-[0.22em] uppercase text-white/30 mb-8'>
-        Powered by
+      <p className='text-center text-[10.5px] font-semibold tracking-[0.22em] uppercase text-white/35 mb-7 md:mb-8'>
+        Technology ecosystem
       </p>
       <LogoCloud logos={logos} />
     </section>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 /* ── Magnetic — element gravitates toward the cursor ─────── */
@@ -15,9 +15,11 @@ export function Magnetic({
   className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
   const [pos, setPos] = React.useState({ x: 0, y: 0 });
 
   const onMove = (e: React.MouseEvent) => {
+    if (reduce) return;
     const el = ref.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
@@ -32,8 +34,8 @@ export function Magnetic({
       ref={ref}
       onMouseMove={onMove}
       onMouseLeave={() => setPos({ x: 0, y: 0 })}
-      animate={{ x: pos.x, y: pos.y }}
-      transition={{ type: 'spring', stiffness: 180, damping: 14, mass: 0.25 }}
+      animate={{ x: reduce ? 0 : pos.x, y: reduce ? 0 : pos.y }}
+      transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 180, damping: 14, mass: 0.25 }}
       className={cn('inline-block', className)}
     >
       {children}

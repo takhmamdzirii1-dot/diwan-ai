@@ -222,7 +222,7 @@
       "file_type": "code",
       "norm_label": "logo",
       "source_file": "components/ui/logo-cloud-3.tsx",
-      "source_location": "L7"
+      "source_location": "L8"
     },
     {
       "id": "components_ui_logo_cloud_3_logocloudprops",
@@ -235,7 +235,7 @@
       "file_type": "code",
       "norm_label": "logocloudprops",
       "source_file": "components/ui/logo-cloud-3.tsx",
-      "source_location": "L14"
+      "source_location": "L15"
     },
     {
       "id": "src_components_landing_faq_faqitem",
@@ -1086,7 +1086,7 @@
       "file_type": "code",
       "norm_label": "logocloud()",
       "source_file": "components/ui/logo-cloud-3.tsx",
-      "source_location": "L18"
+      "source_location": "L19"
     },
     {
       "id": "src_app_app",
@@ -1218,7 +1218,7 @@
       "file_type": "code",
       "norm_label": "marqueerow()",
       "source_file": "src/components/landing/Testimonials.tsx",
-      "source_location": "L61"
+      "source_location": "L56"
     },
     {
       "id": "src_components_landing_testimonials_testimonials",
@@ -1230,7 +1230,7 @@
       "file_type": "code",
       "norm_label": "testimonials()",
       "source_file": "src/components/landing/Testimonials.tsx",
-      "source_location": "L101"
+      "source_location": "L96"
     },
     {
       "id": "src_components_landing_ui_magnetic",
@@ -1254,7 +1254,7 @@
       "file_type": "code",
       "norm_label": "sectionheading()",
       "source_file": "src/components/landing/ui.tsx",
-      "source_location": "L82"
+      "source_location": "L84"
     },
     {
       "id": "src_components_landing_ui_spotlightcard",
@@ -1266,7 +1266,7 @@
       "file_type": "code",
       "norm_label": "spotlightcard()",
       "source_file": "src/components/landing/ui.tsx",
-      "source_location": "L45"
+      "source_location": "L47"
     },
     {
       "id": "src_components_landing_whyvantra_whyvantra",
@@ -1506,7 +1506,7 @@
       "file_type": "code",
       "norm_label": "hashseed()",
       "source_file": "src/components/HeroSection.tsx",
-      "source_location": "L313"
+      "source_location": "L315"
     },
     {
       "id": "src_components_herosection_herosection",
@@ -4736,15 +4736,15 @@
       "source_location": "L12"
     },
     {
-      "id": "package_dependencies_ai_sdk_openai",
-      "label": "@ai-sdk/openai",
+      "id": "package_dependencies_ai",
+      "label": "ai",
       "_origin": "ast",
       "community": 30,
       "community_name": "dependencies",
       "file_type": "code",
-      "norm_label": "@ai-sdk/openai",
+      "norm_label": "ai",
       "source_file": "package.json",
-      "source_location": "L13"
+      "source_location": "L24"
     },
     {
       "id": "package_dependencies_react_dom",
@@ -4780,15 +4780,15 @@
       "source_location": "L18"
     },
     {
-      "id": "ai_sdk_openai",
-      "label": "@ai-sdk/openai",
+      "id": "ai",
+      "label": "ai",
       "_origin": "ast",
       "community": 30,
       "community_name": "dependencies",
       "file_type": "concept",
-      "norm_label": "@ai-sdk/openai",
+      "norm_label": "ai",
       "source_file": "package.json",
-      "source_location": "L13"
+      "source_location": "L24"
     },
     {
       "id": "react_dom",
@@ -4877,6 +4877,28 @@
       "norm_label": "filters",
       "source_file": "src/components/studio/MediaLibrary.tsx",
       "source_location": "L29"
+    },
+    {
+      "id": "package_dependencies_ai_sdk_openai",
+      "label": "@ai-sdk/openai",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "@ai-sdk/openai",
+      "file_type": "code",
+      "norm_label": "@ai-sdk/openai",
+      "source_file": "package.json",
+      "source_location": "L13"
+    },
+    {
+      "id": "ai_sdk_openai",
+      "label": "@ai-sdk/openai",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "@ai-sdk/openai",
+      "file_type": "concept",
+      "norm_label": "@ai-sdk/openai",
+      "source_file": "package.json",
+      "source_location": "L13"
     },
     {
       "id": "package_dependencies_supabase_supabase_js",
@@ -6637,28 +6659,6 @@
       "source_location": "L1"
     },
     {
-      "id": "package_dependencies_ai",
-      "label": "ai",
-      "_origin": "ast",
-      "community": 85,
-      "community_name": "ai",
-      "file_type": "code",
-      "norm_label": "ai",
-      "source_file": "package.json",
-      "source_location": "L24"
-    },
-    {
-      "id": "ai",
-      "label": "ai",
-      "_origin": "ast",
-      "community": 85,
-      "community_name": "ai",
-      "file_type": "concept",
-      "norm_label": "ai",
-      "source_file": "package.json",
-      "source_location": "L24"
-    },
-    {
       "id": "scripts_verify_liquid",
       "label": "verify-liquid.mjs",
       "_origin": "ast",
@@ -7700,7 +7700,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/ui/logo-cloud-3.tsx",
-      "source_location": "L100",
+      "source_location": "L107",
       "weight": 1.0
     },
     {
@@ -7916,7 +7916,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/landing/ui.tsx",
-      "source_location": "L37",
+      "source_location": "L39",
       "weight": 1.0
     },
     {
@@ -7928,7 +7928,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/landing/ui.tsx",
-      "source_location": "L94",
+      "source_location": "L96",
       "weight": 1.0
     },
     {
@@ -7940,7 +7940,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/landing/ui.tsx",
-      "source_location": "L66",
+      "source_location": "L68",
       "weight": 1.0
     },
     {
@@ -9142,7 +9142,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "components/ui/logo-cloud-3.tsx",
-      "source_location": "L5",
+      "source_location": "L6",
       "weight": 1.0
     },
     {
@@ -11242,7 +11242,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "components/ui/logo-cloud-3.tsx",
-      "source_location": "L5",
+      "source_location": "L6",
       "weight": 1.0
     },
     {
@@ -13519,7 +13519,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/ui/logo-cloud-3.tsx",
-      "source_location": "L14",
+      "source_location": "L15",
       "weight": 1.0
     },
     {
@@ -13530,7 +13530,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/ui/logo-cloud-3.tsx",
-      "source_location": "L18",
+      "source_location": "L19",
       "weight": 1.0
     },
     {
@@ -13541,7 +13541,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/ui/logo-cloud-3.tsx",
-      "source_location": "L7",
+      "source_location": "L8",
       "weight": 1.0
     },
     {
@@ -15103,7 +15103,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/HeroSection.tsx",
-      "source_location": "L313",
+      "source_location": "L315",
       "weight": 1.0
     },
     {
@@ -15339,17 +15339,6 @@
     },
     {
       "source": "src_components_landing_testimonials",
-      "target": "src_components_landing_testimonials_testimonials",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/components/landing/Testimonials.tsx",
-      "source_location": "L101",
-      "weight": 1.0
-    },
-    {
-      "source": "src_components_landing_testimonials",
       "target": "src_components_landing_testimonials_testimonial_rows",
       "relation": "contains",
       "_origin": "ast",
@@ -15367,7 +15356,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/landing/Testimonials.tsx",
-      "source_location": "L61",
+      "source_location": "L56",
       "weight": 1.0
     },
     {
@@ -15382,6 +15371,17 @@
       "weight": 1.0
     },
     {
+      "source": "src_components_landing_testimonials",
+      "target": "src_components_landing_testimonials_testimonials",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/landing/Testimonials.tsx",
+      "source_location": "L96",
+      "weight": 1.0
+    },
+    {
       "source": "src_components_landing_ui",
       "target": "src_components_landing_ui_spotlightcard",
       "relation": "contains",
@@ -15389,7 +15389,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/landing/ui.tsx",
-      "source_location": "L45",
+      "source_location": "L47",
       "weight": 1.0
     },
     {
@@ -15411,7 +15411,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/landing/ui.tsx",
-      "source_location": "L82",
+      "source_location": "L84",
       "weight": 1.0
     },
     {
@@ -17173,5 +17173,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "7d774ddc7b4ac7a725c39c403c6c586223bd9070"
+  "built_at_commit": "7abf80c3bbea654d6bf4f7f2b23590099cc15ce7"
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useReducedMotion } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
 
@@ -16,6 +17,7 @@ type LogoCloudProps = React.ComponentProps<'div'> & {
 };
 
 export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
+  const reduce = useReducedMotion();
   const sequenceRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
@@ -63,6 +65,11 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
 
     measure();
 
+    if (reduce) {
+      track.style.transform = 'translate3d(0, 0, 0)';
+      return;
+    }
+
     const resizeObserver = new ResizeObserver(measure);
     resizeObserver.observe(sequence);
     frameId = requestAnimationFrame(animate);
@@ -71,7 +78,7 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
       cancelAnimationFrame(frameId);
       resizeObserver.disconnect();
     };
-  }, []);
+  }, [reduce]);
 
   const logoGroup = (index: number) => (
     <div
@@ -83,7 +90,7 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
       {logos.map((logo) => (
         <img
           alt={index > 0 ? '' : logo.alt}
-          className='pointer-events-none h-5 w-auto shrink-0 select-none opacity-90 md:h-6'
+          className='pointer-events-none h-5 w-auto shrink-0 select-none grayscale opacity-55 md:h-6 md:opacity-60'
           height={logo.height || 'auto'}
           key={`group-${index}-logo-${logo.alt}`}
           loading='eager'

@@ -118,12 +118,14 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
                 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.07) 30%, rgba(255,255,255,0.03) 80%, transparent)',
             }}
           >
-            <motion.span
-              className="absolute -start-[2.5px] h-[5px] w-[5px] rounded-full bg-white"
-              style={{ boxShadow: '0 0 10px 2px rgba(255,255,255,0.35)' }}
-              animate={{ top: ['0%', '100%'], opacity: [0, 1, 1, 0] }}
-              transition={{ duration: p.duration, repeat: Infinity, ease: 'easeInOut', delay: p.delay }}
-            />
+            {!reduce && (
+              <motion.span
+                className="absolute -start-[2.5px] h-[5px] w-[5px] rounded-full bg-white"
+                style={{ boxShadow: '0 0 10px 2px rgba(255,255,255,0.35)' }}
+                animate={{ top: ['0%', '100%'], opacity: [0, 1, 1, 0] }}
+                transition={{ duration: p.duration, repeat: Infinity, ease: 'easeInOut', delay: p.delay }}
+              />
+            )}
           </div>
         ))}
 
@@ -147,7 +149,7 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
           transition={{ duration: 0.6, delay: 0.08 }}
           className="mx-auto max-w-3xl leading-[1.08] text-5xl md:text-7xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60 mt-8"
         >
-          The best AI models. One balance.
+          Leading AI models. One balance.
         </motion.h1>
 
         <motion.p
@@ -156,7 +158,7 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
           transition={{ duration: 0.6, delay: 0.16 }}
           className="max-w-2xl text-white/55 text-lg mt-6 leading-relaxed"
         >
-          Chat, create images, and generate video in one workspace. Pay locally in DZD — no international card required.
+          Chat, create images, and generate video in one workspace. Use one shared balance and pay locally in DZD.
         </motion.p>
 
         {/* ── THE HOOK: interactive prompt bar ── */}
@@ -287,7 +289,7 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
           transition={{ duration: 0.6, delay: 0.42 }}
           className="mt-8 text-[11px] tracking-[0.12em] text-white/55"
         >
-          Edahabia · CIB · DZD payments
+          One workspace · Shared balance · DZD payments
         </motion.p>
 
         {/* Stats */}

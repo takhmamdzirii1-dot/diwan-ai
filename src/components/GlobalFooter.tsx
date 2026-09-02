@@ -12,7 +12,7 @@ const LINKS = [
 
 export default function GlobalFooter() {
   return (
-    <footer className="mt-32 border-t border-white/[0.05] py-12">
+    <footer className="border-t border-white/[0.05] py-12">
       <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-6">
         {/* Brand */}
         <div className="flex items-center gap-2.5">

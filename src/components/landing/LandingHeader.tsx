@@ -92,7 +92,7 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
     user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'You';
 
   const primaryBtn =
-    'h-9 rounded-xl bg-white text-black text-[12.5px] font-semibold hover:bg-gray-200 transition-colors cursor-pointer active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]';
+    'h-11 md:h-9 rounded-xl bg-white text-black text-[12.5px] font-semibold hover:bg-gray-200 transition-colors cursor-pointer active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]';
 
   const navLink = (l: (typeof NAV_LINKS)[number], onNavigate?: () => void) => (
     <a
@@ -130,7 +130,7 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="flex items-center gap-2.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 rounded-lg"
+          className="min-h-11 md:min-h-0 flex items-center gap-2.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 rounded-lg"
           aria-label="VANTRA — back to top"
         >
           <span className="h-8 w-8 rounded-lg border border-white/10 bg-white/[0.03] flex items-center justify-center">
@@ -188,7 +188,7 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
           )}
           {user && (
             <span
-              className="h-9 w-9 rounded-full bg-white/[0.10] border border-white/10 flex items-center justify-center text-[11px] font-bold text-white"
+              className="h-11 w-11 rounded-full bg-white/[0.10] border border-white/10 flex items-center justify-center text-[11px] font-bold text-white"
               title={displayName}
               aria-label={`Signed in as ${displayName}`}
             >
@@ -202,7 +202,7 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
             aria-expanded={menuOpen}
             aria-controls="vantra-mobile-menu"
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            className="h-9 w-9 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center text-white/80 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+            className="h-11 w-11 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center text-white/80 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
           >
             {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </button>

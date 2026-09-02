@@ -28,11 +28,6 @@ const TESTIMONIAL_ROWS: Testimonial[][] = [
       name: 'Lina H.',
       role: 'Founder — Dzair Labs',
     },
-    {
-      quote: 'The API is what Supabase did for databases, but for generative AI. One key. Done.',
-      name: 'Marc D.',
-      role: 'Staff Engineer — fintech, Paris',
-    },
   ],
   [
     {

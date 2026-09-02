@@ -212,7 +212,7 @@ export default function AuthModal({
                 <p className="text-xs text-[#94A3B8] mt-0.5">
                   {mode === 'signin'
                     ? 'Access your unified Algerian AI balance'
-                    : 'Get started with free models & credit packs'}
+                    : 'Bring Chat, Image and Video into one workspace'}
                 </p>
               </div>
             </div>
@@ -382,7 +382,7 @@ export default function AuthModal({
                 <Loader2 className="h-5 w-5 animate-spin text-[#050506]" />
               ) : (
                 <>
-                  <span>{mode === 'signin' ? 'Sign In to Account' : 'Create Free Account'}</span>
+                  <span>{mode === 'signin' ? 'Sign In to Account' : 'Create Account'}</span>
                   <ArrowRight className="h-4 w-4 text-[#050506]" />
                 </>
               )}

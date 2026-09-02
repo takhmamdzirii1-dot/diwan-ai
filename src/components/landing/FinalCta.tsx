@@ -6,7 +6,7 @@ import { Magnetic } from './ui';
 
 export default function FinalCta({ onGetStarted }: { onGetStarted: () => void }) {
   return (
-    <section className="relative bg-[#050505] py-40 overflow-hidden">
+    <section className="relative bg-[#050505] py-40 overflow-hidden border-t border-white/[0.05]">
       {/* Center glow */}
       <div
         className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_45%_45%_at_50%_55%,rgba(255,255,255,0.06),transparent_70%)]"
@@ -19,9 +19,9 @@ export default function FinalCta({ onGetStarted }: { onGetStarted: () => void })
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          className="text-4xl md:text-6xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60"
+          className="text-4xl md:text-6xl font-extrabold tracking-tight text-white"
         >
-          Start building the impossible.
+          Create across every medium.
         </motion.h2>
 
         <motion.p
@@ -31,7 +31,7 @@ export default function FinalCta({ onGetStarted }: { onGetStarted: () => void })
           transition={{ duration: 0.6, delay: 0.15 }}
           className="mt-6 text-white/50 text-lg"
         >
-          Your first generations are free. The only thing you'll regret is the time you spent before this.
+          Bring Chat, Image and Video together in one workspace with one shared VANTRA balance.
         </motion.p>
 
         <motion.div
@@ -45,9 +45,9 @@ export default function FinalCta({ onGetStarted }: { onGetStarted: () => void })
             <button
               type="button"
               onClick={onGetStarted}
-              className="h-13 px-10 py-3.5 rounded-xl bg-white text-black text-[15px] font-semibold hover:bg-gray-200 transition-colors cursor-pointer active:scale-[0.98] shadow-[0_0_60px_-10px_rgba(255,255,255,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]"
+              className="h-13 px-10 py-3.5 rounded-xl bg-white text-black text-[15px] font-semibold hover:bg-gray-200 transition-colors cursor-pointer active:scale-[0.98] shadow-[0_12px_32px_-18px_rgba(255,255,255,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]"
             >
-              Create your free account
+              Create your VANTRA account
             </button>
           </Magnetic>
         </motion.div>
