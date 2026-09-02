@@ -252,9 +252,9 @@
     "semantic_hash": "76c1054e7abc1e30094a5558600705e2"
   },
   "next-env.d.ts": {
-    "mtime": 1788320608.5817764,
-    "seen": 1788320730.5212653,
-    "ast_hash": "aa94238a90e7d04b7a47ecc3145ba6a0",
+    "mtime": 1788321957.9282396,
+    "seen": 1788322104.893863,
+    "ast_hash": "8195d2c60ce847a459ae9d308d6a5724",
     "semantic_hash": ""
   },
   "next.config.mjs": {
@@ -324,9 +324,9 @@
     "semantic_hash": ""
   },
   "src/components/AuthModal.tsx": {
-    "mtime": 1787813906.592797,
-    "seen": 1787814403.3448625,
-    "ast_hash": "4fbd9f27f8606ede6ca0f5db35d28846",
+    "mtime": 1788322082.7681172,
+    "seen": 1788322104.9119413,
+    "ast_hash": "f5709ad250c261f7a8a5f12a6c3b1fa1",
     "semantic_hash": ""
   },
   "src/components/ClosingCtaSection.tsx": {
@@ -366,9 +366,9 @@
     "semantic_hash": "88929ce10deff03a7978c0141306a4f6"
   },
   "src/components/HeroSection.tsx": {
-    "mtime": 1788058267.8944743,
-    "seen": 1788059879.7859862,
-    "ast_hash": "51ed9835b6d73bcca4a39a324d1990f4",
+    "mtime": 1788321887.368446,
+    "seen": 1788321933.4033988,
+    "ast_hash": "4c11d41a934f5bc2a0998bda4409866c",
     "semantic_hash": ""
   },
   "src/components/HowItWorksSection.tsx": {
@@ -786,9 +786,9 @@
     "semantic_hash": ""
   },
   "src/components/GlobalFooter.tsx": {
-    "mtime": 1787947445.544598,
-    "seen": 1787947650.7839468,
-    "ast_hash": "33e6784acd8d041956d1009bcfcdf07e",
+    "mtime": 1788321903.02257,
+    "seen": 1788321933.4029381,
+    "ast_hash": "93a517a6366241fd145233f4bb0d962c",
     "semantic_hash": ""
   },
   "src/components/GlobalPricing.tsx": {
@@ -816,9 +816,9 @@
     "semantic_hash": ""
   },
   "src/components/landing/FinalCta.tsx": {
-    "mtime": 1787948327.6799786,
-    "seen": 1787948736.8713694,
-    "ast_hash": "02e3aa8c27f326f29b0cffc7b8563392",
+    "mtime": 1788321899.1406121,
+    "seen": 1788321933.4058046,
+    "ast_hash": "331368894ec0e129209c5ff00b415650",
     "semantic_hash": ""
   },
   "src/components/landing/HowItWorks.tsx": {
@@ -834,15 +834,15 @@
     "semantic_hash": ""
   },
   "src/components/landing/Testimonials.tsx": {
-    "mtime": 1788318344.9509628,
-    "seen": 1788318416.5360627,
-    "ast_hash": "43166ca7ead0212fddb535d119b7d976",
+    "mtime": 1788321914.6530285,
+    "seen": 1788321933.4062746,
+    "ast_hash": "50ab2bb184c86904d37f1fad63aac0af",
     "semantic_hash": ""
   },
   "src/components/landing/ui.tsx": {
-    "mtime": 1787948142.053439,
-    "seen": 1787948736.8713753,
-    "ast_hash": "e78cc139a1038636072bd48dbbad4730",
+    "mtime": 1788321910.7552705,
+    "seen": 1788321933.406507,
+    "ast_hash": "106c591d1124d1bf11277f8d13bebe19",
     "semantic_hash": ""
   },
   "scripts/verify-journey.mjs": {
@@ -858,9 +858,9 @@
     "semantic_hash": ""
   },
   "src/components/landing/LandingHeader.tsx": {
-    "mtime": 1788059006.2728472,
-    "seen": 1788059879.7896616,
-    "ast_hash": "81a3f23eea842b26def0f1dcd629151e",
+    "mtime": 1788321906.8761845,
+    "seen": 1788321933.4060426,
+    "ast_hash": "21c1a8bee09809bbd15f85cc0f5dd393",
     "semantic_hash": ""
   },
   "components/ui/liquid-metal-button.tsx": {
@@ -1056,9 +1056,9 @@
     "semantic_hash": ""
   },
   "src/components/landing/PartnersSection.tsx": {
-    "mtime": 1788139841.9591885,
-    "seen": 1788142701.1300302,
-    "ast_hash": "79667c322ece5aa5629ddd02851cdefb",
+    "mtime": 1788321891.2247343,
+    "seen": 1788321933.4060457,
+    "ast_hash": "b0b667d6b8739584a5976af6c4228401",
     "semantic_hash": ""
   },
   "components/ui/infinite-slider.tsx": {
@@ -1068,9 +1068,9 @@
     "semantic_hash": ""
   },
   "components/ui/logo-cloud-3.tsx": {
-    "mtime": 1788139841.9254758,
-    "seen": 1788142701.129845,
-    "ast_hash": "12b4335a6ac1691b7ca0d5fbc73568c0",
+    "mtime": 1788321895.087623,
+    "seen": 1788321933.3766096,
+    "ast_hash": "50fa6c9da3574440b75e09105ce0397d",
     "semantic_hash": ""
   },
   "scripts/verify-logo.mjs": {
@@ -1123,8 +1123,8 @@
   },
   "supabase/migrations/user_provider_connections.sql": {
     "mtime": 1787985901.4500034,
-    "seen": 1788320730.5213947,
-    "ast_hash": "",
+    "seen": 1788322201.7142527,
+    "ast_hash": "4cf1f8dc6e37eac4a6f8e7784666875b",
     "semantic_hash": ""
   },
   "public/showcase/chat-preview.png": {

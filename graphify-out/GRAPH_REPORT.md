@@ -1,7 +1,7 @@
 # Graph Report - diwan-ai-main  (2026-09-02)
 
 ## Corpus Check
-- 187 files · ~259,412 words
+- 187 files · ~259,411 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `7abf80c3`
+- Built from commit: `a1de83e2`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -44,7 +44,6 @@
 - react
 - dependencies
 - MediaLibrary.tsx
-- @ai-sdk/openai
 - @supabase/supabase-js
 - tailwind-merge
 - @tailwindcss/postcss
@@ -83,6 +82,7 @@
 - react-use-measure
 - verify-hero-copy.mjs
 - verify-navbar.mjs
+- ai
 
 ## God Nodes (most connected - your core abstractions)
 1. `cn()` - 57 edges
@@ -163,7 +163,7 @@ Nodes (3): errors, out, t0
 
 ### Community 30 - "dependencies"
 Cohesion: 0.22
-Nodes (9): ai, dependencies, ai, react-dom, react-markdown, @supabase/ssr, react-dom, react-markdown (+1 more)
+Nodes (9): @ai-sdk/openai, dependencies, @ai-sdk/openai, react-dom, react-markdown, @supabase/ssr, react-dom, react-markdown (+1 more)
 
 ### Community 31 - "MediaLibrary.tsx"
 Cohesion: 0.19

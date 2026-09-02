@@ -31,7 +31,6 @@
   "29": "react",
   "30": "dependencies",
   "31": "MediaLibrary.tsx",
-  "32": "@ai-sdk/openai",
   "34": "@supabase/supabase-js",
   "35": "tailwind-merge",
   "36": "@tailwindcss/postcss",
@@ -127,5 +126,6 @@
   "129": "verify-logo.mjs",
   "130": "verify-cta-base.mjs",
   "131": "verify-hero-copy.mjs",
-  "133": "verify-navbar.mjs"
+  "133": "verify-navbar.mjs",
+  "136": "ai"
 }

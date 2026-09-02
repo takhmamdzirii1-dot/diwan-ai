@@ -1123,7 +1123,7 @@
   },
   "supabase/migrations/user_provider_connections.sql": {
     "mtime": 1787985901.4500034,
-    "seen": 1788320730.5213947,
+    "seen": 1788322201.7142527,
     "ast_hash": "",
     "semantic_hash": ""
   },

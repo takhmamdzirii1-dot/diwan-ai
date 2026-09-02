@@ -3413,6 +3413,28 @@
       "source_location": "L4"
     },
     {
+      "id": "package_dependencies_ai",
+      "label": "ai",
+      "_origin": "ast",
+      "community": 136,
+      "community_name": "ai",
+      "file_type": "code",
+      "norm_label": "ai",
+      "source_file": "package.json",
+      "source_location": "L24"
+    },
+    {
+      "id": "ai",
+      "label": "ai",
+      "_origin": "ast",
+      "community": 136,
+      "community_name": "ai",
+      "file_type": "concept",
+      "norm_label": "ai",
+      "source_file": "package.json",
+      "source_location": "L24"
+    },
+    {
       "id": "scripts_gold_theme",
       "label": "gold-theme.mjs",
       "_origin": "ast",
@@ -4736,15 +4758,15 @@
       "source_location": "L12"
     },
     {
-      "id": "package_dependencies_ai",
-      "label": "ai",
+      "id": "package_dependencies_ai_sdk_openai",
+      "label": "@ai-sdk/openai",
       "_origin": "ast",
       "community": 30,
       "community_name": "dependencies",
       "file_type": "code",
-      "norm_label": "ai",
+      "norm_label": "@ai-sdk/openai",
       "source_file": "package.json",
-      "source_location": "L24"
+      "source_location": "L13"
     },
     {
       "id": "package_dependencies_react_dom",
@@ -4780,15 +4802,15 @@
       "source_location": "L18"
     },
     {
-      "id": "ai",
-      "label": "ai",
+      "id": "ai_sdk_openai",
+      "label": "@ai-sdk/openai",
       "_origin": "ast",
       "community": 30,
       "community_name": "dependencies",
       "file_type": "concept",
-      "norm_label": "ai",
+      "norm_label": "@ai-sdk/openai",
       "source_file": "package.json",
-      "source_location": "L24"
+      "source_location": "L13"
     },
     {
       "id": "react_dom",
@@ -4877,28 +4899,6 @@
       "norm_label": "filters",
       "source_file": "src/components/studio/MediaLibrary.tsx",
       "source_location": "L29"
-    },
-    {
-      "id": "package_dependencies_ai_sdk_openai",
-      "label": "@ai-sdk/openai",
-      "_origin": "ast",
-      "community": 32,
-      "community_name": "@ai-sdk/openai",
-      "file_type": "code",
-      "norm_label": "@ai-sdk/openai",
-      "source_file": "package.json",
-      "source_location": "L13"
-    },
-    {
-      "id": "ai_sdk_openai",
-      "label": "@ai-sdk/openai",
-      "_origin": "ast",
-      "community": 32,
-      "community_name": "@ai-sdk/openai",
-      "file_type": "concept",
-      "norm_label": "@ai-sdk/openai",
-      "source_file": "package.json",
-      "source_location": "L13"
     },
     {
       "id": "package_dependencies_supabase_supabase_js",
@@ -17173,5 +17173,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "7abf80c3bbea654d6bf4f7f2b23590099cc15ce7"
+  "built_at_commit": "a1de83e2115a431dd3562f4656479a370cb84c58"
 }
