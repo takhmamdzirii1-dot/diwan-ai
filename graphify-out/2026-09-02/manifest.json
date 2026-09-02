@@ -252,8 +252,8 @@
     "semantic_hash": "76c1054e7abc1e30094a5558600705e2"
   },
   "next-env.d.ts": {
-    "mtime": 1788059552.1585715,
-    "seen": 1788059879.7690518,
+    "mtime": 1788317590.3774974,
+    "seen": 1788317609.613245,
     "ast_hash": "8195d2c60ce847a459ae9d308d6a5724",
     "semantic_hash": ""
   },
@@ -390,9 +390,9 @@
     "semantic_hash": ""
   },
   "src/components/OriginalLandingPage.tsx": {
-    "mtime": 1788217594.6855373,
-    "seen": 1788219139.254494,
-    "ast_hash": "e21e2fb7f1ab7d716f3c1fcb997bc53d",
+    "mtime": 1788317551.167688,
+    "seen": 1788317568.4376984,
+    "ast_hash": "1a0d38706d82266303bb41106d166aab",
     "semantic_hash": ""
   },
   "src/components/ShimmerButton.tsx": {
@@ -1123,7 +1123,7 @@
   },
   "supabase/migrations/user_provider_connections.sql": {
     "mtime": 1787985901.4500034,
-    "seen": 1788219139.2545886,
+    "seen": 1788317609.6134515,
     "ast_hash": "4cf1f8dc6e37eac4a6f8e7784666875b",
     "semantic_hash": ""
   },
@@ -1149,6 +1149,12 @@
     "mtime": 1788217594.6621544,
     "seen": 1788219139.2542605,
     "ast_hash": "fe72652dca3d44b1e9f159e67ee239da",
+    "semantic_hash": ""
+  },
+  "src/components/landing/WhyVantra.tsx": {
+    "mtime": 1788317337.4777749,
+    "seen": 1788317533.0547273,
+    "ast_hash": "a65431a2eb7226485b2ad4328b80cee9",
     "semantic_hash": ""
   }
 }

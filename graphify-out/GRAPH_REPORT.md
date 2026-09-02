@@ -1,7 +1,7 @@
 # Graph Report - diwan-ai-main  (2026-09-02)
 
 ## Corpus Check
-- 187 files · ~259,305 words
+- 187 files · ~259,310 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,13 +10,13 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `0d70c209`
+- Built from commit: `b9d91ba1`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - src/components/LiveLedgerCard.tsx
-- lucide-react
+- TerminalShowcase.tsx
 - devDependencies
 - verify-final.mjs
 - compilerOptions
@@ -42,7 +42,7 @@
 - next.config.mjs
 - next-env.d.ts
 - next
-- TerminalShowcase.tsx
+- Testimonials.tsx
 - react
 - dependencies
 - MediaLibrary.tsx
@@ -54,7 +54,7 @@
 - @tailwindcss/typography
 - @tailwindcss/vite
 - @vitejs/plugin-react
-- Testimonials.tsx
+- lucide-react
 - VANTRA — SELF WORK RULES (متعهد أنفذها في كل تعديل)
 - VANTRA Studio — Project Identity
 - DashboardSidebar.tsx
@@ -70,7 +70,6 @@
 - modelsData.js
 - translations.js
 - verify-lm3.mjs
-- ai
 - verify-journey.mjs
 - remark-gfm
 - verify-standard.mjs
@@ -90,6 +89,7 @@
 - verify-hero-copy.mjs
 - framer-motion
 - verify-navbar.mjs
+- @ai-sdk/openai
 
 ## God Nodes (most connected - your core abstractions)
 1. `cn()` - 57 edges
@@ -123,6 +123,10 @@
 ### Community 0 - "src/components/LiveLedgerCard.tsx"
 Cohesion: 0.06
 Nodes (23): cairo, ibmPlexMono, inter, metadata, AmbientMotionBackground(), AmbientMotionBackgroundProps, FAQS, FEATURES (+15 more)
+
+### Community 1 - "TerminalShowcase.tsx"
+Cohesion: 0.40
+Nodes (5): cn2(), Line, SCRIPT, TerminalShowcase(), TONE_CLASS
 
 ### Community 2 - "devDependencies"
 Cohesion: 0.07
@@ -172,13 +176,13 @@ Nodes (8): Faq(), FAQS, FinalCta(), HowItWorks(), STEPS, Magnetic(), SectionHead
 Cohesion: 0.50
 Nodes (3): errors, out, t0
 
-### Community 28 - "TerminalShowcase.tsx"
-Cohesion: 0.40
-Nodes (5): cn2(), Line, SCRIPT, TerminalShowcase(), TONE_CLASS
+### Community 28 - "Testimonials.tsx"
+Cohesion: 0.33
+Nodes (4): Quote, ROW_ONE, ROW_TWO, Testimonials()
 
 ### Community 30 - "dependencies"
 Cohesion: 0.22
-Nodes (9): @ai-sdk/openai, dependencies, @ai-sdk/openai, react-dom, react-markdown, @supabase/ssr, react-dom, react-markdown (+1 more)
+Nodes (9): ai, dependencies, ai, react-dom, react-markdown, @supabase/ssr, react-dom, react-markdown (+1 more)
 
 ### Community 31 - "MediaLibrary.tsx"
 Cohesion: 0.19
@@ -191,10 +195,6 @@ Nodes (29): AttachedFile, ChatModelOption, ClaudeChatInput(), ClaudeChatInputPro
 ### Community 33 - "components/ui/logo-cloud-3.tsx"
 Cohesion: 0.33
 Nodes (5): Logo, LogoCloud(), LogoCloudProps, logos, PartnersSection()
-
-### Community 40 - "Testimonials.tsx"
-Cohesion: 0.33
-Nodes (4): Quote, ROW_ONE, ROW_TWO, Testimonials()
 
 ### Community 67 - "VANTRA — SELF WORK RULES (متعهد أنفذها في كل تعديل)"
 Cohesion: 0.33

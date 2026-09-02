@@ -108,6 +108,19 @@
       "source_location": "L5"
     },
     {
+      "id": "src_components_landing_terminalshowcase_line",
+      "label": "Line",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "TerminalShowcase.tsx",
+      "file_type": "code",
+      "norm_label": "line",
+      "source_file": "src/components/landing/TerminalShowcase.tsx",
+      "source_location": "L8"
+    },
+    {
       "id": "src_components_landing_landingheader_landingheaderprops",
       "label": "LandingHeaderProps",
       "_callable": true,
@@ -238,17 +251,17 @@
       "source_location": "L21"
     },
     {
-      "id": "src_components_landing_terminalshowcase_line",
-      "label": "Line",
+      "id": "src_components_landing_testimonials_quote",
+      "label": "Quote",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 28,
-      "community_name": "TerminalShowcase.tsx",
+      "community_name": "Testimonials.tsx",
       "file_type": "code",
-      "norm_label": "line",
-      "source_file": "src/components/landing/TerminalShowcase.tsx",
-      "source_location": "L8"
+      "norm_label": "quote",
+      "source_file": "src/components/landing/Testimonials.tsx",
+      "source_location": "L7"
     },
     {
       "id": "src_components_studio_imageresultcard_generatedimage",
@@ -431,19 +444,6 @@
       "norm_label": "logocloudprops",
       "source_file": "components/ui/logo-cloud-3.tsx",
       "source_location": "L14"
-    },
-    {
-      "id": "src_components_landing_testimonials_quote",
-      "label": "Quote",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 40,
-      "community_name": "Testimonials.tsx",
-      "file_type": "code",
-      "norm_label": "quote",
-      "source_file": "src/components/landing/Testimonials.tsx",
-      "source_location": "L7"
     },
     {
       "id": "src_components_studio_videoconfigpopover_cameramotion",
@@ -956,6 +956,30 @@
       "source_location": "L12"
     },
     {
+      "id": "src_components_landing_terminalshowcase_cn2",
+      "label": "cn2()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "TerminalShowcase.tsx",
+      "file_type": "code",
+      "norm_label": "cn2()",
+      "source_file": "src/components/landing/TerminalShowcase.tsx",
+      "source_location": "L156"
+    },
+    {
+      "id": "src_components_landing_terminalshowcase_terminalshowcase",
+      "label": "TerminalShowcase()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "TerminalShowcase.tsx",
+      "file_type": "code",
+      "norm_label": "terminalshowcase()",
+      "source_file": "src/components/landing/TerminalShowcase.tsx",
+      "source_location": "L34"
+    },
+    {
       "id": "src_components_globalfooter_globalfooter",
       "label": "GlobalFooter()",
       "_callable": true,
@@ -1184,28 +1208,28 @@
       "source_location": "L45"
     },
     {
-      "id": "src_components_landing_terminalshowcase_cn2",
-      "label": "cn2()",
+      "id": "src_components_landing_testimonials_marqueerow",
+      "label": "MarqueeRow()",
       "_callable": true,
       "_origin": "ast",
       "community": 28,
-      "community_name": "TerminalShowcase.tsx",
+      "community_name": "Testimonials.tsx",
       "file_type": "code",
-      "norm_label": "cn2()",
-      "source_file": "src/components/landing/TerminalShowcase.tsx",
-      "source_location": "L156"
+      "norm_label": "marqueerow()",
+      "source_file": "src/components/landing/Testimonials.tsx",
+      "source_location": "L59"
     },
     {
-      "id": "src_components_landing_terminalshowcase_terminalshowcase",
-      "label": "TerminalShowcase()",
+      "id": "src_components_landing_testimonials_testimonials",
+      "label": "Testimonials()",
       "_callable": true,
       "_origin": "ast",
       "community": 28,
-      "community_name": "TerminalShowcase.tsx",
+      "community_name": "Testimonials.tsx",
       "file_type": "code",
-      "norm_label": "terminalshowcase()",
-      "source_file": "src/components/landing/TerminalShowcase.tsx",
-      "source_location": "L34"
+      "norm_label": "testimonials()",
+      "source_file": "src/components/landing/Testimonials.tsx",
+      "source_location": "L99"
     },
     {
       "id": "src_components_studio_imageresultcard_appendtoimagelibrary",
@@ -1566,30 +1590,6 @@
       "norm_label": "partnerssection()",
       "source_file": "src/components/landing/PartnersSection.tsx",
       "source_location": "L40"
-    },
-    {
-      "id": "src_components_landing_testimonials_marqueerow",
-      "label": "MarqueeRow()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 40,
-      "community_name": "Testimonials.tsx",
-      "file_type": "code",
-      "norm_label": "marqueerow()",
-      "source_file": "src/components/landing/Testimonials.tsx",
-      "source_location": "L59"
-    },
-    {
-      "id": "src_components_landing_testimonials_testimonials",
-      "label": "Testimonials()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 40,
-      "community_name": "Testimonials.tsx",
-      "file_type": "code",
-      "norm_label": "testimonials()",
-      "source_file": "src/components/landing/Testimonials.tsx",
-      "source_location": "L99"
     },
     {
       "id": "src_components_footer_footer",
@@ -2707,26 +2707,37 @@
       "source_location": "L1"
     },
     {
-      "id": "package_dependencies_lucide_react",
-      "label": "lucide-react",
+      "id": "src_components_landing_terminalshowcase",
+      "label": "TerminalShowcase.tsx",
       "_origin": "ast",
       "community": 1,
-      "community_name": "lucide-react",
+      "community_name": "TerminalShowcase.tsx",
       "file_type": "code",
-      "norm_label": "lucide-react",
-      "source_file": "package.json",
-      "source_location": "L29"
+      "norm_label": "terminalshowcase.tsx",
+      "source_file": "src/components/landing/TerminalShowcase.tsx",
+      "source_location": "L1"
     },
     {
-      "id": "lucide_react",
-      "label": "lucide-react",
+      "id": "src_components_landing_terminalshowcase_script",
+      "label": "SCRIPT",
       "_origin": "ast",
       "community": 1,
-      "community_name": "lucide-react",
-      "file_type": "concept",
-      "norm_label": "lucide-react",
-      "source_file": "package.json",
-      "source_location": "L29"
+      "community_name": "TerminalShowcase.tsx",
+      "file_type": "code",
+      "norm_label": "script",
+      "source_file": "src/components/landing/TerminalShowcase.tsx",
+      "source_location": "L13"
+    },
+    {
+      "id": "src_components_landing_terminalshowcase_tone_class",
+      "label": "TONE_CLASS",
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "TerminalShowcase.tsx",
+      "file_type": "code",
+      "norm_label": "tone_class",
+      "source_file": "src/components/landing/TerminalShowcase.tsx",
+      "source_location": "L26"
     },
     {
       "id": "src_components_globalfooter",
@@ -2850,26 +2861,15 @@
       "source_location": "L1"
     },
     {
-      "id": "package_dependencies_ai",
-      "label": "ai",
+      "id": "next_next",
+      "label": "next",
       "_origin": "ast",
       "community": 104,
-      "community_name": "ai",
+      "community_name": "next",
+      "confidence": "EXTRACTED",
       "file_type": "code",
-      "norm_label": "ai",
-      "source_file": "package.json",
-      "source_location": "L24"
-    },
-    {
-      "id": "ai",
-      "label": "ai",
-      "_origin": "ast",
-      "community": 104,
-      "community_name": "ai",
-      "file_type": "concept",
-      "norm_label": "ai",
-      "source_file": "package.json",
-      "source_location": "L24"
+      "norm_label": "next",
+      "source_file": "next"
     },
     {
       "id": "scripts_verify_journey",
@@ -3510,26 +3510,37 @@
       "source_location": "L4"
     },
     {
-      "id": "next_next",
-      "label": "next",
-      "_origin": "ast",
-      "community": 134,
-      "community_name": "next",
-      "confidence": "EXTRACTED",
-      "file_type": "code",
-      "norm_label": "next",
-      "source_file": "next"
-    },
-    {
       "id": "tailwindcss_tailwindcss",
       "label": "tailwindcss",
       "_origin": "ast",
-      "community": 135,
+      "community": 134,
       "community_name": "tailwindcss",
       "confidence": "EXTRACTED",
       "file_type": "code",
       "norm_label": "tailwindcss",
       "source_file": "tailwindcss"
+    },
+    {
+      "id": "package_dependencies_ai_sdk_openai",
+      "label": "@ai-sdk/openai",
+      "_origin": "ast",
+      "community": 135,
+      "community_name": "@ai-sdk/openai",
+      "file_type": "code",
+      "norm_label": "@ai-sdk/openai",
+      "source_file": "package.json",
+      "source_location": "L13"
+    },
+    {
+      "id": "ai_sdk_openai",
+      "label": "@ai-sdk/openai",
+      "_origin": "ast",
+      "community": 135,
+      "community_name": "@ai-sdk/openai",
+      "file_type": "concept",
+      "norm_label": "@ai-sdk/openai",
+      "source_file": "package.json",
+      "source_location": "L13"
     },
     {
       "id": "scripts_gold_theme",
@@ -4525,37 +4536,37 @@
       "source_location": "L31"
     },
     {
-      "id": "src_components_landing_terminalshowcase",
-      "label": "TerminalShowcase.tsx",
+      "id": "src_components_landing_testimonials",
+      "label": "Testimonials.tsx",
       "_origin": "ast",
       "community": 28,
-      "community_name": "TerminalShowcase.tsx",
+      "community_name": "Testimonials.tsx",
       "file_type": "code",
-      "norm_label": "terminalshowcase.tsx",
-      "source_file": "src/components/landing/TerminalShowcase.tsx",
+      "norm_label": "testimonials.tsx",
+      "source_file": "src/components/landing/Testimonials.tsx",
       "source_location": "L1"
     },
     {
-      "id": "src_components_landing_terminalshowcase_script",
-      "label": "SCRIPT",
+      "id": "src_components_landing_testimonials_row_one",
+      "label": "ROW_ONE",
       "_origin": "ast",
       "community": 28,
-      "community_name": "TerminalShowcase.tsx",
+      "community_name": "Testimonials.tsx",
       "file_type": "code",
-      "norm_label": "script",
-      "source_file": "src/components/landing/TerminalShowcase.tsx",
+      "norm_label": "row_one",
+      "source_file": "src/components/landing/Testimonials.tsx",
       "source_location": "L13"
     },
     {
-      "id": "src_components_landing_terminalshowcase_tone_class",
-      "label": "TONE_CLASS",
+      "id": "src_components_landing_testimonials_row_two",
+      "label": "ROW_TWO",
       "_origin": "ast",
       "community": 28,
-      "community_name": "TerminalShowcase.tsx",
+      "community_name": "Testimonials.tsx",
       "file_type": "code",
-      "norm_label": "tone_class",
-      "source_file": "src/components/landing/TerminalShowcase.tsx",
-      "source_location": "L26"
+      "norm_label": "row_two",
+      "source_file": "src/components/landing/Testimonials.tsx",
+      "source_location": "L36"
     },
     {
       "id": "package_dependencies_react",
@@ -4613,15 +4624,15 @@
       "source_location": "L12"
     },
     {
-      "id": "package_dependencies_ai_sdk_openai",
-      "label": "@ai-sdk/openai",
+      "id": "package_dependencies_ai",
+      "label": "ai",
       "_origin": "ast",
       "community": 30,
       "community_name": "dependencies",
       "file_type": "code",
-      "norm_label": "@ai-sdk/openai",
+      "norm_label": "ai",
       "source_file": "package.json",
-      "source_location": "L13"
+      "source_location": "L24"
     },
     {
       "id": "package_dependencies_react_dom",
@@ -4657,15 +4668,15 @@
       "source_location": "L18"
     },
     {
-      "id": "ai_sdk_openai",
-      "label": "@ai-sdk/openai",
+      "id": "ai",
+      "label": "ai",
       "_origin": "ast",
       "community": 30,
       "community_name": "dependencies",
       "file_type": "concept",
-      "norm_label": "@ai-sdk/openai",
+      "norm_label": "ai",
       "source_file": "package.json",
-      "source_location": "L13"
+      "source_location": "L24"
     },
     {
       "id": "react_dom",
@@ -5416,37 +5427,26 @@
       "source_location": "L31"
     },
     {
-      "id": "src_components_landing_testimonials",
-      "label": "Testimonials.tsx",
+      "id": "package_dependencies_lucide_react",
+      "label": "lucide-react",
       "_origin": "ast",
       "community": 40,
-      "community_name": "Testimonials.tsx",
+      "community_name": "lucide-react",
       "file_type": "code",
-      "norm_label": "testimonials.tsx",
-      "source_file": "src/components/landing/Testimonials.tsx",
-      "source_location": "L1"
+      "norm_label": "lucide-react",
+      "source_file": "package.json",
+      "source_location": "L29"
     },
     {
-      "id": "src_components_landing_testimonials_row_one",
-      "label": "ROW_ONE",
+      "id": "lucide_react",
+      "label": "lucide-react",
       "_origin": "ast",
       "community": 40,
-      "community_name": "Testimonials.tsx",
-      "file_type": "code",
-      "norm_label": "row_one",
-      "source_file": "src/components/landing/Testimonials.tsx",
-      "source_location": "L13"
-    },
-    {
-      "id": "src_components_landing_testimonials_row_two",
-      "label": "ROW_TWO",
-      "_origin": "ast",
-      "community": 40,
-      "community_name": "Testimonials.tsx",
-      "file_type": "code",
-      "norm_label": "row_two",
-      "source_file": "src/components/landing/Testimonials.tsx",
-      "source_location": "L36"
+      "community_name": "lucide-react",
+      "file_type": "concept",
+      "norm_label": "lucide-react",
+      "source_file": "package.json",
+      "source_location": "L29"
     },
     {
       "id": "src_components_footer",
@@ -17151,5 +17151,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "0d70c209e888fdff64adc6f35c6c88dd2d1072c4"
+  "built_at_commit": "b9d91ba1ed9443b2c236e3bfebe01f2352a0527e"
 }
