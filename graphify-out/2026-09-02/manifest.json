@@ -252,8 +252,8 @@
     "semantic_hash": "76c1054e7abc1e30094a5558600705e2"
   },
   "next-env.d.ts": {
-    "mtime": 1788317590.3774974,
-    "seen": 1788317609.613245,
+    "mtime": 1788318393.8540592,
+    "seen": 1788318416.513382,
     "ast_hash": "8195d2c60ce847a459ae9d308d6a5724",
     "semantic_hash": ""
   },
@@ -822,9 +822,9 @@
     "semantic_hash": ""
   },
   "src/components/landing/HowItWorks.tsx": {
-    "mtime": 1787948173.532367,
-    "seen": 1787948736.871371,
-    "ast_hash": "0f6dbd4e719c5da4db907a75223132e4",
+    "mtime": 1788318341.188872,
+    "seen": 1788318416.5352235,
+    "ast_hash": "114d464f2312ff96fe848aaf2d52ca99",
     "semantic_hash": ""
   },
   "src/components/landing/TerminalShowcase.tsx": {
@@ -834,9 +834,9 @@
     "semantic_hash": ""
   },
   "src/components/landing/Testimonials.tsx": {
-    "mtime": 1787948262.3549166,
-    "seen": 1787948736.8713741,
-    "ast_hash": "a7b583f31248fd59d6252793c4759d4c",
+    "mtime": 1788318344.9509628,
+    "seen": 1788318416.5360627,
+    "ast_hash": "43166ca7ead0212fddb535d119b7d976",
     "semantic_hash": ""
   },
   "src/components/landing/ui.tsx": {
@@ -1123,8 +1123,8 @@
   },
   "supabase/migrations/user_provider_connections.sql": {
     "mtime": 1787985901.4500034,
-    "seen": 1788317609.6134515,
-    "ast_hash": "",
+    "seen": 1788318442.1626422,
+    "ast_hash": "4cf1f8dc6e37eac4a6f8e7784666875b",
     "semantic_hash": ""
   },
   "public/showcase/chat-preview.png": {

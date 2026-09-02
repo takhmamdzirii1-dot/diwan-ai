@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `61f97b6d`
+- Built from commit: `e3409b29`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -62,7 +62,6 @@
 - transcribe/route.ts
 - src/components/ui/logo-cloud-3.tsx
 - verify-showcase.mjs
-- ai
 - generate-image/route.ts
 - verify-stats-polish.mjs
 - verify-motion-studio.mjs
@@ -70,6 +69,7 @@
 - modelsData.js
 - translations.js
 - verify-lm3.mjs
+- clsx
 - verify-journey.mjs
 - remark-gfm
 - verify-standard.mjs
@@ -182,7 +182,7 @@ Nodes (4): MessageBubble(), MessageBubbleProps, useSmoothText(), detectDir()
 
 ### Community 30 - "dependencies"
 Cohesion: 0.22
-Nodes (9): clsx, dependencies, clsx, react-dom, react-markdown, @supabase/ssr, react-dom, react-markdown (+1 more)
+Nodes (9): ai, dependencies, ai, react-dom, react-markdown, @supabase/ssr, react-dom, react-markdown (+1 more)
 
 ### Community 31 - "MediaLibrary.tsx"
 Cohesion: 0.19

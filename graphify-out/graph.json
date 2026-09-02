@@ -2784,15 +2784,26 @@
       "source_location": "L1"
     },
     {
-      "id": "next_next",
-      "label": "next",
+      "id": "package_dependencies_clsx",
+      "label": "clsx",
       "_origin": "ast",
       "community": 104,
-      "community_name": "next",
-      "confidence": "EXTRACTED",
+      "community_name": "clsx",
       "file_type": "code",
-      "norm_label": "next",
-      "source_file": "next"
+      "norm_label": "clsx",
+      "source_file": "package.json",
+      "source_location": "L25"
+    },
+    {
+      "id": "clsx",
+      "label": "clsx",
+      "_origin": "ast",
+      "community": 104,
+      "community_name": "clsx",
+      "file_type": "concept",
+      "norm_label": "clsx",
+      "source_file": "package.json",
+      "source_location": "L25"
     },
     {
       "id": "scripts_verify_journey",
@@ -4789,15 +4800,15 @@
       "source_location": "L12"
     },
     {
-      "id": "package_dependencies_clsx",
-      "label": "clsx",
+      "id": "package_dependencies_ai",
+      "label": "ai",
       "_origin": "ast",
       "community": 30,
       "community_name": "dependencies",
       "file_type": "code",
-      "norm_label": "clsx",
+      "norm_label": "ai",
       "source_file": "package.json",
-      "source_location": "L25"
+      "source_location": "L24"
     },
     {
       "id": "package_dependencies_react_dom",
@@ -4833,15 +4844,15 @@
       "source_location": "L18"
     },
     {
-      "id": "clsx",
-      "label": "clsx",
+      "id": "ai",
+      "label": "ai",
       "_origin": "ast",
       "community": 30,
       "community_name": "dependencies",
       "file_type": "concept",
-      "norm_label": "clsx",
+      "norm_label": "ai",
       "source_file": "package.json",
-      "source_location": "L25"
+      "source_location": "L24"
     },
     {
       "id": "react_dom",
@@ -6668,26 +6679,15 @@
       "source_location": "L1"
     },
     {
-      "id": "package_dependencies_ai",
-      "label": "ai",
+      "id": "next_next",
+      "label": "next",
       "_origin": "ast",
       "community": 85,
-      "community_name": "ai",
+      "community_name": "next",
+      "confidence": "EXTRACTED",
       "file_type": "code",
-      "norm_label": "ai",
-      "source_file": "package.json",
-      "source_location": "L24"
-    },
-    {
-      "id": "ai",
-      "label": "ai",
-      "_origin": "ast",
-      "community": 85,
-      "community_name": "ai",
-      "file_type": "concept",
-      "norm_label": "ai",
-      "source_file": "package.json",
-      "source_location": "L24"
+      "norm_label": "next",
+      "source_file": "next"
     },
     {
       "id": "scripts_verify_liquid",
@@ -17129,5 +17129,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "61f97b6d8ed390773272c40a8ef468f72c6a4a3c"
+  "built_at_commit": "e3409b29e36647c804b67964798a98cf301ff628"
 }
