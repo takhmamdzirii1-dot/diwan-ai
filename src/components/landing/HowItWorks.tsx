@@ -10,19 +10,19 @@ const STEPS = [
     n: '01',
     icon: PenLine,
     title: 'Describe',
-    desc: 'Write a prompt in plain language — Darja, French, or English. The router picks the strongest engine for the job automatically.',
+    desc: 'Write a prompt in plain language for the result you want.',
   },
   {
     n: '02',
     icon: Sparkles,
     title: 'Generate',
-    desc: 'Text, images, or film — rendered on priority GPUs and streamed live as the result forms, token by token.',
+    desc: 'Create text, images, or video from the same workspace.',
   },
   {
     n: '03',
     icon: Download,
-    title: 'Own it',
-    desc: 'Download in full resolution with commercial rights included. No watermarks. No strings. Your work is yours.',
+    title: 'Download',
+    desc: 'Download generated images directly or revisit saved work in your media library.',
   },
 ];
 
@@ -35,43 +35,45 @@ export default function HowItWorks() {
   const lineScale = useSpring(scrollYProgress, { stiffness: 90, damping: 26 });
 
   return (
-    <section id="how" className="relative bg-[#050505] py-32 overflow-hidden">
+    <section id="how" className="relative overflow-hidden bg-[#050505] !py-14">
       <div className="max-w-6xl mx-auto px-6">
-        <SectionHeading
-          label="Workflow"
-          title="From thought to artifact in three moves."
-          sub="No model directories. No GPU wrangling. VANTRA collapses the entire AI stack into one calm surface."
-        />
+        <div className="[&_h2]:mt-3 [&_h2]:text-3xl md:[&_h2]:text-4xl [&_p:last-child]:mt-3 [&_p:last-child]:text-base">
+          <SectionHeading
+            label="Workflow"
+            title="From thought to artifact in three moves."
+            sub="Describe what you need, generate it, then take the result with you."
+          />
+        </div>
 
-        <div ref={ref} className="relative mt-24">
+        <div ref={ref} className="relative mt-12 md:mt-14">
           {/* Scroll-linked progress line */}
-          <div className="hidden md:block absolute top-[22px] inset-x-[16%] h-px bg-white/[0.07]" aria-hidden="true">
+          <div className="absolute top-[18px] inset-x-[16%] hidden h-px bg-white/[0.07] md:block" aria-hidden="true">
             <motion.div
               style={{ scaleX: lineScale }}
               className="h-full origin-left bg-white/70"
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-14 md:gap-8">
+          <div className="grid grid-cols-1 divide-y divide-white/[0.07] md:grid-cols-3 md:gap-8 md:divide-y-0">
             {STEPS.map((step, i) => {
               const Icon = step.icon;
               return (
                 <motion.div
                   key={step.n}
-                  initial={{ opacity: 0, y: 26 }}
+                  initial={{ opacity: 0, y: 16 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: '-80px' }}
-                  transition={{ duration: 0.55, delay: i * 0.12, ease: [0.22, 1, 0.36, 1] }}
-                  className="relative flex flex-col items-center text-center md:items-start md:text-start"
+                  transition={{ duration: 0.45, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
+                  className="relative flex flex-col py-6 first:pt-0 last:pb-0 md:items-start md:py-0 md:text-start"
                 >
                   {/* Node */}
-                  <div className="relative z-10 h-11 w-11 rounded-full border border-white/15 bg-[#0A0A0B] flex items-center justify-center shadow-[0_0_30px_-6px_rgba(255,255,255,0.25)]">
-                    <Icon className="h-4.5 w-4.5 text-white/80" style={{ height: 18, width: 18 }} />
+                  <div className="relative z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-[#0A0A0B]">
+                    <Icon className="h-4 w-4 text-white/75" />
                   </div>
 
-                  <span className="mt-6 text-[11px] font-mono tracking-[0.24em] text-white/30">{step.n}</span>
-                  <h3 className="mt-2 text-[19px] font-semibold text-white tracking-tight">{step.title}</h3>
-                  <p className="mt-2.5 text-[13.5px] leading-relaxed text-white/45 max-w-xs">{step.desc}</p>
+                  <span className="mt-4 font-mono text-[11px] tracking-[0.24em] text-white/30">{step.n}</span>
+                  <h3 className="mt-1.5 text-lg font-semibold tracking-tight text-white">{step.title}</h3>
+                  <p className="mt-2 max-w-xs text-[13.5px] leading-6 text-white/45">{step.desc}</p>
                 </motion.div>
               );
             })}
