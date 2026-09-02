@@ -5,7 +5,7 @@
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 643 nodes · 841 edges · 135 communities (84 shown, 51 thin omitted)
+- 647 nodes · 843 edges · 136 communities (85 shown, 51 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 3 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
@@ -25,7 +25,7 @@
 - cn
 - verify-feed.mjs
 - src/context/ModalContext.tsx
-- ImageCanvas.tsx
+- LandingHeader.tsx
 - HeroEntrance.tsx
 - lib/supabase.ts
 - graphify.js
@@ -54,15 +54,14 @@
 - @tailwindcss/typography
 - @tailwindcss/vite
 - @vitejs/plugin-react
-- GlobalPricing.tsx
+- lucide-react
 - VANTRA — SELF WORK RULES (متعهد أنفذها في كل تعديل)
 - VANTRA Studio — Project Identity
 - StudioDashboard.tsx
 - puppeteer-core
 - transcribe/route.ts
-- lib/utils.ts
+- src/components/ui/logo-cloud-3.tsx
 - verify-showcase.mjs
-- ai
 - generate-image/route.ts
 - verify-stats-polish.mjs
 - verify-motion-studio.mjs
@@ -102,7 +101,7 @@
 7. `أوامر المتابعة بعد تقرير التشخيص` - 8 edges
 8. `VantraLogo()` - 7 edges
 9. `المرحلة الأولى: إنشاء تقرير تشخيص فقط` - 7 edges
-10. `ImageGenerateParams` - 6 edges
+10. `POST()` - 6 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `SpotlightCard()` --calls--> `cn()`  [EXTRACTED]
@@ -119,11 +118,11 @@
 ## Import Cycles
 - None detected.
 
-## Communities (135 total, 51 thin omitted)
+## Communities (136 total, 51 thin omitted)
 
 ### Community 0 - "src/components/LiveLedgerCard.tsx"
-Cohesion: 0.07
-Nodes (17): FAQS, FEATURES, HeroCinematicBackgroundProps, hashSeed(), HeroSection(), HeroSectionProps, PATHS, STATS (+9 more)
+Cohesion: 0.06
+Nodes (18): cairo, ibmPlexMono, inter, metadata, AmbientMotionBackground(), AmbientMotionBackgroundProps, FAQS, FEATURES (+10 more)
 
 ### Community 1 - "claude-style-chat-input.tsx"
 Cohesion: 0.18
@@ -138,24 +137,24 @@ Cohesion: 0.07
 Nodes (27): dom, dom.iterable, esnext, .next/dev/types/**/*.ts, next-env.d.ts, .next/types/**/*.ts, node_modules, **/*.ts (+19 more)
 
 ### Community 5 - "MotionStudio.tsx"
-Cohesion: 0.23
-Nodes (9): CAMERA_MOTIONS, CameraMotion, DURATIONS, VIDEO_MODELS, VideoConfig, VideoConfigPill(), VideoConfigPopover(), VideoDuration (+1 more)
+Cohesion: 0.16
+Nodes (12): LiquidMetalButton(), LiquidMetalButtonProps, PROVIDER_REGISTRY, CAMERA_MOTIONS, CameraMotion, DURATIONS, VIDEO_MODELS, VideoConfig (+4 more)
 
 ### Community 6 - "router.ts"
 Cohesion: 0.11
 Nodes (24): mockMeta, mockProvider, POLLINATIONS_MODELS, pollinationsMeta, pollinationsProvider, generateWithPuter(), loadPuter(), PUTER_MODELS (+16 more)
 
 ### Community 7 - "cn"
-Cohesion: 0.23
-Nodes (11): Textarea, TextareaProps, cn(), GhostButton(), PanelLabel(), PrimaryButton(), ScrollArea, Segmented() (+3 more)
+Cohesion: 0.18
+Nodes (13): Textarea, TextareaProps, cn(), GhostButton(), PanelLabel(), PrimaryButton(), ScrollArea, Segmented() (+5 more)
 
 ### Community 9 - "src/context/ModalContext.tsx"
 Cohesion: 0.07
-Nodes (29): dynamic, maxDuration, POST(), cairo, ibmPlexMono, inter, metadata, AmbientMotionBackground() (+21 more)
+Nodes (27): App(), AuthModal(), AuthModalProps, ClosingCtaSection(), COST_ROWS, CostTableSection(), Navbar(), NavbarProps (+19 more)
 
-### Community 10 - "ImageCanvas.tsx"
-Cohesion: 0.33
-Nodes (4): LiquidMetalButton(), LiquidMetalButtonProps, PROVIDER_REGISTRY, ImageCanvas()
+### Community 10 - "LandingHeader.tsx"
+Cohesion: 0.32
+Nodes (5): CinematicEnter(), LandingHeader(), LandingHeaderProps, NAV_LINKS, VantraLogo()
 
 ### Community 11 - "HeroEntrance.tsx"
 Cohesion: 0.40
@@ -171,7 +170,7 @@ Nodes (14): ASPECT_RATIOS, AspectRatio, GEN_COUNTS, GenCount, IMAGE_MODELS, Imag
 
 ### Community 23 - "src/components/OriginalLandingPage.tsx"
 Cohesion: 0.06
-Nodes (32): CinematicScrollMockup(), FEATURES, Logo, LogoCloud(), LogoCloudProps, GlobalFooter(), LINKS, CinematicEnter() (+24 more)
+Nodes (35): CinematicScrollMockup(), FEATURES, Logo, LogoCloud(), LogoCloudProps, GlobalFooter(), LINKS, GlobalPricing() (+27 more)
 
 ### Community 24 - "audit-1.mjs"
 Cohesion: 0.50
@@ -183,19 +182,15 @@ Nodes (4): MessageBubble(), MessageBubbleProps, useSmoothText(), detectDir()
 
 ### Community 30 - "dependencies"
 Cohesion: 0.22
-Nodes (9): lucide-react, dependencies, lucide-react, react-dom, react-markdown, @supabase/ssr, react-dom, react-markdown (+1 more)
+Nodes (9): ai, dependencies, ai, react-dom, react-markdown, @supabase/ssr, react-dom, react-markdown (+1 more)
 
 ### Community 31 - "MediaLibrary.tsx"
 Cohesion: 0.19
 Nodes (13): appendToImageLibrary(), GeneratedImage, IMAGE_LIBRARY_KEY, ImageResultCard(), readImageLibrary(), DUMMY_MEDIA, FilterKey, FILTERS (+5 more)
 
 ### Community 32 - "SettingsModal.tsx"
-Cohesion: 0.08
-Nodes (20): App(), AuthModal(), AuthModalProps, OriginalLandingPage(), BillingPanel(), IMAGE_MODEL_HINTS, IMAGE_MODELS, INSTRUCTION_SUGGESTIONS (+12 more)
-
-### Community 40 - "GlobalPricing.tsx"
-Cohesion: 0.50
-Nodes (3): GlobalPricing(), PricingTier, TIERS
+Cohesion: 0.12
+Nodes (11): BillingPanel(), IMAGE_MODEL_HINTS, IMAGE_MODELS, INSTRUCTION_SUGGESTIONS, PrivacyPanel(), ProviderConnections(), TabId, TABS (+3 more)
 
 ### Community 67 - "VANTRA — SELF WORK RULES (متعهد أنفذها في كل تعديل)"
 Cohesion: 0.33
@@ -206,40 +201,40 @@ Cohesion: 0.15
 Nodes (12): Critical CSS Lessons (NEVER REPEAT), Deploy, Design Rules (NEVER VIOLATE), GIT SYNC RULES (follow every session), GIT SYNC RULES (follow every session — BOTH agents), Graphify Protocol (MANDATORY — never skip), Key Architectural Patterns, Project Structure (+4 more)
 
 ### Community 69 - "StudioDashboard.tsx"
-Cohesion: 0.18
-Nodes (11): CREATE_ITEMS, DashboardSidebar(), DashboardSidebarProps, SidebarSession, Workspace, WORKSPACE_ITEMS, SettingsModal(), CenterMode (+3 more)
+Cohesion: 0.15
+Nodes (12): CREATE_ITEMS, DashboardSidebar(), DashboardSidebarProps, SidebarSession, Workspace, WORKSPACE_ITEMS, ImageCanvas(), SettingsModal() (+4 more)
 
 ### Community 78 - "transcribe/route.ts"
 Cohesion: 0.40
 Nodes (3): ALLOWED_MIME, dynamic, maxDuration
 
-### Community 79 - "lib/utils.ts"
-Cohesion: 0.22
-Nodes (7): InfiniteSlider(), InfiniteSliderProps, InfiniteSlider(), InfiniteSliderProps, Logo, LogoCloud(), LogoCloudProps
+### Community 79 - "src/components/ui/logo-cloud-3.tsx"
+Cohesion: 0.33
+Nodes (5): InfiniteSlider(), InfiniteSliderProps, Logo, LogoCloud(), LogoCloudProps
 
 ### Community 89 - "generate-image/route.ts"
-Cohesion: 0.11
-Nodes (28): ALLOWED_PROVIDERS, ALLOWED_RATIOS, dynamic, inFlight, lastRequestAt, maxDuration, POST(), PROVIDER_MODELS (+20 more)
+Cohesion: 0.08
+Nodes (33): dynamic, maxDuration, POST(), ALLOWED_PROVIDERS, ALLOWED_RATIOS, dynamic, inFlight, lastRequestAt (+25 more)
 
 ## Knowledge Gaps
-- **252 isolated node(s):** `STEPS`, `Testimonial`, `TESTIMONIAL_ROWS`, `AmbientMotionBackgroundProps`, `HeroCinematicBackgroundProps` (+247 more)
+- **252 isolated node(s):** `dynamic`, `maxDuration`, `RATIO_DIMENSIONS`, `PROVIDER_MODELS`, `ALLOWED_RATIOS` (+247 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **51 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `cn()` connect `cn` to `SettingsModal.tsx`, `claude-style-chat-input.tsx`, `StudioDashboard`, `StudioDashboard.tsx`, `MotionStudio.tsx`, `GlobalPricing.tsx`, `ImageCanvas.tsx`, `lib/utils.ts`, `ImageConfigPopover.tsx`, `src/components/OriginalLandingPage.tsx`, `MessageBubble.tsx`, `MediaLibrary.tsx`?**
+- **Why does `cn()` connect `cn` to `SettingsModal.tsx`, `claude-style-chat-input.tsx`, `StudioDashboard`, `StudioDashboard.tsx`, `MotionStudio.tsx`, `LandingHeader.tsx`, `src/components/ui/logo-cloud-3.tsx`, `ImageConfigPopover.tsx`, `src/components/OriginalLandingPage.tsx`, `MessageBubble.tsx`, `MediaLibrary.tsx`?**
   _High betweenness centrality (0.086) - this node is a cross-community bridge._
-- **Why does `createClient()` connect `generate-image/route.ts` to `src/context/ModalContext.tsx`?**
-  _High betweenness centrality (0.029) - this node is a cross-community bridge._
-- **Why does `useUser()` connect `SettingsModal.tsx` to `src/components/LiveLedgerCard.tsx`, `StudioDashboard`, `StudioDashboard.tsx`, `src/context/ModalContext.tsx`, `src/components/OriginalLandingPage.tsx`?**
+- **Why does `useUser()` connect `src/context/ModalContext.tsx` to `src/components/LiveLedgerCard.tsx`, `StudioDashboard`, `SettingsModal.tsx`, `StudioDashboard.tsx`, `src/components/OriginalLandingPage.tsx`?**
   _High betweenness centrality (0.022) - this node is a cross-community bridge._
-- **What connects `STEPS`, `Testimonial`, `TESTIMONIAL_ROWS` to the rest of the system?**
+- **What connects `dynamic`, `maxDuration`, `RATIO_DIMENSIONS` to the rest of the system?**
   _252 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `src/components/LiveLedgerCard.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.07386363636363637 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06456456456456457 - nodes in this community are weakly interconnected._
 - **Should `devDependencies` be split into smaller, more focused modules?**
   _Cohesion score 0.06666666666666667 - nodes in this community are weakly interconnected._
 - **Should `compilerOptions` be split into smaller, more focused modules?**
   _Cohesion score 0.07142857142857142 - nodes in this community are weakly interconnected._
+- **Should `router.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.10984848484848485 - nodes in this community are weakly interconnected._

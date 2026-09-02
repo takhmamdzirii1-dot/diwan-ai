@@ -390,9 +390,9 @@
     "semantic_hash": ""
   },
   "src/components/OriginalLandingPage.tsx": {
-    "mtime": 1788317551.167688,
-    "seen": 1788317568.4376984,
-    "ast_hash": "1a0d38706d82266303bb41106d166aab",
+    "mtime": 1788320442.4579718,
+    "seen": 1788320493.9580731,
+    "ast_hash": "9dfa37306cadccd1819007f8d054db47",
     "semantic_hash": ""
   },
   "src/components/ShimmerButton.tsx": {
@@ -792,9 +792,9 @@
     "semantic_hash": ""
   },
   "src/components/GlobalPricing.tsx": {
-    "mtime": 1787947417.177431,
-    "seen": 1787947650.7839487,
-    "ast_hash": "c2bd594669de39ae38a0451cd4ba677d",
+    "mtime": 1788320448.2116685,
+    "seen": 1788320493.9562585,
+    "ast_hash": "56d137905cda1cf5c5b795ba2e5aaf3f",
     "semantic_hash": ""
   },
   "scripts/verify-masterpiece.mjs": {
@@ -810,9 +810,9 @@
     "semantic_hash": ""
   },
   "src/components/landing/Faq.tsx": {
-    "mtime": 1787948297.728165,
-    "seen": 1787948736.871368,
-    "ast_hash": "de4932245ed214d812d3f459272fcdd1",
+    "mtime": 1788320453.475429,
+    "seen": 1788320493.9596443,
+    "ast_hash": "b07f1663a2693afa9cd8549a9e016319",
     "semantic_hash": ""
   },
   "src/components/landing/FinalCta.tsx": {

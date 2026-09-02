@@ -6,7 +6,6 @@ import { motion, useScroll, useSpring } from 'framer-motion';
 import { CinematicScrollMockup } from '@/components/ui/cinematic-scroll-mockup';
 import HeroSection from './HeroSection';
 import HowItWorks from './landing/HowItWorks';
-import TerminalShowcase from './landing/TerminalShowcase';
 import Testimonials from './landing/Testimonials';
 import GlobalPricing from './GlobalPricing';
 import Faq from './landing/Faq';
@@ -22,7 +21,7 @@ import useUser from '../hooks/useUser';
 /**
  * VANTRA — Global Landing Experience.
  * Flow: Header → Hero (interactive hook) → Partners → Showcase → Why VANTRA
- *       → Workflow → Signals → Pricing → Developers → FAQ → Final CTA → Footer.
+ *       → Workflow → Signals → Pricing → FAQ → Final CTA → Footer.
  * Cinematic wipe bridges Landing → Studio; guest prompts are stashed and
  * prefilled inside the Studio composer after authentication.
  */
@@ -77,7 +76,6 @@ export default function OriginalLandingPage() {
       <HowItWorks />
       <Testimonials />
       <GlobalPricing onGetStarted={handleGetStarted} />
-      <TerminalShowcase />
       <Faq />
       <FinalCta onGetStarted={handleGetStarted} />
       <GlobalFooter />
