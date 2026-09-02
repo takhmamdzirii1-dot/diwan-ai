@@ -10,12 +10,13 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `ef36aa2e`
+- Built from commit: `7d774ddc`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - src/components/LiveLedgerCard.tsx
+- framer-motion
 - devDependencies
 - verify-final.mjs
 - compilerOptions
@@ -55,6 +56,7 @@
 - puppeteer-core
 - transcribe/route.ts
 - verify-showcase.mjs
+- ai
 - generate-image/route.ts
 - verify-stats-polish.mjs
 - verify-motion-studio.mjs
@@ -80,9 +82,7 @@
 - motion
 - react-use-measure
 - verify-hero-copy.mjs
-- framer-motion
 - verify-navbar.mjs
-- @ai-sdk/openai
 
 ## God Nodes (most connected - your core abstractions)
 1. `cn()` - 57 edges
@@ -163,7 +163,7 @@ Nodes (3): errors, out, t0
 
 ### Community 30 - "dependencies"
 Cohesion: 0.22
-Nodes (9): ai, dependencies, ai, react-dom, react-markdown, @supabase/ssr, react-dom, react-markdown (+1 more)
+Nodes (9): @ai-sdk/openai, dependencies, @ai-sdk/openai, react-dom, react-markdown, @supabase/ssr, react-dom, react-markdown (+1 more)
 
 ### Community 31 - "MediaLibrary.tsx"
 Cohesion: 0.19

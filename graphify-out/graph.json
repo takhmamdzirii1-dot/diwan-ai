@@ -2687,6 +2687,39 @@
       "source_location": "L1"
     },
     {
+      "id": "package_dependencies_framer_motion",
+      "label": "framer-motion",
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "framer-motion",
+      "file_type": "code",
+      "norm_label": "framer-motion",
+      "source_file": "package.json",
+      "source_location": "L28"
+    },
+    {
+      "id": "framer_motion",
+      "label": "framer-motion",
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "framer-motion",
+      "file_type": "concept",
+      "norm_label": "framer-motion",
+      "source_file": "package.json",
+      "source_location": "L28"
+    },
+    {
+      "id": "next_next",
+      "label": "next",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "next",
+      "confidence": "EXTRACTED",
+      "file_type": "code",
+      "norm_label": "next",
+      "source_file": "next"
+    },
+    {
       "id": "scripts_verify_lm3",
       "label": "verify-lm3.mjs",
       "_origin": "ast",
@@ -3358,28 +3391,6 @@
       "source_location": "L4"
     },
     {
-      "id": "package_dependencies_framer_motion",
-      "label": "framer-motion",
-      "_origin": "ast",
-      "community": 132,
-      "community_name": "framer-motion",
-      "file_type": "code",
-      "norm_label": "framer-motion",
-      "source_file": "package.json",
-      "source_location": "L28"
-    },
-    {
-      "id": "framer_motion",
-      "label": "framer-motion",
-      "_origin": "ast",
-      "community": 132,
-      "community_name": "framer-motion",
-      "file_type": "concept",
-      "norm_label": "framer-motion",
-      "source_file": "package.json",
-      "source_location": "L28"
-    },
-    {
       "id": "scripts_verify_navbar",
       "label": "verify-navbar.mjs",
       "_origin": "ast",
@@ -3400,39 +3411,6 @@
       "norm_label": "out",
       "source_file": "scripts/verify-navbar.mjs",
       "source_location": "L4"
-    },
-    {
-      "id": "tailwindcss_tailwindcss",
-      "label": "tailwindcss",
-      "_origin": "ast",
-      "community": 134,
-      "community_name": "tailwindcss",
-      "confidence": "EXTRACTED",
-      "file_type": "code",
-      "norm_label": "tailwindcss",
-      "source_file": "tailwindcss"
-    },
-    {
-      "id": "package_dependencies_ai_sdk_openai",
-      "label": "@ai-sdk/openai",
-      "_origin": "ast",
-      "community": 135,
-      "community_name": "@ai-sdk/openai",
-      "file_type": "code",
-      "norm_label": "@ai-sdk/openai",
-      "source_file": "package.json",
-      "source_location": "L13"
-    },
-    {
-      "id": "ai_sdk_openai",
-      "label": "@ai-sdk/openai",
-      "_origin": "ast",
-      "community": 135,
-      "community_name": "@ai-sdk/openai",
-      "file_type": "concept",
-      "norm_label": "@ai-sdk/openai",
-      "source_file": "package.json",
-      "source_location": "L13"
     },
     {
       "id": "scripts_gold_theme",
@@ -4692,6 +4670,17 @@
       "source_location": "L31"
     },
     {
+      "id": "tailwindcss_tailwindcss",
+      "label": "tailwindcss",
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "tailwindcss",
+      "confidence": "EXTRACTED",
+      "file_type": "code",
+      "norm_label": "tailwindcss",
+      "source_file": "tailwindcss"
+    },
+    {
       "id": "package_dependencies_react",
       "label": "react",
       "_origin": "ast",
@@ -4747,15 +4736,15 @@
       "source_location": "L12"
     },
     {
-      "id": "package_dependencies_ai",
-      "label": "ai",
+      "id": "package_dependencies_ai_sdk_openai",
+      "label": "@ai-sdk/openai",
       "_origin": "ast",
       "community": 30,
       "community_name": "dependencies",
       "file_type": "code",
-      "norm_label": "ai",
+      "norm_label": "@ai-sdk/openai",
       "source_file": "package.json",
-      "source_location": "L24"
+      "source_location": "L13"
     },
     {
       "id": "package_dependencies_react_dom",
@@ -4791,15 +4780,15 @@
       "source_location": "L18"
     },
     {
-      "id": "ai",
-      "label": "ai",
+      "id": "ai_sdk_openai",
+      "label": "@ai-sdk/openai",
       "_origin": "ast",
       "community": 30,
       "community_name": "dependencies",
       "file_type": "concept",
-      "norm_label": "ai",
+      "norm_label": "@ai-sdk/openai",
       "source_file": "package.json",
-      "source_location": "L24"
+      "source_location": "L13"
     },
     {
       "id": "react_dom",
@@ -6648,15 +6637,26 @@
       "source_location": "L1"
     },
     {
-      "id": "next_next",
-      "label": "next",
+      "id": "package_dependencies_ai",
+      "label": "ai",
       "_origin": "ast",
       "community": 85,
-      "community_name": "next",
-      "confidence": "EXTRACTED",
+      "community_name": "ai",
       "file_type": "code",
-      "norm_label": "next",
-      "source_file": "next"
+      "norm_label": "ai",
+      "source_file": "package.json",
+      "source_location": "L24"
+    },
+    {
+      "id": "ai",
+      "label": "ai",
+      "_origin": "ast",
+      "community": 85,
+      "community_name": "ai",
+      "file_type": "concept",
+      "norm_label": "ai",
+      "source_file": "package.json",
+      "source_location": "L24"
     },
     {
       "id": "scripts_verify_liquid",
@@ -17173,5 +17173,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "ef36aa2eea5e4d0b56072e1344dbe2c7a9875e68"
+  "built_at_commit": "7d774ddc7b4ac7a725c39c403c6c586223bd9070"
 }

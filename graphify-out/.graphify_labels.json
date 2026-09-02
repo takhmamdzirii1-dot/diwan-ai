@@ -1,5 +1,6 @@
 {
   "0": "src/components/LiveLedgerCard.tsx",
+  "1": "framer-motion",
   "2": "devDependencies",
   "3": "verify-final.mjs",
   "4": "compilerOptions",
@@ -8,6 +9,7 @@
   "7": "cn",
   "8": "verify-feed.mjs",
   "9": "StudioDashboard.tsx",
+  "10": "next",
   "11": "HeroEntrance.tsx",
   "12": "lib/supabase.ts",
   "13": "graphify.js",
@@ -25,6 +27,7 @@
   "25": "next.config.mjs",
   "26": "next-env.d.ts",
   "27": "next",
+  "28": "tailwindcss",
   "29": "react",
   "30": "dependencies",
   "31": "MediaLibrary.tsx",
@@ -77,7 +80,7 @@
   "82": "verify-send.mjs",
   "83": "verify-showcase.mjs",
   "84": "verify-history.mjs",
-  "85": "next",
+  "85": "ai",
   "86": "verify-liquid.mjs",
   "87": "verify-meta.mjs",
   "88": "verify-flow.mjs",
@@ -124,8 +127,5 @@
   "129": "verify-logo.mjs",
   "130": "verify-cta-base.mjs",
   "131": "verify-hero-copy.mjs",
-  "132": "framer-motion",
-  "133": "verify-navbar.mjs",
-  "134": "tailwindcss",
-  "135": "@ai-sdk/openai"
+  "133": "verify-navbar.mjs"
 }

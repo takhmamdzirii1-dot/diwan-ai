@@ -252,9 +252,9 @@
     "semantic_hash": "76c1054e7abc1e30094a5558600705e2"
   },
   "next-env.d.ts": {
-    "mtime": 1788318393.8540592,
-    "seen": 1788318416.513382,
-    "ast_hash": "8195d2c60ce847a459ae9d308d6a5724",
+    "mtime": 1788320608.5817764,
+    "seen": 1788320730.5212653,
+    "ast_hash": "aa94238a90e7d04b7a47ecc3145ba6a0",
     "semantic_hash": ""
   },
   "next.config.mjs": {
@@ -390,9 +390,9 @@
     "semantic_hash": ""
   },
   "src/components/OriginalLandingPage.tsx": {
-    "mtime": 1788317551.167688,
-    "seen": 1788317568.4376984,
-    "ast_hash": "1a0d38706d82266303bb41106d166aab",
+    "mtime": 1788320442.4579718,
+    "seen": 1788320493.9580731,
+    "ast_hash": "9dfa37306cadccd1819007f8d054db47",
     "semantic_hash": ""
   },
   "src/components/ShimmerButton.tsx": {
@@ -792,9 +792,9 @@
     "semantic_hash": ""
   },
   "src/components/GlobalPricing.tsx": {
-    "mtime": 1787947417.177431,
-    "seen": 1787947650.7839487,
-    "ast_hash": "c2bd594669de39ae38a0451cd4ba677d",
+    "mtime": 1788320448.2116685,
+    "seen": 1788320493.9562585,
+    "ast_hash": "56d137905cda1cf5c5b795ba2e5aaf3f",
     "semantic_hash": ""
   },
   "scripts/verify-masterpiece.mjs": {
@@ -810,9 +810,9 @@
     "semantic_hash": ""
   },
   "src/components/landing/Faq.tsx": {
-    "mtime": 1787948297.728165,
-    "seen": 1787948736.871368,
-    "ast_hash": "de4932245ed214d812d3f459272fcdd1",
+    "mtime": 1788320453.475429,
+    "seen": 1788320493.9596443,
+    "ast_hash": "b07f1663a2693afa9cd8549a9e016319",
     "semantic_hash": ""
   },
   "src/components/landing/FinalCta.tsx": {
@@ -1123,8 +1123,8 @@
   },
   "supabase/migrations/user_provider_connections.sql": {
     "mtime": 1787985901.4500034,
-    "seen": 1788318442.1626422,
-    "ast_hash": "",
+    "seen": 1788320730.5213947,
+    "ast_hash": "4cf1f8dc6e37eac4a6f8e7784666875b",
     "semantic_hash": ""
   },
   "public/showcase/chat-preview.png": {
