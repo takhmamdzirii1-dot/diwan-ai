@@ -15,13 +15,14 @@ import PartnersSection from './landing/PartnersSection';
 import GlobalFooter from './GlobalFooter';
 import LandingHeader from './landing/LandingHeader';
 import CinematicEnter from './landing/CinematicEnter';
+import WhyVantra from './landing/WhyVantra';
 import { useModal } from '../context/ModalContext';
 import useUser from '../hooks/useUser';
 
 /**
  * VANTRA — Global Landing Experience.
- * Flow: Header → Hero (interactive hook) → Showcase → Workflow → Developers
- *       → Signals → Pricing → FAQ → Final CTA → Footer.
+ * Flow: Header → Hero (interactive hook) → Partners → Showcase → Why VANTRA
+ *       → Workflow → Signals → Pricing → Developers → FAQ → Final CTA → Footer.
  * Cinematic wipe bridges Landing → Studio; guest prompts are stashed and
  * prefilled inside the Studio composer after authentication.
  */
@@ -72,10 +73,11 @@ export default function OriginalLandingPage() {
 
       <PartnersSection />
       <CinematicScrollMockup />
+      <WhyVantra />
       <HowItWorks />
-      <TerminalShowcase />
       <Testimonials />
       <GlobalPricing onGetStarted={handleGetStarted} />
+      <TerminalShowcase />
       <Faq />
       <FinalCta onGetStarted={handleGetStarted} />
       <GlobalFooter />
