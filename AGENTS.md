@@ -139,3 +139,203 @@ If a build fails after pulling:
 5. Always `graphify update .` after code changes (post-commit hook also does this).
 6. AUTO-DEPLOY ALWAYS (user standing instruction): after completing any code change — run `npm run lint` + `npm run build`, then immediately `vercel deploy --prod --yes` WITHOUT waiting for the user to ask. Retry once on transient `fetch failed`. Verify the production URL afterwards.
 7. **After EVERY deploy**: `graphify update .` must also run. Never deploy without updating the graph.
+
+## LLM Council Policy
+
+The LLM Council is an optional, high-cost reasoning workflow for important decisions.
+
+It must NEVER run silently.
+
+### Explicit activation
+
+Run the Council when the user explicitly requests it with phrases such as:
+
+- council this
+- run the council
+- pressure-test this
+- stress-test this
+- war room this
+- debate this
+
+Equivalent Arabic requests count as explicit activation, including:
+
+- شغل المجلس
+- خل المجلس يحلل هذا
+- اعمل council لهذا
+- اختبر هذا بالمجلس
+- شغل LLM Council
+
+Before an actual Council session begins, visibly announce:
+
+🧠 LLM COUNCIL ACTIVATED
+
+Then state:
+
+Decision:
+[short decision being analyzed]
+
+Reason:
+[why Council-level reasoning is justified]
+
+Process:
+5 Advisors → Anonymous Peer Review → Chairman
+
+Never run the Council invisibly.
+
+### Smart recommendation mode
+
+For genuinely high-impact decisions, recommend the Council BEFORE implementation but do NOT automatically activate it.
+
+Use wording similar to:
+
+🧠 Council recommended: this is a high-impact decision.
+Would you like me to run the LLM Council before we proceed?
+
+A recommendation is NOT authorization.
+
+Wait for explicit user approval before running the full Council.
+
+### Recommend Council when appropriate for
+
+- pricing strategy
+- subscription plans
+- credit economics
+- shared balance economics
+- unit economics
+- business model
+- monetization
+- launch strategy
+- major product positioning
+- major go-to-market decisions
+- important provider/model strategy
+- major architecture decisions
+- expensive infrastructure decisions
+- major irreversible data-model decisions
+- major security architecture
+- significant product pivots
+- adding/removing core capabilities
+- major UX/product-direction changes that are expensive to reverse
+
+For VANTRA specifically, strongly consider recommending it for:
+
+- Hobby / Pro / Studio structure
+- DZD pricing
+- shared balance design
+- credit consumption rules
+- model cost allocation
+- margin protection
+- free vs paid usage
+- launch pricing
+- Algeria-first vs international expansion
+- core AI model/provider selection
+- major changes to the unified Chat / Image / Video proposition
+
+### Do NOT use Council for routine work
+
+Do not run or recommend Council for:
+
+- CSS
+- padding/spacing
+- typography tweaks
+- small copy edits
+- normal frontend components
+- lint problems
+- TypeScript errors
+- ordinary bugs
+- small refactors
+- dependency maintenance
+- file renaming
+- minor responsive fixes
+- routine implementation
+- simple factual questions
+- questions with one objectively correct technical answer
+
+Examples that should NOT trigger Council:
+
+"Make this navbar responsive."
+"Fix this TypeScript error."
+"Should this padding be 48px or 56px?"
+"Change this button text."
+"Fix this component bug."
+
+### Decision threshold
+
+Before recommending Council, ask internally:
+
+"If this choice is wrong, could it materially cost money, customers, time, positioning, architecture stability, or be expensive to reverse?"
+
+If no:
+continue normally.
+
+If yes:
+recommend Council.
+
+Do not over-trigger.
+
+### Token protection
+
+The full Council may run ONLY when:
+
+1. the user explicitly requests it,
+
+or
+
+2. the agent recommends it and the user explicitly approves.
+
+Never interpret silence as approval.
+
+Normal work should use normal reasoning.
+
+### Duplicate-run protection
+
+Before running Council, check existing Council reports/transcripts if available.
+
+If essentially the same decision was already analyzed and no material inputs changed, tell the user instead of automatically repeating it.
+
+Offer:
+
+- show/use the previous verdict
+- or run a fresh Council if explicitly requested
+
+### VANTRA factual grounding
+
+When Council is used for VANTRA, inspect repository context first.
+
+Use factual information from:
+
+- AGENTS.md
+- actual code/configuration
+- project documentation
+- previous Council reports
+- user-provided business facts
+
+Do not invent:
+
+- revenue
+- margins
+- customer counts
+- conversion rates
+- provider agreements
+- partnerships
+- AI model costs
+- pricing
+- payment capabilities
+- launch metrics
+
+Clearly identify missing information.
+
+### Council completion
+
+Every completed Council session should clearly end with:
+
+🧠 LLM COUNCIL COMPLETE
+
+and surface:
+
+- Final recommendation
+- Highest-confidence agreement
+- Biggest disagreement
+- Most important blind spot
+- The one thing to do first
+
+Preserve the report/transcript behavior defined by the installed skill.
