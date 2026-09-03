@@ -92,16 +92,16 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
         logo.src ? (
           <span
             aria-hidden={index > 0 || undefined}
-            className='flex shrink-0 items-center gap-3 whitespace-nowrap text-[15px] font-medium tracking-[0.01em] text-[#f5f5f5] md:text-base'
+            className='flex shrink-0 items-center gap-3 whitespace-nowrap text-base font-semibold tracking-[0.01em] text-[#f5f5f5] md:text-lg'
             key={`group-${index}-logo-${logo.alt}`}
           >
             <img
               alt={index > 0 ? '' : logo.alt}
-              className='pointer-events-none h-5 w-5 shrink-0 select-none md:h-6 md:w-6'
-              height={logo.height || 24}
+              className='pointer-events-none h-7 w-7 shrink-0 select-none object-contain md:h-8 md:w-8'
+              height={logo.height || 32}
               loading='eager'
               src={logo.src}
-              width={logo.width || 24}
+              width={logo.width || 32}
             />
             {logo.name}
           </span>
@@ -109,7 +109,7 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
           <span
             aria-label={index > 0 ? undefined : logo.alt}
             aria-hidden={index > 0 || undefined}
-            className='flex shrink-0 items-center gap-3 whitespace-nowrap text-[15px] font-medium tracking-[0.01em] text-[#f5f5f5] md:text-base'
+            className='flex shrink-0 items-center gap-3 whitespace-nowrap text-base font-semibold tracking-[0.01em] text-[#f5f5f5] md:text-lg'
             key={`group-${index}-logo-${logo.alt}`}
           >
             {logo.name}
@@ -146,8 +146,8 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
           display: flex;
           flex-shrink: 0;
           align-items: center;
-          gap: 4rem;
-          padding-right: 4rem;
+          gap: 4.5rem;
+          padding-right: 4.5rem;
           white-space: nowrap;
         }
       `}</style>

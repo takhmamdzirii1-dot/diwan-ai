@@ -14,11 +14,11 @@ const logos = [
   { name: 'DeepSeek', asset: 'dark/deepseek-color.png' },
   { name: 'FLUX', asset: 'dark/flux.png' },
   { name: 'Qwen', asset: 'dark/qwen-color.png' },
-  { name: 'Seedance', asset: 'dark/bytedance-brand-color.png' },
+  { name: 'Seedance', asset: 'dark/bytedance-color.png' },
   { name: 'Kimi', asset: 'dark/kimi-color.png' },
   { name: 'GLM', asset: 'dark/zai.png' },
   { name: 'Hailuo', asset: 'dark/hailuo-color.png' },
-  { name: 'Seedream', asset: 'dark/bytedance-brand-color.png' },
+  { name: 'Seedream', asset: 'dark/bytedance-color.png' },
 ].map(({ name, asset }) => ({
   alt: `${name} wordmark`,
   name,
