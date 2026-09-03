@@ -2,27 +2,27 @@
 
 import { LogoCloud } from '@/components/ui/logo-cloud-3';
 
-const LOBE_ICON = 'https://unpkg.com/@lobehub/icons-static-svg@latest/icons';
+const LOBE_ICON = 'https://unpkg.com/@lobehub/icons-static-png@latest';
 
 const logos = [
-  { name: 'GPT', slug: 'openai' },
-  { name: 'Claude', slug: 'claude-color' },
-  { name: 'Gemini', slug: 'gemini-color' },
-  { name: 'Nano Banana', slug: 'nanobanana-color' },
-  { name: 'Grok', slug: 'grok' },
-  { name: 'Kling', slug: 'kling-color' },
-  { name: 'DeepSeek', slug: 'deepseek-color' },
-  { name: 'FLUX', slug: 'flux' },
-  { name: 'Qwen', slug: 'qwen-color' },
-  { name: 'Kimi', slug: 'kimi-color' },
-  { name: 'GLM', slug: 'zai' },
-  { name: 'Seedance', slug: 'bytedance-brand-color' },
-  { name: 'Seedream', slug: 'bytedance-brand-color' },
-  { name: 'Hailuo', slug: 'hailuo-color' },
-].map(({ name, slug }) => ({
+  { name: 'GPT', asset: 'dark/openai.png' },
+  { name: 'Claude', asset: 'dark/claude-color.png' },
+  { name: 'Gemini', asset: 'dark/gemini-color.png' },
+  { name: 'Nano Banana', asset: 'dark/nanobanana-color.png' },
+  { name: 'Grok', asset: 'dark/grok.png' },
+  { name: 'Kling', asset: 'dark/kling-color.png' },
+  { name: 'DeepSeek', asset: 'dark/deepseek-color.png' },
+  { name: 'FLUX', asset: 'dark/flux.png' },
+  { name: 'Qwen', asset: 'dark/qwen-color.png' },
+  { name: 'Seedance', asset: 'dark/bytedance-brand-color.png' },
+  { name: 'Kimi', asset: 'dark/kimi-color.png' },
+  { name: 'GLM', asset: 'dark/zai.png' },
+  { name: 'Hailuo', asset: 'dark/hailuo-color.png' },
+  { name: 'Seedream', asset: 'dark/bytedance-brand-color.png' },
+].map(({ name, asset }) => ({
   alt: `${name} wordmark`,
   name,
-  src: `${LOBE_ICON}/${slug}.svg`,
+  src: `${LOBE_ICON}/${asset}`,
 }));
 
 export default function PartnersSection() {
