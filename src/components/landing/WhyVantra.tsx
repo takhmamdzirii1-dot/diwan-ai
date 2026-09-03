@@ -7,7 +7,7 @@ const ADVANTAGES = [
   {
     number: '01',
     title: 'Pay locally',
-    description: 'Top up in DZD with local payment support built for Algeria.',
+    description: 'Top up in DA with local payment support built for Algeria.',
   },
   {
     number: '02',

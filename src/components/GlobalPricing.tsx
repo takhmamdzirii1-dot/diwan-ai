@@ -13,6 +13,7 @@ interface PricingTier {
   features: string[];
   cta: string;
   recommended?: boolean;
+  localPaymentAvailable?: boolean;
 }
 
 // TODO(owner): Replace these shared benefits with confirmed per-plan
@@ -25,29 +26,31 @@ const SHARED_PRODUCT_BENEFITS = [
 
 const TIERS: PricingTier[] = [
   {
-    name: 'Hobby',
-    price: '$0',
-    cadence: '/mo',
+    name: 'Free',
+    price: '0 DA',
+    cadence: '',
     blurb: 'Explore VANTRA’s unified AI workspace.',
     features: SHARED_PRODUCT_BENEFITS,
     cta: 'Start Free',
   },
   {
     name: 'Pro',
-    price: '$15',
-    cadence: '/mo',
+    price: '2,500 DA',
+    cadence: '/ month',
     blurb: 'For regular work across Chat, Image and Video.',
     features: SHARED_PRODUCT_BENEFITS,
     cta: 'Choose Pro',
     recommended: true,
+    localPaymentAvailable: true,
   },
   {
-    name: 'Studio',
-    price: '$39',
-    cadence: '/mo',
+    name: 'Max',
+    price: '5,900 DA',
+    cadence: '/ month',
     blurb: 'For more demanding creative workflows.',
     features: SHARED_PRODUCT_BENEFITS,
-    cta: 'Choose Studio',
+    cta: 'Choose Max',
+    localPaymentAvailable: true,
   },
 ];
 
@@ -111,8 +114,11 @@ export default function GlobalPricing({ onGetStarted }: { onGetStarted: () => vo
 
             <div className="mt-4 flex items-baseline gap-1.5">
               <span className="text-4xl font-extrabold tracking-tight text-white">{tier.price}</span>
-              <span className="text-[13px] text-white/40">{tier.cadence}</span>
+              {tier.cadence && <span className="text-[13px] text-white/40">{tier.cadence}</span>}
             </div>
+            {tier.localPaymentAvailable && (
+              <p className="mt-2 text-[11px] text-white/40">Local payment available</p>
+            )}
 
             <p className="mt-3 text-[13px] text-white/50 leading-relaxed">{tier.blurb}</p>
 

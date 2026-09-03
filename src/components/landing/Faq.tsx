@@ -12,24 +12,28 @@ interface FaqItem {
 
 const FAQS: FaqItem[] = [
   {
-    q: 'Which AI models can I use?',
-    a: 'VANTRA brings multiple supported AI models into one workspace for Chat, Image and Video. The available choices are shown inside each creation mode.',
+    q: 'How do local payments work?',
+    a: 'VANTRA supports local payment in Algerian dinar. Available payment methods will be shown at checkout.',
+  },
+  {
+    q: 'Do I need an international card?',
+    a: 'No international card is required for local payment. Available payment methods will be shown at checkout.',
   },
   {
     q: 'How does the shared balance work?',
     a: 'Your VANTRA balance is shared across Chat, Image and Video. Usage across supported models comes from that same balance, so you do not manage a separate balance for each tool.',
   },
   {
+    q: 'Which AI models can I use?',
+    a: 'VANTRA brings multiple supported AI models into one workspace for Chat, Image and Video. The available choices are shown inside each creation mode.',
+  },
+  {
+    q: 'What happens when credits run out?',
+    a: 'You can add credits to the same shared balance from VANTRA and continue using the workspace.',
+  },
+  {
     q: 'Does one plan cover Chat, Image and Video?',
     a: 'Yes. VANTRA is designed as one platform for all three creation modes, using one plan and shared balance instead of separate AI subscriptions.',
-  },
-  {
-    q: 'How do payments work?',
-    a: 'VANTRA supports local payments in DZD. Credits from a top-up are added to the shared balance used across the workspace.',
-  },
-  {
-    q: 'What happens when my credits run out?',
-    a: 'You can add credits to the same shared balance from VANTRA and continue using the workspace.',
   },
   {
     q: 'What can I do with generated content?',

@@ -21,7 +21,7 @@ const PATHS = [
 
 const STATS = [
   { num: '12+', label: 'AI Models' },
-  { num: 'DZD', label: 'Local Payment' },
+  { num: 'DA', label: 'Local Payment' },
   { num: '1', label: 'Shared Balance' },
   { num: '3', label: 'Chat · Image · Video' },
 ];
@@ -158,7 +158,7 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
           transition={{ duration: 0.6, delay: 0.16 }}
           className="max-w-2xl text-white/55 text-lg mt-6 leading-relaxed"
         >
-          Chat, create images, and generate video in one workspace. Use one shared balance and pay locally in DZD.
+          Chat, create images, and generate video in one workspace. Use one shared balance and pay locally in DA.
         </motion.p>
 
         {/* ── THE HOOK: interactive prompt bar ── */}
@@ -289,7 +289,7 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
           transition={{ duration: 0.6, delay: 0.42 }}
           className="mt-8 text-[11px] tracking-[0.12em] text-white/55"
         >
-          One workspace · Shared balance · DZD payments
+          Pay locally in DA · No international card required
         </motion.p>
 
         {/* Stats */}
