@@ -3,41 +3,28 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-const ADVANTAGES = [
+const SUPPORTING_FEATURES = [
   {
-    number: '01',
-    title: 'Pay locally',
-    description: 'Pay locally in DA with payment options built for Algeria.',
-  },
-  {
-    number: '02',
     title: 'One balance',
-    description: 'Use one balance across Chat, Image and Video without managing separate accounts.',
+    description: 'Use one shared balance across Chat, Image and Video without managing separate accounts.',
+    visual: 'balance',
   },
   {
-    number: '03',
     title: 'Leading AI models',
     description: 'Access multiple high-quality AI models from one product.',
+    visual: 'models',
   },
   {
-    number: '04',
     title: 'One workspace',
     description: 'Move between Chat, Image and Video creation in one unified workspace.',
+    visual: 'workspace',
   },
 ] as const;
 
-function BenefitVisual({ number }: { number: (typeof ADVANTAGES)[number]['number'] }) {
-  if (number === '01') {
+function SupportingVisual({ visual }: { visual: (typeof SUPPORTING_FEATURES)[number]['visual'] }) {
+  if (visual === 'balance') {
     return (
-      <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] text-[11px] font-medium tracking-[0.08em] text-white/75">
-        DA
-      </div>
-    );
-  }
-
-  if (number === '02') {
-    return (
-      <div className="flex h-10 w-16 flex-col justify-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5">
+      <div className="flex h-11 w-[4.5rem] flex-col justify-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3">
         <span className="h-1 w-full rounded-full bg-white/70" />
         <span className="h-1 w-4/5 rounded-full bg-white/40" />
         <span className="h-1 w-3/5 rounded-full bg-white/20" />
@@ -45,9 +32,9 @@ function BenefitVisual({ number }: { number: (typeof ADVANTAGES)[number]['number
     );
   }
 
-  if (number === '03') {
+  if (visual === 'models') {
     return (
-      <div className="grid h-10 w-20 grid-cols-2 gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] p-1">
+      <div className="grid h-11 w-[5.5rem] grid-cols-2 gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] p-1.5">
         {['Model 01', 'Model 02', 'Model 03', '+ more'].map((label) => (
           <span
             key={label}
@@ -61,7 +48,7 @@ function BenefitVisual({ number }: { number: (typeof ADVANTAGES)[number]['number
   }
 
   return (
-    <div className="flex h-10 w-20 items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] p-1 text-[7px] text-white/35">
+    <div className="flex h-11 w-[5.5rem] items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] p-1.5 text-[7px] text-white/35">
       <span className="flex h-full flex-1 items-center justify-center rounded bg-white/[0.12] text-white/85">Chat</span>
       <span className="flex h-full flex-1 items-center justify-center">Image</span>
       <span className="flex h-full flex-1 items-center justify-center">Video</span>
@@ -73,51 +60,51 @@ export default function WhyVantra() {
   return (
     <section id="why-vantra" className="relative overflow-hidden bg-[#050505] py-28 md:py-36">
       <div className="mx-auto max-w-6xl px-6">
-        <div className="grid gap-14 border-t border-white/[0.07] pt-10 md:grid-cols-[0.8fr_1.2fr] md:gap-20 md:pt-14">
+        <div className="grid gap-14 border-t border-white/[0.07] pt-10 md:grid-cols-[0.9fr_1.1fr] md:gap-20 md:pt-14">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
             transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
           >
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-              Why VANTRA
-            </p>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">Why VANTRA</p>
             <h2 className="mt-5 max-w-md text-3xl font-semibold tracking-tight text-white md:text-5xl">
-              One place to create with AI.
+              Global AI. Built for Algeria.
             </h2>
-            <p className="mt-6 max-w-sm text-[15px] leading-7 text-white/45">
-              Local access, shared credit and capable models brought together in a single calm workspace.
+            <p className="mt-6 max-w-md text-[15px] leading-7 text-white/45">
+              Access leading AI models, create across every medium, and pay locally in DA.
             </p>
+
+            <div className="mt-10 rounded-2xl border border-white/[0.1] bg-white/[0.035] p-5 sm:p-6">
+              <div className="flex items-start justify-between gap-5">
+                <div>
+                  <h3 className="text-xl font-medium tracking-tight text-white">Pay locally in DA</h3>
+                  <p className="mt-3 max-w-sm text-sm leading-6 text-white/50">
+                    Use local payment options built for Algeria. No international card required.
+                  </p>
+                </div>
+                <div aria-hidden="true" className="flex shrink-0 flex-col items-center gap-2">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.12] bg-white/[0.05] text-sm font-medium tracking-[0.08em] text-white/85">DA</div>
+                  <span className="h-1 w-6 rounded-full bg-white/30" />
+                </div>
+              </div>
+            </div>
           </motion.div>
 
           <div className="border-b border-white/[0.07]">
-            {ADVANTAGES.map((advantage, index) => (
+            {SUPPORTING_FEATURES.map((feature, index) => (
               <motion.article
-                key={advantage.number}
+                key={feature.title}
                 initial={{ opacity: 0, y: 14 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-60px' }}
-                transition={{
-                  duration: 0.5,
-                  delay: index * 0.06,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
-                className="grid grid-cols-[2.5rem_5rem_minmax(0,1fr)] gap-3 border-t border-white/[0.07] py-7 sm:grid-cols-[3rem_5rem_minmax(0,1fr)] sm:gap-6 md:py-8"
+                transition={{ duration: 0.5, delay: index * 0.06, ease: [0.22, 1, 0.36, 1] }}
+                className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-5 border-t border-white/[0.07] py-8 sm:grid-cols-[6.5rem_minmax(0,1fr)] sm:gap-6"
               >
-                <span className="font-mono text-[11px] tracking-[0.2em] text-white/30">
-                  {advantage.number}
-                </span>
-                <div aria-hidden="true" className="pt-0.5">
-                  <BenefitVisual number={advantage.number} />
-                </div>
+                <div aria-hidden="true" className="pt-0.5"><SupportingVisual visual={feature.visual} /></div>
                 <div>
-                  <h3 className="text-lg font-medium tracking-tight text-white">
-                    {advantage.title}
-                  </h3>
-                  <p className="mt-2 max-w-xl text-sm leading-6 text-white/45">
-                    {advantage.description}
-                  </p>
+                  <h3 className="text-lg font-medium tracking-tight text-white">{feature.title}</h3>
+                  <p className="mt-2 max-w-xl text-sm leading-6 text-white/45">{feature.description}</p>
                 </div>
               </motion.article>
             ))}
