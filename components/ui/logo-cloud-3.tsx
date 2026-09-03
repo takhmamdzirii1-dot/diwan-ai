@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type ComponentType } from 'react';
+import { useEffect, useRef } from 'react';
 import { useReducedMotion } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
@@ -9,7 +9,6 @@ type Logo = {
   src?: string;
   alt: string;
   name?: string;
-  icon?: ComponentType<{ size?: number }>;
   width?: number;
   height?: number;
 };
@@ -89,20 +88,23 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
       ref={index === 0 ? sequenceRef : undefined}
       key={`logo-group-${index}`}
     >
-      {logos.map((logo) => {
-        const Icon = logo.icon;
-
-        return (
+      {logos.map((logo) =>
         logo.src ? (
-          <img
-            alt={index > 0 ? '' : logo.alt}
-            className='pointer-events-none h-5 w-auto shrink-0 select-none grayscale opacity-55 md:h-6 md:opacity-60'
-            height={logo.height || 'auto'}
+          <span
+            aria-hidden={index > 0 || undefined}
+            className='flex shrink-0 items-center gap-3 whitespace-nowrap text-[15px] font-medium tracking-[0.01em] text-white/75 md:text-base'
             key={`group-${index}-logo-${logo.alt}`}
-            loading='eager'
-            src={logo.src}
-            width={logo.width || 'auto'}
-          />
+          >
+            <img
+              alt={index > 0 ? '' : logo.alt}
+              className='pointer-events-none h-5 w-5 shrink-0 select-none md:h-6 md:w-6'
+              height={logo.height || 24}
+              loading='eager'
+              src={logo.src}
+              width={logo.width || 24}
+            />
+            {logo.name}
+          </span>
         ) : (
           <span
             aria-label={index > 0 ? undefined : logo.alt}
@@ -110,14 +112,10 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
             className='flex shrink-0 items-center gap-3 whitespace-nowrap text-[15px] font-medium tracking-[0.01em] text-white/75 md:text-base'
             key={`group-${index}-logo-${logo.alt}`}
           >
-            <span aria-hidden='true' className='flex h-5 w-5 shrink-0 items-center justify-center md:h-6 md:w-6'>
-              {Icon && <Icon size={24} />}
-            </span>
             {logo.name}
           </span>
         )
-        );
-      })}
+      )}
     </div>
   );
 
