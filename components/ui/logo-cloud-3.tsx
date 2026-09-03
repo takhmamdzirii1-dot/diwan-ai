@@ -6,8 +6,9 @@ import { useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 type Logo = {
-  src: string;
+  src?: string;
   alt: string;
+  name?: string;
   width?: number;
   height?: number;
 };
@@ -27,7 +28,7 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
 
     if (!sequence || !track) return;
 
-    const cycleDuration = 19_000;
+    const cycleDuration = 30_000;
     let frameId = 0;
     let lastTime: number | null = null;
     let offset = 0;
@@ -87,17 +88,29 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
       ref={index === 0 ? sequenceRef : undefined}
       key={`logo-group-${index}`}
     >
-      {logos.map((logo) => (
-        <img
-          alt={index > 0 ? '' : logo.alt}
-          className='pointer-events-none h-5 w-auto shrink-0 select-none grayscale opacity-55 md:h-6 md:opacity-60'
-          height={logo.height || 'auto'}
-          key={`group-${index}-logo-${logo.alt}`}
-          loading='eager'
-          src={logo.src}
-          width={logo.width || 'auto'}
-        />
-      ))}
+      {logos.map((logo) =>
+        logo.src ? (
+          <img
+            alt={index > 0 ? '' : logo.alt}
+            className='pointer-events-none h-5 w-auto shrink-0 select-none grayscale opacity-55 md:h-6 md:opacity-60'
+            height={logo.height || 'auto'}
+            key={`group-${index}-logo-${logo.alt}`}
+            loading='eager'
+            src={logo.src}
+            width={logo.width || 'auto'}
+          />
+        ) : (
+          <span
+            aria-label={index > 0 ? undefined : logo.alt}
+            aria-hidden={index > 0 || undefined}
+            className='flex shrink-0 items-center gap-2.5 whitespace-nowrap text-[13px] font-medium tracking-[0.02em] text-white/60 md:text-sm'
+            key={`group-${index}-logo-${logo.alt}`}
+          >
+            <span aria-hidden='true' className='h-1.5 w-1.5 rounded-full bg-white/45' />
+            {logo.name}
+          </span>
+        )
+      )}
     </div>
   );
 
