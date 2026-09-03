@@ -1,25 +1,38 @@
 'use client';
 
 import { LogoCloud } from '@/components/ui/logo-cloud-3';
+import ByteDanceIcon from '@lobehub/icons/es/ByteDance/components/Color';
+import ClaudeIcon from '@lobehub/icons/es/Claude/components/Color';
+import DeepSeekIcon from '@lobehub/icons/es/DeepSeek/components/Color';
+import FluxIcon from '@lobehub/icons/es/Flux/components/Mono';
+import GeminiIcon from '@lobehub/icons/es/Gemini/components/Color';
+import GrokIcon from '@lobehub/icons/es/Grok/components/Mono';
+import HailuoIcon from '@lobehub/icons/es/Hailuo/components/Color';
+import KimiIcon from '@lobehub/icons/es/Kimi/components/Color';
+import KlingIcon from '@lobehub/icons/es/Kling/components/Color';
+import NanoBananaIcon from '@lobehub/icons/es/NanoBanana/components/Color';
+import OpenAIIcon from '@lobehub/icons/es/OpenAI/components/Mono';
+import QwenIcon from '@lobehub/icons/es/Qwen/components/Color';
+import ZAIIcon from '@lobehub/icons/es/ZAI/components/Mono';
 
 const logos = [
-  { name: 'GPT', mark: 'orbit' },
-  { name: 'Claude', mark: 'rings' },
-  { name: 'Gemini', mark: 'spark' },
-  { name: 'Nano Banana', mark: 'wave' },
-  { name: 'Grok', mark: 'split' },
-  { name: 'Kling', mark: 'grid' },
-  { name: 'DeepSeek', mark: 'orbit' },
-  { name: 'FLUX', mark: 'spark' },
-  { name: 'Qwen', mark: 'rings' },
-  { name: 'Seedance', mark: 'wave' },
-  { name: 'Kimi', mark: 'split' },
-  { name: 'Seedream', mark: 'grid' },
-  { name: 'GLM', mark: 'orbit' },
-  { name: 'Hailuo', mark: 'spark' },
-].map(({ name, mark }) => ({
+  { name: 'GPT', icon: OpenAIIcon },
+  { name: 'Claude', icon: ClaudeIcon },
+  { name: 'Gemini', icon: GeminiIcon },
+  { name: 'Nano Banana', icon: NanoBananaIcon },
+  { name: 'Grok', icon: GrokIcon },
+  { name: 'Kling', icon: KlingIcon },
+  { name: 'DeepSeek', icon: DeepSeekIcon },
+  { name: 'FLUX', icon: FluxIcon },
+  { name: 'Qwen', icon: QwenIcon },
+  { name: 'Kimi', icon: KimiIcon },
+  { name: 'GLM', icon: ZAIIcon },
+  { name: 'Seedance', icon: ByteDanceIcon },
+  { name: 'Seedream', icon: ByteDanceIcon },
+  { name: 'Hailuo', icon: HailuoIcon },
+].map(({ name, icon }) => ({
   alt: `${name} wordmark`,
-  mark,
+  icon,
   name,
 }));
 

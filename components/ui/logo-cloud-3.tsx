@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ComponentType } from 'react';
 import { useReducedMotion } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
@@ -9,7 +9,7 @@ type Logo = {
   src?: string;
   alt: string;
   name?: string;
-  mark?: string;
+  icon?: ComponentType<{ size?: number }>;
   width?: number;
   height?: number;
 };
@@ -17,36 +17,6 @@ type Logo = {
 type LogoCloudProps = React.ComponentProps<'div'> & {
   logos: Logo[];
 };
-
-function NeutralBrandMark({ variant }: { variant?: string }) {
-  const stroke = 'currentColor';
-
-  if (variant === 'spark') {
-    return <svg viewBox='0 0 24 24' fill='none' stroke={stroke} strokeWidth='1.6'><path d='m12 2 1.8 8.2L22 12l-8.2 1.8L12 22l-1.8-8.2L2 12l8.2-1.8L12 2Z' /></svg>;
-  }
-
-  if (variant === 'grid') {
-    return <svg viewBox='0 0 24 24' fill='none' stroke={stroke} strokeWidth='1.5'><rect x='3' y='3' width='7' height='7' rx='1.5' /><rect x='14' y='3' width='7' height='7' rx='1.5' /><rect x='3' y='14' width='7' height='7' rx='1.5' /><rect x='14' y='14' width='7' height='7' rx='1.5' /></svg>;
-  }
-
-  if (variant === 'wave') {
-    return <svg viewBox='0 0 24 24' fill='none' stroke={stroke} strokeWidth='1.7'><path d='M3 8c3.2 0 3.2 8 6.4 8s3.2-8 6.4-8 3.2 8 5.2 8' /></svg>;
-  }
-
-  if (variant === 'rings') {
-    return <svg viewBox='0 0 24 24' fill='none' stroke={stroke} strokeWidth='1.5'><circle cx='12' cy='12' r='8.5' /><circle cx='12' cy='12' r='3.5' /></svg>;
-  }
-
-  if (variant === 'split') {
-    return <svg viewBox='0 0 24 24' fill='none' stroke={stroke} strokeWidth='1.5'><path d='M4 5h16M4 12h10M4 19h16' /></svg>;
-  }
-
-  if (variant === 'orbit') {
-    return <svg viewBox='0 0 24 24' fill='none' stroke={stroke} strokeWidth='1.5'><ellipse cx='12' cy='12' rx='9' ry='4.5' /><ellipse cx='12' cy='12' rx='4.5' ry='9' /><circle cx='12' cy='12' r='1.4' fill='currentColor' stroke='none' /></svg>;
-  }
-
-  return <svg viewBox='0 0 24 24' fill='none' stroke={stroke} strokeWidth='1.5'><path d='m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z' /><path d='m4 7.5 8 4.5 8-4.5M12 12v9' /></svg>;
-}
 
 export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
   const reduce = useReducedMotion();
@@ -119,7 +89,10 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
       ref={index === 0 ? sequenceRef : undefined}
       key={`logo-group-${index}`}
     >
-      {logos.map((logo) =>
+      {logos.map((logo) => {
+        const Icon = logo.icon;
+
+        return (
         logo.src ? (
           <img
             alt={index > 0 ? '' : logo.alt}
@@ -137,11 +110,14 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
             className='flex shrink-0 items-center gap-3 whitespace-nowrap text-[15px] font-medium tracking-[0.01em] text-white/75 md:text-base'
             key={`group-${index}-logo-${logo.alt}`}
           >
-            <span aria-hidden='true' className='h-5 w-5 shrink-0 text-white/65 md:h-6 md:w-6'><NeutralBrandMark variant={logo.mark} /></span>
+            <span aria-hidden='true' className='flex h-5 w-5 shrink-0 items-center justify-center md:h-6 md:w-6'>
+              {Icon && <Icon size={24} />}
+            </span>
             {logo.name}
           </span>
         )
-      )}
+        );
+      })}
     </div>
   );
 

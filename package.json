@@ -14,6 +14,7 @@
     "@ai-sdk/react": "^0.0.51",
     "@google/genai": "^2.4.0",
     "@heyputer/puter.js": "^2.6.2",
+    "@lobehub/icons": "^5.16.0",
     "@paper-design/shaders-react": "^0.0.80",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.3",
