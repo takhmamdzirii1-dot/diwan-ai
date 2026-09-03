@@ -7,7 +7,7 @@ const ADVANTAGES = [
   {
     number: '01',
     title: 'Pay locally',
-    description: 'Top up in DA with local payment support built for Algeria.',
+    description: 'Pay locally in DA with payment options built for Algeria.',
   },
   {
     number: '02',
@@ -25,6 +25,49 @@ const ADVANTAGES = [
     description: 'Move between Chat, Image and Video creation in one unified workspace.',
   },
 ] as const;
+
+function BenefitVisual({ number }: { number: (typeof ADVANTAGES)[number]['number'] }) {
+  if (number === '01') {
+    return (
+      <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] text-[11px] font-medium tracking-[0.08em] text-white/75">
+        DA
+      </div>
+    );
+  }
+
+  if (number === '02') {
+    return (
+      <div className="flex h-10 w-16 flex-col justify-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5">
+        <span className="h-1 w-full rounded-full bg-white/70" />
+        <span className="h-1 w-4/5 rounded-full bg-white/40" />
+        <span className="h-1 w-3/5 rounded-full bg-white/20" />
+      </div>
+    );
+  }
+
+  if (number === '03') {
+    return (
+      <div className="grid h-10 w-20 grid-cols-2 gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] p-1">
+        {['Model 01', 'Model 02', 'Model 03', '+ more'].map((label) => (
+          <span
+            key={label}
+            className="flex items-center justify-center rounded border border-white/[0.06] bg-white/[0.025] px-0.5 text-[5px] font-medium tracking-wide text-white/55"
+          >
+            {label}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-10 w-20 items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] p-1 text-[7px] text-white/35">
+      <span className="flex h-full flex-1 items-center justify-center rounded bg-white/[0.12] text-white/85">Chat</span>
+      <span className="flex h-full flex-1 items-center justify-center">Image</span>
+      <span className="flex h-full flex-1 items-center justify-center">Video</span>
+    </div>
+  );
+}
 
 export default function WhyVantra() {
   return (
@@ -60,11 +103,14 @@ export default function WhyVantra() {
                   delay: index * 0.06,
                   ease: [0.22, 1, 0.36, 1],
                 }}
-                className="grid gap-4 border-t border-white/[0.07] py-7 sm:grid-cols-[3rem_1fr] sm:gap-6 md:py-8"
+                className="grid grid-cols-[2.5rem_5rem_minmax(0,1fr)] gap-3 border-t border-white/[0.07] py-7 sm:grid-cols-[3rem_5rem_minmax(0,1fr)] sm:gap-6 md:py-8"
               >
                 <span className="font-mono text-[11px] tracking-[0.2em] text-white/30">
                   {advantage.number}
                 </span>
+                <div aria-hidden="true" className="pt-0.5">
+                  <BenefitVisual number={advantage.number} />
+                </div>
                 <div>
                   <h3 className="text-lg font-medium tracking-tight text-white">
                     {advantage.title}
