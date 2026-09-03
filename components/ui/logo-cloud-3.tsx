@@ -92,7 +92,7 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
         logo.src ? (
           <span
             aria-hidden={index > 0 || undefined}
-            className='flex shrink-0 items-center gap-3 whitespace-nowrap text-[15px] font-medium tracking-[0.01em] text-white/75 md:text-base'
+            className='flex shrink-0 items-center gap-3 whitespace-nowrap text-[15px] font-medium tracking-[0.01em] text-white/90 md:text-base'
             key={`group-${index}-logo-${logo.alt}`}
           >
             <img
@@ -109,7 +109,7 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
           <span
             aria-label={index > 0 ? undefined : logo.alt}
             aria-hidden={index > 0 || undefined}
-            className='flex shrink-0 items-center gap-3 whitespace-nowrap text-[15px] font-medium tracking-[0.01em] text-white/75 md:text-base'
+            className='flex shrink-0 items-center gap-3 whitespace-nowrap text-[15px] font-medium tracking-[0.01em] text-white/90 md:text-base'
             key={`group-${index}-logo-${logo.alt}`}
           >
             {logo.name}
