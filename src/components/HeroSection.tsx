@@ -20,8 +20,8 @@ const PATHS = [
 ];
 
 const STATS = [
-  { num: '12+', label: 'AI Models' },
-  { num: 'DA', label: 'Local Payment' },
+  { num: '12+', label: 'Supported Models' },
+  { num: 'DA', label: 'Local Billing' },
   { num: '1', label: 'Shared Balance' },
   { num: '3', label: 'Chat · Image · Video' },
 ];
@@ -158,7 +158,7 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
           transition={{ duration: 0.6, delay: 0.16 }}
           className="max-w-2xl text-white/55 text-lg mt-6 leading-relaxed"
         >
-          Chat, create images, and generate video in one workspace. Use one shared balance and pay locally in DA.
+          Chat, create images, and generate video in one workspace — with local payment built for Algeria.
         </motion.p>
 
         {/* ── THE HOOK: interactive prompt bar ── */}
@@ -270,7 +270,7 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
         >
           <Magnetic strength={0.18}>
             <LiquidMetalButton
-              label={user ? 'Enter Studio' : 'Start Free'}
+              label={user ? 'Open Studio' : 'Start Free'}
               onClick={handlePrimaryAction}
             />
           </Magnetic>
