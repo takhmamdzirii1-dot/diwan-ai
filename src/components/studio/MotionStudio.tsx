@@ -1,213 +1,121 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Clapperboard, Loader2 } from 'lucide-react';
-import { LiquidMetalButton } from '@/components/ui/liquid-metal-button';
+import React, { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { ChevronDown, Clapperboard, ImagePlus, SlidersHorizontal, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getModelCost } from '../../config/pricing';
-import VideoConfigPopover, {
-  VideoConfigPill,
-  VIDEO_MODELS,
-  type VideoConfig,
-} from './VideoConfigPopover';
+import { DEFAULT_VIDEO_MODEL, isModelSelectable, VIDEO_MODELS } from '@/src/config/studio-registry';
+import { PrimaryButton, Segmented, StateBlock } from './AppShell';
 
-const DOT_GRID =
-  'url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2720%27%20height%3D%2720%27%20viewBox%3D%270%200%2020%2020%27%3E%3Ccircle%20cx%3D%2710%27%20cy%3D%2710%27%20r%3D%270.5%27%20fill%3D%27white%27%2F%3E%3C%2Fsvg%27")';
+const DURATIONS = ['5 seconds', '10 seconds'] as const;
+const ASPECT_RATIOS = ['16:9', '9:16', '1:1'] as const;
+const CAMERA_PRESETS = ['Static', 'Push in', 'Pull out', 'Pan left', 'Pan right', 'Orbit'] as const;
+type VideoMode = 'text' | 'image';
 
-export default function MotionStudio() {
+export type VideoRequestDraft = {
+  mode: VideoMode;
+  prompt: string;
+  referenceFile: File | null;
+  modelId: string;
+  duration: (typeof DURATIONS)[number];
+  aspectRatio: (typeof ASPECT_RATIOS)[number];
+  cameraMotion: (typeof CAMERA_PRESETS)[number];
+  negativePrompt: string;
+};
+
+function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) {
+  return <label htmlFor={htmlFor} className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/45">{children}</label>;
+}
+
+export default function MotionStudio({ onGenerate }: { onGenerate?: (draft: VideoRequestDraft) => void | Promise<void> }) {
+  const reduceMotion = useReducedMotion();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [mode, setMode] = useState<VideoMode>('text');
   const [prompt, setPrompt] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [genError, setGenError] = useState<string | null>(null);
-  const [configOpen, setConfigOpen] = useState(false);
-  const [config, setConfig] = useState<VideoConfig>({
-    model: 'kling-ai-1-5',
-    duration: '5s',
-    camera: 'Cinematic Drone Flyover',
-  });
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [modelId, setModelId] = useState(DEFAULT_VIDEO_MODEL?.id ?? '');
+  const [duration, setDuration] = useState<(typeof DURATIONS)[number]>('5 seconds');
+  const [aspectRatio, setAspectRatio] = useState<(typeof ASPECT_RATIOS)[number]>('16:9');
+  const [cameraMotion, setCameraMotion] = useState<(typeof CAMERA_PRESETS)[number]>('Static');
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [negativePrompt, setNegativePrompt] = useState('');
+  const [referenceFile, setReferenceFile] = useState<File | null>(null);
+  const [referenceUrl, setReferenceUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const baseCost = getModelCost(config.model) || 240;
-  const cost = baseCost * (config.duration === '10s' ? 2 : 1);
-  const modelName = VIDEO_MODELS.find((m) => m.id === config.model)?.name ?? 'Model';
+  useEffect(() => () => {
+    if (referenceUrl) URL.revokeObjectURL(referenceUrl);
+  }, [referenceUrl]);
 
-  const autoGrow = () => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 128) + 'px';
+  const chooseReference = (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Choose an image file for the video reference.');
+      return;
+    }
+    if (referenceUrl) URL.revokeObjectURL(referenceUrl);
+    setReferenceFile(file);
+    setReferenceUrl(URL.createObjectURL(file));
+    setError(null);
   };
 
-  const handleGenerate = async () => {
-    if (!prompt.trim() || isGenerating) return;
-    setIsGenerating(true);
-    setGenError(null);
-    try {
-      // Placeholder render pipeline — wire the provider here.
-      await new Promise((resolve) => setTimeout(resolve, 3200));
-    } catch {
-      setGenError('Rendering failed — please try again');
-    } finally {
-      setIsGenerating(false);
+  const clearReference = () => {
+    if (referenceUrl) URL.revokeObjectURL(referenceUrl);
+    setReferenceFile(null);
+    setReferenceUrl(null);
+  };
+
+  const submitDraft = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!prompt.trim()) {
+      setError('Describe the scene you want to create.');
+      return;
     }
+    if (mode === 'image' && !referenceFile) {
+      setError('Add a reference image for Image to Video.');
+      return;
+    }
+    const selectedModel = VIDEO_MODELS.find((model) => model.id === modelId);
+    if (!selectedModel || !isModelSelectable(selectedModel)) {
+      setError('Video generation is not connected yet. Your configuration is preserved locally.');
+      return;
+    }
+    setError(null);
+    await onGenerate?.({ mode, prompt: prompt.trim(), referenceFile, modelId, duration, aspectRatio, cameraMotion, negativePrompt: negativePrompt.trim() });
   };
 
   return (
-    <div className="absolute inset-0 flex flex-col">
-      {/* ── Cinematic canvas ── */}
-      <div className="flex-1 min-h-0 relative overflow-hidden">
-        {/* Dot grid */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ backgroundImage: DOT_GRID, opacity: 0.03 }}
-          aria-hidden="true"
-        />
-        {/* Corner glows */}
-        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-white/5 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-white/5 blur-3xl pointer-events-none" />
+    <div className="custom-scrollbar h-full overflow-y-auto bg-[var(--studio-bg)] text-white">
+      <div className="mx-auto grid min-h-full w-full max-w-[1440px] grid-cols-1 lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]">
+        <section className="border-b border-[var(--studio-border-subtle)] p-5 sm:p-6 lg:border-b-0 lg:border-e lg:p-8">
+          <div className="mb-6">
+            <div className="flex items-center justify-between gap-3"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">Video Studio</p><span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-white/50">Preview</span></div>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white">Direct the scene</h1>
+            <p className="mt-2 max-w-sm text-[13px] leading-relaxed text-[var(--studio-text-secondary)]">Prepare a video request while provider integration remains unavailable.</p>
+          </div>
 
-        <div className="absolute inset-0 flex items-center justify-center p-4">
-          <AnimatePresence mode="wait">
-            {isGenerating ? (
-              <motion.div
-                key="rendering"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ type: 'spring', stiffness: 320, damping: 30 }}
-                className="w-full max-w-sm flex flex-col items-center text-center"
-              >
-                <motion.div
-                  animate={{ opacity: [0.45, 1, 0.45] }}
-                  transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-                  className="h-16 w-16 rounded-2xl border border-white/10 bg-white/5 flex items-center justify-center"
-                >
-                  <Clapperboard className="h-7 w-7 text-white/70" />
-                </motion.div>
+          <form className="space-y-6" onSubmit={submitDraft} noValidate>
+            <Segmented value={mode} onChange={(value) => { setMode(value); setError(null); }} layoutId="video-mode" label="Video generation mode" options={[{ value: 'text', label: 'Text to Video' }, { value: 'image', label: 'Image to Video' }]} className="w-full [&>button]:flex-1" />
 
-                <motion.p
-                  animate={{ opacity: [0.55, 1, 0.55] }}
-                  transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-                  className="mt-6 text-[15px] font-medium text-white"
-                  style={{ textShadow: '0 0 24px rgba(255,255,255,0.35)' }}
-                >
-                  Rendering Cinematic Scene…
-                </motion.p>
-                <p className="mt-1.5 text-[11.5px] text-white/35">
-                  {modelName} · {config.duration} · {config.camera}
-                </p>
+            <div className="space-y-2"><FieldLabel htmlFor="video-prompt">Scene prompt</FieldLabel><textarea id="video-prompt" value={prompt} onChange={(event) => { setPrompt(event.target.value); setError(null); }} rows={5} placeholder="Describe the action, environment, lighting, and shot…" className="w-full resize-y rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3.5 py-3 text-[14px] leading-relaxed text-white outline-none transition-[border-color,background-color] duration-150 placeholder:text-white/25 hover:bg-[var(--studio-hover)] focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none" /></div>
 
-                {/* Progress bar */}
-                <div className="mt-6 w-full h-[3px] rounded-full bg-white/10 overflow-hidden">
-                  <motion.div
-                    initial={{ x: '-40%' }}
-                    animate={{ x: '140%' }}
-                    transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-                    className="h-full w-2/5 rounded-full bg-white/70"
-                  />
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="empty"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                className="flex flex-col items-center text-center select-none"
-              >
-                {/* Film reel — subtle breathing glow */}
-                <motion.div
-                  animate={{ scale: [0.98, 1.02, 0.98] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-                  className="h-20 w-20 rounded-2xl border border-white/10 bg-white/5 flex items-center justify-center"
-                  style={{ boxShadow: '0 0 60px -20px rgba(255,255,255,0.25)' }}
-                >
-                  <svg width="44" height="44" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-                    <circle cx="24" cy="24" r="17" stroke="white" strokeOpacity="0.35" strokeWidth="1.5" />
-                    <circle cx="24" cy="24" r="4" fill="white" fillOpacity="0.55" />
-                    <circle cx="24" cy="12" r="3" fill="white" fillOpacity="0.3" />
-                    <circle cx="24" cy="36" r="3" fill="white" fillOpacity="0.3" />
-                    <circle cx="12" cy="24" r="3" fill="white" fillOpacity="0.3" />
-                    <circle cx="36" cy="24" r="3" fill="white" fillOpacity="0.3" />
-                  </svg>
-                </motion.div>
+            <div className="space-y-2"><FieldLabel>Reference image {mode === 'image' ? '· Required' : '· Optional'}</FieldLabel><input ref={fileInputRef} type="file" accept="image/*" className="sr-only" onChange={(event) => { chooseReference(event.target.files?.[0]); event.target.value = ''; }} />{referenceUrl ? <div className="flex items-center gap-3 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] p-2.5"><img src={referenceUrl} alt="Selected video reference" className="h-14 w-14 rounded-lg object-cover" /><div className="min-w-0 flex-1"><p className="truncate text-[12.5px] font-medium text-white/85">{referenceFile?.name}</p><p className="mt-0.5 text-[11px] text-white/40">Local preview · not uploaded</p></div><button type="button" onClick={clearReference} aria-label="Remove video reference" className="flex h-9 w-9 items-center justify-center rounded-lg text-white/45 transition-[color,background-color] duration-150 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><X className="h-4 w-4" /></button></div> : <button type="button" onClick={() => fileInputRef.current?.click()} className="flex min-h-20 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/[0.02] text-[12.5px] font-medium text-white/55 transition-[color,background-color,border-color] duration-150 hover:border-white/25 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><ImagePlus className="h-4 w-4" />Add reference image</button>}</div>
 
-                <p className="mt-6 text-[15px] font-medium text-white/70">Motion Studio</p>
-                <p className="mt-1.5 text-xs text-white/25 max-w-xs">
-                  Describe a scene below, tune the shot, and render.
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+            <div className="space-y-2"><FieldLabel htmlFor="video-model">Model</FieldLabel><div className="relative"><select id="video-model" disabled={VIDEO_MODELS.length === 0} value={modelId || 'unavailable'} onChange={(event) => setModelId(event.target.value)} className="h-11 w-full appearance-none rounded-xl border border-white/10 bg-white/[0.025] ps-3.5 pe-10 text-[13px] text-[var(--studio-text-disabled)] outline-none focus-visible:ring-2 focus-visible:ring-white/40 disabled:cursor-not-allowed">{VIDEO_MODELS.length === 0 ? <option value="unavailable">No connected video models</option> : VIDEO_MODELS.map((model) => <option key={model.id} value={model.id} disabled={!isModelSelectable(model)}>{model.displayName} · {model.provider}</option>)}</select><ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/25" /></div></div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2"><div className="space-y-2"><FieldLabel htmlFor="video-duration">Duration</FieldLabel><select id="video-duration" value={duration} onChange={(event) => setDuration(event.target.value as typeof duration)} className="h-11 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[13px] text-white outline-none focus-visible:ring-2 focus-visible:ring-white/40">{DURATIONS.map((value) => <option key={value}>{value}</option>)}</select></div><div className="space-y-2"><FieldLabel htmlFor="video-ratio">Aspect ratio</FieldLabel><select id="video-ratio" value={aspectRatio} onChange={(event) => setAspectRatio(event.target.value as typeof aspectRatio)} className="h-11 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[13px] text-white outline-none focus-visible:ring-2 focus-visible:ring-white/40">{ASPECT_RATIOS.map((value) => <option key={value}>{value}</option>)}</select></div></div>
+
+            <div className="space-y-2"><FieldLabel>Camera motion</FieldLabel><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{CAMERA_PRESETS.map((preset) => { const selected = cameraMotion === preset; return <button key={preset} type="button" aria-pressed={selected} onClick={() => setCameraMotion(preset)} className={cn('min-h-10 rounded-xl border px-2 text-[11.5px] font-medium transition-[color,background-color,border-color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none', selected ? 'border-white/25 bg-white/10 text-white' : 'border-white/[0.07] bg-white/[0.02] text-white/45 hover:bg-[var(--studio-hover)] hover:text-white/75')}>{preset}</button>; })}</div></div>
+
+            <div className="rounded-xl border border-[var(--studio-border-subtle)] bg-white/[0.015]"><button type="button" onClick={() => setAdvancedOpen((open) => !open)} aria-expanded={advancedOpen} aria-controls="video-advanced" className="flex h-11 w-full items-center justify-between px-3.5 text-[12.5px] font-medium text-white/65 transition-[color,background-color] duration-150 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><span className="flex items-center gap-2"><SlidersHorizontal className="h-4 w-4" />Advanced</span><ChevronDown className={cn('h-4 w-4 transition-transform duration-150 motion-reduce:transition-none', advancedOpen && 'rotate-180')} /></button><AnimatePresence initial={false}>{advancedOpen && <motion.div id="video-advanced" initial={reduceMotion ? false : { height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.18 }} className="overflow-hidden"><div className="space-y-2 border-t border-[var(--studio-border-subtle)] p-3.5"><FieldLabel htmlFor="video-negative">Negative prompt</FieldLabel><input id="video-negative" value={negativePrompt} onChange={(event) => setNegativePrompt(event.target.value)} placeholder="Used only when a connected model supports it" className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white outline-none placeholder:text-white/25 focus-visible:ring-2 focus-visible:ring-white/40" /></div></motion.div>}</AnimatePresence></div>
+
+            {error && <p role="status" className="text-[12px] leading-relaxed text-white/55">{error}</p>}
+            <PrimaryButton type="submit" disabled={!DEFAULT_VIDEO_MODEL} className="w-full">Generate</PrimaryButton>
+            <p className="text-center text-[10.5px] text-white/35">Generation unlocks when a verified video model is connected</p>
+          </form>
+        </section>
+
+        <section aria-label="Video preview" className="flex min-h-[420px] items-center justify-center p-5 sm:p-8 lg:min-h-full"><StateBlock icon={<Clapperboard className="h-6 w-6" />} title="Video generation is not connected yet" description="Your scene configuration stays in this workspace. Video output will appear here after a verified provider is integrated." /></section>
       </div>
-
-      {/* ── Floating command bar ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
-        className="relative shrink-0"
-      >
-        <div className="max-w-3xl mx-auto px-4 pb-4 pt-2">
-          {/* Single-line glassmorphic command bar — VANTRA composer standard */}
-          <div className="relative backdrop-blur-xl bg-[#0A0A0B]/90 border border-white/5 rounded-2xl shadow-[0_0_40px_rgba(255,255,255,0.03)]">
-            <div className="flex flex-row items-center gap-2 px-3 py-2.5">
-              {/* Text input — flex-1 */}
-              <input
-                type="text"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey && !isGenerating) {
-                    e.preventDefault();
-                    handleGenerate();
-                  }
-                }}
-                placeholder="Describe the scene you want to film…"
-                dir="auto"
-                disabled={isGenerating}
-                aria-label="Video prompt"
-                className="flex-1 min-w-0 bg-transparent border-0 outline-none text-white text-[14px] placeholder:text-white/30 antialiased font-sans"
-              />
-
-              {/* Settings pill — subtle */}
-              <div className="relative shrink-0">
-                <VideoConfigPill
-                  config={config}
-                  open={configOpen}
-                  onToggle={() => setConfigOpen((v) => !v)}
-                />
-                <VideoConfigPopover
-                  open={configOpen}
-                  onClose={() => setConfigOpen(false)}
-                  config={config}
-                  onChange={setConfig}
-                />
-              </div>
-
-              {/* Liquid metal generate — right edge */}
-              <div className="shrink-0">
-                <LiquidMetalButton
-                  viewMode="icon"
-                  label="Generate"
-                  onClick={handleGenerate}
-                />
-              </div>
-            </div>
-
-            {genError && <p className="px-4 pb-2.5 -mt-1 text-[11.5px] text-red-400/90">{genError}</p>}
-          </div>
-
-          {/* Cost — outside the bar, right-aligned, tiny */}
-          <div className="flex justify-end px-2 pt-2">
-            <span className="text-[10px] text-white/30 uppercase tracking-widest">
-              {cost} Unified Credits
-            </span>
-          </div>
-        </div>
-      </motion.div>
     </div>
   );
 }

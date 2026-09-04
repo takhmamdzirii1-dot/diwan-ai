@@ -636,9 +636,9 @@
     "semantic_hash": ""
   },
   "src/components/studio/ImageCanvas.tsx": {
-    "mtime": 1788142821.1711574,
-    "seen": 1788146659.5313447,
-    "ast_hash": "5cd8571819dae7c2eb437fb7be3fd0ee",
+    "mtime": 1788566117.4383607,
+    "seen": 1788566234.8520687,
+    "ast_hash": "124fda2f9a7f33acd2389612d196237d",
     "semantic_hash": ""
   },
   "scripts/verify-settings.mjs": {
@@ -702,9 +702,9 @@
     "semantic_hash": ""
   },
   "src/components/studio/MotionStudio.tsx": {
-    "mtime": 1788558320.2813654,
-    "seen": 1788558386.4792793,
-    "ast_hash": "1e43d3d49910af18e69b4f8424c1e991",
+    "mtime": 1788566119.8926246,
+    "seen": 1788566234.8529637,
+    "ast_hash": "f101cd065e1e4808e8825ff68ab1c995",
     "semantic_hash": ""
   },
   "src/components/studio/VideoConfigPopover.tsx": {
@@ -1100,7 +1100,7 @@
   "supabase/migrations/user_provider_connections.sql": {
     "mtime": 1787985901.4500034,
     "seen": 1788564827.053866,
-    "ast_hash": "4cf1f8dc6e37eac4a6f8e7784666875b",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "public/showcase/chat-preview.png": {

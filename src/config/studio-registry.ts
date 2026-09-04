@@ -108,6 +108,14 @@ export const DEFAULT_IMAGE_MODEL = IMAGE_MODELS.find(
   (model) => model.enabled && (model.availability === 'available' || model.availability === 'beta')
 ) ?? IMAGE_MODELS[0];
 
+export const VIDEO_MODELS = STUDIO_MODELS
+  .filter((model) => model.modality === 'video')
+  .sort((a, b) => a.displayOrder - b.displayOrder);
+
+export const DEFAULT_VIDEO_MODEL = VIDEO_MODELS.find(
+  (model) => model.enabled && (model.availability === 'available' || model.availability === 'beta')
+);
+
 export function isModelSelectable(model: StudioModelDefinition) {
   return model.enabled && (model.availability === 'available' || model.availability === 'beta');
 }
