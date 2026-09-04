@@ -636,9 +636,9 @@
     "semantic_hash": ""
   },
   "src/components/studio/ImageCanvas.tsx": {
-    "mtime": 1788566117.4383607,
-    "seen": 1788566234.8520687,
-    "ast_hash": "124fda2f9a7f33acd2389612d196237d",
+    "mtime": 1788566280.033649,
+    "seen": 1788566331.480672,
+    "ast_hash": "771f81aa179f74c63b01eda40b28585c",
     "semantic_hash": ""
   },
   "scripts/verify-settings.mjs": {
@@ -702,9 +702,9 @@
     "semantic_hash": ""
   },
   "src/components/studio/MotionStudio.tsx": {
-    "mtime": 1788566119.8926246,
-    "seen": 1788566234.8529637,
-    "ast_hash": "f101cd065e1e4808e8825ff68ab1c995",
+    "mtime": 1788566282.7544596,
+    "seen": 1788566331.4816105,
+    "ast_hash": "a3156ae2f9cf1534aad4f32254a31732",
     "semantic_hash": ""
   },
   "src/components/studio/VideoConfigPopover.tsx": {
@@ -1278,9 +1278,9 @@
     "semantic_hash": ""
   },
   "src/config/studio-registry.ts": {
-    "mtime": 1788564386.5296342,
-    "seen": 1788564720.086481,
-    "ast_hash": "6815d141d65bd2089a2b00c63b462852",
+    "mtime": 1788566277.233819,
+    "seen": 1788566331.4842815,
+    "ast_hash": "65614ae01a7e4634bb022984456ea79e",
     "semantic_hash": ""
   }
 }
