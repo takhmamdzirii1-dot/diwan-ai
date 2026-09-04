@@ -1099,8 +1099,8 @@
   },
   "supabase/migrations/user_provider_connections.sql": {
     "mtime": 1787985901.4500034,
-    "seen": 1788322201.7142527,
-    "ast_hash": "",
+    "seen": 1788542905.3083656,
+    "ast_hash": "4cf1f8dc6e37eac4a6f8e7784666875b",
     "semantic_hash": ""
   },
   "public/showcase/chat-preview.png": {
