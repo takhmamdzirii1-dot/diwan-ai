@@ -225,32 +225,6 @@
       "source_location": "L8"
     },
     {
-      "id": "src_components_topupmodal_topupplan",
-      "label": "TopUpPlan",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 136,
-      "community_name": "src/context/ModalContext.tsx",
-      "file_type": "code",
-      "norm_label": "topupplan",
-      "source_file": "src/components/TopUpModal.tsx",
-      "source_location": "L20"
-    },
-    {
-      "id": "src_context_modalcontext_modalcontexttype",
-      "label": "ModalContextType",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 136,
-      "community_name": "src/context/ModalContext.tsx",
-      "file_type": "code",
-      "norm_label": "modalcontexttype",
-      "source_file": "src/context/ModalContext.tsx",
-      "source_location": "L7"
-    },
-    {
       "id": "src_components_motion_ambientmeshglow_ambientmeshglowprops",
       "label": "AmbientMeshGlowProps",
       "_callable": true,
@@ -784,6 +758,32 @@
       "source_location": "L53"
     },
     {
+      "id": "src_components_topupmodal_topupplan",
+      "label": "TopUpPlan",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 9,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "topupplan",
+      "source_file": "src/components/TopUpModal.tsx",
+      "source_location": "L20"
+    },
+    {
+      "id": "src_context_modalcontext_modalcontexttype",
+      "label": "ModalContextType",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 9,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "modalcontexttype",
+      "source_file": "src/context/ModalContext.tsx",
+      "source_location": "L7"
+    },
+    {
       "id": "components_ui_claude_style_chat_input_attachedfile",
       "label": "AttachedFile",
       "_callable": true,
@@ -1012,6 +1012,30 @@
       "source_location": "L12"
     },
     {
+      "id": "app_root_layout_redirectrootlayout",
+      "label": "RedirectRootLayout()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "fonts.ts",
+      "file_type": "code",
+      "norm_label": "redirectrootlayout()",
+      "source_file": "app/(root)/layout.tsx",
+      "source_location": "L5"
+    },
+    {
+      "id": "app_studio_studio_layout_studiorootlayout",
+      "label": "StudioRootLayout()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "fonts.ts",
+      "file_type": "code",
+      "norm_label": "studiorootlayout()",
+      "source_file": "app/(studio)/studio/layout.tsx",
+      "source_location": "L15"
+    },
+    {
       "id": "src_components_closingctasection_closingctasection",
       "label": "ClosingCtaSection()",
       "_callable": true,
@@ -1202,18 +1226,6 @@
       "norm_label": "infiniteslider()",
       "source_file": "src/components/ui/infinite-slider.tsx",
       "source_location": "L18"
-    },
-    {
-      "id": "src_context_modalcontext_modalprovider",
-      "label": "ModalProvider()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 136,
-      "community_name": "src/context/ModalContext.tsx",
-      "file_type": "code",
-      "norm_label": "modalprovider()",
-      "source_file": "src/context/ModalContext.tsx",
-      "source_location": "L27"
     },
     {
       "id": "app_root_page_rootfallbackpage",
@@ -2596,28 +2608,16 @@
       "source_location": "L3"
     },
     {
-      "id": "app_root_layout_redirectrootlayout",
-      "label": "RedirectRootLayout()",
+      "id": "src_context_modalcontext_modalprovider",
+      "label": "ModalProvider()",
       "_callable": true,
       "_origin": "ast",
       "community": 9,
-      "community_name": "fonts.ts",
+      "community_name": "src/context/ModalContext.tsx",
       "file_type": "code",
-      "norm_label": "redirectrootlayout()",
-      "source_file": "app/(root)/layout.tsx",
-      "source_location": "L5"
-    },
-    {
-      "id": "app_studio_studio_layout_studiorootlayout",
-      "label": "StudioRootLayout()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 9,
-      "community_name": "fonts.ts",
-      "file_type": "code",
-      "norm_label": "studiorootlayout()",
-      "source_file": "app/(studio)/studio/layout.tsx",
-      "source_location": "L15"
+      "norm_label": "modalprovider()",
+      "source_file": "src/context/ModalContext.tsx",
+      "source_location": "L27"
     },
     {
       "id": "scripts_verify_stats_polish_grab",
@@ -3035,26 +3035,92 @@
       "source_location": "L1"
     },
     {
-      "id": "package_dependencies_framer_motion",
-      "label": "framer-motion",
+      "id": "app_fonts",
+      "label": "fonts.ts",
       "_origin": "ast",
       "community": 1,
-      "community_name": "framer-motion",
+      "community_name": "fonts.ts",
       "file_type": "code",
-      "norm_label": "framer-motion",
-      "source_file": "package.json",
-      "source_location": "L29"
+      "norm_label": "fonts.ts",
+      "source_file": "app/fonts.ts",
+      "source_location": "L1"
     },
     {
-      "id": "framer_motion",
-      "label": "framer-motion",
+      "id": "app_fonts_cairo",
+      "label": "cairo",
       "_origin": "ast",
       "community": 1,
-      "community_name": "framer-motion",
-      "file_type": "concept",
-      "norm_label": "framer-motion",
-      "source_file": "package.json",
-      "source_location": "L29"
+      "community_name": "fonts.ts",
+      "file_type": "code",
+      "norm_label": "cairo",
+      "source_file": "app/fonts.ts",
+      "source_location": "L9"
+    },
+    {
+      "id": "app_fonts_ibmplexmono",
+      "label": "ibmPlexMono",
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "fonts.ts",
+      "file_type": "code",
+      "norm_label": "ibmplexmono",
+      "source_file": "app/fonts.ts",
+      "source_location": "L15"
+    },
+    {
+      "id": "app_fonts_inter",
+      "label": "inter",
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "fonts.ts",
+      "file_type": "code",
+      "norm_label": "inter",
+      "source_file": "app/fonts.ts",
+      "source_location": "L3"
+    },
+    {
+      "id": "app_fonts_rootfontclasses",
+      "label": "rootFontClasses",
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "fonts.ts",
+      "file_type": "code",
+      "norm_label": "rootfontclasses",
+      "source_file": "app/fonts.ts",
+      "source_location": "L22"
+    },
+    {
+      "id": "app_root_layout",
+      "label": "(root)/layout.tsx",
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "fonts.ts",
+      "file_type": "code",
+      "norm_label": "(root)/layout.tsx",
+      "source_file": "app/(root)/layout.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "app_studio_studio_layout",
+      "label": "studio/layout.tsx",
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "fonts.ts",
+      "file_type": "code",
+      "norm_label": "studio/layout.tsx",
+      "source_file": "app/(studio)/studio/layout.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "app_studio_studio_layout_metadata",
+      "label": "metadata",
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "fonts.ts",
+      "file_type": "code",
+      "norm_label": "metadata",
+      "source_file": "app/(studio)/studio/layout.tsx",
+      "source_location": "L9"
     },
     {
       "id": "components_navbar",
@@ -4003,48 +4069,26 @@
       "source_location": "L1"
     },
     {
-      "id": "context_modalcontext",
-      "label": "context/ModalContext.tsx",
+      "id": "package_dependencies_framer_motion",
+      "label": "framer-motion",
       "_origin": "ast",
       "community": 136,
-      "community_name": "src/context/ModalContext.tsx",
+      "community_name": "framer-motion",
       "file_type": "code",
-      "norm_label": "context/modalcontext.tsx",
-      "source_file": "context/ModalContext.tsx",
-      "source_location": "L1"
+      "norm_label": "framer-motion",
+      "source_file": "package.json",
+      "source_location": "L29"
     },
     {
-      "id": "src_context_modalcontext",
-      "label": "src/context/ModalContext.tsx",
+      "id": "framer_motion",
+      "label": "framer-motion",
       "_origin": "ast",
       "community": 136,
-      "community_name": "src/context/ModalContext.tsx",
-      "file_type": "code",
-      "norm_label": "src/context/modalcontext.tsx",
-      "source_file": "src/context/ModalContext.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_context_modalcontext_default_topup_plan",
-      "label": "DEFAULT_TOPUP_PLAN",
-      "_origin": "ast",
-      "community": 136,
-      "community_name": "src/context/ModalContext.tsx",
-      "file_type": "code",
-      "norm_label": "default_topup_plan",
-      "source_file": "src/context/ModalContext.tsx",
-      "source_location": "L18"
-    },
-    {
-      "id": "src_context_modalcontext_modalcontext",
-      "label": "ModalContext",
-      "_origin": "ast",
-      "community": 136,
-      "community_name": "src/context/ModalContext.tsx",
-      "file_type": "code",
-      "norm_label": "modalcontext",
-      "source_file": "src/context/ModalContext.tsx",
-      "source_location": "L25"
+      "community_name": "framer-motion",
+      "file_type": "concept",
+      "norm_label": "framer-motion",
+      "source_file": "package.json",
+      "source_location": "L29"
     },
     {
       "id": "package_dependencies_lucide_react",
@@ -8494,92 +8538,48 @@
       "source_location": "L1"
     },
     {
-      "id": "app_fonts",
-      "label": "fonts.ts",
+      "id": "context_modalcontext",
+      "label": "context/ModalContext.tsx",
       "_origin": "ast",
       "community": 9,
-      "community_name": "fonts.ts",
+      "community_name": "src/context/ModalContext.tsx",
       "file_type": "code",
-      "norm_label": "fonts.ts",
-      "source_file": "app/fonts.ts",
+      "norm_label": "context/modalcontext.tsx",
+      "source_file": "context/ModalContext.tsx",
       "source_location": "L1"
     },
     {
-      "id": "app_fonts_cairo",
-      "label": "cairo",
+      "id": "src_context_modalcontext",
+      "label": "src/context/ModalContext.tsx",
       "_origin": "ast",
       "community": 9,
-      "community_name": "fonts.ts",
+      "community_name": "src/context/ModalContext.tsx",
       "file_type": "code",
-      "norm_label": "cairo",
-      "source_file": "app/fonts.ts",
-      "source_location": "L9"
-    },
-    {
-      "id": "app_fonts_ibmplexmono",
-      "label": "ibmPlexMono",
-      "_origin": "ast",
-      "community": 9,
-      "community_name": "fonts.ts",
-      "file_type": "code",
-      "norm_label": "ibmplexmono",
-      "source_file": "app/fonts.ts",
-      "source_location": "L15"
-    },
-    {
-      "id": "app_fonts_inter",
-      "label": "inter",
-      "_origin": "ast",
-      "community": 9,
-      "community_name": "fonts.ts",
-      "file_type": "code",
-      "norm_label": "inter",
-      "source_file": "app/fonts.ts",
-      "source_location": "L3"
-    },
-    {
-      "id": "app_fonts_rootfontclasses",
-      "label": "rootFontClasses",
-      "_origin": "ast",
-      "community": 9,
-      "community_name": "fonts.ts",
-      "file_type": "code",
-      "norm_label": "rootfontclasses",
-      "source_file": "app/fonts.ts",
-      "source_location": "L22"
-    },
-    {
-      "id": "app_root_layout",
-      "label": "(root)/layout.tsx",
-      "_origin": "ast",
-      "community": 9,
-      "community_name": "fonts.ts",
-      "file_type": "code",
-      "norm_label": "(root)/layout.tsx",
-      "source_file": "app/(root)/layout.tsx",
+      "norm_label": "src/context/modalcontext.tsx",
+      "source_file": "src/context/ModalContext.tsx",
       "source_location": "L1"
     },
     {
-      "id": "app_studio_studio_layout",
-      "label": "studio/layout.tsx",
+      "id": "src_context_modalcontext_default_topup_plan",
+      "label": "DEFAULT_TOPUP_PLAN",
       "_origin": "ast",
       "community": 9,
-      "community_name": "fonts.ts",
+      "community_name": "src/context/ModalContext.tsx",
       "file_type": "code",
-      "norm_label": "studio/layout.tsx",
-      "source_file": "app/(studio)/studio/layout.tsx",
-      "source_location": "L1"
+      "norm_label": "default_topup_plan",
+      "source_file": "src/context/ModalContext.tsx",
+      "source_location": "L18"
     },
     {
-      "id": "app_studio_studio_layout_metadata",
-      "label": "metadata",
+      "id": "src_context_modalcontext_modalcontext",
+      "label": "ModalContext",
       "_origin": "ast",
       "community": 9,
-      "community_name": "fonts.ts",
+      "community_name": "src/context/ModalContext.tsx",
       "file_type": "code",
-      "norm_label": "metadata",
-      "source_file": "app/(studio)/studio/layout.tsx",
-      "source_location": "L9"
+      "norm_label": "modalcontext",
+      "source_file": "src/context/ModalContext.tsx",
+      "source_location": "L25"
     },
     {
       "id": "scripts_verify_stats_polish",
@@ -20475,5 +20475,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "bd70fddd7e91217f21c1a2353b02c8d0731488d0"
+  "built_at_commit": "f3cdecddf370602738d5aafc5cdfbea38eced3fa"
 }

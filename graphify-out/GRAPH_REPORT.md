@@ -10,13 +10,13 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `bd70fddd`
+- Built from commit: `f3cdecdd`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - src/components/LiveLedgerCard.tsx
-- framer-motion
+- fonts.ts
 - devDependencies
 - verify-final.mjs
 - compilerOptions
@@ -24,7 +24,7 @@
 - router.ts
 - SettingsModal.tsx
 - verify-feed.mjs
-- fonts.ts
+- src/context/ModalContext.tsx
 - useModal
 - HeroEntrance.tsx
 - lib/supabase.ts
@@ -92,7 +92,7 @@
 - verify-navbar.mjs
 - components/ui/logo-cloud-3.tsx
 - lib/utils.ts
-- src/context/ModalContext.tsx
+- framer-motion
 - lucide-react
 - @ai-sdk/openai
 - next-intl
@@ -133,6 +133,10 @@
 Cohesion: 0.09
 Nodes (13): COST_ROWS, FAQS, FEATURES, HeroCinematicBackgroundProps, STEPS, CategoryType, LEDGER_MODELS, LiveLedgerCard() (+5 more)
 
+### Community 1 - "fonts.ts"
+Cohesion: 0.24
+Nodes (5): cairo, ibmPlexMono, inter, rootFontClasses, metadata
+
 ### Community 2 - "devDependencies"
 Cohesion: 0.06
 Nodes (30): autoprefixer, esbuild, vite, devDependencies, autoprefixer, esbuild, tailwindcss, tsx (+22 more)
@@ -153,9 +157,9 @@ Nodes (24): mockMeta, mockProvider, POLLINATIONS_MODELS, pollinationsMeta, polli
 Cohesion: 0.12
 Nodes (12): BillingPanel(), IMAGE_MODEL_HINTS, IMAGE_MODELS, INSTRUCTION_SUGGESTIONS, PrivacyPanel(), ProviderConnections(), SettingsModal(), TabId (+4 more)
 
-### Community 9 - "fonts.ts"
-Cohesion: 0.24
-Nodes (5): cairo, ibmPlexMono, inter, rootFontClasses, metadata
+### Community 9 - "src/context/ModalContext.tsx"
+Cohesion: 0.38
+Nodes (5): TopUpPlan, DEFAULT_TOPUP_PLAN, ModalContext, ModalContextType, ModalProvider()
 
 ### Community 10 - "useModal"
 Cohesion: 0.21
@@ -256,10 +260,6 @@ Nodes (5): Logo, LogoCloud(), LogoCloudProps, logos, PartnersSection()
 ### Community 135 - "lib/utils.ts"
 Cohesion: 0.29
 Nodes (4): Textarea, TextareaProps, InfiniteSlider(), InfiniteSliderProps
-
-### Community 136 - "src/context/ModalContext.tsx"
-Cohesion: 0.38
-Nodes (5): TopUpPlan, DEFAULT_TOPUP_PLAN, ModalContext, ModalContextType, ModalProvider()
 
 ## Knowledge Gaps
 - **316 isolated node(s):** `metadata`, `languageAlternates`, `dynamicParams`, `dynamic`, `metadata` (+311 more)
