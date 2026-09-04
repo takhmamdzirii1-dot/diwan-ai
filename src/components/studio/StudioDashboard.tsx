@@ -386,7 +386,7 @@ export default function StudioDashboard() {
 
         {/* Center content */}
         <div className="flex-1 relative min-h-0 overflow-hidden">
-          <AnimatePresence mode="wait">
+          <AnimatePresence initial={false}>
             {/* ── Chat Studio ── */}
             {centerMode === 'chat' && (
               <motion.div

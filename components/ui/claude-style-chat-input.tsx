@@ -675,7 +675,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
 
                                 <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2.5 py-1 glass-pop rounded-md text-[11px] font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 flex items-center gap-1.5">
                                     <span className="text-white/85">Extended thinking</span>
-                                    <span className="text-white/35" style={{ fontSize: '10px' }}>â‡§+Ctrl+E</span>
+                                    <span className="text-white/35" style={{ fontSize: '10px' }}>⇧ + Ctrl + E</span>
                                 </div>
                             </button>
                         </div>

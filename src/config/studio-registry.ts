@@ -78,6 +78,18 @@ export const STUDIO_MODELS: readonly StudioModelDefinition[] = [
     fallbackAvailable: false,
     displayOrder: 4,
   },
+  {
+    id: 'flux',
+    displayName: 'Flux',
+    provider: 'Pollinations',
+    modality: 'image',
+    enabled: true,
+    availability: 'beta',
+    verifiedCapabilities: ['Text to image'],
+    supportedControls: [],
+    fallbackAvailable: true,
+    displayOrder: 1,
+  },
 ] as const;
 
 export const CHAT_MODELS = STUDIO_MODELS
@@ -87,6 +99,14 @@ export const CHAT_MODELS = STUDIO_MODELS
 export const DEFAULT_CHAT_MODEL = CHAT_MODELS.find(
   (model) => model.enabled && (model.availability === 'available' || model.availability === 'beta')
 ) ?? CHAT_MODELS[0];
+
+export const IMAGE_MODELS = STUDIO_MODELS
+  .filter((model) => model.modality === 'image')
+  .sort((a, b) => a.displayOrder - b.displayOrder);
+
+export const DEFAULT_IMAGE_MODEL = IMAGE_MODELS.find(
+  (model) => model.enabled && (model.availability === 'available' || model.availability === 'beta')
+) ?? IMAGE_MODELS[0];
 
 export function isModelSelectable(model: StudioModelDefinition) {
   return model.enabled && (model.availability === 'available' || model.availability === 'beta');

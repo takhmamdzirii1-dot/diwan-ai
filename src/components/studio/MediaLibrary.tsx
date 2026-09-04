@@ -32,61 +32,6 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: 'videos', label: 'Videos' },
 ];
 
-/* Dummy media so the grid reads correctly before the video pipeline lands. */
-const DUMMY_MEDIA: MediaItem[] = [
-  {
-    id: 'v1',
-    kind: 'video',
-    url: '#',
-    poster: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1344&h=768&auto=format&fit=crop',
-    prompt: 'Cinematic drone shot soaring over Jijel coastal cliffs',
-    model: 'Kling AI 1.5',
-    duration: 5,
-  },
-  {
-    id: 'i1',
-    kind: 'image',
-    url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600&auto=format&fit=crop&crop=entropy',
-    prompt: 'Casbah of Algiers at golden hour, ultra realistic',
-    model: 'Flux.1 Pro',
-    ratio: '1:1',
-  },
-  {
-    id: 'v2',
-    kind: 'video',
-    url: '#',
-    poster: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=768&h=1344&auto=format&fit=crop',
-    prompt: 'Slow push in on a Saharan dune at dawn',
-    model: 'Runway Gen-3',
-    duration: 10,
-  },
-  {
-    id: 'i2',
-    kind: 'image',
-    url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600&auto=format&fit=crop&crop=edges',
-    prompt: 'Traditional market in Constantine, cinematic lighting',
-    model: 'Flux Realism v2',
-    ratio: '4:3',
-  },
-  {
-    id: 'i3',
-    kind: 'image',
-    url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1344&h=768&auto=format&fit=crop&crop=bottom',
-    prompt: 'Modern Algiers tramway at blue hour',
-    model: 'SDXL Turbo',
-    ratio: '16:9',
-  },
-  {
-    id: 'v3',
-    kind: 'video',
-    url: '#',
-    poster: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600&auto=format&fit=crop&crop=top',
-    prompt: 'Orbit around a potter shaping clay',
-    model: 'Kling AI 1.5',
-    duration: 5,
-  },
-];
-
 function formatDuration(seconds: number) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -200,7 +145,7 @@ export default function MediaLibrary() {
       ratio: img.ratio,
       createdAt: img.createdAt,
     }));
-    return [...real, ...DUMMY_MEDIA];
+    return real;
   }, [saved]);
 
   const visible = useMemo(() => {
@@ -273,9 +218,9 @@ export default function MediaLibrary() {
             <div className="h-16 w-16 rounded-2xl border border-white/[0.07] bg-white/[0.025] flex items-center justify-center">
               <FolderOpen className="h-6 w-6 text-white/15" />
             </div>
-            <p className="mt-5 text-[14.5px] font-medium text-white/40">Nothing here yet</p>
+            <p className="mt-5 text-[14.5px] font-medium text-white/55">Your creations will appear here.</p>
             <p className="mt-1.5 text-xs text-white/20 max-w-xs">
-              Generated images and videos will collect in this library.
+              Saved images and videos will collect in this library.
             </p>
           </div>
         ) : (

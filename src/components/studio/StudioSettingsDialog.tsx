@@ -16,7 +16,11 @@ import {
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import useUser from '../../hooks/useUser';
-import { CHAT_MODELS, isModelSelectable } from '@/src/config/studio-registry';
+import {
+  CHAT_MODELS,
+  DEFAULT_IMAGE_MODEL,
+  isModelSelectable,
+} from '@/src/config/studio-registry';
 
 type TabId = 'general' | 'models' | 'personalization' | 'credits' | 'connections' | 'privacy';
 
@@ -139,6 +143,10 @@ function ModelsPanel({ selectedId, onSelect }: { selectedId: string; onSelect: (
         </div>
       </div>
       <div className="rounded-2xl border border-[var(--studio-border-subtle)] bg-[var(--studio-surface-raised)] px-5">
+        <StaticRow
+          label={t('defaultImageModel')}
+          value={`${DEFAULT_IMAGE_MODEL.displayName} · ${modelT(DEFAULT_IMAGE_MODEL.availability)}`}
+        />
         <StaticRow label={t('videoModel')} value={t('notConnected')} />
       </div>
       <p className="text-[11.5px] leading-relaxed text-[var(--studio-text-muted)]">{t('routingNote')}</p>
@@ -166,26 +174,36 @@ function CreditsPanel() {
 
 function ConnectionsPanel() {
   const t = useTranslations('studio.settings');
-  const [status, setStatus] = useState<'loading' | 'connected' | 'disconnected' | 'expired'>('loading');
+  const [status, setStatus] = useState<'loading' | 'connected' | 'disconnected' | 'expired' | 'error'>('loading');
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState(false);
 
   const refresh = useCallback(async () => {
+    setStatus('loading');
+    setMessage(null);
+    setError(false);
     try {
-      const response = await fetch('/api/provider-connections/pollinations');
+      const response = await fetch('/api/provider-connections/pollinations', {
+        signal: AbortSignal.timeout(6_000),
+      });
       if (response.status === 401) {
         setStatus('disconnected');
+        setExpiresAt(null);
         return;
       }
+      if (!response.ok) throw new Error(`Connection check failed (${response.status})`);
       const data = await response.json();
       setStatus(data.connected ? (data.expired ? 'expired' : 'connected') : 'disconnected');
       setExpiresAt(data.expiresAt ?? null);
     } catch {
-      setStatus('disconnected');
+      setStatus('error');
+      setExpiresAt(null);
+      setMessage(t('connectionFailed'));
+      setError(true);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -229,9 +247,15 @@ function ConnectionsPanel() {
           <div>
             <div className="flex items-center gap-2">
               <p className="text-[13.5px] font-medium text-white">Pollinations</p>
-              {(status === 'connected' || status === 'expired') && (
+              {status !== 'loading' && (
                 <span className="rounded-full border border-[var(--studio-border)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white/65">
-                  {status === 'connected' ? t('connected') : t('expired')}
+                  {status === 'connected'
+                    ? t('connected')
+                    : status === 'expired'
+                      ? t('expired')
+                      : status === 'error'
+                        ? t('error')
+                        : t('disconnected')}
                 </span>
               )}
             </div>
@@ -313,7 +337,7 @@ export default function StudioSettingsDialog({
         aria-labelledby="studio-settings-title"
         initial={reduceMotion ? false : { opacity: 0, scale: 0.98, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: reduceMotion ? 0 : 0.2, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: reduceMotion ? 0 : 0.18, ease: [0.22, 1, 0.36, 1] }}
         className="relative flex h-[100dvh] w-full flex-col overflow-hidden border-[var(--studio-border)] bg-[var(--studio-surface-elevated)] shadow-[var(--studio-shadow)] sm:h-auto sm:max-h-[86vh] sm:max-w-4xl sm:flex-row sm:rounded-2xl sm:border"
       >
         <div className="shrink-0 overflow-x-auto border-b border-[var(--studio-border-subtle)] bg-[var(--studio-surface)] p-3 sm:w-60 sm:overflow-visible sm:border-b-0 sm:border-e">
