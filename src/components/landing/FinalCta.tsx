@@ -9,7 +9,7 @@ export default function FinalCta({ onGetStarted }: { onGetStarted: () => void })
   const t = useTranslations('finalCta');
 
   return (
-    <section className="relative bg-[#050505] py-40 overflow-hidden border-t border-white/[0.05]">
+    <section className="relative py-40 overflow-hidden border-t border-white/[0.05]">
       {/* Center glow */}
       <div
         className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_45%_45%_at_50%_55%,rgba(255,255,255,0.06),transparent_70%)]"

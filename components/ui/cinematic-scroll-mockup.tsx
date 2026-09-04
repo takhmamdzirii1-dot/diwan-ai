@@ -48,9 +48,9 @@ export function CinematicScrollMockup() {
     <section
       ref={containerRef}
       aria-label={t("aria")}
-      className="relative h-[400vh] bg-black"
+      className="relative h-[400vh]"
     >
-      <div className="sticky top-0 flex h-screen w-full max-w-[100vw] items-center justify-center overflow-hidden bg-black supports-[height:100svh]:h-[100svh]">
+      <div className="sticky top-0 flex h-screen w-full max-w-[100vw] items-center justify-center overflow-hidden supports-[height:100svh]:h-[100svh]">
         <motion.div
           data-cinematic-copy
           style={{

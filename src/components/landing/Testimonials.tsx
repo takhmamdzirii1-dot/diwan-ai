@@ -56,7 +56,7 @@ export default function Testimonials() {
   const rows = t.raw('rows') as Testimonial[][];
 
   return (
-    <section id="signals" className="relative overflow-hidden bg-[#050505] !py-24 md:!py-28">
+    <section id="signals" className="relative overflow-hidden !py-24 md:!py-28">
       <div className="max-w-6xl mx-auto px-6">
         <SectionHeading
           label={t('label')}

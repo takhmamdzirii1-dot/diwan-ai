@@ -100,11 +100,10 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
   };
 
   return (
-    <section id="hero" className="relative min-h-screen bg-[#050505] overflow-hidden">
+    <section id="hero" className="relative min-h-screen overflow-hidden">
       {/* ── Canvas ── */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_45%_at_50%_0%,rgba(255,255,255,0.07),transparent_70%)]" />
-        <div className="absolute inset-0 [background-image:linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] [background-size:64px_64px] [mask-image:radial-gradient(ellipse_70%_60%_at_50%_35%,black,transparent)]" />
 
         {PATHS.map((p, i) => (
           <div
@@ -129,7 +128,6 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
           </div>
         ))}
 
-        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-[#050505]" />
       </div>
 
       {/* ── Content ── */}

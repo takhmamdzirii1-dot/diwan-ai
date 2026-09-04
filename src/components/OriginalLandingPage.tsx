@@ -51,7 +51,7 @@ export default function OriginalLandingPage() {
   const handleGetStarted = () => (user ? openTopUpModal() : openAuthModal('signup'));
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white antialiased">
+    <div className="landing-grid-background min-h-screen text-white antialiased">
       {/* Scroll progress — hairline at the very top */}
       <motion.div
         style={{ scaleX: progress }}

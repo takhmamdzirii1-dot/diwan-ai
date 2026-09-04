@@ -21,7 +21,7 @@ export default function GlobalPricing({ onGetStarted }: { onGetStarted: () => vo
   const benefits = t.raw('benefits') as string[];
 
   return (
-    <section id="pricing" className="relative bg-[#050505] !py-24 md:!py-28 overflow-hidden">
+    <section id="pricing" className="relative !py-24 md:!py-28 overflow-hidden">
       {/* Header */}
       <div className="max-w-6xl mx-auto px-6 text-center">
         <motion.p

@@ -22,8 +22,7 @@ export default function HowItWorks() {
   const stepOpacities = [stepOneOpacity, stepTwoOpacity, stepThreeOpacity];
 
   return (
-    <section id="how" className="relative overflow-hidden bg-[#050505]" style={{ paddingTop: 104, paddingBottom: 140 }}>
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-50 [background-image:linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] [background-size:40px_40px]" />
+    <section id="how" className="relative overflow-hidden" style={{ paddingTop: 104, paddingBottom: 140 }}>
       <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[920px] max-w-full -translate-x-1/2 bg-[radial-gradient(ellipse,rgba(255,255,255,0.055)_0%,rgba(255,255,255,0.014)_46%,transparent_74%)] blur-3xl" />
 
       <div className="relative mx-auto max-w-[1450px] px-6 sm:px-8">

@@ -27,7 +27,7 @@ export default function Faq() {
   const [open, setOpen] = useState<number | null>(0);
 
   return (
-    <section id="faq" className="relative bg-[#050505] !py-24 md:!py-28">
+    <section id="faq" className="relative !py-24 md:!py-28">
       <div className="max-w-5xl mx-auto px-6 grid grid-cols-1 md:grid-cols-[1fr_1.35fr] gap-10 md:gap-12">
         {/* Sticky heading */}
         <div className="md:sticky md:top-24 self-start">

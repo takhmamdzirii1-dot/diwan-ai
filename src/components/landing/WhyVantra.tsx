@@ -127,9 +127,8 @@ export default function WhyVantra() {
   const localTags = t.raw('localTags') as string[];
 
   return (
-    <section id="why-vantra" className="relative overflow-hidden bg-[#050505]" style={{ paddingTop: 0, paddingBottom: 28 }}>
+    <section id="why-vantra" className="relative overflow-hidden" style={{ paddingTop: 0, paddingBottom: 28 }}>
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-[430px] max-w-[1100px] bg-[radial-gradient(ellipse,rgba(255,255,255,0.075)_0%,rgba(255,255,255,0.022)_44%,transparent_72%)] blur-3xl" />
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-55 [background-image:linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] [background-size:44px_44px]" />
 
       <div className="relative mx-auto max-w-[1372px] px-5 sm:px-6">
         <div className="relative border-t border-white/[0.13] pt-12 md:pt-[60px]">
