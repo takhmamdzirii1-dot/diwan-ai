@@ -21,7 +21,7 @@ function SupportingVisual({
 }) {
   if (visual === 'balance') {
     return (
-      <div className="flex h-11 w-[4.5rem] flex-col justify-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3">
+      <div className="flex h-12 w-[6.5rem] flex-col justify-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-4">
         <span className="h-1 w-full rounded-full bg-white/70" />
         <span className="h-1 w-4/5 rounded-full bg-white/40" />
         <span className="h-1 w-3/5 rounded-full bg-white/20" />
@@ -31,11 +31,11 @@ function SupportingVisual({
 
   if (visual === 'models') {
     return (
-      <div className="grid h-11 w-[5.5rem] grid-cols-2 gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] p-1.5">
+      <div className="grid h-12 w-[6.5rem] grid-cols-2 gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] p-1.5">
         {modelLabels.map((label) => (
           <span
             key={label}
-            className="flex items-center justify-center rounded border border-white/[0.06] bg-white/[0.025] px-0.5 text-[5px] font-medium tracking-wide text-white/55"
+            className="flex items-center justify-center rounded border border-white/[0.06] bg-white/[0.025] px-1 text-[7px] font-medium tracking-wide text-white/60 sm:text-[8px]"
           >
             {label}
           </span>
@@ -45,7 +45,7 @@ function SupportingVisual({
   }
 
   return (
-    <div dir="ltr" className="flex h-11 w-[5.5rem] items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] p-1.5 text-[7px] text-white/35">
+    <div dir="ltr" className="flex h-12 w-[6.5rem] items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] p-1.5 text-[8px] text-white/45 sm:text-[9px]">
       {modes.map((mode, index) => (
         <span key={mode} className={`flex h-full flex-1 items-center justify-center ${index === 0 ? 'rounded bg-white/[0.12] text-white/85' : ''}`}>
           {mode}
@@ -103,7 +103,7 @@ export default function WhyVantra() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-60px' }}
                 transition={{ duration: 0.5, delay: index * 0.06, ease: [0.22, 1, 0.36, 1] }}
-                className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-5 border-t border-white/[0.07] py-8 sm:grid-cols-[6.5rem_minmax(0,1fr)] sm:gap-6"
+                className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-4 border-t border-white/[0.07] py-8 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:gap-6"
               >
                 <div aria-hidden="true" className="pt-0.5"><SupportingVisual visual={feature.visual} modelLabels={modelLabels} modes={modes} /></div>
                 <div>

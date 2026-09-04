@@ -66,11 +66,11 @@
     "title": "Global AI. Built for Algeria.",
     "subtitle": "Access leading AI models, create across every medium, and pay locally in DA.",
     "localTitle": "Pay locally in DA",
-    "localDescription": "Use local payment options built for Algeria. No international card required.",
+    "localDescription": "Local payment options built for Algeria. No international card required.",
     "features": [
-      { "title": "Unified Credits", "description": "One VANTRA credit system across supported Chat, Image and Video experiences.", "visual": "balance" },
-      { "title": "Leading AI models", "description": "Access multiple high-quality AI models from one product.", "visual": "models" },
-      { "title": "One workspace", "description": "Move between Chat, Image and Video creation in one unified workspace.", "visual": "workspace" }
+      { "title": "One balance", "description": "One shared balance across Chat, Image and Video.", "visual": "balance" },
+      { "title": "Leading AI models", "description": "Access leading AI models from one workspace.", "visual": "models" },
+      { "title": "One workspace", "description": "Move between Chat, Image and Video without switching tools.", "visual": "workspace" }
     ],
     "modelLabels": ["Model 01", "Model 02", "Model 03", "+ more"],
     "modes": ["Chat", "Image", "Video"]
