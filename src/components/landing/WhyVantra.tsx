@@ -25,26 +25,30 @@ function NumberBadge({ children }: { children: string }) {
 
 function PaymentVisual({ tags }: { tags: string[] }) {
   return (
-    <div className="flex h-full flex-col justify-between gap-8">
-      <div className="relative mx-auto flex min-h-40 w-full max-w-[260px] items-center justify-center sm:mx-0 sm:ms-auto">
-        <span className="absolute bottom-3 h-8 w-3/4 rounded-full bg-white/[0.04] blur-xl" />
-        <div className="relative w-[220px] rotate-[3deg] rounded-2xl border border-white/[0.14] bg-[#0d0d0e] p-5 shadow-[0_20px_55px_rgba(0,0,0,0.45)]">
-          <div className="flex items-center justify-between text-[9px] font-semibold tracking-[0.2em] text-white/35">
+    <div className="flex h-full flex-col justify-between gap-7">
+      <div className="relative mx-auto flex min-h-[205px] w-full max-w-[320px] items-center justify-center sm:mx-0 sm:ms-auto">
+        <span aria-hidden="true" className="absolute bottom-3 h-10 w-[78%] rounded-full bg-white/[0.075] blur-2xl" />
+        <div className="relative w-[272px] overflow-hidden rounded-[22px] border border-white/[0.17] bg-[linear-gradient(135deg,#1b1b1d_0%,#0e0e10_46%,#151517_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_26px_55px_rgba(0,0,0,0.58)] [transform:perspective(900px)_rotate(-3deg)_rotateY(-4deg)]">
+          <span aria-hidden="true" className="absolute inset-x-5 top-0 h-px bg-white/25" />
+          <span aria-hidden="true" className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.96)_0%,rgba(255,255,255,0.44)_22%,rgba(255,255,255,0.11)_46%,transparent_72%)] blur-[2px]" />
+          <div className="flex items-center justify-between text-[9px] font-semibold tracking-[0.2em] text-white/40">
             <span>VANTRA</span>
             <span>LOCAL</span>
           </div>
-          <div className="mt-10 text-4xl font-semibold tracking-[-0.04em] text-white">DA</div>
-          <div className="mt-5 h-px w-full bg-white/[0.08]" />
+          <div className="mt-12 text-5xl font-semibold tracking-[-0.06em] text-white">DA</div>
+          <div className="mt-7 flex items-center justify-between border-t border-white/[0.09] pt-3 text-[8px] font-medium tracking-[0.16em] text-white/30">
+            <span>VANTRA STUDIO</span>
+            <span>LOCAL ACCESS</span>
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {tags.map((tag) => (
-          <span key={tag} className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-black/20 px-3 py-1.5 text-[11px] text-white/50">
-            <span aria-hidden="true" className="h-1 w-1 rounded-full bg-white/50" />
-            {tag}
-          </span>
-        ))}
+      <div className="inline-flex w-fit max-w-full items-center divide-x divide-white/[0.1] rounded-full border border-white/[0.1] bg-black/30 px-3 py-2 text-[10px] text-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
+        <span className="inline-flex items-center gap-2 pe-3">
+          <svg aria-hidden="true" className="h-3 w-3 text-white/70" viewBox="0 0 12 12" fill="none"><path d="m2.5 6.1 2.2 2.15 4.8-4.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          {tags[0]}
+        </span>
+        <span className="ps-3">{tags[1]}</span>
       </div>
     </div>
   );
@@ -52,16 +56,16 @@ function PaymentVisual({ tags }: { tags: string[] }) {
 
 function BalanceVisual({ modes }: { modes: string[] }) {
   return (
-    <div dir="ltr" className="w-full max-w-[270px] rounded-2xl border border-white/[0.1] bg-black/35 p-4">
-      <div className="flex items-center justify-between text-[9px] font-semibold tracking-[0.17em] text-white/35">
+    <div dir="ltr" className="w-full max-w-[314px] rounded-[20px] border border-white/[0.13] bg-[linear-gradient(145deg,rgba(255,255,255,0.065),rgba(255,255,255,0.018))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.09),0_18px_38px_rgba(0,0,0,0.32)]">
+      <div className="flex items-center justify-between text-[9px] font-semibold tracking-[0.17em] text-white/42">
         <span>VANTRA BALANCE</span>
-        <span className="rounded-md border border-white/[0.09] bg-white/[0.04] px-2 py-1 text-white/55">DA</span>
+        <span className="rounded-md border border-white/[0.12] bg-white/[0.06] px-2 py-1 text-white/65">DA</span>
       </div>
-      <div className="mt-5 text-3xl font-semibold tracking-[-0.04em] text-white">12,450</div>
-      <div className="mt-5 grid grid-cols-3 gap-1.5 border-t border-white/[0.07] pt-3">
+      <div className="mt-7 text-[38px] font-semibold leading-none tracking-[-0.055em] text-white">12,450</div>
+      <div className="mt-7 grid grid-cols-3 gap-1.5 border-t border-white/[0.1] pt-4">
         {modes.map((mode, index) => (
-          <span key={mode} className="flex items-center justify-center gap-1.5 rounded-lg bg-white/[0.035] px-2 py-2 text-[10px] text-white/50">
-            <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${index === 0 ? 'bg-white/75' : 'bg-white/25'}`} />
+          <span key={mode} className="flex items-center justify-center gap-1.5 rounded-lg bg-white/[0.045] px-2 py-2.5 text-[10px] text-white/60">
+            <span aria-hidden="true" className={`h-2 w-2 rounded-sm border ${index === 0 ? 'border-white/60 bg-white/55' : 'border-white/30 bg-transparent'}`} />
             {mode}
           </span>
         ))}
@@ -72,10 +76,10 @@ function BalanceVisual({ modes }: { modes: string[] }) {
 
 function ModelsVisual({ labels }: { labels: string[] }) {
   return (
-    <div dir="ltr" className="grid w-full max-w-[280px] grid-cols-2 gap-2">
+    <div dir="ltr" className="grid w-full max-w-[322px] grid-cols-2 gap-2.5">
       {labels.map((label, index) => (
-        <span key={label} className={`flex min-h-12 items-center rounded-xl border px-3 text-[11px] font-medium ${index === 0 ? 'border-white/[0.15] bg-white/[0.08] text-white/85' : 'border-white/[0.08] bg-black/25 text-white/50'}`}>
-          <span aria-hidden="true" className="me-2 h-2 w-2 rounded-full border border-white/30" />
+        <span key={label} className={`flex min-h-14 items-center rounded-xl border px-3.5 text-[12px] font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ${index === 0 ? 'border-white/[0.17] bg-white/[0.09] text-white/90' : 'border-white/[0.1] bg-black/30 text-white/60'}`}>
+          <span aria-hidden="true" className={`me-2.5 flex h-4 w-4 items-center justify-center rounded-md border text-[8px] ${index === 0 ? 'border-white/45 bg-white/10 text-white/80' : 'border-white/20 text-white/40'}`}>{index === 0 ? '✦' : '·'}</span>
           {label}
         </span>
       ))}
@@ -85,20 +89,21 @@ function ModelsVisual({ labels }: { labels: string[] }) {
 
 function WorkspaceVisual({ modes }: { modes: string[] }) {
   return (
-    <div dir="ltr" className="w-full max-w-[290px] rounded-2xl border border-white/[0.1] bg-black/35 p-3.5">
-      <div className="grid grid-cols-3 gap-1 rounded-lg border border-white/[0.06] bg-black/30 p-1 text-[9px] text-white/35">
+    <div dir="ltr" className="w-full max-w-[328px] rounded-[20px] border border-white/[0.13] bg-[linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.018))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.09),0_18px_38px_rgba(0,0,0,0.32)]">
+      <div className="grid grid-cols-3 gap-1 rounded-lg border border-white/[0.08] bg-black/35 p-1 text-[10px] text-white/40">
         {modes.map((mode, index) => (
           <span key={mode} className={`rounded-md px-2 py-2 text-center ${index === 0 ? 'bg-white/[0.1] text-white/85' : ''}`}>
             {mode}
           </span>
         ))}
       </div>
-      <div className="space-y-2 px-1 pb-5 pt-4">
-        <span className="block h-1.5 w-3/4 rounded-full bg-white/[0.08]" />
-        <span className="block h-1.5 w-1/2 rounded-full bg-white/[0.05]" />
+      <div className="space-y-2.5 px-1 pb-6 pt-5">
+        <span className="block h-1.5 w-3/4 rounded-full bg-white/[0.1]" />
+        <span className="block h-1.5 w-1/2 rounded-full bg-white/[0.065]" />
+        <span className="block h-1.5 w-2/3 rounded-full bg-white/[0.045]" />
       </div>
-      <div className="flex items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.035] px-3 py-3">
-        <span className="text-[9px] text-white/25">Ask anything...</span>
+      <div className="flex items-center justify-between rounded-xl border border-white/[0.1] bg-white/[0.045] px-3.5 py-3.5">
+        <span className="text-[10px] text-white/30">Ask anything...</span>
         <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-xs text-black">↑</span>
       </div>
     </div>
@@ -115,6 +120,7 @@ export default function WhyVantra() {
   return (
     <section id="why-vantra" className="relative overflow-hidden bg-[#050505] py-28 md:py-36">
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-1/2 mx-auto h-64 max-w-4xl -translate-y-1/2 rounded-full border border-white/[0.025] shadow-[0_0_120px_rgba(255,255,255,0.025)]" />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-[0.22] [background-image:linear-gradient(rgba(255,255,255,0.022)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.022)_1px,transparent_1px)] [background-size:56px_56px]" />
 
       <div className="relative mx-auto max-w-7xl px-6">
         <div className="border-t border-white/[0.07] pt-12 md:pt-16">
@@ -138,8 +144,9 @@ export default function WhyVantra() {
             <motion.article
               {...CARD_MOTION}
               transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-              className="flex min-h-[360px] flex-col rounded-[28px] border border-white/[0.11] bg-[#0a0a0b] p-6 shadow-[0_18px_70px_rgba(0,0,0,0.28)] sm:p-8"
+              className="relative flex min-h-[390px] flex-col overflow-hidden rounded-[28px] border border-white/[0.13] bg-[linear-gradient(145deg,#121214_0%,#0a0a0b_48%,#0e0e10_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_22px_70px_rgba(0,0,0,0.35)] sm:p-8"
             >
+              <span aria-hidden="true" className="pointer-events-none absolute inset-x-8 top-0 h-px bg-white/25" />
               <NumberBadge>01</NumberBadge>
               <div className="mt-7 grid flex-1 gap-7 sm:grid-cols-[minmax(0,0.9fr)_minmax(220px,1.1fr)] sm:items-center">
                 <div>
@@ -155,8 +162,9 @@ export default function WhyVantra() {
                 {...CARD_MOTION}
                 key={feature.title}
                 transition={{ duration: 0.5, delay: (index + 1) * 0.06, ease: [0.22, 1, 0.36, 1] }}
-                className="flex min-h-[320px] flex-col rounded-[28px] border border-white/[0.08] bg-[#09090a] p-6 shadow-[0_18px_65px_rgba(0,0,0,0.22)] sm:p-8"
+                className="relative flex min-h-[330px] flex-col overflow-hidden rounded-[28px] border border-white/[0.1] bg-[linear-gradient(145deg,#111113_0%,#09090a_52%,#0d0d0f_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.085),0_18px_65px_rgba(0,0,0,0.28)] sm:p-8"
               >
+                <span aria-hidden="true" className="pointer-events-none absolute inset-x-8 top-0 h-px bg-white/[0.18]" />
                 <NumberBadge>{`0${index + 2}`}</NumberBadge>
                 <div className="mt-7 grid flex-1 gap-7 sm:grid-cols-[minmax(0,0.9fr)_minmax(220px,1.1fr)] sm:items-center">
                   <div>
