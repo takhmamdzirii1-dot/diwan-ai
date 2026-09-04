@@ -66,13 +66,14 @@
     "title": "Global AI. Built for Algeria.",
     "subtitle": "Access leading AI models, create across every medium, and pay locally in DA.",
     "localTitle": "Pay locally in DA",
-    "localDescription": "Local payment options built for Algeria. No international card required.",
+    "localDescription": "Use local payment options built for Algeria. No international card required.",
+    "localTags": ["Built for Algeria", "No international card required"],
     "features": [
       { "title": "One balance", "description": "One shared balance across Chat, Image and Video.", "visual": "balance" },
       { "title": "Leading AI models", "description": "Access leading AI models from one workspace.", "visual": "models" },
       { "title": "One workspace", "description": "Move between Chat, Image and Video without switching tools.", "visual": "workspace" }
     ],
-    "modelLabels": ["Model 01", "Model 02", "Model 03", "+ more"],
+    "modelLabels": ["GPT", "Claude", "Gemini", "+ More models"],
     "modes": ["Chat", "Image", "Video"]
   },
   "workflow": {

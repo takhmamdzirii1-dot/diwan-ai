@@ -64,12 +64,13 @@
     "subtitle": "Accédez à des modèles d’IA de pointe, créez dans tous les formats et payez localement en DA.",
     "localTitle": "Payez localement en DA",
     "localDescription": "Des options de paiement local adaptées à l’Algérie. Aucune carte internationale requise.",
+    "localTags": ["Pensé pour l’Algérie", "Sans carte internationale"],
     "features": [
       { "title": "Un seul solde", "description": "Un solde partagé pour le Chat, l’Image et la Vidéo.", "visual": "balance" },
       { "title": "Des modèles d’IA de pointe", "description": "Accédez à des modèles d’IA de pointe depuis un seul espace.", "visual": "models" },
       { "title": "Un seul espace", "description": "Passez du Chat à l’Image et à la Vidéo sans changer d’outil.", "visual": "workspace" }
     ],
-    "modelLabels": ["Modèle 01", "Modèle 02", "Modèle 03", "+ autres"],
+    "modelLabels": ["GPT", "Claude", "Gemini", "+ Autres modèles"],
     "modes": ["Chat", "Image", "Vidéo"]
   },
   "workflow": {
