@@ -30,8 +30,11 @@ export default function HowItWorks() {
         </div>
 
         <div ref={ref} className="relative mt-12 md:mt-14">
-          {/* Scroll-linked progress line */}
-          <div className="absolute top-[18px] inset-x-[16%] hidden h-px bg-white/[0.07] md:block" aria-hidden="true">
+          {/* Scroll-linked progress line — spans from Step 1 icon center to Step 3 icon center */}
+          <div
+            className="absolute top-[18px] left-[18px] right-[calc(33.333%-39px)] hidden h-px bg-white/[0.07] md:block"
+            aria-hidden="true"
+          >
             <motion.div
               style={{ scaleX: lineScale }}
               className="h-full origin-left bg-white/70"
