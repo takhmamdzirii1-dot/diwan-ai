@@ -25,32 +25,22 @@ function NumberBadge({ children }: { children: string }) {
   );
 }
 
-function PaymentVisual({ tags }: { tags: string[] }) {
+function PaymentVisual() {
   return (
-    <div className="flex h-full flex-col justify-between gap-7">
-      <div className="relative mx-auto flex min-h-[205px] w-full max-w-[320px] items-center justify-center sm:mx-0 sm:ms-auto">
-        <span aria-hidden="true" className="absolute bottom-3 h-10 w-[78%] rounded-full bg-white/[0.075] blur-2xl" />
-        <div className="relative w-[272px] overflow-hidden rounded-[22px] border border-white/[0.17] bg-[linear-gradient(135deg,#1b1b1d_0%,#0e0e10_46%,#151517_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_26px_55px_rgba(0,0,0,0.58)] [transform:perspective(900px)_rotate(-3deg)_rotateY(-4deg)]">
-          <span aria-hidden="true" className="absolute inset-x-5 top-0 h-px bg-white/25" />
-          <span aria-hidden="true" className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.96)_0%,rgba(255,255,255,0.44)_22%,rgba(255,255,255,0.11)_46%,transparent_72%)] blur-[2px]" />
-          <div className="flex items-center justify-between text-[9px] font-semibold tracking-[0.2em] text-white/40">
-            <span>VANTRA</span>
-            <span>LOCAL</span>
-          </div>
-          <div className="mt-12 text-5xl font-semibold tracking-[-0.06em] text-white">DA</div>
-          <div className="mt-7 flex items-center justify-between border-t border-white/[0.09] pt-3 text-[8px] font-medium tracking-[0.16em] text-white/30">
-            <span>VANTRA STUDIO</span>
-            <span>LOCAL ACCESS</span>
-          </div>
+    <div className="relative mx-auto flex min-h-[180px] w-full max-w-[270px] items-center justify-center sm:mx-0 sm:ms-auto">
+      <span aria-hidden="true" className="absolute bottom-4 h-7 w-[72%] rounded-[50%] bg-white/[0.07] blur-xl" />
+      <div className="relative w-[226px] overflow-hidden rounded-[19px] border border-white/[0.15] bg-[linear-gradient(135deg,#18181a_0%,#0d0d0f_48%,#141416_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_22px_46px_rgba(0,0,0,0.52)] [transform:perspective(900px)_rotate(-2.5deg)_rotateY(-3deg)]">
+        <span aria-hidden="true" className="absolute inset-x-5 top-0 h-px bg-white/20" />
+        <span aria-hidden="true" className="absolute -bottom-1.5 -right-1.5 h-6 w-6 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.92)_0%,rgba(255,255,255,0.38)_24%,rgba(255,255,255,0.08)_48%,transparent_72%)] blur-[1.5px]" />
+        <div className="flex items-center justify-between text-[8px] font-semibold tracking-[0.2em] text-white/38">
+          <span>VANTRA</span>
+          <span>LOCAL</span>
         </div>
-      </div>
-
-      <div className="inline-flex w-fit max-w-full items-center divide-x divide-white/[0.1] rounded-full border border-white/[0.1] bg-black/30 px-3 py-2 text-[10px] text-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
-        <span className="inline-flex items-center gap-2 pe-3">
-          <svg aria-hidden="true" className="h-3 w-3 text-white/70" viewBox="0 0 12 12" fill="none"><path d="m2.5 6.1 2.2 2.15 4.8-4.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          {tags[0]}
-        </span>
-        <span className="ps-3">{tags[1]}</span>
+        <div className="mt-10 text-[42px] font-semibold leading-none tracking-[-0.06em] text-white">DA</div>
+        <div className="mt-6 flex items-center justify-between border-t border-white/[0.08] pt-2.5 text-[7px] font-medium tracking-[0.15em] text-white/28">
+          <span>VANTRA STUDIO</span>
+          <span>LOCAL ACCESS</span>
+        </div>
       </div>
     </div>
   );
@@ -153,12 +143,19 @@ export default function WhyVantra() {
             >
               <span aria-hidden="true" className="pointer-events-none absolute inset-x-8 top-0 h-px bg-white/25" />
               <NumberBadge>01</NumberBadge>
-              <div className="mt-7 grid flex-1 gap-7 sm:grid-cols-[minmax(0,0.9fr)_minmax(220px,1.1fr)] sm:items-center">
+              <div className="mt-8 grid flex-1 gap-8 sm:grid-cols-[minmax(0,1fr)_minmax(210px,0.9fr)] sm:items-center">
                 <div>
                   <h3 className="text-2xl font-semibold tracking-tight text-white">{t('localTitle')}</h3>
                   <p className="mt-4 max-w-sm text-sm leading-6 text-white/50">{t('localDescription')}</p>
                 </div>
-                <PaymentVisual tags={localTags} />
+                <PaymentVisual />
+              </div>
+              <div className="mt-8 inline-flex w-fit max-w-full items-center divide-x divide-white/[0.1] rounded-full border border-white/[0.1] bg-black/30 px-3.5 py-2.5 text-[10px] text-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
+                <span className="inline-flex items-center gap-2 pe-3.5">
+                  <svg aria-hidden="true" className="h-3 w-3 shrink-0 text-white/70" viewBox="0 0 12 12" fill="none"><path d="m2.5 6.1 2.2 2.15 4.8-4.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  {localTags[0]}
+                </span>
+                <span className="ps-3.5">{localTags[1]}</span>
               </div>
             </motion.article>
 
