@@ -25,7 +25,6 @@ export function CinematicScrollMockup() {
   );
   const containerRef = useRef<HTMLElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [isCopyRevealed, setIsCopyRevealed] = useState(false);
   const prefersReducedMotion = useReducedMotion();
 
   const { scrollYProgress } = useScroll({
@@ -35,11 +34,11 @@ export function CinematicScrollMockup() {
 
   const scale = useTransform(scrollYProgress, [0, 0.2], [1.3, 0.9]);
   const x = useTransform(scrollYProgress, [0, 0.2], ["0%", isRtl ? "-20%" : "20%"]);
-  const textOpacity = useTransform(scrollYProgress, [0.1, 0.2], [0, 1]);
+  const textOpacity = useTransform(scrollYProgress, [0.1, 0.2, 1], [0, 1, 1], {
+    clamp: true,
+  });
 
   useMotionValueEvent(scrollYProgress, "change", (latest) => {
-    if (latest >= 0.2) setIsCopyRevealed(true);
-
     if (latest < 0.33) setActiveIndex(0);
     else if (latest >= 0.33 && latest < 0.65) setActiveIndex(1);
     else setActiveIndex(2);
@@ -55,7 +54,7 @@ export function CinematicScrollMockup() {
         <motion.div
           data-cinematic-copy
           style={{
-            opacity: prefersReducedMotion || isCopyRevealed ? 1 : textOpacity,
+            opacity: prefersReducedMotion ? 1 : textOpacity,
             willChange: "opacity",
           }}
           className="absolute start-[max(5vw,24px)] z-20 w-[min(30vw,390px)]"
