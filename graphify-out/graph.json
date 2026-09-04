@@ -4,17 +4,212 @@
   "graph": {},
   "nodes": [
     {
+      "id": "src_components_herocinematicbackground_herocinematicbackgroundprops",
+      "label": "HeroCinematicBackgroundProps",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "src/components/LiveLedgerCard.tsx",
+      "file_type": "code",
+      "norm_label": "herocinematicbackgroundprops",
+      "source_file": "src/components/HeroCinematicBackground.tsx",
+      "source_location": "L5"
+    },
+    {
+      "id": "src_components_liveledgercard_categorytype",
+      "label": "CategoryType",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "src/components/LiveLedgerCard.tsx",
+      "file_type": "code",
+      "norm_label": "categorytype",
+      "source_file": "src/components/LiveLedgerCard.tsx",
+      "source_location": "L23"
+    },
+    {
+      "id": "src_components_liveledgercard_liveledgercardprops",
+      "label": "LiveLedgerCardProps",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "src/components/LiveLedgerCard.tsx",
+      "file_type": "code",
+      "norm_label": "liveledgercardprops",
+      "source_file": "src/components/LiveLedgerCard.tsx",
+      "source_location": "L81"
+    },
+    {
+      "id": "src_components_liveledgercard_logitem",
+      "label": "LogItem",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "src/components/LiveLedgerCard.tsx",
+      "file_type": "code",
+      "norm_label": "logitem",
+      "source_file": "src/components/LiveLedgerCard.tsx",
+      "source_location": "L73"
+    },
+    {
+      "id": "src_components_liveledgercard_modelinfo",
+      "label": "ModelInfo",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "src/components/LiveLedgerCard.tsx",
+      "file_type": "code",
+      "norm_label": "modelinfo",
+      "source_file": "src/components/LiveLedgerCard.tsx",
+      "source_location": "L25"
+    },
+    {
       "id": "src_components_spotlightcard_spotlightcardprops",
       "label": "SpotlightCardProps",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 0,
-      "community_name": "src/components/SpotlightCard.tsx",
+      "community_name": "src/components/LiveLedgerCard.tsx",
       "file_type": "code",
       "norm_label": "spotlightcardprops",
       "source_file": "src/components/SpotlightCard.tsx",
       "source_location": "L5"
+    },
+    {
+      "id": "components_ui_claude_style_chat_input_attachedfile",
+      "label": "AttachedFile",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "claude-style-chat-input.tsx",
+      "file_type": "code",
+      "norm_label": "attachedfile",
+      "source_file": "components/ui/claude-style-chat-input.tsx",
+      "source_location": "L14"
+    },
+    {
+      "id": "components_ui_claude_style_chat_input_chatmodeloption",
+      "label": "ChatModelOption",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "claude-style-chat-input.tsx",
+      "file_type": "code",
+      "norm_label": "chatmodeloption",
+      "source_file": "components/ui/claude-style-chat-input.tsx",
+      "source_location": "L22"
+    },
+    {
+      "id": "components_ui_claude_style_chat_input_claudechatinputprops",
+      "label": "ClaudeChatInputProps",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "claude-style-chat-input.tsx",
+      "file_type": "code",
+      "norm_label": "claudechatinputprops",
+      "source_file": "components/ui/claude-style-chat-input.tsx",
+      "source_location": "L40"
+    },
+    {
+      "id": "components_ui_claude_style_chat_input_claudesendpayload",
+      "label": "ClaudeSendPayload",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "claude-style-chat-input.tsx",
+      "file_type": "code",
+      "norm_label": "claudesendpayload",
+      "source_file": "components/ui/claude-style-chat-input.tsx",
+      "source_location": "L32"
+    },
+    {
+      "id": "components_ui_liquid_metal_button_liquidmetalbuttonprops",
+      "label": "LiquidMetalButtonProps",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "claude-style-chat-input.tsx",
+      "file_type": "code",
+      "norm_label": "liquidmetalbuttonprops",
+      "source_file": "components/ui/liquid-metal-button.tsx",
+      "source_location": "L6"
+    },
+    {
+      "id": "src_components_herosection_herosectionprops",
+      "label": "HeroSectionProps",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "claude-style-chat-input.tsx",
+      "file_type": "code",
+      "norm_label": "herosectionprops",
+      "source_file": "src/components/HeroSection.tsx",
+      "source_location": "L11"
+    },
+    {
+      "id": "src_config_studio_registry_studioavailability",
+      "label": "StudioAvailability",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "claude-style-chat-input.tsx",
+      "file_type": "code",
+      "norm_label": "studioavailability",
+      "source_file": "src/config/studio-registry.ts",
+      "source_location": "L2"
+    },
+    {
+      "id": "src_components_authmodal_authmodalprops",
+      "label": "AuthModalProps",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "authmodalprops",
+      "source_file": "src/components/AuthModal.tsx",
+      "source_location": "L9"
+    },
+    {
+      "id": "src_components_navbar_navbarprops",
+      "label": "NavbarProps",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "navbarprops",
+      "source_file": "src/components/Navbar.tsx",
+      "source_location": "L10"
+    },
+    {
+      "id": "src_components_shimmerbutton_shimmerbuttonprops",
+      "label": "ShimmerButtonProps",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "shimmerbuttonprops",
+      "source_file": "src/components/ShimmerButton.tsx",
+      "source_location": "L6"
     },
     {
       "id": "src_components_studio_dashboardsidebar_dashboardsidebarprops",
@@ -22,8 +217,8 @@
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
-      "community": 1,
-      "community_name": "DashboardSidebar.tsx",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
       "file_type": "code",
       "norm_label": "dashboardsidebarprops",
       "source_file": "src/components/studio/DashboardSidebar.tsx",
@@ -35,8 +230,8 @@
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
-      "community": 1,
-      "community_name": "DashboardSidebar.tsx",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
       "file_type": "code",
       "norm_label": "sidebarsession",
       "source_file": "src/components/studio/DashboardSidebar.tsx",
@@ -48,25 +243,12 @@
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
-      "community": 1,
-      "community_name": "DashboardSidebar.tsx",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
       "file_type": "code",
       "norm_label": "workspace",
       "source_file": "src/components/studio/DashboardSidebar.tsx",
       "source_location": "L24"
-    },
-    {
-      "id": "src_hooks_useuser_useuserreturn",
-      "label": "UseUserReturn",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DashboardSidebar.tsx",
-      "file_type": "code",
-      "norm_label": "useuserreturn",
-      "source_file": "src/hooks/useUser.ts",
-      "source_location": "L7"
     },
     {
       "id": "src_components_topupmodal_topupmodalprops",
@@ -108,6 +290,19 @@
       "source_location": "L7"
     },
     {
+      "id": "src_hooks_useuser_useuserreturn",
+      "label": "UseUserReturn",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "useuserreturn",
+      "source_file": "src/hooks/useUser.ts",
+      "source_location": "L7"
+    },
+    {
       "id": "src_components_motion_heroentrance_heroentranceprops",
       "label": "HeroEntranceProps",
       "_callable": true,
@@ -121,43 +316,30 @@
       "source_location": "L34"
     },
     {
-      "id": "components_ui_logo_cloud_3_logo",
-      "label": "Logo",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 117,
-      "community_name": "components/ui/logo-cloud-3.tsx",
-      "file_type": "code",
-      "norm_label": "logo",
-      "source_file": "components/ui/logo-cloud-3.tsx",
-      "source_location": "L8"
-    },
-    {
-      "id": "components_ui_logo_cloud_3_logocloudprops",
-      "label": "LogoCloudProps",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 117,
-      "community_name": "components/ui/logo-cloud-3.tsx",
-      "file_type": "code",
-      "norm_label": "logocloudprops",
-      "source_file": "components/ui/logo-cloud-3.tsx",
-      "source_location": "L16"
-    },
-    {
       "id": "components_ui_infinite_slider_infinitesliderprops",
       "label": "InfiniteSliderProps",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 118,
-      "community_name": "src/components/ui/logo-cloud-3.tsx",
+      "community_name": "lib/utils.ts",
       "file_type": "code",
       "norm_label": "infinitesliderprops",
       "source_file": "components/ui/infinite-slider.tsx",
       "source_location": "L8"
+    },
+    {
+      "id": "components_ui_textarea_textareaprops",
+      "label": "TextareaProps",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 118,
+      "community_name": "lib/utils.ts",
+      "file_type": "code",
+      "norm_label": "textareaprops",
+      "source_file": "components/ui/textarea.tsx",
+      "source_location": "L5"
     },
     {
       "id": "src_components_ui_logo_cloud_3_logo",
@@ -166,7 +348,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 118,
-      "community_name": "src/components/ui/logo-cloud-3.tsx",
+      "community_name": "lib/utils.ts",
       "file_type": "code",
       "norm_label": "logo",
       "source_file": "src/components/ui/logo-cloud-3.tsx",
@@ -179,37 +361,11 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 118,
-      "community_name": "src/components/ui/logo-cloud-3.tsx",
+      "community_name": "lib/utils.ts",
       "file_type": "code",
       "norm_label": "logocloudprops",
       "source_file": "src/components/ui/logo-cloud-3.tsx",
       "source_location": "L13"
-    },
-    {
-      "id": "components_ui_textarea_textareaprops",
-      "label": "TextareaProps",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 134,
-      "community_name": "lib/utils.ts",
-      "file_type": "code",
-      "norm_label": "textareaprops",
-      "source_file": "components/ui/textarea.tsx",
-      "source_location": "L5"
-    },
-    {
-      "id": "src_components_ui_infinite_slider_infinitesliderprops",
-      "label": "InfiniteSliderProps",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 134,
-      "community_name": "lib/utils.ts",
-      "file_type": "code",
-      "norm_label": "infinitesliderprops",
-      "source_file": "src/components/ui/infinite-slider.tsx",
-      "source_location": "L8"
     },
     {
       "id": "src_components_motion_ambientmeshglow_ambientmeshglowprops",
@@ -316,30 +472,30 @@
       "source_location": "L21"
     },
     {
-      "id": "src_components_herosection_herosectionprops",
-      "label": "HeroSectionProps",
+      "id": "components_ui_logo_cloud_3_logo",
+      "label": "Logo",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 23,
       "community_name": "src/components/OriginalLandingPage.tsx",
       "file_type": "code",
-      "norm_label": "herosectionprops",
-      "source_file": "src/components/HeroSection.tsx",
-      "source_location": "L11"
+      "norm_label": "logo",
+      "source_file": "components/ui/logo-cloud-3.tsx",
+      "source_location": "L8"
     },
     {
-      "id": "src_components_landing_faq_faqitem",
-      "label": "FaqItem",
+      "id": "components_ui_logo_cloud_3_logocloudprops",
+      "label": "LogoCloudProps",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 23,
       "community_name": "src/components/OriginalLandingPage.tsx",
       "file_type": "code",
-      "norm_label": "faqitem",
-      "source_file": "src/components/landing/Faq.tsx",
-      "source_location": "L9"
+      "norm_label": "logocloudprops",
+      "source_file": "components/ui/logo-cloud-3.tsx",
+      "source_location": "L16"
     },
     {
       "id": "src_components_landing_landingheader_landingheaderprops",
@@ -353,32 +509,6 @@
       "norm_label": "landingheaderprops",
       "source_file": "src/components/landing/LandingHeader.tsx",
       "source_location": "L11"
-    },
-    {
-      "id": "src_components_landing_terminalshowcase_line",
-      "label": "Line",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "line",
-      "source_file": "src/components/landing/TerminalShowcase.tsx",
-      "source_location": "L8"
-    },
-    {
-      "id": "src_components_landing_testimonials_testimonial",
-      "label": "Testimonial",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "testimonial",
-      "source_file": "src/components/landing/Testimonials.tsx",
-      "source_location": "L8"
     },
     {
       "id": "src_components_landing_whyvantra_supportingfeature",
@@ -537,82 +667,30 @@
       "source_location": "L11"
     },
     {
-      "id": "src_components_herocinematicbackground_herocinematicbackgroundprops",
-      "label": "HeroCinematicBackgroundProps",
+      "id": "src_components_landing_faq_faqitem",
+      "label": "FaqItem",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 5,
-      "community_name": "src/components/LiveLedgerCard.tsx",
+      "community_name": "ui.tsx",
       "file_type": "code",
-      "norm_label": "herocinematicbackgroundprops",
-      "source_file": "src/components/HeroCinematicBackground.tsx",
-      "source_location": "L5"
+      "norm_label": "faqitem",
+      "source_file": "src/components/landing/Faq.tsx",
+      "source_location": "L9"
     },
     {
-      "id": "src_components_liveledgercard_categorytype",
-      "label": "CategoryType",
+      "id": "src_components_landing_testimonials_testimonial",
+      "label": "Testimonial",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 5,
-      "community_name": "src/components/LiveLedgerCard.tsx",
+      "community_name": "ui.tsx",
       "file_type": "code",
-      "norm_label": "categorytype",
-      "source_file": "src/components/LiveLedgerCard.tsx",
-      "source_location": "L23"
-    },
-    {
-      "id": "src_components_liveledgercard_liveledgercardprops",
-      "label": "LiveLedgerCardProps",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 5,
-      "community_name": "src/components/LiveLedgerCard.tsx",
-      "file_type": "code",
-      "norm_label": "liveledgercardprops",
-      "source_file": "src/components/LiveLedgerCard.tsx",
-      "source_location": "L81"
-    },
-    {
-      "id": "src_components_liveledgercard_logitem",
-      "label": "LogItem",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 5,
-      "community_name": "src/components/LiveLedgerCard.tsx",
-      "file_type": "code",
-      "norm_label": "logitem",
-      "source_file": "src/components/LiveLedgerCard.tsx",
-      "source_location": "L73"
-    },
-    {
-      "id": "src_components_liveledgercard_modelinfo",
-      "label": "ModelInfo",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 5,
-      "community_name": "src/components/LiveLedgerCard.tsx",
-      "file_type": "code",
-      "norm_label": "modelinfo",
-      "source_file": "src/components/LiveLedgerCard.tsx",
-      "source_location": "L25"
-    },
-    {
-      "id": "components_ui_liquid_metal_button_liquidmetalbuttonprops",
-      "label": "LiquidMetalButtonProps",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "router.ts",
-      "file_type": "code",
-      "norm_label": "liquidmetalbuttonprops",
-      "source_file": "components/ui/liquid-metal-button.tsx",
-      "source_location": "L6"
+      "norm_label": "testimonial",
+      "source_file": "src/components/landing/Testimonials.tsx",
+      "source_location": "L8"
     },
     {
       "id": "lib_ai_image_providers_puter_putersdk",
@@ -719,19 +797,6 @@
       "source_location": "L13"
     },
     {
-      "id": "src_components_authmodal_authmodalprops",
-      "label": "AuthModalProps",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 69,
-      "community_name": "src/components/AuthModal.tsx",
-      "file_type": "code",
-      "norm_label": "authmodalprops",
-      "source_file": "src/components/AuthModal.tsx",
-      "source_location": "L9"
-    },
-    {
       "id": "src_components_studio_settingsmodal_tabid",
       "label": "TabId",
       "_callable": true,
@@ -745,17 +810,17 @@
       "source_location": "L20"
     },
     {
-      "id": "src_components_studio_messagebubble_messagebubbleprops",
-      "label": "MessageBubbleProps",
+      "id": "src_components_ui_infinite_slider_infinitesliderprops",
+      "label": "InfiniteSliderProps",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
-      "community": 85,
-      "community_name": "MessageBubble.tsx",
+      "community": 79,
+      "community_name": "cn",
       "file_type": "code",
-      "norm_label": "messagebubbleprops",
-      "source_file": "src/components/studio/MessageBubble.tsx",
-      "source_location": "L12"
+      "norm_label": "infinitesliderprops",
+      "source_file": "src/components/ui/infinite-slider.tsx",
+      "source_location": "L8"
     },
     {
       "id": "lib_ai_provider_connections_storedconnection",
@@ -771,82 +836,30 @@
       "source_location": "L53"
     },
     {
-      "id": "src_components_navbar_navbarprops",
-      "label": "NavbarProps",
+      "id": "src_components_landing_terminalshowcase_line",
+      "label": "Line",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 9,
-      "community_name": "useModal",
+      "community_name": "TerminalShowcase.tsx",
       "file_type": "code",
-      "norm_label": "navbarprops",
-      "source_file": "src/components/Navbar.tsx",
-      "source_location": "L10"
+      "norm_label": "line",
+      "source_file": "src/components/landing/TerminalShowcase.tsx",
+      "source_location": "L8"
     },
     {
-      "id": "src_components_shimmerbutton_shimmerbuttonprops",
-      "label": "ShimmerButtonProps",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 9,
-      "community_name": "useModal",
-      "file_type": "code",
-      "norm_label": "shimmerbuttonprops",
-      "source_file": "src/components/ShimmerButton.tsx",
-      "source_location": "L6"
-    },
-    {
-      "id": "components_ui_claude_style_chat_input_attachedfile",
-      "label": "AttachedFile",
+      "id": "src_components_studio_messagebubble_messagebubbleprops",
+      "label": "MessageBubbleProps",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 95,
       "community_name": "StudioDashboard.tsx",
       "file_type": "code",
-      "norm_label": "attachedfile",
-      "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L14"
-    },
-    {
-      "id": "components_ui_claude_style_chat_input_chatmodeloption",
-      "label": "ChatModelOption",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 95,
-      "community_name": "StudioDashboard.tsx",
-      "file_type": "code",
-      "norm_label": "chatmodeloption",
-      "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L22"
-    },
-    {
-      "id": "components_ui_claude_style_chat_input_claudechatinputprops",
-      "label": "ClaudeChatInputProps",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 95,
-      "community_name": "StudioDashboard.tsx",
-      "file_type": "code",
-      "norm_label": "claudechatinputprops",
-      "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L40"
-    },
-    {
-      "id": "components_ui_claude_style_chat_input_claudesendpayload",
-      "label": "ClaudeSendPayload",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 95,
-      "community_name": "StudioDashboard.tsx",
-      "file_type": "code",
-      "norm_label": "claudesendpayload",
-      "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L32"
+      "norm_label": "messagebubbleprops",
+      "source_file": "src/components/studio/MessageBubble.tsx",
+      "source_location": "L12"
     },
     {
       "id": "src_components_studio_studiodashboard_centermode",
@@ -888,19 +901,6 @@
       "source_location": "L25"
     },
     {
-      "id": "src_config_studio_registry_studioavailability",
-      "label": "StudioAvailability",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 95,
-      "community_name": "StudioDashboard.tsx",
-      "file_type": "code",
-      "norm_label": "studioavailability",
-      "source_file": "src/config/studio-registry.ts",
-      "source_location": "L2"
-    },
-    {
       "id": "src_config_studio_registry_studiocontrol",
       "label": "StudioControl",
       "_callable": true,
@@ -940,24 +940,12 @@
       "source_location": "L11"
     },
     {
-      "id": "src_components_costtablesection_costtablesection",
-      "label": "CostTableSection()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "src/components/SpotlightCard.tsx",
-      "file_type": "code",
-      "norm_label": "costtablesection()",
-      "source_file": "src/components/CostTableSection.tsx",
-      "source_location": "L67"
-    },
-    {
       "id": "src_components_faqsection_faqsection",
       "label": "FaqSection()",
       "_callable": true,
       "_origin": "ast",
       "community": 0,
-      "community_name": "src/components/SpotlightCard.tsx",
+      "community_name": "src/components/LiveLedgerCard.tsx",
       "file_type": "code",
       "norm_label": "faqsection()",
       "source_file": "src/components/FaqSection.tsx",
@@ -969,11 +957,23 @@
       "_callable": true,
       "_origin": "ast",
       "community": 0,
-      "community_name": "src/components/SpotlightCard.tsx",
+      "community_name": "src/components/LiveLedgerCard.tsx",
       "file_type": "code",
       "norm_label": "featuressection()",
       "source_file": "src/components/FeaturesSection.tsx",
       "source_location": "L56"
+    },
+    {
+      "id": "src_components_herocinematicbackground_herocinematicbackground",
+      "label": "HeroCinematicBackground()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "src/components/LiveLedgerCard.tsx",
+      "file_type": "code",
+      "norm_label": "herocinematicbackground()",
+      "source_file": "src/components/HeroCinematicBackground.tsx",
+      "source_location": "L11"
     },
     {
       "id": "src_components_howitworkssection_howitworkssection",
@@ -981,11 +981,23 @@
       "_callable": true,
       "_origin": "ast",
       "community": 0,
-      "community_name": "src/components/SpotlightCard.tsx",
+      "community_name": "src/components/LiveLedgerCard.tsx",
       "file_type": "code",
       "norm_label": "howitworkssection()",
       "source_file": "src/components/HowItWorksSection.tsx",
       "source_location": "L32"
+    },
+    {
+      "id": "src_components_liveledgercard_liveledgercard",
+      "label": "LiveLedgerCard()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "src/components/LiveLedgerCard.tsx",
+      "file_type": "code",
+      "norm_label": "liveledgercard()",
+      "source_file": "src/components/LiveLedgerCard.tsx",
+      "source_location": "L85"
     },
     {
       "id": "src_components_spotlightcard_spotlightcard",
@@ -993,10 +1005,214 @@
       "_callable": true,
       "_origin": "ast",
       "community": 0,
-      "community_name": "src/components/SpotlightCard.tsx",
+      "community_name": "src/components/LiveLedgerCard.tsx",
       "file_type": "code",
       "norm_label": "spotlightcard()",
       "source_file": "src/components/SpotlightCard.tsx",
+      "source_location": "L12"
+    },
+    {
+      "id": "components_ui_claude_style_chat_input_claudechatinput",
+      "label": "ClaudeChatInput()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "claude-style-chat-input.tsx",
+      "file_type": "code",
+      "norm_label": "claudechatinput()",
+      "source_file": "components/ui/claude-style-chat-input.tsx",
+      "source_location": "L264"
+    },
+    {
+      "id": "components_ui_claude_style_chat_input_clockicon",
+      "label": "ClockIcon()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "claude-style-chat-input.tsx",
+      "file_type": "code",
+      "norm_label": "clockicon()",
+      "source_file": "components/ui/claude-style-chat-input.tsx",
+      "source_location": "L792"
+    },
+    {
+      "id": "components_ui_claude_style_chat_input_filepreviewcard",
+      "label": "FilePreviewCard()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "claude-style-chat-input.tsx",
+      "file_type": "code",
+      "norm_label": "filepreviewcard()",
+      "source_file": "components/ui/claude-style-chat-input.tsx",
+      "source_location": "L62"
+    },
+    {
+      "id": "components_ui_claude_style_chat_input_formatfilesize",
+      "label": "formatFileSize()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "claude-style-chat-input.tsx",
+      "file_type": "code",
+      "norm_label": "formatfilesize()",
+      "source_file": "components/ui/claude-style-chat-input.tsx",
+      "source_location": "L53"
+    },
+    {
+      "id": "components_ui_claude_style_chat_input_micicon",
+      "label": "MicIcon()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "claude-style-chat-input.tsx",
+      "file_type": "code",
+      "norm_label": "micicon()",
+      "source_file": "components/ui/claude-style-chat-input.tsx",
+      "source_location": "L801"
+    },
+    {
+      "id": "components_ui_claude_style_chat_input_modelselector",
+      "label": "ModelSelector()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "claude-style-chat-input.tsx",
+      "file_type": "code",
+      "norm_label": "modelselector()",
+      "source_file": "components/ui/claude-style-chat-input.tsx",
+      "source_location": "L138"
+    },
+    {
+      "id": "components_ui_claude_style_chat_input_pastedcontentcard",
+      "label": "PastedContentCard()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "claude-style-chat-input.tsx",
+      "file_type": "code",
+      "norm_label": "pastedcontentcard()",
+      "source_file": "components/ui/claude-style-chat-input.tsx",
+      "source_location": "L111"
+    },
+    {
+      "id": "components_ui_liquid_metal_button_liquidmetalbutton",
+      "label": "LiquidMetalButton()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "claude-style-chat-input.tsx",
+      "file_type": "code",
+      "norm_label": "liquidmetalbutton()",
+      "source_file": "components/ui/liquid-metal-button.tsx",
+      "source_location": "L12"
+    },
+    {
+      "id": "src_components_herosection_hashseed",
+      "label": "hashSeed()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "claude-style-chat-input.tsx",
+      "file_type": "code",
+      "norm_label": "hashseed()",
+      "source_file": "src/components/HeroSection.tsx",
+      "source_location": "L313"
+    },
+    {
+      "id": "src_components_herosection_herosection",
+      "label": "HeroSection()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "claude-style-chat-input.tsx",
+      "file_type": "code",
+      "norm_label": "herosection()",
+      "source_file": "src/components/HeroSection.tsx",
+      "source_location": "L24"
+    },
+    {
+      "id": "src_components_studio_imagecanvas_imagecanvas",
+      "label": "ImageCanvas()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "claude-style-chat-input.tsx",
+      "file_type": "code",
+      "norm_label": "imagecanvas()",
+      "source_file": "src/components/studio/ImageCanvas.tsx",
+      "source_location": "L10"
+    },
+    {
+      "id": "src_components_studio_imagecanvas_imagecanvas_handleclickoutside",
+      "label": "handleClickOutside()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "claude-style-chat-input.tsx",
+      "file_type": "code",
+      "norm_label": "handleclickoutside()",
+      "source_file": "src/components/studio/ImageCanvas.tsx",
+      "source_location": "L59"
+    },
+    {
+      "id": "src_components_authmodal_authmodal",
+      "label": "AuthModal()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "authmodal()",
+      "source_file": "src/components/AuthModal.tsx",
+      "source_location": "L16"
+    },
+    {
+      "id": "src_components_closingctasection_closingctasection",
+      "label": "ClosingCtaSection()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "closingctasection()",
+      "source_file": "src/components/ClosingCtaSection.tsx",
+      "source_location": "L9"
+    },
+    {
+      "id": "src_components_costtablesection_costtablesection",
+      "label": "CostTableSection()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "costtablesection()",
+      "source_file": "src/components/CostTableSection.tsx",
+      "source_location": "L67"
+    },
+    {
+      "id": "src_components_navbar_navbar",
+      "label": "Navbar()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "navbar()",
+      "source_file": "src/components/Navbar.tsx",
+      "source_location": "L15"
+    },
+    {
+      "id": "src_components_shimmerbutton_shimmerbutton",
+      "label": "ShimmerButton()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "shimmerbutton()",
+      "source_file": "src/components/ShimmerButton.tsx",
       "source_location": "L12"
     },
     {
@@ -1004,8 +1220,8 @@
       "label": "DashboardSidebar()",
       "_callable": true,
       "_origin": "ast",
-      "community": 1,
-      "community_name": "DashboardSidebar.tsx",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
       "file_type": "code",
       "norm_label": "dashboardsidebar()",
       "source_file": "src/components/studio/DashboardSidebar.tsx",
@@ -1016,8 +1232,8 @@
       "label": "ProfilePanel()",
       "_callable": true,
       "_origin": "ast",
-      "community": 1,
-      "community_name": "DashboardSidebar.tsx",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
       "file_type": "code",
       "norm_label": "profilepanel()",
       "source_file": "src/components/studio/SettingsModal.tsx",
@@ -1028,8 +1244,8 @@
       "label": "CreditsPanel()",
       "_callable": true,
       "_origin": "ast",
-      "community": 1,
-      "community_name": "DashboardSidebar.tsx",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
       "file_type": "code",
       "norm_label": "creditspanel()",
       "source_file": "src/components/studio/StudioSettingsDialog.tsx",
@@ -1040,24 +1256,12 @@
       "label": "GeneralPanel()",
       "_callable": true,
       "_origin": "ast",
-      "community": 1,
-      "community_name": "DashboardSidebar.tsx",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
       "file_type": "code",
       "norm_label": "generalpanel()",
       "source_file": "src/components/studio/StudioSettingsDialog.tsx",
       "source_location": "L65"
-    },
-    {
-      "id": "src_hooks_useuser_useuser",
-      "label": "useUser()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "DashboardSidebar.tsx",
-      "file_type": "code",
-      "norm_label": "useuser()",
-      "source_file": "src/hooks/useUser.ts",
-      "source_location": "L16"
     },
     {
       "id": "src_components_topupmodal_topupmodal",
@@ -1084,6 +1288,42 @@
       "source_location": "L27"
     },
     {
+      "id": "src_context_modalcontext_usemodal",
+      "label": "useModal()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "usemodal()",
+      "source_file": "src/context/ModalContext.tsx",
+      "source_location": "L127"
+    },
+    {
+      "id": "src_hooks_useuser_useuser",
+      "label": "useUser()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "useuser()",
+      "source_file": "src/hooks/useUser.ts",
+      "source_location": "L16"
+    },
+    {
+      "id": "src_lib_supabase_client_createclient",
+      "label": "createClient()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "createclient()",
+      "source_file": "src/lib/supabase/client.ts",
+      "source_location": "L3"
+    },
+    {
       "id": "src_components_motion_heroentrance_heroentrance",
       "label": "HeroEntrance()",
       "_callable": true,
@@ -1096,36 +1336,12 @@
       "source_location": "L46"
     },
     {
-      "id": "components_ui_logo_cloud_3_logocloud",
-      "label": "LogoCloud()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 117,
-      "community_name": "components/ui/logo-cloud-3.tsx",
-      "file_type": "code",
-      "norm_label": "logocloud()",
-      "source_file": "components/ui/logo-cloud-3.tsx",
-      "source_location": "L20"
-    },
-    {
-      "id": "src_components_landing_partnerssection_partnerssection",
-      "label": "PartnersSection()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 117,
-      "community_name": "components/ui/logo-cloud-3.tsx",
-      "file_type": "code",
-      "norm_label": "partnerssection()",
-      "source_file": "src/components/landing/PartnersSection.tsx",
-      "source_location": "L29"
-    },
-    {
       "id": "components_ui_infinite_slider_infiniteslider",
       "label": "InfiniteSlider()",
       "_callable": true,
       "_origin": "ast",
       "community": 118,
-      "community_name": "src/components/ui/logo-cloud-3.tsx",
+      "community_name": "lib/utils.ts",
       "file_type": "code",
       "norm_label": "infiniteslider()",
       "source_file": "components/ui/infinite-slider.tsx",
@@ -1137,7 +1353,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 118,
-      "community_name": "src/components/ui/logo-cloud-3.tsx",
+      "community_name": "lib/utils.ts",
       "file_type": "code",
       "norm_label": "logocloud()",
       "source_file": "src/components/ui/logo-cloud-3.tsx",
@@ -1178,18 +1394,6 @@
       "norm_label": "shapeof()",
       "source_file": "scripts/verify-marketing-locales.mjs",
       "source_location": "L33"
-    },
-    {
-      "id": "src_components_ui_infinite_slider_infiniteslider",
-      "label": "InfiniteSlider()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 134,
-      "community_name": "lib/utils.ts",
-      "file_type": "code",
-      "norm_label": "infiniteslider()",
-      "source_file": "src/components/ui/infinite-slider.tsx",
-      "source_location": "L18"
     },
     {
       "id": "app_root_page_rootfallbackpage",
@@ -1300,40 +1504,28 @@
       "source_location": "L20"
     },
     {
-      "id": "src_components_globalfooter_globalfooter",
-      "label": "GlobalFooter()",
+      "id": "components_ui_logo_cloud_3_logocloud",
+      "label": "LogoCloud()",
       "_callable": true,
       "_origin": "ast",
       "community": 23,
       "community_name": "src/components/OriginalLandingPage.tsx",
       "file_type": "code",
-      "norm_label": "globalfooter()",
-      "source_file": "src/components/GlobalFooter.tsx",
-      "source_location": "L14"
+      "norm_label": "logocloud()",
+      "source_file": "components/ui/logo-cloud-3.tsx",
+      "source_location": "L20"
     },
     {
-      "id": "src_components_herosection_hashseed",
-      "label": "hashSeed()",
+      "id": "src_app_app",
+      "label": "App()",
       "_callable": true,
       "_origin": "ast",
       "community": 23,
       "community_name": "src/components/OriginalLandingPage.tsx",
       "file_type": "code",
-      "norm_label": "hashseed()",
-      "source_file": "src/components/HeroSection.tsx",
-      "source_location": "L313"
-    },
-    {
-      "id": "src_components_herosection_herosection",
-      "label": "HeroSection()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "herosection()",
-      "source_file": "src/components/HeroSection.tsx",
-      "source_location": "L24"
+      "norm_label": "app()",
+      "source_file": "src/App.tsx",
+      "source_location": "L6"
     },
     {
       "id": "src_components_landing_cinematicenter_cinematicenter",
@@ -1346,30 +1538,6 @@
       "norm_label": "cinematicenter()",
       "source_file": "src/components/landing/CinematicEnter.tsx",
       "source_location": "L11"
-    },
-    {
-      "id": "src_components_landing_faq_faq",
-      "label": "Faq()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "faq()",
-      "source_file": "src/components/landing/Faq.tsx",
-      "source_location": "L24"
-    },
-    {
-      "id": "src_components_landing_finalcta_finalcta",
-      "label": "FinalCta()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "finalcta()",
-      "source_file": "src/components/landing/FinalCta.tsx",
-      "source_location": "L8"
     },
     {
       "id": "src_components_landing_howitworks_howitworks",
@@ -1396,88 +1564,16 @@
       "source_location": "L32"
     },
     {
-      "id": "src_components_landing_terminalshowcase_cn2",
-      "label": "cn2()",
+      "id": "src_components_landing_partnerssection_partnerssection",
+      "label": "PartnersSection()",
       "_callable": true,
       "_origin": "ast",
       "community": 23,
       "community_name": "src/components/OriginalLandingPage.tsx",
       "file_type": "code",
-      "norm_label": "cn2()",
-      "source_file": "src/components/landing/TerminalShowcase.tsx",
-      "source_location": "L156"
-    },
-    {
-      "id": "src_components_landing_terminalshowcase_terminalshowcase",
-      "label": "TerminalShowcase()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "terminalshowcase()",
-      "source_file": "src/components/landing/TerminalShowcase.tsx",
-      "source_location": "L34"
-    },
-    {
-      "id": "src_components_landing_testimonials_marqueerow",
-      "label": "MarqueeRow()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "marqueerow()",
-      "source_file": "src/components/landing/Testimonials.tsx",
-      "source_location": "L14"
-    },
-    {
-      "id": "src_components_landing_testimonials_testimonials",
-      "label": "Testimonials()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "testimonials()",
-      "source_file": "src/components/landing/Testimonials.tsx",
-      "source_location": "L54"
-    },
-    {
-      "id": "src_components_landing_ui_magnetic",
-      "label": "Magnetic()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "magnetic()",
-      "source_file": "src/components/landing/ui.tsx",
-      "source_location": "L8"
-    },
-    {
-      "id": "src_components_landing_ui_sectionheading",
-      "label": "SectionHeading()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "sectionheading()",
-      "source_file": "src/components/landing/ui.tsx",
-      "source_location": "L84"
-    },
-    {
-      "id": "src_components_landing_ui_spotlightcard",
-      "label": "SpotlightCard()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "spotlightcard()",
-      "source_file": "src/components/landing/ui.tsx",
-      "source_location": "L47"
+      "norm_label": "partnerssection()",
+      "source_file": "src/components/landing/PartnersSection.tsx",
+      "source_location": "L29"
     },
     {
       "id": "src_components_landing_whyvantra_balancevisual",
@@ -1564,16 +1660,16 @@
       "source_location": "L100"
     },
     {
-      "id": "src_components_vantralogo_vantralogo",
-      "label": "VantraLogo()",
+      "id": "src_components_originallandingpage_originallandingpage",
+      "label": "OriginalLandingPage()",
       "_callable": true,
       "_origin": "ast",
       "community": 23,
       "community_name": "src/components/OriginalLandingPage.tsx",
       "file_type": "code",
-      "norm_label": "vantralogo()",
-      "source_file": "src/components/VantraLogo.tsx",
-      "source_location": "L2"
+      "norm_label": "originallandingpage()",
+      "source_file": "src/components/OriginalLandingPage.tsx",
+      "source_location": "L29"
     },
     {
       "id": "src_components_studio_videoconfigpopover_sectionlabel",
@@ -1792,18 +1888,6 @@
       "source_location": "L7"
     },
     {
-      "id": "src_app_app",
-      "label": "App()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 32,
-      "community_name": "[locale]/layout.tsx",
-      "file_type": "code",
-      "norm_label": "app()",
-      "source_file": "src/App.tsx",
-      "source_location": "L6"
-    },
-    {
       "id": "src_components_ambientmotionbackground_ambientmotionbackground",
       "label": "AmbientMotionBackground()",
       "_callable": true,
@@ -1826,18 +1910,6 @@
       "norm_label": "globalpricing()",
       "source_file": "src/components/GlobalPricing.tsx",
       "source_location": "L17"
-    },
-    {
-      "id": "src_components_originallandingpage_originallandingpage",
-      "label": "OriginalLandingPage()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 32,
-      "community_name": "[locale]/layout.tsx",
-      "file_type": "code",
-      "norm_label": "originallandingpage()",
-      "source_file": "src/components/OriginalLandingPage.tsx",
-      "source_location": "L29"
     },
     {
       "id": "src_content_marketingfacts_formatda",
@@ -1876,40 +1948,88 @@
       "source_location": "L4"
     },
     {
-      "id": "src_components_herocinematicbackground_herocinematicbackground",
-      "label": "HeroCinematicBackground()",
+      "id": "src_components_landing_faq_faq",
+      "label": "Faq()",
       "_callable": true,
       "_origin": "ast",
       "community": 5,
-      "community_name": "src/components/LiveLedgerCard.tsx",
+      "community_name": "ui.tsx",
       "file_type": "code",
-      "norm_label": "herocinematicbackground()",
-      "source_file": "src/components/HeroCinematicBackground.tsx",
-      "source_location": "L11"
+      "norm_label": "faq()",
+      "source_file": "src/components/landing/Faq.tsx",
+      "source_location": "L24"
     },
     {
-      "id": "src_components_liveledgercard_liveledgercard",
-      "label": "LiveLedgerCard()",
+      "id": "src_components_landing_finalcta_finalcta",
+      "label": "FinalCta()",
       "_callable": true,
       "_origin": "ast",
       "community": 5,
-      "community_name": "src/components/LiveLedgerCard.tsx",
+      "community_name": "ui.tsx",
       "file_type": "code",
-      "norm_label": "liveledgercard()",
-      "source_file": "src/components/LiveLedgerCard.tsx",
-      "source_location": "L85"
+      "norm_label": "finalcta()",
+      "source_file": "src/components/landing/FinalCta.tsx",
+      "source_location": "L8"
     },
     {
-      "id": "components_ui_liquid_metal_button_liquidmetalbutton",
-      "label": "LiquidMetalButton()",
+      "id": "src_components_landing_testimonials_marqueerow",
+      "label": "MarqueeRow()",
       "_callable": true,
       "_origin": "ast",
-      "community": 6,
-      "community_name": "router.ts",
+      "community": 5,
+      "community_name": "ui.tsx",
       "file_type": "code",
-      "norm_label": "liquidmetalbutton()",
-      "source_file": "components/ui/liquid-metal-button.tsx",
-      "source_location": "L12"
+      "norm_label": "marqueerow()",
+      "source_file": "src/components/landing/Testimonials.tsx",
+      "source_location": "L14"
+    },
+    {
+      "id": "src_components_landing_testimonials_testimonials",
+      "label": "Testimonials()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "ui.tsx",
+      "file_type": "code",
+      "norm_label": "testimonials()",
+      "source_file": "src/components/landing/Testimonials.tsx",
+      "source_location": "L54"
+    },
+    {
+      "id": "src_components_landing_ui_magnetic",
+      "label": "Magnetic()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "ui.tsx",
+      "file_type": "code",
+      "norm_label": "magnetic()",
+      "source_file": "src/components/landing/ui.tsx",
+      "source_location": "L8"
+    },
+    {
+      "id": "src_components_landing_ui_sectionheading",
+      "label": "SectionHeading()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "ui.tsx",
+      "file_type": "code",
+      "norm_label": "sectionheading()",
+      "source_file": "src/components/landing/ui.tsx",
+      "source_location": "L84"
+    },
+    {
+      "id": "src_components_landing_ui_spotlightcard",
+      "label": "SpotlightCard()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "ui.tsx",
+      "file_type": "code",
+      "norm_label": "spotlightcard()",
+      "source_file": "src/components/landing/ui.tsx",
+      "source_location": "L47"
     },
     {
       "id": "lib_ai_image_providers_puter_generatewithputer",
@@ -2018,54 +2138,6 @@
       "norm_label": ".generateimage()",
       "source_file": "lib/ai/image-providers/types.ts",
       "source_location": "L55"
-    },
-    {
-      "id": "src_components_studio_imagecanvas_imagecanvas",
-      "label": "ImageCanvas()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "router.ts",
-      "file_type": "code",
-      "norm_label": "imagecanvas()",
-      "source_file": "src/components/studio/ImageCanvas.tsx",
-      "source_location": "L10"
-    },
-    {
-      "id": "src_components_studio_imagecanvas_imagecanvas_handleclickoutside",
-      "label": "handleClickOutside()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "router.ts",
-      "file_type": "code",
-      "norm_label": "handleclickoutside()",
-      "source_file": "src/components/studio/ImageCanvas.tsx",
-      "source_location": "L59"
-    },
-    {
-      "id": "src_components_authmodal_authmodal",
-      "label": "AuthModal()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 69,
-      "community_name": "src/components/AuthModal.tsx",
-      "file_type": "code",
-      "norm_label": "authmodal()",
-      "source_file": "src/components/AuthModal.tsx",
-      "source_location": "L16"
-    },
-    {
-      "id": "src_lib_supabase_client_createclient",
-      "label": "createClient()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 69,
-      "community_name": "src/components/AuthModal.tsx",
-      "file_type": "code",
-      "norm_label": "createclient()",
-      "source_file": "src/lib/supabase/client.ts",
-      "source_location": "L3"
     },
     {
       "id": "src_components_studio_settingsmodal_behaviorpanel",
@@ -2284,52 +2356,16 @@
       "source_location": "L68"
     },
     {
-      "id": "src_components_studio_messagebubble_attachmentthumbnail",
-      "label": "AttachmentThumbnail()",
+      "id": "src_components_ui_infinite_slider_infiniteslider",
+      "label": "InfiniteSlider()",
       "_callable": true,
       "_origin": "ast",
-      "community": 85,
-      "community_name": "MessageBubble.tsx",
+      "community": 79,
+      "community_name": "cn",
       "file_type": "code",
-      "norm_label": "attachmentthumbnail()",
-      "source_file": "src/components/studio/MessageBubble.tsx",
-      "source_location": "L20"
-    },
-    {
-      "id": "src_components_studio_messagebubble_messagebubble",
-      "label": "MessageBubble()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 85,
-      "community_name": "MessageBubble.tsx",
-      "file_type": "code",
-      "norm_label": "messagebubble()",
-      "source_file": "src/components/studio/MessageBubble.tsx",
-      "source_location": "L70"
-    },
-    {
-      "id": "src_hooks_usesmoothtext_usesmoothtext",
-      "label": "useSmoothText()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 85,
-      "community_name": "MessageBubble.tsx",
-      "file_type": "code",
-      "norm_label": "usesmoothtext()",
-      "source_file": "src/hooks/useSmoothText.ts",
-      "source_location": "L10"
-    },
-    {
-      "id": "src_lib_direction_detectdir",
-      "label": "detectDir()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 85,
-      "community_name": "MessageBubble.tsx",
-      "file_type": "code",
-      "norm_label": "detectdir()",
-      "source_file": "src/lib/direction.ts",
-      "source_location": "L7"
+      "norm_label": "infiniteslider()",
+      "source_file": "src/components/ui/infinite-slider.tsx",
+      "source_location": "L18"
     },
     {
       "id": "app_api_generate_chat_route_post",
@@ -2572,52 +2608,28 @@
       "source_location": "L3"
     },
     {
-      "id": "src_components_closingctasection_closingctasection",
-      "label": "ClosingCtaSection()",
+      "id": "src_components_landing_terminalshowcase_cn2",
+      "label": "cn2()",
       "_callable": true,
       "_origin": "ast",
       "community": 9,
-      "community_name": "useModal",
+      "community_name": "TerminalShowcase.tsx",
       "file_type": "code",
-      "norm_label": "closingctasection()",
-      "source_file": "src/components/ClosingCtaSection.tsx",
-      "source_location": "L9"
+      "norm_label": "cn2()",
+      "source_file": "src/components/landing/TerminalShowcase.tsx",
+      "source_location": "L156"
     },
     {
-      "id": "src_components_navbar_navbar",
-      "label": "Navbar()",
+      "id": "src_components_landing_terminalshowcase_terminalshowcase",
+      "label": "TerminalShowcase()",
       "_callable": true,
       "_origin": "ast",
       "community": 9,
-      "community_name": "useModal",
+      "community_name": "TerminalShowcase.tsx",
       "file_type": "code",
-      "norm_label": "navbar()",
-      "source_file": "src/components/Navbar.tsx",
-      "source_location": "L15"
-    },
-    {
-      "id": "src_components_shimmerbutton_shimmerbutton",
-      "label": "ShimmerButton()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 9,
-      "community_name": "useModal",
-      "file_type": "code",
-      "norm_label": "shimmerbutton()",
-      "source_file": "src/components/ShimmerButton.tsx",
-      "source_location": "L12"
-    },
-    {
-      "id": "src_context_modalcontext_usemodal",
-      "label": "useModal()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 9,
-      "community_name": "useModal",
-      "file_type": "code",
-      "norm_label": "usemodal()",
-      "source_file": "src/context/ModalContext.tsx",
-      "source_location": "L127"
+      "norm_label": "terminalshowcase()",
+      "source_file": "src/components/landing/TerminalShowcase.tsx",
+      "source_location": "L34"
     },
     {
       "id": "scripts_verify_stats_polish_grab",
@@ -2644,88 +2656,40 @@
       "source_location": "L6"
     },
     {
-      "id": "components_ui_claude_style_chat_input_claudechatinput",
-      "label": "ClaudeChatInput()",
+      "id": "src_components_globalfooter_globalfooter",
+      "label": "GlobalFooter()",
       "_callable": true,
       "_origin": "ast",
       "community": 95,
       "community_name": "StudioDashboard.tsx",
       "file_type": "code",
-      "norm_label": "claudechatinput()",
-      "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L264"
+      "norm_label": "globalfooter()",
+      "source_file": "src/components/GlobalFooter.tsx",
+      "source_location": "L14"
     },
     {
-      "id": "components_ui_claude_style_chat_input_clockicon",
-      "label": "ClockIcon()",
+      "id": "src_components_studio_messagebubble_attachmentthumbnail",
+      "label": "AttachmentThumbnail()",
       "_callable": true,
       "_origin": "ast",
       "community": 95,
       "community_name": "StudioDashboard.tsx",
       "file_type": "code",
-      "norm_label": "clockicon()",
-      "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L792"
+      "norm_label": "attachmentthumbnail()",
+      "source_file": "src/components/studio/MessageBubble.tsx",
+      "source_location": "L20"
     },
     {
-      "id": "components_ui_claude_style_chat_input_filepreviewcard",
-      "label": "FilePreviewCard()",
+      "id": "src_components_studio_messagebubble_messagebubble",
+      "label": "MessageBubble()",
       "_callable": true,
       "_origin": "ast",
       "community": 95,
       "community_name": "StudioDashboard.tsx",
       "file_type": "code",
-      "norm_label": "filepreviewcard()",
-      "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L62"
-    },
-    {
-      "id": "components_ui_claude_style_chat_input_formatfilesize",
-      "label": "formatFileSize()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 95,
-      "community_name": "StudioDashboard.tsx",
-      "file_type": "code",
-      "norm_label": "formatfilesize()",
-      "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L53"
-    },
-    {
-      "id": "components_ui_claude_style_chat_input_micicon",
-      "label": "MicIcon()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 95,
-      "community_name": "StudioDashboard.tsx",
-      "file_type": "code",
-      "norm_label": "micicon()",
-      "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L801"
-    },
-    {
-      "id": "components_ui_claude_style_chat_input_modelselector",
-      "label": "ModelSelector()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 95,
-      "community_name": "StudioDashboard.tsx",
-      "file_type": "code",
-      "norm_label": "modelselector()",
-      "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L138"
-    },
-    {
-      "id": "components_ui_claude_style_chat_input_pastedcontentcard",
-      "label": "PastedContentCard()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 95,
-      "community_name": "StudioDashboard.tsx",
-      "file_type": "code",
-      "norm_label": "pastedcontentcard()",
-      "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L111"
+      "norm_label": "messagebubble()",
+      "source_file": "src/components/studio/MessageBubble.tsx",
+      "source_location": "L70"
     },
     {
       "id": "src_components_studio_studiodashboard_studiodashboard",
@@ -2836,6 +2800,18 @@
       "source_location": "L6"
     },
     {
+      "id": "src_components_vantralogo_vantralogo",
+      "label": "VantraLogo()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 95,
+      "community_name": "StudioDashboard.tsx",
+      "file_type": "code",
+      "norm_label": "vantralogo()",
+      "source_file": "src/components/VantraLogo.tsx",
+      "source_location": "L2"
+    },
+    {
       "id": "src_config_studio_registry_ismodelselectable",
       "label": "isModelSelectable()",
       "_callable": true,
@@ -2848,44 +2824,68 @@
       "source_location": "L111"
     },
     {
+      "id": "src_hooks_usesmoothtext_usesmoothtext",
+      "label": "useSmoothText()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 95,
+      "community_name": "StudioDashboard.tsx",
+      "file_type": "code",
+      "norm_label": "usesmoothtext()",
+      "source_file": "src/hooks/useSmoothText.ts",
+      "source_location": "L10"
+    },
+    {
+      "id": "src_lib_direction_detectdir",
+      "label": "detectDir()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 95,
+      "community_name": "StudioDashboard.tsx",
+      "file_type": "code",
+      "norm_label": "detectdir()",
+      "source_file": "src/lib/direction.ts",
+      "source_location": "L7"
+    },
+    {
+      "id": "components_herocinematicbackground",
+      "label": "components/HeroCinematicBackground.tsx",
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "src/components/LiveLedgerCard.tsx",
+      "file_type": "code",
+      "norm_label": "components/herocinematicbackground.tsx",
+      "source_file": "components/HeroCinematicBackground.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "components_liveledgercard",
+      "label": "components/LiveLedgerCard.tsx",
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "src/components/LiveLedgerCard.tsx",
+      "file_type": "code",
+      "norm_label": "components/liveledgercard.tsx",
+      "source_file": "components/LiveLedgerCard.tsx",
+      "source_location": "L1"
+    },
+    {
       "id": "components_spotlightcard",
       "label": "components/SpotlightCard.tsx",
       "_origin": "ast",
       "community": 0,
-      "community_name": "src/components/SpotlightCard.tsx",
+      "community_name": "src/components/LiveLedgerCard.tsx",
       "file_type": "code",
       "norm_label": "components/spotlightcard.tsx",
       "source_file": "components/SpotlightCard.tsx",
       "source_location": "L1"
     },
     {
-      "id": "src_components_costtablesection",
-      "label": "CostTableSection.tsx",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "src/components/SpotlightCard.tsx",
-      "file_type": "code",
-      "norm_label": "costtablesection.tsx",
-      "source_file": "src/components/CostTableSection.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_costtablesection_cost_rows",
-      "label": "COST_ROWS",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "src/components/SpotlightCard.tsx",
-      "file_type": "code",
-      "norm_label": "cost_rows",
-      "source_file": "src/components/CostTableSection.tsx",
-      "source_location": "L10"
-    },
-    {
       "id": "src_components_faqsection",
       "label": "FaqSection.tsx",
       "_origin": "ast",
       "community": 0,
-      "community_name": "src/components/SpotlightCard.tsx",
+      "community_name": "src/components/LiveLedgerCard.tsx",
       "file_type": "code",
       "norm_label": "faqsection.tsx",
       "source_file": "src/components/FaqSection.tsx",
@@ -2896,7 +2896,7 @@
       "label": "FAQS",
       "_origin": "ast",
       "community": 0,
-      "community_name": "src/components/SpotlightCard.tsx",
+      "community_name": "src/components/LiveLedgerCard.tsx",
       "file_type": "code",
       "norm_label": "faqs",
       "source_file": "src/components/FaqSection.tsx",
@@ -2907,7 +2907,7 @@
       "label": "FeaturesSection.tsx",
       "_origin": "ast",
       "community": 0,
-      "community_name": "src/components/SpotlightCard.tsx",
+      "community_name": "src/components/LiveLedgerCard.tsx",
       "file_type": "code",
       "norm_label": "featuressection.tsx",
       "source_file": "src/components/FeaturesSection.tsx",
@@ -2918,18 +2918,29 @@
       "label": "FEATURES",
       "_origin": "ast",
       "community": 0,
-      "community_name": "src/components/SpotlightCard.tsx",
+      "community_name": "src/components/LiveLedgerCard.tsx",
       "file_type": "code",
       "norm_label": "features",
       "source_file": "src/components/FeaturesSection.tsx",
       "source_location": "L17"
     },
     {
+      "id": "src_components_herocinematicbackground",
+      "label": "src/components/HeroCinematicBackground.tsx",
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "src/components/LiveLedgerCard.tsx",
+      "file_type": "code",
+      "norm_label": "src/components/herocinematicbackground.tsx",
+      "source_file": "src/components/HeroCinematicBackground.tsx",
+      "source_location": "L1"
+    },
+    {
       "id": "src_components_howitworkssection",
       "label": "HowItWorksSection.tsx",
       "_origin": "ast",
       "community": 0,
-      "community_name": "src/components/SpotlightCard.tsx",
+      "community_name": "src/components/LiveLedgerCard.tsx",
       "file_type": "code",
       "norm_label": "howitworkssection.tsx",
       "source_file": "src/components/HowItWorksSection.tsx",
@@ -2940,18 +2951,51 @@
       "label": "STEPS",
       "_origin": "ast",
       "community": 0,
-      "community_name": "src/components/SpotlightCard.tsx",
+      "community_name": "src/components/LiveLedgerCard.tsx",
       "file_type": "code",
       "norm_label": "steps",
       "source_file": "src/components/HowItWorksSection.tsx",
       "source_location": "L8"
     },
     {
+      "id": "src_components_liveledgercard",
+      "label": "src/components/LiveLedgerCard.tsx",
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "src/components/LiveLedgerCard.tsx",
+      "file_type": "code",
+      "norm_label": "src/components/liveledgercard.tsx",
+      "source_file": "src/components/LiveLedgerCard.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_liveledgercard_ledger_models",
+      "label": "LEDGER_MODELS",
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "src/components/LiveLedgerCard.tsx",
+      "file_type": "code",
+      "norm_label": "ledger_models",
+      "source_file": "src/components/LiveLedgerCard.tsx",
+      "source_location": "L37"
+    },
+    {
+      "id": "src_components_motion_index",
+      "label": "index.ts",
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "src/components/LiveLedgerCard.tsx",
+      "file_type": "code",
+      "norm_label": "index.ts",
+      "source_file": "src/components/motion/index.ts",
+      "source_location": "L1"
+    },
+    {
       "id": "src_components_motion_spotlightcard",
       "label": "motion/SpotlightCard.tsx",
       "_origin": "ast",
       "community": 0,
-      "community_name": "src/components/SpotlightCard.tsx",
+      "community_name": "src/components/LiveLedgerCard.tsx",
       "file_type": "code",
       "norm_label": "motion/spotlightcard.tsx",
       "source_file": "src/components/motion/SpotlightCard.tsx",
@@ -2962,65 +3006,109 @@
       "label": "src/components/SpotlightCard.tsx",
       "_origin": "ast",
       "community": 0,
-      "community_name": "src/components/SpotlightCard.tsx",
+      "community_name": "src/components/LiveLedgerCard.tsx",
       "file_type": "code",
       "norm_label": "src/components/spotlightcard.tsx",
       "source_file": "src/components/SpotlightCard.tsx",
       "source_location": "L1"
     },
     {
-      "id": "hooks_useuser",
-      "label": "hooks/useUser.ts",
+      "id": "components_ui_claude_style_chat_input",
+      "label": "claude-style-chat-input.tsx",
       "_origin": "ast",
       "community": 1,
-      "community_name": "DashboardSidebar.tsx",
+      "community_name": "claude-style-chat-input.tsx",
       "file_type": "code",
-      "norm_label": "hooks/useuser.ts",
-      "source_file": "hooks/useUser.ts",
+      "norm_label": "claude-style-chat-input.tsx",
+      "source_file": "components/ui/claude-style-chat-input.tsx",
       "source_location": "L1"
     },
     {
-      "id": "src_components_studio_dashboardsidebar",
-      "label": "DashboardSidebar.tsx",
+      "id": "components_ui_liquid_metal_button",
+      "label": "liquid-metal-button.tsx",
       "_origin": "ast",
       "community": 1,
-      "community_name": "DashboardSidebar.tsx",
+      "community_name": "claude-style-chat-input.tsx",
       "file_type": "code",
-      "norm_label": "dashboardsidebar.tsx",
-      "source_file": "src/components/studio/DashboardSidebar.tsx",
+      "norm_label": "liquid-metal-button.tsx",
+      "source_file": "components/ui/liquid-metal-button.tsx",
       "source_location": "L1"
     },
     {
-      "id": "src_components_studio_dashboardsidebar_create_items",
-      "label": "CREATE_ITEMS",
+      "id": "lib_ai_image_providers_router_provider_registry",
+      "label": "PROVIDER_REGISTRY",
       "_origin": "ast",
       "community": 1,
-      "community_name": "DashboardSidebar.tsx",
+      "community_name": "claude-style-chat-input.tsx",
       "file_type": "code",
-      "norm_label": "create_items",
-      "source_file": "src/components/studio/DashboardSidebar.tsx",
-      "source_location": "L44"
+      "norm_label": "provider_registry",
+      "source_file": "lib/ai/image-providers/router.ts",
+      "source_location": "L20"
     },
     {
-      "id": "src_components_studio_dashboardsidebar_workspace_items",
-      "label": "WORKSPACE_ITEMS",
+      "id": "src_components_herosection",
+      "label": "HeroSection.tsx",
       "_origin": "ast",
       "community": 1,
-      "community_name": "DashboardSidebar.tsx",
+      "community_name": "claude-style-chat-input.tsx",
       "file_type": "code",
-      "norm_label": "workspace_items",
-      "source_file": "src/components/studio/DashboardSidebar.tsx",
-      "source_location": "L50"
+      "norm_label": "herosection.tsx",
+      "source_file": "src/components/HeroSection.tsx",
+      "source_location": "L1"
     },
     {
-      "id": "src_hooks_useuser",
-      "label": "src/hooks/useUser.ts",
+      "id": "src_components_herosection_paths",
+      "label": "PATHS",
       "_origin": "ast",
       "community": 1,
-      "community_name": "DashboardSidebar.tsx",
+      "community_name": "claude-style-chat-input.tsx",
       "file_type": "code",
-      "norm_label": "src/hooks/useuser.ts",
-      "source_file": "src/hooks/useUser.ts",
+      "norm_label": "paths",
+      "source_file": "src/components/HeroSection.tsx",
+      "source_location": "L18"
+    },
+    {
+      "id": "src_components_studio_imagecanvas",
+      "label": "ImageCanvas.tsx",
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "claude-style-chat-input.tsx",
+      "file_type": "code",
+      "norm_label": "imagecanvas.tsx",
+      "source_file": "src/components/studio/ImageCanvas.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "components_authmodal",
+      "label": "components/AuthModal.tsx",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "components/authmodal.tsx",
+      "source_file": "components/AuthModal.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "components_navbar",
+      "label": "components/Navbar.tsx",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "components/navbar.tsx",
+      "source_file": "components/Navbar.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "components_shimmerbutton",
+      "label": "components/ShimmerButton.tsx",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "components/shimmerbutton.tsx",
+      "source_file": "components/ShimmerButton.tsx",
       "source_location": "L1"
     },
     {
@@ -3044,6 +3132,138 @@
       "norm_label": "context/modalcontext.tsx",
       "source_file": "context/ModalContext.tsx",
       "source_location": "L1"
+    },
+    {
+      "id": "hooks_useuser",
+      "label": "hooks/useUser.ts",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "hooks/useuser.ts",
+      "source_file": "hooks/useUser.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_supabase_client",
+      "label": "lib/supabase/client.ts",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "lib/supabase/client.ts",
+      "source_file": "lib/supabase/client.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_authmodal",
+      "label": "src/components/AuthModal.tsx",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "src/components/authmodal.tsx",
+      "source_file": "src/components/AuthModal.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_closingctasection",
+      "label": "ClosingCtaSection.tsx",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "closingctasection.tsx",
+      "source_file": "src/components/ClosingCtaSection.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_costtablesection",
+      "label": "CostTableSection.tsx",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "costtablesection.tsx",
+      "source_file": "src/components/CostTableSection.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_costtablesection_cost_rows",
+      "label": "COST_ROWS",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "cost_rows",
+      "source_file": "src/components/CostTableSection.tsx",
+      "source_location": "L10"
+    },
+    {
+      "id": "src_components_motion_shimmerbutton",
+      "label": "motion/ShimmerButton.tsx",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "motion/shimmerbutton.tsx",
+      "source_file": "src/components/motion/ShimmerButton.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_navbar",
+      "label": "src/components/Navbar.tsx",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "src/components/navbar.tsx",
+      "source_file": "src/components/Navbar.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_shimmerbutton",
+      "label": "src/components/ShimmerButton.tsx",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "src/components/shimmerbutton.tsx",
+      "source_file": "src/components/ShimmerButton.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_studio_dashboardsidebar",
+      "label": "DashboardSidebar.tsx",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "dashboardsidebar.tsx",
+      "source_file": "src/components/studio/DashboardSidebar.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_studio_dashboardsidebar_create_items",
+      "label": "CREATE_ITEMS",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "create_items",
+      "source_file": "src/components/studio/DashboardSidebar.tsx",
+      "source_location": "L44"
+    },
+    {
+      "id": "src_components_studio_dashboardsidebar_workspace_items",
+      "label": "WORKSPACE_ITEMS",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "workspace_items",
+      "source_file": "src/components/studio/DashboardSidebar.tsx",
+      "source_location": "L50"
     },
     {
       "id": "src_components_topupmodal",
@@ -3131,6 +3351,39 @@
       "file_type": "code",
       "norm_label": "modalcontext",
       "source_file": "src/context/ModalContext.tsx",
+      "source_location": "L25"
+    },
+    {
+      "id": "src_hooks_useuser",
+      "label": "src/hooks/useUser.ts",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "src/hooks/useuser.ts",
+      "source_file": "src/hooks/useUser.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_lib_supabase_client",
+      "label": "src/lib/supabase/client.ts",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "src/lib/supabase/client.ts",
+      "source_file": "src/lib/supabase/client.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_lib_supabase_client_supabase",
+      "label": "supabase",
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "src/context/ModalContext.tsx",
+      "file_type": "code",
+      "norm_label": "supabase",
+      "source_file": "src/lib/supabase/client.ts",
       "source_location": "L25"
     },
     {
@@ -3475,47 +3728,47 @@
       "source_location": "L43"
     },
     {
-      "id": "components_ui_logo_cloud_3",
-      "label": "components/ui/logo-cloud-3.tsx",
-      "_origin": "ast",
-      "community": 117,
-      "community_name": "components/ui/logo-cloud-3.tsx",
-      "file_type": "code",
-      "norm_label": "components/ui/logo-cloud-3.tsx",
-      "source_file": "components/ui/logo-cloud-3.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_landing_partnerssection",
-      "label": "PartnersSection.tsx",
-      "_origin": "ast",
-      "community": 117,
-      "community_name": "components/ui/logo-cloud-3.tsx",
-      "file_type": "code",
-      "norm_label": "partnerssection.tsx",
-      "source_file": "src/components/landing/PartnersSection.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_landing_partnerssection_logos",
-      "label": "logos",
-      "_origin": "ast",
-      "community": 117,
-      "community_name": "components/ui/logo-cloud-3.tsx",
-      "file_type": "code",
-      "norm_label": "logos",
-      "source_file": "src/components/landing/PartnersSection.tsx",
-      "source_location": "L8"
-    },
-    {
       "id": "components_ui_infinite_slider",
       "label": "components/ui/infinite-slider.tsx",
       "_origin": "ast",
       "community": 118,
-      "community_name": "src/components/ui/logo-cloud-3.tsx",
+      "community_name": "lib/utils.ts",
       "file_type": "code",
       "norm_label": "components/ui/infinite-slider.tsx",
       "source_file": "components/ui/infinite-slider.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "components_ui_textarea",
+      "label": "textarea.tsx",
+      "_origin": "ast",
+      "community": 118,
+      "community_name": "lib/utils.ts",
+      "file_type": "code",
+      "norm_label": "textarea.tsx",
+      "source_file": "components/ui/textarea.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "components_ui_textarea_textarea",
+      "label": "Textarea",
+      "_origin": "ast",
+      "community": 118,
+      "community_name": "lib/utils.ts",
+      "file_type": "code",
+      "norm_label": "textarea",
+      "source_file": "components/ui/textarea.tsx",
+      "source_location": "L8"
+    },
+    {
+      "id": "lib_utils",
+      "label": "lib/utils.ts",
+      "_origin": "ast",
+      "community": 118,
+      "community_name": "lib/utils.ts",
+      "file_type": "code",
+      "norm_label": "lib/utils.ts",
+      "source_file": "lib/utils.ts",
       "source_location": "L1"
     },
     {
@@ -3523,7 +3776,7 @@
       "label": "src/components/ui/logo-cloud-3.tsx",
       "_origin": "ast",
       "community": 118,
-      "community_name": "src/components/ui/logo-cloud-3.tsx",
+      "community_name": "lib/utils.ts",
       "file_type": "code",
       "norm_label": "src/components/ui/logo-cloud-3.tsx",
       "source_file": "src/components/ui/logo-cloud-3.tsx",
@@ -3902,50 +4155,6 @@
       "norm_label": "out",
       "source_file": "scripts/verify-navbar.mjs",
       "source_location": "L4"
-    },
-    {
-      "id": "components_ui_textarea",
-      "label": "textarea.tsx",
-      "_origin": "ast",
-      "community": 134,
-      "community_name": "lib/utils.ts",
-      "file_type": "code",
-      "norm_label": "textarea.tsx",
-      "source_file": "components/ui/textarea.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "components_ui_textarea_textarea",
-      "label": "Textarea",
-      "_origin": "ast",
-      "community": 134,
-      "community_name": "lib/utils.ts",
-      "file_type": "code",
-      "norm_label": "textarea",
-      "source_file": "components/ui/textarea.tsx",
-      "source_location": "L8"
-    },
-    {
-      "id": "lib_utils",
-      "label": "lib/utils.ts",
-      "_origin": "ast",
-      "community": 134,
-      "community_name": "lib/utils.ts",
-      "file_type": "code",
-      "norm_label": "lib/utils.ts",
-      "source_file": "lib/utils.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_ui_infinite_slider",
-      "label": "src/components/ui/infinite-slider.tsx",
-      "_origin": "ast",
-      "community": 134,
-      "community_name": "lib/utils.ts",
-      "file_type": "code",
-      "norm_label": "src/components/ui/infinite-slider.tsx",
-      "source_file": "src/components/ui/infinite-slider.tsx",
-      "source_location": "L1"
     },
     {
       "id": "package_dependencies_ai",
@@ -4919,26 +5128,26 @@
       "source_location": "L31"
     },
     {
-      "id": "package_dependencies_ai_sdk_react",
-      "label": "@ai-sdk/react",
+      "id": "package_dependencies_framer_motion",
+      "label": "framer-motion",
       "_origin": "ast",
       "community": 22,
-      "community_name": "@ai-sdk/react",
+      "community_name": "framer-motion",
       "file_type": "code",
-      "norm_label": "@ai-sdk/react",
+      "norm_label": "framer-motion",
       "source_file": "package.json",
-      "source_location": "L15"
+      "source_location": "L29"
     },
     {
-      "id": "ai_sdk_react",
-      "label": "@ai-sdk/react",
+      "id": "framer_motion",
+      "label": "framer-motion",
       "_origin": "ast",
       "community": 22,
-      "community_name": "@ai-sdk/react",
+      "community_name": "framer-motion",
       "file_type": "concept",
-      "norm_label": "@ai-sdk/react",
+      "norm_label": "framer-motion",
       "source_file": "package.json",
-      "source_location": "L15"
+      "source_location": "L29"
     },
     {
       "id": "components_originallandingpage",
@@ -4974,48 +5183,26 @@
       "source_location": "L14"
     },
     {
-      "id": "src_components_globalfooter",
-      "label": "GlobalFooter.tsx",
+      "id": "components_ui_logo_cloud_3",
+      "label": "components/ui/logo-cloud-3.tsx",
       "_origin": "ast",
       "community": 23,
       "community_name": "src/components/OriginalLandingPage.tsx",
       "file_type": "code",
-      "norm_label": "globalfooter.tsx",
-      "source_file": "src/components/GlobalFooter.tsx",
+      "norm_label": "components/ui/logo-cloud-3.tsx",
+      "source_file": "components/ui/logo-cloud-3.tsx",
       "source_location": "L1"
     },
     {
-      "id": "src_components_globalfooter_links",
-      "label": "LINKS",
+      "id": "src_app",
+      "label": "App.tsx",
       "_origin": "ast",
       "community": 23,
       "community_name": "src/components/OriginalLandingPage.tsx",
       "file_type": "code",
-      "norm_label": "links",
-      "source_file": "src/components/GlobalFooter.tsx",
-      "source_location": "L7"
-    },
-    {
-      "id": "src_components_herosection",
-      "label": "HeroSection.tsx",
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "herosection.tsx",
-      "source_file": "src/components/HeroSection.tsx",
+      "norm_label": "app.tsx",
+      "source_file": "src/App.tsx",
       "source_location": "L1"
-    },
-    {
-      "id": "src_components_herosection_paths",
-      "label": "PATHS",
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "paths",
-      "source_file": "src/components/HeroSection.tsx",
-      "source_location": "L18"
     },
     {
       "id": "src_components_landing_cinematicenter",
@@ -5026,39 +5213,6 @@
       "file_type": "code",
       "norm_label": "cinematicenter.tsx",
       "source_file": "src/components/landing/CinematicEnter.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_landing_faq",
-      "label": "Faq.tsx",
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "faq.tsx",
-      "source_file": "src/components/landing/Faq.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_landing_faq_faq_owner_todos",
-      "label": "FAQ_OWNER_TODOS",
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "faq_owner_todos",
-      "source_file": "src/components/landing/Faq.tsx",
-      "source_location": "L16"
-    },
-    {
-      "id": "src_components_landing_finalcta",
-      "label": "FinalCta.tsx",
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "finalcta.tsx",
-      "source_file": "src/components/landing/FinalCta.tsx",
       "source_location": "L1"
     },
     {
@@ -5117,59 +5271,26 @@
       "source_location": "L21"
     },
     {
-      "id": "src_components_landing_terminalshowcase",
-      "label": "TerminalShowcase.tsx",
+      "id": "src_components_landing_partnerssection",
+      "label": "PartnersSection.tsx",
       "_origin": "ast",
       "community": 23,
       "community_name": "src/components/OriginalLandingPage.tsx",
       "file_type": "code",
-      "norm_label": "terminalshowcase.tsx",
-      "source_file": "src/components/landing/TerminalShowcase.tsx",
+      "norm_label": "partnerssection.tsx",
+      "source_file": "src/components/landing/PartnersSection.tsx",
       "source_location": "L1"
     },
     {
-      "id": "src_components_landing_terminalshowcase_script",
-      "label": "SCRIPT",
+      "id": "src_components_landing_partnerssection_logos",
+      "label": "logos",
       "_origin": "ast",
       "community": 23,
       "community_name": "src/components/OriginalLandingPage.tsx",
       "file_type": "code",
-      "norm_label": "script",
-      "source_file": "src/components/landing/TerminalShowcase.tsx",
-      "source_location": "L13"
-    },
-    {
-      "id": "src_components_landing_terminalshowcase_tone_class",
-      "label": "TONE_CLASS",
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "tone_class",
-      "source_file": "src/components/landing/TerminalShowcase.tsx",
-      "source_location": "L26"
-    },
-    {
-      "id": "src_components_landing_testimonials",
-      "label": "Testimonials.tsx",
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "testimonials.tsx",
-      "source_file": "src/components/landing/Testimonials.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_landing_ui",
-      "label": "ui.tsx",
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "src/components/OriginalLandingPage.tsx",
-      "file_type": "code",
-      "norm_label": "ui.tsx",
-      "source_file": "src/components/landing/ui.tsx",
-      "source_location": "L1"
+      "norm_label": "logos",
+      "source_file": "src/components/landing/PartnersSection.tsx",
+      "source_location": "L8"
     },
     {
       "id": "src_components_landing_whyvantra",
@@ -5227,14 +5348,14 @@
       "source_location": "L1"
     },
     {
-      "id": "src_components_vantralogo",
-      "label": "VantraLogo.tsx",
+      "id": "src_main",
+      "label": "main.tsx",
       "_origin": "ast",
       "community": 23,
       "community_name": "src/components/OriginalLandingPage.tsx",
       "file_type": "code",
-      "norm_label": "vantralogo.tsx",
-      "source_file": "src/components/VantraLogo.tsx",
+      "norm_label": "main.tsx",
+      "source_file": "src/main.tsx",
       "source_location": "L1"
     },
     {
@@ -5469,15 +5590,15 @@
       "source_location": "L13"
     },
     {
-      "id": "package_dependencies_framer_motion",
-      "label": "framer-motion",
+      "id": "package_dependencies_ai_sdk_react",
+      "label": "@ai-sdk/react",
       "_origin": "ast",
       "community": 30,
       "community_name": "dependencies",
       "file_type": "code",
-      "norm_label": "framer-motion",
+      "norm_label": "@ai-sdk/react",
       "source_file": "package.json",
-      "source_location": "L29"
+      "source_location": "L15"
     },
     {
       "id": "package_dependencies_puppeteer_core",
@@ -5513,15 +5634,15 @@
       "source_location": "L39"
     },
     {
-      "id": "framer_motion",
-      "label": "framer-motion",
+      "id": "ai_sdk_react",
+      "label": "@ai-sdk/react",
       "_origin": "ast",
       "community": 30,
       "community_name": "dependencies",
       "file_type": "concept",
-      "norm_label": "framer-motion",
+      "norm_label": "@ai-sdk/react",
       "source_file": "package.json",
-      "source_location": "L29"
+      "source_location": "L15"
     },
     {
       "id": "puppeteer_core",
@@ -5887,17 +6008,6 @@
       "source_location": "L5"
     },
     {
-      "id": "src_app",
-      "label": "App.tsx",
-      "_origin": "ast",
-      "community": 32,
-      "community_name": "[locale]/layout.tsx",
-      "file_type": "code",
-      "norm_label": "app.tsx",
-      "source_file": "src/App.tsx",
-      "source_location": "L1"
-    },
-    {
       "id": "src_components_ambientmotionbackground",
       "label": "src/components/AmbientMotionBackground.tsx",
       "_origin": "ast",
@@ -5951,17 +6061,6 @@
       "norm_label": "pricing_facts",
       "source_file": "src/content/marketingFacts.ts",
       "source_location": "L8"
-    },
-    {
-      "id": "src_main",
-      "label": "main.tsx",
-      "_origin": "ast",
-      "community": 32,
-      "community_name": "[locale]/layout.tsx",
-      "file_type": "code",
-      "norm_label": "main.tsx",
-      "source_file": "src/main.tsx",
-      "source_location": "L1"
     },
     {
       "id": "council_transcript_20260904_054746",
@@ -6813,69 +6912,58 @@
       "source_location": "L1"
     },
     {
-      "id": "components_herocinematicbackground",
-      "label": "components/HeroCinematicBackground.tsx",
+      "id": "src_components_landing_faq",
+      "label": "Faq.tsx",
       "_origin": "ast",
       "community": 5,
-      "community_name": "src/components/LiveLedgerCard.tsx",
+      "community_name": "ui.tsx",
       "file_type": "code",
-      "norm_label": "components/herocinematicbackground.tsx",
-      "source_file": "components/HeroCinematicBackground.tsx",
+      "norm_label": "faq.tsx",
+      "source_file": "src/components/landing/Faq.tsx",
       "source_location": "L1"
     },
     {
-      "id": "components_liveledgercard",
-      "label": "components/LiveLedgerCard.tsx",
+      "id": "src_components_landing_faq_faq_owner_todos",
+      "label": "FAQ_OWNER_TODOS",
       "_origin": "ast",
       "community": 5,
-      "community_name": "src/components/LiveLedgerCard.tsx",
+      "community_name": "ui.tsx",
       "file_type": "code",
-      "norm_label": "components/liveledgercard.tsx",
-      "source_file": "components/LiveLedgerCard.tsx",
+      "norm_label": "faq_owner_todos",
+      "source_file": "src/components/landing/Faq.tsx",
+      "source_location": "L16"
+    },
+    {
+      "id": "src_components_landing_finalcta",
+      "label": "FinalCta.tsx",
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "ui.tsx",
+      "file_type": "code",
+      "norm_label": "finalcta.tsx",
+      "source_file": "src/components/landing/FinalCta.tsx",
       "source_location": "L1"
     },
     {
-      "id": "src_components_herocinematicbackground",
-      "label": "src/components/HeroCinematicBackground.tsx",
+      "id": "src_components_landing_testimonials",
+      "label": "Testimonials.tsx",
       "_origin": "ast",
       "community": 5,
-      "community_name": "src/components/LiveLedgerCard.tsx",
+      "community_name": "ui.tsx",
       "file_type": "code",
-      "norm_label": "src/components/herocinematicbackground.tsx",
-      "source_file": "src/components/HeroCinematicBackground.tsx",
+      "norm_label": "testimonials.tsx",
+      "source_file": "src/components/landing/Testimonials.tsx",
       "source_location": "L1"
     },
     {
-      "id": "src_components_liveledgercard",
-      "label": "src/components/LiveLedgerCard.tsx",
+      "id": "src_components_landing_ui",
+      "label": "ui.tsx",
       "_origin": "ast",
       "community": 5,
-      "community_name": "src/components/LiveLedgerCard.tsx",
+      "community_name": "ui.tsx",
       "file_type": "code",
-      "norm_label": "src/components/liveledgercard.tsx",
-      "source_file": "src/components/LiveLedgerCard.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_liveledgercard_ledger_models",
-      "label": "LEDGER_MODELS",
-      "_origin": "ast",
-      "community": 5,
-      "community_name": "src/components/LiveLedgerCard.tsx",
-      "file_type": "code",
-      "norm_label": "ledger_models",
-      "source_file": "src/components/LiveLedgerCard.tsx",
-      "source_location": "L37"
-    },
-    {
-      "id": "src_components_motion_index",
-      "label": "index.ts",
-      "_origin": "ast",
-      "community": 5,
-      "community_name": "src/components/LiveLedgerCard.tsx",
-      "file_type": "code",
-      "norm_label": "index.ts",
-      "source_file": "src/components/motion/index.ts",
+      "norm_label": "ui.tsx",
+      "source_file": "src/components/landing/ui.tsx",
       "source_location": "L1"
     },
     {
@@ -6989,15 +7077,15 @@
       "source_location": "L1"
     },
     {
-      "id": "components_ui_liquid_metal_button",
-      "label": "liquid-metal-button.tsx",
+      "id": "puter_js",
+      "label": "@heyputer/puter.js",
       "_origin": "ast",
       "community": 6,
       "community_name": "router.ts",
+      "confidence": "EXTRACTED",
       "file_type": "code",
-      "norm_label": "liquid-metal-button.tsx",
-      "source_file": "components/ui/liquid-metal-button.tsx",
-      "source_location": "L1"
+      "norm_label": "@heyputer/puter.js",
+      "source_file": "@heyputer/puter.js"
     },
     {
       "id": "lib_ai_image_providers_mock",
@@ -7154,17 +7242,6 @@
       "source_location": "L26"
     },
     {
-      "id": "lib_ai_image_providers_router_provider_registry",
-      "label": "PROVIDER_REGISTRY",
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "router.ts",
-      "file_type": "code",
-      "norm_label": "provider_registry",
-      "source_file": "lib/ai/image-providers/router.ts",
-      "source_location": "L20"
-    },
-    {
       "id": "lib_ai_image_providers_types",
       "label": "types.ts",
       "_origin": "ast",
@@ -7173,17 +7250,6 @@
       "file_type": "code",
       "norm_label": "types.ts",
       "source_file": "lib/ai/image-providers/types.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_studio_imagecanvas",
-      "label": "ImageCanvas.tsx",
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "router.ts",
-      "file_type": "code",
-      "norm_label": "imagecanvas.tsx",
-      "source_file": "src/components/studio/ImageCanvas.tsx",
       "source_location": "L1"
     },
     {
@@ -7612,59 +7678,15 @@
       "source_location": "L133"
     },
     {
-      "id": "components_authmodal",
-      "label": "components/AuthModal.tsx",
+      "id": "next_next",
+      "label": "next",
       "_origin": "ast",
       "community": 69,
-      "community_name": "src/components/AuthModal.tsx",
+      "community_name": "next",
+      "confidence": "EXTRACTED",
       "file_type": "code",
-      "norm_label": "components/authmodal.tsx",
-      "source_file": "components/AuthModal.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_supabase_client",
-      "label": "lib/supabase/client.ts",
-      "_origin": "ast",
-      "community": 69,
-      "community_name": "src/components/AuthModal.tsx",
-      "file_type": "code",
-      "norm_label": "lib/supabase/client.ts",
-      "source_file": "lib/supabase/client.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_authmodal",
-      "label": "src/components/AuthModal.tsx",
-      "_origin": "ast",
-      "community": 69,
-      "community_name": "src/components/AuthModal.tsx",
-      "file_type": "code",
-      "norm_label": "src/components/authmodal.tsx",
-      "source_file": "src/components/AuthModal.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_lib_supabase_client",
-      "label": "src/lib/supabase/client.ts",
-      "_origin": "ast",
-      "community": 69,
-      "community_name": "src/components/AuthModal.tsx",
-      "file_type": "code",
-      "norm_label": "src/lib/supabase/client.ts",
-      "source_file": "src/lib/supabase/client.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_lib_supabase_client_supabase",
-      "label": "supabase",
-      "_origin": "ast",
-      "community": 69,
-      "community_name": "src/components/AuthModal.tsx",
-      "file_type": "code",
-      "norm_label": "supabase",
-      "source_file": "src/lib/supabase/client.ts",
-      "source_location": "L25"
+      "norm_label": "next",
+      "source_file": "next"
     },
     {
       "id": "src_components_studio_settingsmodal",
@@ -8131,6 +8153,17 @@
       "source_location": "L13"
     },
     {
+      "id": "src_components_ui_infinite_slider",
+      "label": "src/components/ui/infinite-slider.tsx",
+      "_origin": "ast",
+      "community": 79,
+      "community_name": "cn",
+      "file_type": "code",
+      "norm_label": "src/components/ui/infinite-slider.tsx",
+      "source_file": "src/components/ui/infinite-slider.tsx",
+      "source_location": "L1"
+    },
+    {
       "id": "scripts_verify_feed",
       "label": "verify-feed.mjs",
       "_origin": "ast",
@@ -8219,37 +8252,15 @@
       "source_location": "L1"
     },
     {
-      "id": "src_components_studio_messagebubble",
-      "label": "MessageBubble.tsx",
+      "id": "tailwindcss_tailwindcss",
+      "label": "tailwindcss",
       "_origin": "ast",
       "community": 85,
-      "community_name": "MessageBubble.tsx",
+      "community_name": "tailwindcss",
+      "confidence": "EXTRACTED",
       "file_type": "code",
-      "norm_label": "messagebubble.tsx",
-      "source_file": "src/components/studio/MessageBubble.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_hooks_usesmoothtext",
-      "label": "useSmoothText.ts",
-      "_origin": "ast",
-      "community": 85,
-      "community_name": "MessageBubble.tsx",
-      "file_type": "code",
-      "norm_label": "usesmoothtext.ts",
-      "source_file": "src/hooks/useSmoothText.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_lib_direction",
-      "label": "direction.ts",
-      "_origin": "ast",
-      "community": 85,
-      "community_name": "MessageBubble.tsx",
-      "file_type": "code",
-      "norm_label": "direction.ts",
-      "source_file": "src/lib/direction.ts",
-      "source_location": "L1"
+      "norm_label": "tailwindcss",
+      "source_file": "tailwindcss"
     },
     {
       "id": "scripts_verify_liquid",
@@ -8283,6 +8294,17 @@
       "norm_label": "verify-flow.mjs",
       "source_file": "scripts/verify-flow.mjs",
       "source_location": "L1"
+    },
+    {
+      "id": "headers",
+      "label": "next/headers",
+      "_origin": "ast",
+      "community": 89,
+      "community_name": "generate-image/route.ts",
+      "confidence": "EXTRACTED",
+      "file_type": "code",
+      "norm_label": "next/headers",
+      "source_file": "next/headers"
     },
     {
       "id": "app_api_generate_chat_route",
@@ -8505,70 +8527,37 @@
       "source_location": "L1"
     },
     {
-      "id": "components_navbar",
-      "label": "components/Navbar.tsx",
+      "id": "src_components_landing_terminalshowcase",
+      "label": "TerminalShowcase.tsx",
       "_origin": "ast",
       "community": 9,
-      "community_name": "useModal",
+      "community_name": "TerminalShowcase.tsx",
       "file_type": "code",
-      "norm_label": "components/navbar.tsx",
-      "source_file": "components/Navbar.tsx",
+      "norm_label": "terminalshowcase.tsx",
+      "source_file": "src/components/landing/TerminalShowcase.tsx",
       "source_location": "L1"
     },
     {
-      "id": "components_shimmerbutton",
-      "label": "components/ShimmerButton.tsx",
+      "id": "src_components_landing_terminalshowcase_script",
+      "label": "SCRIPT",
       "_origin": "ast",
       "community": 9,
-      "community_name": "useModal",
+      "community_name": "TerminalShowcase.tsx",
       "file_type": "code",
-      "norm_label": "components/shimmerbutton.tsx",
-      "source_file": "components/ShimmerButton.tsx",
-      "source_location": "L1"
+      "norm_label": "script",
+      "source_file": "src/components/landing/TerminalShowcase.tsx",
+      "source_location": "L13"
     },
     {
-      "id": "src_components_closingctasection",
-      "label": "ClosingCtaSection.tsx",
+      "id": "src_components_landing_terminalshowcase_tone_class",
+      "label": "TONE_CLASS",
       "_origin": "ast",
       "community": 9,
-      "community_name": "useModal",
+      "community_name": "TerminalShowcase.tsx",
       "file_type": "code",
-      "norm_label": "closingctasection.tsx",
-      "source_file": "src/components/ClosingCtaSection.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_motion_shimmerbutton",
-      "label": "motion/ShimmerButton.tsx",
-      "_origin": "ast",
-      "community": 9,
-      "community_name": "useModal",
-      "file_type": "code",
-      "norm_label": "motion/shimmerbutton.tsx",
-      "source_file": "src/components/motion/ShimmerButton.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_navbar",
-      "label": "src/components/Navbar.tsx",
-      "_origin": "ast",
-      "community": 9,
-      "community_name": "useModal",
-      "file_type": "code",
-      "norm_label": "src/components/navbar.tsx",
-      "source_file": "src/components/Navbar.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_shimmerbutton",
-      "label": "src/components/ShimmerButton.tsx",
-      "_origin": "ast",
-      "community": 9,
-      "community_name": "useModal",
-      "file_type": "code",
-      "norm_label": "src/components/shimmerbutton.tsx",
-      "source_file": "src/components/ShimmerButton.tsx",
-      "source_location": "L1"
+      "norm_label": "tone_class",
+      "source_file": "src/components/landing/TerminalShowcase.tsx",
+      "source_location": "L26"
     },
     {
       "id": "scripts_verify_stats_polish",
@@ -8692,14 +8681,36 @@
       "source_location": "L1"
     },
     {
-      "id": "components_ui_claude_style_chat_input",
-      "label": "claude-style-chat-input.tsx",
+      "id": "src_components_globalfooter",
+      "label": "GlobalFooter.tsx",
       "_origin": "ast",
       "community": 95,
       "community_name": "StudioDashboard.tsx",
       "file_type": "code",
-      "norm_label": "claude-style-chat-input.tsx",
-      "source_file": "components/ui/claude-style-chat-input.tsx",
+      "norm_label": "globalfooter.tsx",
+      "source_file": "src/components/GlobalFooter.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_globalfooter_links",
+      "label": "LINKS",
+      "_origin": "ast",
+      "community": 95,
+      "community_name": "StudioDashboard.tsx",
+      "file_type": "code",
+      "norm_label": "links",
+      "source_file": "src/components/GlobalFooter.tsx",
+      "source_location": "L7"
+    },
+    {
+      "id": "src_components_studio_messagebubble",
+      "label": "MessageBubble.tsx",
+      "_origin": "ast",
+      "community": 95,
+      "community_name": "StudioDashboard.tsx",
+      "file_type": "code",
+      "norm_label": "messagebubble.tsx",
+      "source_file": "src/components/studio/MessageBubble.tsx",
       "source_location": "L1"
     },
     {
@@ -8755,6 +8766,17 @@
       "file_type": "code",
       "norm_label": "src/components/studio/studioworkspace.tsx",
       "source_file": "src/components/studio/StudioWorkspace.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_vantralogo",
+      "label": "VantraLogo.tsx",
+      "_origin": "ast",
+      "community": 95,
+      "community_name": "StudioDashboard.tsx",
+      "file_type": "code",
+      "norm_label": "vantralogo.tsx",
+      "source_file": "src/components/VantraLogo.tsx",
       "source_location": "L1"
     },
     {
@@ -8822,6 +8844,28 @@
       "norm_label": "studio_models",
       "source_file": "src/config/studio-registry.ts",
       "source_location": "L31"
+    },
+    {
+      "id": "src_hooks_usesmoothtext",
+      "label": "useSmoothText.ts",
+      "_origin": "ast",
+      "community": 95,
+      "community_name": "StudioDashboard.tsx",
+      "file_type": "code",
+      "norm_label": "usesmoothtext.ts",
+      "source_file": "src/hooks/useSmoothText.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_lib_direction",
+      "label": "direction.ts",
+      "_origin": "ast",
+      "community": 95,
+      "community_name": "StudioDashboard.tsx",
+      "file_type": "code",
+      "norm_label": "direction.ts",
+      "source_file": "src/lib/direction.ts",
+      "source_location": "L1"
     },
     {
       "id": "scripts_verify_global",
@@ -12485,6 +12529,18 @@
     },
     {
       "source": "src_components_studio_studiodashboard",
+      "target": "src_components_studio_dashboardsidebar_dashboardsidebar",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/components/studio/StudioDashboard.tsx",
+      "source_location": "L10",
+      "weight": 1.0
+    },
+    {
+      "source": "src_components_studio_studiodashboard",
       "target": "src_components_studio_dashboardsidebar_workspace",
       "relation": "imports",
       "_origin": "ast",
@@ -12497,6 +12553,30 @@
     },
     {
       "source": "src_components_studio_studiodashboard",
+      "target": "src_components_studio_messagebubble_messagebubble",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/components/studio/StudioDashboard.tsx",
+      "source_location": "L11",
+      "weight": 1.0
+    },
+    {
+      "source": "src_components_studio_studiodashboard",
+      "target": "src_components_studio_imagecanvas_imagecanvas",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/components/studio/StudioDashboard.tsx",
+      "source_location": "L12",
+      "weight": 1.0
+    },
+    {
+      "source": "src_components_studio_studiodashboard",
       "target": "src_components_studio_studiosettingsdialog_studiosettingsdialog",
       "relation": "imports",
       "_origin": "ast",
@@ -12505,6 +12585,18 @@
       "context": "import",
       "source_file": "src/components/studio/StudioDashboard.tsx",
       "source_location": "L13",
+      "weight": 1.0
+    },
+    {
+      "source": "src_components_studio_studiodashboard",
+      "target": "src_components_studio_motionstudio_motionstudio",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/components/studio/StudioDashboard.tsx",
+      "source_location": "L14",
       "weight": 1.0
     },
     {
@@ -12581,6 +12673,18 @@
     },
     {
       "source": "src_components_studio_studiodashboard",
+      "target": "src_hooks_useuser_useuser",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/components/studio/StudioDashboard.tsx",
+      "source_location": "L7",
+      "weight": 1.0
+    },
+    {
+      "source": "src_components_studio_studiodashboard",
       "target": "src_context_modalcontext_usemodal",
       "relation": "imports",
       "_origin": "ast",
@@ -12613,6 +12717,18 @@
       "context": "import",
       "source_file": "src/components/studio/StudioSettingsDialog.tsx",
       "source_location": "L17",
+      "weight": 1.0
+    },
+    {
+      "source": "src_components_studio_studiosettingsdialog",
+      "target": "src_hooks_useuser_useuser",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/components/studio/StudioSettingsDialog.tsx",
+      "source_location": "L18",
       "weight": 1.0
     },
     {
@@ -20296,6 +20412,15 @@
       "weight": 1.0
     },
     {
+      "source": "lib_ai_image_providers_puter",
+      "target": "puter_js",
+      "relation": "dynamic_import",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ai/image-providers/puter.ts"
+    },
+    {
       "source": "lib_ai_provider_connections",
       "target": "lib_supabase_server",
       "relation": "dynamic_import",
@@ -20303,6 +20428,15 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ai/provider-connections.ts"
+    },
+    {
+      "source": "src_lib_supabase_server",
+      "target": "headers",
+      "relation": "dynamic_import",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/supabase/server.ts"
     },
     {
       "source": "lib_ai_image_providers_types_imageprovider",
@@ -20375,5 +20509,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "ca0d31b5b9f5f926baadc4b198fc632c05ac56f8"
+  "built_at_commit": "c5d0a7384b84e973e1dd1ee917b7bfe5e4c1d490"
 }
