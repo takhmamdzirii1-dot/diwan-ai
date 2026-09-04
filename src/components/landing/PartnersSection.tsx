@@ -1,6 +1,7 @@
 'use client';
 
 import { LogoCloud } from '@/components/ui/logo-cloud-3';
+import { useTranslations } from 'next-intl';
 
 const LOBE_ICON = 'https://unpkg.com/@lobehub/icons-static-png@latest';
 
@@ -26,13 +27,15 @@ const logos = [
 }));
 
 export default function PartnersSection() {
+  const t = useTranslations('partners');
+
   return (
     <section
-      aria-label='VANTRA AI model ecosystem'
+      aria-label={t('aria')}
       className='relative -mt-[180px] bg-[#050505] !py-9 md:!py-10 border-b border-white/[0.04] overflow-hidden'
     >
       <p className='text-center text-[10.5px] font-semibold tracking-[0.22em] uppercase text-white/35 mb-5 md:mb-6'>
-        One workspace. Many models.
+        {t('label')}
       </p>
       <LogoCloud logos={logos} />
     </section>

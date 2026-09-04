@@ -1,0 +1,170 @@
+{
+  "metadata": {
+    "title": "VANTRA | One AI workspace for Chat, Image and Video",
+    "description": "Use leading AI models for Chat, Image and Video in one VANTRA workspace with Unified Credits and local DA billing.",
+    "openGraphTitle": "VANTRA — Switch models, not platforms",
+    "openGraphDescription": "One workspace and one Unified Credits system across supported Chat, Image and Video experiences."
+  },
+  "navigation": {
+    "models": "Models",
+    "pricing": "Pricing",
+    "studio": "Studio",
+    "faq": "FAQ",
+    "signIn": "Sign in",
+    "start": "Start using VANTRA",
+    "openStudio": "Open Studio",
+    "primaryLabel": "Primary navigation",
+    "mobileLabel": "Mobile navigation",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "backToTop": "VANTRA — back to top",
+    "signedInAs": "Signed in as {name}",
+    "languageLabel": "Language",
+    "languages": { "fr": "French", "ar": "Arabic", "en": "English" }
+  },
+  "hero": {
+    "badge": "Global AI. Local payment.",
+    "title": "Switch models. Not platforms.",
+    "subtitle": "Chat, create images, and generate video in one workspace—with Unified Credits across every supported experience.",
+    "placeholder": "Ask anything. Create anything.",
+    "inputLabel": "Ask anything or describe what you want to create",
+    "generate": "Generate",
+    "previewAlt": "Your render preview",
+    "ready": "Your render is ready.",
+    "reveal": "Create an account to reveal",
+    "promptSaved": "Your prompt is saved and waiting inside the Studio.",
+    "tryAgain": "Try another prompt",
+    "rendering": "Rendering… {progress}%",
+    "openStudio": "Open Studio",
+    "start": "Start using VANTRA",
+    "seePricing": "See pricing",
+    "trust": "Pay locally in DA · No international card required",
+    "stats": [
+      { "label": "Supported models" },
+      { "label": "Local billing" },
+      { "label": "Unified Credits" },
+      { "label": "Chat · Image · Video" }
+    ]
+  },
+  "partners": {
+    "aria": "VANTRA AI model ecosystem",
+    "label": "One workspace. Many models."
+  },
+  "showcase": {
+    "aria": "VANTRA unified AI studio",
+    "eyebrow": "One unified studio",
+    "titleOne": "Every medium.",
+    "titleTwo": "One flow.",
+    "features": [
+      { "label": "Chat", "description": "Ask questions, learn, research, and get help with everyday tasks.", "alt": "Chat workspace in VANTRA Studio" },
+      { "label": "Image", "description": "Create, refine, and edit visual ideas with leading image models.", "alt": "Image generation workspace in VANTRA Studio" },
+      { "label": "Video", "description": "Turn prompts and images into cinematic video in one workspace.", "alt": "Video generation workspace in VANTRA Studio" }
+    ]
+  },
+  "why": {
+    "label": "Why VANTRA",
+    "title": "Global AI. Built for Algeria.",
+    "subtitle": "Access leading AI models, create across every medium, and pay locally in DA.",
+    "localTitle": "Pay locally in DA",
+    "localDescription": "Use local payment options built for Algeria. No international card required.",
+    "features": [
+      { "title": "Unified Credits", "description": "One VANTRA credit system across supported Chat, Image and Video experiences.", "visual": "balance" },
+      { "title": "Leading AI models", "description": "Access multiple high-quality AI models from one product.", "visual": "models" },
+      { "title": "One workspace", "description": "Move between Chat, Image and Video creation in one unified workspace.", "visual": "workspace" }
+    ],
+    "modelLabels": ["Model 01", "Model 02", "Model 03", "+ more"],
+    "modes": ["Chat", "Image", "Video"]
+  },
+  "workflow": {
+    "label": "Workflow",
+    "title": "From thought to artifact in three moves.",
+    "subtitle": "Describe what you need, generate it, then take the result with you.",
+    "steps": [
+      { "title": "Describe", "description": "Write a prompt in plain language for the result you want." },
+      { "title": "Generate", "description": "Create text, images, or video from the same workspace." },
+      { "title": "Download", "description": "Download generated images directly or revisit saved work in your media library." }
+    ]
+  },
+  "testimonials": {
+    "label": "Signals",
+    "title": "The word from Algiers to SF.",
+    "subtitle": "Beta feedback shown here is awaiting owner verification before launch.",
+    "rows": [
+      [
+        { "quote": "I cancelled three subscriptions the week I found VANTRA. One balance, every model I actually use.", "name": "Amina K.", "role": "Art Director — Casbah Creative" },
+        { "quote": "The video renders are genuinely unreal. My clients think I hired a motion team in Eastern Europe.", "name": "Yacine B.", "role": "Indie Hacker — shipped 4 products" },
+        { "quote": "Paying with Edahabia felt like a prank the first time. It just works. Every single time.", "name": "Lina H.", "role": "Founder — Dzair Labs" }
+      ],
+      [
+        { "quote": "Our agency ships 40 client assets a week through VANTRA now. The queue priority alone pays for Pro.", "name": "Sofiane T.", "role": "Creative Lead — Studio 16" },
+        { "quote": "Darja prompts understood better than any global platform. Finally, AI that speaks like my customers.", "name": "Nour E.", "role": "Social Media Manager" },
+        { "quote": "Latency is a feature. Streaming responses at this speed changed how our support team operates.", "name": "Karim A.", "role": "CTO — logistics SaaS" },
+        { "quote": "It is the calmest AI interface I have ever used. No dashboard spaghetti. Just the work.", "name": "Elena V.", "role": "Product Designer — remote" }
+      ]
+    ]
+  },
+  "pricing": {
+    "label": "Pricing",
+    "title": "One platform. Unified Credits.",
+    "subtitle": "Use Chat, Image, Video and supported AI models without managing separate services.",
+    "recommended": "Recommended",
+    "localPayment": "Local payment available",
+    "monthlyCadence": "/ month",
+    "tiers": [
+      { "name": "Free", "blurb": "Explore VANTRA’s unified AI workspace.", "cta": "Start using VANTRA" },
+      { "name": "Pro", "blurb": "For regular work across Chat, Image and Video.", "cta": "Choose Pro" },
+      { "name": "Max", "blurb": "For more demanding creative workflows.", "cta": "Choose Max" }
+    ],
+    "benefits": ["Chat, Image and Video in one workspace", "Unified Credits across creation modes", "Multiple supported AI models in one platform"]
+  },
+  "faq": {
+    "label": "FAQ",
+    "title": "Questions, answered.",
+    "subtitle": "Clear answers before you start.",
+    "items": [
+      { "question": "How do local payments work?", "answer": "VANTRA supports local payment in Algerian dinar. Available payment methods are shown at checkout." },
+      { "question": "Do I need an international card?", "answer": "No international card is required for local payment. Available payment methods are shown at checkout." },
+      { "question": "How do Unified Credits work?", "answer": "One VANTRA credit system covers supported Chat, Image and Video experiences, so you do not manage separate credits for each tool." },
+      { "question": "Which AI models can I use?", "answer": "VANTRA brings multiple supported AI models into one workspace. Available choices are shown inside each creation mode." },
+      { "question": "What happens when my credits run out?", "answer": "You can add credits to your VANTRA account and continue using the workspace." },
+      { "question": "Does one plan cover Chat, Image and Video?", "answer": "Yes. VANTRA is designed as one platform for all three creation modes, using Unified Credits instead of separate AI subscriptions." },
+      { "question": "What can I do with generated content?", "answer": "Generated images can be downloaded, and saved image generations can be revisited in the media library." }
+    ]
+  },
+  "finalCta": {
+    "title": "Create across every medium.",
+    "subtitle": "Bring Chat, Image and Video together in one workspace with Unified Credits.",
+    "button": "Start using VANTRA"
+  },
+  "footer": {
+    "aria": "Footer navigation",
+    "terms": "Terms",
+    "privacy": "Privacy",
+    "twitter": "X / Twitter",
+    "status": "Status"
+  },
+  "auth": {
+    "signInTitle": "Sign in to VANTRA",
+    "createTitle": "Create your VANTRA account",
+    "signInSubtitle": "Return to your unified AI workspace",
+    "createSubtitle": "Bring Chat, Image and Video into one workspace",
+    "close": "Close",
+    "signIn": "Sign in",
+    "createAccount": "Create account",
+    "googleFailed": "Could not sign in with Google.",
+    "missingCredentials": "Enter both your email and password.",
+    "signInSuccess": "Signed in. Opening VANTRA Studio…",
+    "createSuccess": "Account created. Opening VANTRA Studio…",
+    "verificationSent": "Verification link sent. Check your inbox.",
+    "authenticationFailed": "Authentication failed. Check your details and try again.",
+    "continueGoogle": "Continue with Google",
+    "orEmail": "or email",
+    "fullName": "Full name",
+    "email": "Email address",
+    "password": "Password",
+    "submitSignIn": "Sign in to account",
+    "submitCreate": "Create account",
+    "noAccount": "New to VANTRA?",
+    "hasAccount": "Already have an account?"
+  }
+}

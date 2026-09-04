@@ -1,0 +1,10 @@
+﻿import puppeteer from 'puppeteer-core';
+const b = await puppeteer.launch({ executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: 'new', args: ['--no-sandbox'] });
+const p = await b.newPage();
+const errs = [];
+p.on('console', m => { if (m.type() === 'error' || (m.type() === 'warning' && m.text().includes('hydration'))) errs.push(m.text().slice(0, 100)); });
+await p.goto('http://localhost:3000/ar', { waitUntil: 'networkidle2', timeout: 60000 });
+await new Promise(r => setTimeout(r, 2000));
+console.log('ar hydration errors:', errs.length);
+console.log('lang switcher:', await p.evaluate(() => !!document.querySelector('button[aria-haspopup], select') || document.body.innerText.includes('العربية') || document.body.innerText.includes('FR')));
+await b.close();

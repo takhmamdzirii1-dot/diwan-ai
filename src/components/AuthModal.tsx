@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles, Mail, Lock, User, ArrowRight, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 
 export interface AuthModalProps {
@@ -18,6 +19,8 @@ export default function AuthModal({
   initialMode = 'signin',
   onSuccess,
 }: AuthModalProps) {
+  const t = useTranslations('auth');
+  const isRtl = useLocale() === 'ar';
   const supabase = createClient();
   const [internalIsOpen, setInternalIsOpen] = useState<boolean>(false);
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
@@ -98,7 +101,7 @@ export default function AuthModal({
       });
       if (error) throw error;
     } catch (err: any) {
-      setError(err?.message || 'Failed to sign in with Google');
+      setError(err?.message || t('googleFailed'));
       setGoogleLoading(false);
     }
   };
@@ -106,7 +109,7 @@ export default function AuthModal({
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      setError('Please provide both email and password');
+      setError(t('missingCredentials'));
       return;
     }
 
@@ -124,7 +127,7 @@ export default function AuthModal({
         if (error) throw error;
 
         if (data.user) {
-          setSuccessMsg('Successfully signed in! Opening AI Studio...');
+          setSuccessMsg(t('signInSuccess'));
           setTimeout(() => {
             onSuccess?.();
             handleClose();
@@ -147,7 +150,7 @@ export default function AuthModal({
         if (error) throw error;
 
         if (data.session) {
-          setSuccessMsg('Account created successfully! Opening AI Studio...');
+          setSuccessMsg(t('createSuccess'));
           setTimeout(() => {
             onSuccess?.();
             handleClose();
@@ -156,11 +159,11 @@ export default function AuthModal({
             }
           }, 400);
         } else {
-          setSuccessMsg('Verification link sent. Please check your inbox.');
+          setSuccessMsg(t('verificationSent'));
         }
       }
     } catch (err: any) {
-      setError(err?.message || 'Authentication failed. Please check your credentials.');
+      setError(err?.message || t('authenticationFailed'));
     } finally {
       setLoading(false);
     }
@@ -177,6 +180,7 @@ export default function AuthModal({
         className="vantra-modal-overlay"
         role="dialog"
         aria-modal="true"
+        aria-labelledby="vantra-auth-modal-title"
       >
         {/* Backdrop Blur Overlay */}
         <motion.div
@@ -206,13 +210,13 @@ export default function AuthModal({
                 <Sparkles className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-white tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>
-                  {mode === 'signin' ? 'Sign in to VANTRA' : 'Create VANTRA Account'}
+                <h3 id="vantra-auth-modal-title" className="text-xl font-bold text-white tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>
+                  {mode === 'signin' ? t('signInTitle') : t('createTitle')}
                 </h3>
                 <p className="text-xs text-[#94A3B8] mt-0.5">
                   {mode === 'signin'
-                    ? 'Access your unified Algerian AI balance'
-                    : 'Bring Chat, Image and Video into one workspace'}
+                    ? t('signInSubtitle')
+                    : t('createSubtitle')}
                 </p>
               </div>
             </div>
@@ -221,7 +225,7 @@ export default function AuthModal({
               type="button"
               onClick={handleClose}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/70 transition-all hover:bg-white/10 hover:border-white/20 hover:text-white cursor-pointer"
-              aria-label="Close"
+              aria-label={t('close')}
             >
               <X className="h-4 w-4" />
             </button>
@@ -238,7 +242,7 @@ export default function AuthModal({
               }}
               className={`vantra-tab-btn ${mode === 'signin' ? 'active' : 'inactive'}`}
             >
-              Sign In
+              {t('signIn')}
             </button>
             <button
               type="button"
@@ -249,7 +253,7 @@ export default function AuthModal({
               }}
               className={`vantra-tab-btn ${mode === 'signup' ? 'active' : 'inactive'}`}
             >
-              Create Account
+              {t('createAccount')}
             </button>
           </div>
 
@@ -305,14 +309,14 @@ export default function AuthModal({
                 />
               </svg>
             )}
-            <span className="font-medium">Continue with Google</span>
+            <span className="font-medium">{t('continueGoogle')}</span>
           </button>
 
           {/* Clean Horizontal Divider */}
           <div className="flex items-center gap-4 my-4">
             <div className="flex-1 h-px bg-white/10" />
             <span className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider">
-              or email
+              {t('orEmail')}
             </span>
             <div className="flex-1 h-px bg-white/10" />
           </div>
@@ -322,7 +326,7 @@ export default function AuthModal({
             {mode === 'signup' && (
               <div>
                 <label className="text-xs font-semibold text-[#CBD5E1] block mb-1.5">
-                  Full Name
+                  {t('fullName')}
                 </label>
                 <div className="vantra-input-wrap">
                   <User className="vantra-input-icon" />
@@ -339,7 +343,7 @@ export default function AuthModal({
 
             <div>
               <label className="text-xs font-semibold text-[#CBD5E1] block mb-1.5">
-                Email Address
+                {t('email')}
               </label>
               <div className="vantra-input-wrap">
                 <Mail className="vantra-input-icon" />
@@ -356,7 +360,7 @@ export default function AuthModal({
 
             <div>
               <label className="text-xs font-semibold text-[#CBD5E1] block mb-1.5">
-                Password
+                {t('password')}
               </label>
               <div className="vantra-input-wrap">
                 <Lock className="vantra-input-icon" />
@@ -382,8 +386,8 @@ export default function AuthModal({
                 <Loader2 className="h-5 w-5 animate-spin text-[#050506]" />
               ) : (
                 <>
-                  <span>{mode === 'signin' ? 'Sign In to Account' : 'Create Account'}</span>
-                  <ArrowRight className="h-4 w-4 text-[#050506]" />
+                  <span>{mode === 'signin' ? t('submitSignIn') : t('submitCreate')}</span>
+                  <ArrowRight className={`h-4 w-4 text-[#050506] ${isRtl ? 'rotate-180' : ''}`} />
                 </>
               )}
             </button>
@@ -392,7 +396,7 @@ export default function AuthModal({
           {/* Bottom Switch Note */}
           <div className="text-center pt-4 mt-4 border-t border-white/[0.08]">
             <p className="text-xs text-[#64748B]">
-              {mode === 'signin' ? "Don't have an account yet?" : 'Already have an account?'}
+              {mode === 'signin' ? t('noAccount') : t('hasAccount')}
               <button
                 type="button"
                 onClick={() => {
@@ -400,9 +404,9 @@ export default function AuthModal({
                   setError(null);
                   setSuccessMsg(null);
                 }}
-                className="ml-1.5 font-bold text-[#FFFFFF] hover:underline cursor-pointer"
+                className="ms-1.5 font-bold text-[#FFFFFF] hover:underline cursor-pointer"
               >
-                {mode === 'signin' ? 'Create Account' : 'Sign In'}
+                {mode === 'signin' ? t('createAccount') : t('signIn')}
               </button>
             </p>
           </div>

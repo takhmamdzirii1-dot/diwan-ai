@@ -3,8 +3,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { VantraLogo } from '../VantraLogo';
 import { cn } from '@/lib/utils';
+import { Link, usePathname } from '@/i18n/navigation';
 
 interface LandingHeaderProps {
   /** Supabase user (null = guest) */
@@ -17,15 +19,21 @@ interface LandingHeaderProps {
 
 /** Nav links → landing section anchors */
 const NAV_LINKS = [
-  { label: 'Models', id: 'models' },
-  { label: 'Pricing', id: 'pricing' },
-  { label: 'Studio', id: 'showcase' },
-  { label: 'FAQ', id: 'faq' },
+  { key: 'models', id: 'models' },
+  { key: 'pricing', id: 'pricing' },
+  { key: 'studio', id: 'showcase' },
+  { key: 'faq', id: 'faq' },
 ] as const;
+
+const LOCALES = ['fr', 'ar', 'en'] as const;
 
 /** Auth-aware glass header. Transparent at top, frosted after scroll.
  *  Desktop: brand · centered nav · auth actions. Mobile: brand · Start Free · menu. */
 export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFree }: LandingHeaderProps) {
+  const t = useTranslations('navigation');
+  const locale = useLocale();
+  const pathname = usePathname();
+  const [routeHash, setRouteHash] = useState('');
   const [scrolled, setScrolled] = useState(false);
   const [active, setActive] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -36,6 +44,13 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    const syncHash = () => setRouteHash(window.location.hash);
+    syncHash();
+    window.addEventListener('hashchange', syncHash);
+    return () => window.removeEventListener('hashchange', syncHash);
   }, []);
 
   /* Active-section tracking — IntersectionObserver band around viewport middle.
@@ -67,9 +82,9 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
     return () => io.disconnect();
   }, []);
 
-  /* Close the mobile menu if the viewport grows past the md breakpoint */
+  /* Close the mobile menu if the viewport grows past the desktop breakpoint */
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 768px)');
+    const mq = window.matchMedia('(min-width: 1024px)');
     const onChange = () => mq.matches && setMenuOpen(false);
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
@@ -105,7 +120,7 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
         active === l.id ? 'text-white' : 'text-white/65 hover:text-white'
       )}
     >
-      {l.label}
+      {t(l.key)}
       <span
         aria-hidden="true"
         className={cn(
@@ -114,6 +129,38 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
         )}
       />
     </a>
+  );
+
+  const languageSwitcher = (mobile = false) => (
+    <div
+      dir="ltr"
+      role="group"
+      aria-label={t('languageLabel')}
+      className={cn(
+        'flex items-center rounded-xl border border-white/10 bg-white/[0.025] p-1',
+        mobile ? 'w-full justify-between' : 'shrink-0'
+      )}
+    >
+      {LOCALES.map((nextLocale) => (
+        <Link
+          key={nextLocale}
+          href={`${pathname}${routeHash}`}
+          locale={nextLocale}
+          onClick={() => mobile && setMenuOpen(false)}
+          aria-current={locale === nextLocale ? 'page' : undefined}
+          aria-label={t(`languages.${nextLocale}`)}
+          title={t(`languages.${nextLocale}`)}
+          className={cn(
+            'flex min-h-9 min-w-9 items-center justify-center rounded-lg px-2 text-[10.5px] font-semibold tracking-[0.08em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
+            locale === nextLocale
+              ? 'bg-white text-black'
+              : 'text-white/45 hover:bg-white/[0.06] hover:text-white'
+          )}
+        >
+          {nextLocale.toUpperCase()}
+        </Link>
+      ))}
+    </div>
   );
 
   return (
@@ -131,7 +178,7 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           className="min-h-11 md:min-h-0 flex items-center gap-2.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 rounded-lg"
-          aria-label="VANTRA — back to top"
+          aria-label={t('backToTop')}
         >
           <span className="h-8 w-8 rounded-lg border border-white/10 bg-white/[0.03] flex items-center justify-center">
             <VantraLogo className="w-4 h-4" />
@@ -140,12 +187,13 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
         </button>
 
         {/* Desktop nav — optically centered between brand and actions */}
-        <nav aria-label="Primary" className="hidden md:flex items-center gap-7 mx-auto">
+        <nav aria-label={t('primaryLabel')} className="hidden lg:flex items-center gap-7 mx-auto">
           {NAV_LINKS.map((l) => navLink(l))}
         </nav>
 
         {/* Desktop auth actions */}
-        <div className="hidden md:flex items-center gap-2.5">
+        <div className="hidden lg:flex items-center gap-2.5">
+          {languageSwitcher()}
           {user ? (
             <>
               <span
@@ -160,7 +208,7 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
                 </span>
               </span>
               <button type="button" onClick={onOpenStudio} className={cn(primaryBtn, 'px-3.5')}>
-                Open Studio
+                {t('openStudio')}
               </button>
             </>
           ) : (
@@ -170,27 +218,27 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
                 onClick={onSignIn}
                 className="h-9 px-3.5 rounded-xl text-[12.5px] font-medium text-white/75 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
               >
-                Sign In
+                {t('signIn')}
               </button>
               <button type="button" onClick={onStartFree} className={cn(primaryBtn, 'px-[18px]')}>
-                Start Free
+                {t('start')}
               </button>
             </>
           )}
         </div>
 
-        {/* Mobile actions — compact Start Free + menu trigger */}
-        <div className="flex md:hidden items-center gap-2">
+        {/* Mobile actions — compact primary CTA + menu trigger */}
+        <div className="flex lg:hidden items-center gap-2">
           {!user && (
             <button type="button" onClick={onStartFree} className={cn(primaryBtn, 'px-3.5 text-[12px]')}>
-              Start Free
+              {t('start')}
             </button>
           )}
           {user && (
             <span
               className="h-11 w-11 rounded-full bg-white/[0.10] border border-white/10 flex items-center justify-center text-[11px] font-bold text-white"
               title={displayName}
-              aria-label={`Signed in as ${displayName}`}
+              aria-label={t('signedInAs', { name: displayName })}
             >
               {displayName[0].toUpperCase()}
             </span>
@@ -201,7 +249,7 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
             onClick={() => setMenuOpen((o) => !o)}
             aria-expanded={menuOpen}
             aria-controls="vantra-mobile-menu"
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            aria-label={menuOpen ? t('closeMenu') : t('openMenu')}
             className="h-11 w-11 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center text-white/80 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
           >
             {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
@@ -218,9 +266,9 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="md:hidden absolute top-full inset-x-0 bg-[#050505]/95 backdrop-blur-xl border-b border-white/[0.08]"
+            className="lg:hidden absolute top-full inset-x-0 bg-[#050505]/95 backdrop-blur-xl border-b border-white/[0.08]"
           >
-            <nav aria-label="Mobile" className="px-6 py-4 flex flex-col">
+            <nav aria-label={t('mobileLabel')} className="px-6 py-4 flex flex-col">
               {NAV_LINKS.map((l) => (
                 <a
                   key={l.id}
@@ -232,9 +280,13 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
                     active === l.id ? 'text-white' : 'text-white/75 hover:text-white'
                   )}
                 >
-                  {l.label}
+                  {t(l.key)}
                 </a>
               ))}
+
+              <div className="border-t border-white/[0.06] mt-3 pt-3">
+                {languageSwitcher(true)}
+              </div>
 
               <div className="border-t border-white/[0.06] mt-3 pt-3 flex flex-col gap-2">
                 {user ? (
@@ -255,7 +307,7 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
                       }}
                       className={cn(primaryBtn, 'w-full')}
                     >
-                      Open Studio
+                      {t('openStudio')}
                     </button>
                   </>
                 ) : (
@@ -268,7 +320,7 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
                       }}
                       className="min-h-11 rounded-xl text-[14px] font-medium text-white/70 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 text-start px-3"
                     >
-                      Sign In
+                      {t('signIn')}
                     </button>
                     <button
                       type="button"
@@ -278,7 +330,7 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
                       }}
                       className={cn(primaryBtn, 'w-full')}
                     >
-                      Start Free
+                      {t('start')}
                     </button>
                   </>
                 )}

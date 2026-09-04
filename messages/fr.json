@@ -1,0 +1,157 @@
+{
+  "metadata": {
+    "title": "VANTRA | Un espace IA pour le Chat, l’Image et la Vidéo",
+    "description": "Accédez à des modèles d’IA de pointe pour le Chat, l’Image et la Vidéo dans un seul espace VANTRA, avec des Crédits VANTRA unifiés et une facturation locale en DA.",
+    "openGraphTitle": "VANTRA — Changez de modèle, pas de plateforme",
+    "openGraphDescription": "Un seul espace et un système de Crédits VANTRA unifiés pour le Chat, l’Image et la Vidéo."
+  },
+  "navigation": {
+    "models": "Modèles",
+    "pricing": "Tarifs",
+    "studio": "Studio",
+    "faq": "FAQ",
+    "signIn": "Se connecter",
+    "start": "Commencer avec VANTRA",
+    "openStudio": "Ouvrir le Studio",
+    "primaryLabel": "Navigation principale",
+    "mobileLabel": "Navigation mobile",
+    "openMenu": "Ouvrir le menu",
+    "closeMenu": "Fermer le menu",
+    "backToTop": "VANTRA — retour en haut",
+    "signedInAs": "Connecté en tant que {name}",
+    "languageLabel": "Langue",
+    "languages": { "fr": "Français", "ar": "Arabe", "en": "Anglais" }
+  },
+  "hero": {
+    "badge": "L’IA mondiale. Le paiement local.",
+    "title": "Changez de modèle, pas de plateforme.",
+    "subtitle": "Discutez, créez des images et générez des vidéos dans un seul espace, avec des Crédits VANTRA unifiés.",
+    "placeholder": "Demandez. Imaginez. Créez.",
+    "inputLabel": "Posez une question ou décrivez ce que vous voulez créer",
+    "generate": "Générer",
+    "previewAlt": "Aperçu de votre création",
+    "ready": "Votre création est prête.",
+    "reveal": "Créez un compte pour la découvrir",
+    "promptSaved": "Votre demande est enregistrée et vous attend dans le Studio.",
+    "tryAgain": "Essayer une autre demande",
+    "rendering": "Création… {progress}%",
+    "openStudio": "Ouvrir le Studio",
+    "start": "Commencer avec VANTRA",
+    "seePricing": "Voir les tarifs",
+    "trust": "Payez localement en DA · Sans carte internationale",
+    "stats": [
+      { "label": "Modèles compatibles" },
+      { "label": "Facturation locale" },
+      { "label": "Crédits VANTRA unifiés" },
+      { "label": "Chat · Image · Vidéo" }
+    ]
+  },
+  "partners": { "aria": "Écosystème de modèles IA VANTRA", "label": "Un seul espace. Plusieurs modèles." },
+  "showcase": {
+    "aria": "Studio IA unifié VANTRA",
+    "eyebrow": "Un studio unifié",
+    "titleOne": "Tous les formats.",
+    "titleTwo": "Un seul flux.",
+    "features": [
+      { "label": "Chat", "description": "Posez vos questions, apprenez, recherchez et avancez dans vos tâches quotidiennes.", "alt": "Espace Chat dans VANTRA Studio" },
+      { "label": "Image", "description": "Créez, affinez et transformez vos idées visuelles avec des modèles d’image de pointe.", "alt": "Espace de création d’images dans VANTRA Studio" },
+      { "label": "Vidéo", "description": "Transformez vos textes et images en vidéos cinématographiques, au même endroit.", "alt": "Espace de génération vidéo dans VANTRA Studio" }
+    ]
+  },
+  "why": {
+    "label": "Pourquoi VANTRA",
+    "title": "L’IA mondiale, pensée pour l’Algérie.",
+    "subtitle": "Accédez à des modèles d’IA de pointe, créez dans tous les formats et payez localement en DA.",
+    "localTitle": "Payez localement en DA",
+    "localDescription": "Des options de paiement local adaptées à l’Algérie, sans carte internationale.",
+    "features": [
+      { "title": "Crédits VANTRA unifiés", "description": "Un seul système de crédits VANTRA pour les expériences Chat, Image et Vidéo compatibles.", "visual": "balance" },
+      { "title": "Des modèles d’IA de pointe", "description": "Accédez à plusieurs modèles d’IA de qualité depuis un seul produit.", "visual": "models" },
+      { "title": "Un seul espace", "description": "Passez du Chat à l’Image puis à la Vidéo dans un espace de travail unifié.", "visual": "workspace" }
+    ],
+    "modelLabels": ["Modèle 01", "Modèle 02", "Modèle 03", "+ autres"],
+    "modes": ["Chat", "Image", "Vidéo"]
+  },
+  "workflow": {
+    "label": "Méthode",
+    "title": "De l’idée au résultat, en trois gestes.",
+    "subtitle": "Décrivez votre besoin, générez, puis récupérez votre création.",
+    "steps": [
+      { "title": "Décrivez", "description": "Expliquez simplement le résultat que vous souhaitez obtenir." },
+      { "title": "Générez", "description": "Créez du texte, des images ou de la vidéo depuis le même espace." },
+      { "title": "Téléchargez", "description": "Téléchargez vos images ou retrouvez vos créations enregistrées dans la médiathèque." }
+    ]
+  },
+  "testimonials": {
+    "label": "Retours",
+    "title": "D’Alger à San Francisco.",
+    "subtitle": "Ces retours bêta doivent encore être validés par le propriétaire avant le lancement.",
+    "rows": [
+      [
+        { "quote": "J’ai annulé trois abonnements la semaine où j’ai découvert VANTRA. Un seul solde, tous les modèles que j’utilise vraiment.", "name": "Amina K.", "role": "Directrice artistique — Casbah Creative" },
+        { "quote": "Le rendu vidéo est impressionnant. Mes clients pensent que je travaille avec toute une équipe motion.", "name": "Yacine B.", "role": "Indie hacker — 4 produits lancés" },
+        { "quote": "Payer avec Edahabia m’a surprise la première fois. C’est simple, et ça fonctionne.", "name": "Lina H.", "role": "Fondatrice — Dzair Labs" }
+      ],
+      [
+        { "quote": "Notre agence produit 40 contenus clients par semaine avec VANTRA. La priorité de file rentabilise Pro à elle seule.", "name": "Sofiane T.", "role": "Directeur créatif — Studio 16" },
+        { "quote": "Les demandes en Darija sont mieux comprises que sur les plateformes mondiales. Enfin une IA proche de mes clients.", "name": "Nour E.", "role": "Social media manager" },
+        { "quote": "La vitesse change tout. Le streaming des réponses a transformé le travail de notre support.", "name": "Karim A.", "role": "CTO — SaaS logistique" },
+        { "quote": "C’est l’interface IA la plus calme que j’aie utilisée. Pas de tableau de bord encombré, juste le travail.", "name": "Elena V.", "role": "Product designer — remote" }
+      ]
+    ]
+  },
+  "pricing": {
+    "label": "Tarifs",
+    "title": "Une plateforme. Des Crédits VANTRA unifiés.",
+    "subtitle": "Utilisez le Chat, l’Image, la Vidéo et les modèles compatibles sans multiplier les services.",
+    "recommended": "Recommandé",
+    "localPayment": "Paiement local disponible",
+    "monthlyCadence": "/ mois",
+    "tiers": [
+      { "name": "Gratuit", "blurb": "Découvrez l’espace IA unifié de VANTRA.", "cta": "Commencer avec VANTRA" },
+      { "name": "Pro", "blurb": "Pour créer régulièrement avec le Chat, l’Image et la Vidéo.", "cta": "Choisir Pro" },
+      { "name": "Max", "blurb": "Pour les flux créatifs les plus exigeants.", "cta": "Choisir Max" }
+    ],
+    "benefits": ["Chat, Image et Vidéo dans un seul espace", "Crédits VANTRA unifiés pour tous les modes", "Plusieurs modèles d’IA compatibles sur une plateforme"]
+  },
+  "faq": {
+    "label": "FAQ",
+    "title": "Vos questions, sans détour.",
+    "subtitle": "Les réponses essentielles avant de commencer.",
+    "items": [
+      { "question": "Comment fonctionne le paiement local ?", "answer": "VANTRA accepte le paiement local en dinars algériens. Les moyens disponibles sont affichés au moment du paiement." },
+      { "question": "Ai-je besoin d’une carte internationale ?", "answer": "Non. Une carte internationale n’est pas nécessaire pour le paiement local. Les moyens disponibles sont affichés au moment du paiement." },
+      { "question": "Comment fonctionnent les Crédits VANTRA unifiés ?", "answer": "Un seul système de crédits VANTRA couvre les expériences Chat, Image et Vidéo compatibles. Vous ne gérez pas des crédits séparés pour chaque outil." },
+      { "question": "Quels modèles d’IA puis-je utiliser ?", "answer": "VANTRA réunit plusieurs modèles d’IA compatibles dans un seul espace. Les choix disponibles apparaissent dans chaque mode de création." },
+      { "question": "Que se passe-t-il quand mes crédits sont épuisés ?", "answer": "Vous pouvez ajouter des crédits à votre compte VANTRA et continuer à utiliser l’espace de travail." },
+      { "question": "Un seul abonnement couvre-t-il le Chat, l’Image et la Vidéo ?", "answer": "Oui. VANTRA réunit les trois modes de création dans une plateforme avec des Crédits VANTRA unifiés, au lieu d’abonnements IA séparés." },
+      { "question": "Que puis-je faire avec le contenu généré ?", "answer": "Les images générées peuvent être téléchargées, et vos créations enregistrées restent accessibles dans la médiathèque." }
+    ]
+  },
+  "finalCta": { "title": "Créez dans tous les formats.", "subtitle": "Réunissez le Chat, l’Image et la Vidéo dans un seul espace avec des Crédits VANTRA unifiés.", "button": "Commencer avec VANTRA" },
+  "footer": { "aria": "Navigation de pied de page", "terms": "Conditions", "privacy": "Confidentialité", "twitter": "X / Twitter", "status": "Statut" },
+  "auth": {
+    "signInTitle": "Connectez-vous à VANTRA",
+    "createTitle": "Créez votre compte VANTRA",
+    "signInSubtitle": "Retrouvez votre espace IA unifié",
+    "createSubtitle": "Réunissez le Chat, l’Image et la Vidéo au même endroit",
+    "close": "Fermer",
+    "signIn": "Se connecter",
+    "createAccount": "Créer un compte",
+    "googleFailed": "La connexion avec Google a échoué.",
+    "missingCredentials": "Saisissez votre e-mail et votre mot de passe.",
+    "signInSuccess": "Connexion réussie. Ouverture de VANTRA Studio…",
+    "createSuccess": "Compte créé. Ouverture de VANTRA Studio…",
+    "verificationSent": "Lien de vérification envoyé. Consultez votre boîte mail.",
+    "authenticationFailed": "La connexion a échoué. Vérifiez vos informations et réessayez.",
+    "continueGoogle": "Continuer avec Google",
+    "orEmail": "ou par e-mail",
+    "fullName": "Nom complet",
+    "email": "Adresse e-mail",
+    "password": "Mot de passe",
+    "submitSignIn": "Se connecter",
+    "submitCreate": "Créer mon compte",
+    "noAccount": "Nouveau sur VANTRA ?",
+    "hasAccount": "Vous avez déjà un compte ?"
+  }
+}

@@ -2,6 +2,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useLocale } from 'next-intl';
 import { motion, useScroll, useSpring } from 'framer-motion';
 import { CinematicScrollMockup } from '@/components/ui/cinematic-scroll-mockup';
 import HeroSection from './HeroSection';
@@ -26,6 +27,7 @@ import useUser from '../hooks/useUser';
  * prefilled inside the Studio composer after authentication.
  */
 export default function OriginalLandingPage() {
+  const locale = useLocale();
   const { user } = useUser();
   const { openAuthModal, openTopUpModal } = useModal();
   const router = useRouter();
@@ -53,7 +55,7 @@ export default function OriginalLandingPage() {
       {/* Scroll progress — hairline at the very top */}
       <motion.div
         style={{ scaleX: progress }}
-        className="fixed top-0 inset-x-0 h-[2px] origin-left bg-white/70 z-[95]"
+        className={`fixed top-0 inset-x-0 h-[2px] ${locale === 'ar' ? 'origin-right' : 'origin-left'} bg-white/70 z-[95]`}
         aria-hidden="true"
       />
 

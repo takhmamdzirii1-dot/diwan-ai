@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LLM Council — VANTRA localization architecture</title>
+  <style>
+    :root { color-scheme: light; --ink:#151515; --muted:#656565; --line:#dedede; --paper:#fff; --wash:#f6f6f4; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--wash); color:var(--ink); font:15px/1.65 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    main { width:min(940px, calc(100% - 32px)); margin:32px auto 64px; }
+    header, section, details { background:var(--paper); border:1px solid var(--line); border-radius:16px; }
+    header, section { padding:clamp(22px, 5vw, 48px); margin-bottom:16px; }
+    .eyebrow { margin:0 0 12px; color:var(--muted); font-size:12px; font-weight:750; letter-spacing:.14em; text-transform:uppercase; }
+    h1 { max-width:760px; margin:0; font-size:clamp(32px, 5vw, 56px); line-height:1.04; letter-spacing:-.045em; }
+    h2 { margin:0 0 18px; font-size:24px; line-height:1.2; letter-spacing:-.025em; }
+    h3 { margin:24px 0 8px; font-size:16px; }
+    p { margin:0 0 14px; }
+    ul { margin:10px 0 0; padding-left:21px; }
+    li + li { margin-top:7px; }
+    .question { max-width:760px; margin-top:24px; font-size:18px; color:#353535; }
+    .verdict { border-color:#151515; box-shadow:0 8px 30px rgba(0,0,0,.07); }
+    .callout { margin:22px 0; padding:18px 20px; background:var(--wash); border-left:3px solid var(--ink); }
+    .grid { display:grid; grid-template-columns:repeat(5, 1fr); gap:8px; margin-top:18px; }
+    .position { min-height:116px; padding:14px; border:1px solid var(--line); border-radius:12px; }
+    .position strong { display:block; font-size:12px; letter-spacing:.05em; text-transform:uppercase; }
+    .position span { display:block; margin-top:12px; color:var(--muted); font-size:13px; }
+    details { padding:0 20px; margin-bottom:10px; }
+    summary { cursor:pointer; padding:17px 0; font-weight:700; }
+    details p { color:#3d3d3d; }
+    code { padding:2px 5px; background:#efefec; border-radius:5px; font-size:.9em; }
+    footer { padding:18px 4px 0; color:var(--muted); font-size:12px; text-align:center; }
+    [dir="rtl"] { unicode-bidi:isolate; }
+    @media (max-width:760px) { .grid { grid-template-columns:1fr; } .position { min-height:auto; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">LLM Council · Architecture decision</p>
+    <h1>Production-grade localization for VANTRA</h1>
+    <p class="question">What is the best architecture for VANTRA’s public marketing experience, considering conversion, SEO, Arabic RTL, performance, maintainability, multi-machine development, and future growth?</p>
+  </header>
+
+  <section class="verdict">
+    <p class="eyebrow">Chairman verdict</p>
+    <h2>Adopt <code>next-intl</code>, narrowly scoped to public marketing.</h2>
+    <div class="callout"><strong>Architecture:</strong> explicit <code>/fr</code>, <code>/ar</code>, and <code>/en</code> routes; a cache-safe root resolver; separate marketing and Studio root layouts; server-loaded active-locale dictionaries; shared components; localized SEO; targeted RTL handling.</div>
+    <h3>Where the Council agrees</h3>
+    <ul>
+      <li>Resolve only <code>/</code> using <code>vantra_locale</code> → <code>Accept-Language</code> → French.</li>
+      <li>Never redirect away from an explicit supported locale route.</li>
+      <li>Use a server-readable <code>SameSite=Lax</code> cookie; localStorage is unnecessary.</li>
+      <li>Render Arabic <code>lang="ar" dir="rtl"</code> in the initial HTML and isolate LTR brand/model names.</li>
+      <li>Keep one shared component system and load only the active locale’s messages.</li>
+      <li>Keep Studio outside today’s localization scope while preserving a future path.</li>
+      <li>Use localized metadata, self-canonicals, reciprocal hreflang, x-default, and localized sitemap entries.</li>
+      <li>Transcreate sales copy and do not invent product facts.</li>
+    </ul>
+    <h3>Where the Council clashes</h3>
+    <p>The only material disagreement is native App Router localization versus <code>next-intl</code>. The native proposal avoids one dependency, but the majority concluded it would make VANTRA maintain its own validation, navigation, client/server message delivery, missing-key behavior, formatting, metadata, and future expansion layer.</p>
+    <h3>Blind spots caught in peer review</h3>
+    <p>Cache correctness at the root; the App Router document-layout boundary; dictionary parity and fresh-clone testing; separating verified facts from persuasive copy; analytics parity; and a deliberate French/Arabic review workflow.</p>
+    <h3>Recommendation</h3>
+    <p>Use <code>next-intl</code> for the localized marketing route group, keep Studio in a separate unlocalized root, statically render explicit locale pages, and reserve request-based negotiation for <code>/</code>. The dependency and full document navigation at the marketing-to-Studio boundary are acceptable tradeoffs for correct initial document semantics and lower long-term maintenance risk.</p>
+    <h3>The one thing to do first</h3>
+    <p>Establish and test the locale routing and document boundary before migrating copy.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">Agreement / disagreement</p>
+    <div class="grid" aria-label="Advisor positions">
+      <div class="position"><strong>Contrarian</strong><span>next-intl<br />strong rationale</span></div>
+      <div class="position"><strong>First Principles</strong><span>native App Router<br />sole dissent</span></div>
+      <div class="position"><strong>Expansionist</strong><span>next-intl<br />future leverage</span></div>
+      <div class="position"><strong>Outsider</strong><span>next-intl<br />lower hidden cost</span></div>
+      <div class="position"><strong>Executor</strong><span>next-intl<br />fastest safe path</span></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Terminology</p>
+    <h2>One product concept, expressed naturally.</h2>
+    <ul>
+      <li>English: <strong>Unified Credits</strong></li>
+      <li>French: <strong>Crédits VANTRA unifiés</strong></li>
+      <li>Arabic: <strong dir="rtl">أرصدة VANTRA الموحّدة</strong></li>
+    </ul>
+    <p>Each locale should explain once that this is one VANTRA credit system across Chat, Image, and Video—not credits or money shared between people or accounts.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">Advisor detail</p>
+    <details><summary>The Contrarian</summary><p>The “lightweight native” option has a likely fatal flaw: it looks simple only while VANTRA has one page. Hardcoded dictionary access, hand-built locale navigation, metadata alternates, cookie negotiation, missing-key handling, and mixed server/client message delivery quickly become an undocumented internal framework. Use next-intl, narrowly scoped to public marketing, and implement routing/layout first.</p></details>
+    <details><summary>The First Principles Thinker</summary><p>Choose native App Router localization. Three static marketing dictionaries, deterministic routing, metadata, and directionality do not inherently require runtime translation machinery. Use a validated locale segment, localized HTML-owning layout, separate Studio boundary, root-only resolver, one cookie, and active typed dictionary.</p></details>
+    <details><summary>The Expansionist</summary><p>Adopt next-intl. Its routing, navigation, message, pluralization, formatting, and future Studio leverage justify it. Keep explicit locale routes, server-loaded messages, shared components, correct initial direction, localized SEO, and a durable cookie.</p></details>
+    <details><summary>The Outsider</summary><p>Use next-intl because client-heavy shared components and future expansion make custom infrastructure deceptively costly. Keep explicit routes, a root-only resolver, one cookie, correct document attributes, LTR token isolation, self-canonicals, hreflang, x-default, and sitemap entries.</p></details>
+    <details><summary>The Executor</summary><p>Use next-intl as the fastest safe production path. Create routing/request configuration and a proxy, explicit locale routes, one active server dictionary, shared components, correct RTL and SEO, and root-resolution tests. Do not add localStorage.</p></details>
+  </section>
+
+  <section>
+    <p class="eyebrow">Peer-review highlights</p>
+    <details><summary>Review 1</summary><p>Response B was strongest for connecting the client-heavy implementation to next-intl. Response A underpriced client message delivery and key validation. Missing: CDN caching, cookie flags, CI parity, and fresh-clone determinism.</p></details>
+    <details><summary>Review 2</summary><p>Response C was strongest for narrowing next-intl and handling the document boundary. Response D assumed speed without payload detail. Missing: CDN caching and separation of immutable facts from marketing strings.</p></details>
+    <details><summary>Review 3</summary><p>Response B was strongest. Response A underpriced custom validation, navigation, and formatting. Missing: CDN caching and product-fact separation.</p></details>
+    <details><summary>Review 4</summary><p>Response C was strongest. Its blind spot was treating a client-heavy homepage as supplied fact; repository inspection subsequently verified that fact. Missing: explicit cache correctness at the root.</p></details>
+    <details><summary>Review 5</summary><p>Response C was strongest. Its blind spot was localized analytics, experiment parity, and transcreation governance. Missing: a Git-tracked delivery contract, CI checks, and cache-safe negotiation.</p></details>
+  </section>
+
+  <footer>Generated 2026-09-04 05:47:46 +01:00 · Counciled: VANTRA public-marketing localization architecture</footer>
+</main>
+</body>
+</html>

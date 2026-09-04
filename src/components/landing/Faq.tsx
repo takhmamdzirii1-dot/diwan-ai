@@ -2,44 +2,14 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { SectionHeading } from './ui';
 
 interface FaqItem {
-  q: string;
-  a: string;
+  question: string;
+  answer: string;
 }
-
-const FAQS: FaqItem[] = [
-  {
-    q: 'How do local payments work?',
-    a: 'VANTRA supports local payment in Algerian dinar. Available payment methods will be shown at checkout.',
-  },
-  {
-    q: 'Do I need an international card?',
-    a: 'No international card is required for local payment. Available payment methods will be shown at checkout.',
-  },
-  {
-    q: 'How does the shared balance work?',
-    a: 'Your VANTRA balance is shared across Chat, Image and Video. Usage across supported models comes from that same balance, so you do not manage a separate balance for each tool.',
-  },
-  {
-    q: 'Which AI models can I use?',
-    a: 'VANTRA brings multiple supported AI models into one workspace for Chat, Image and Video. The available choices are shown inside each creation mode.',
-  },
-  {
-    q: 'What happens when credits run out?',
-    a: 'You can add credits to the same shared balance from VANTRA and continue using the workspace.',
-  },
-  {
-    q: 'Does one plan cover Chat, Image and Video?',
-    a: 'Yes. VANTRA is designed as one platform for all three creation modes, using one plan and shared balance instead of separate AI subscriptions.',
-  },
-  {
-    q: 'What can I do with generated content?',
-    a: 'Generated images can be downloaded, and saved image generations can be revisited in the media library.',
-  },
-];
 
 // Do not publish answers to these points until the owner confirms the product
 // policy and launch behavior.
@@ -52,6 +22,8 @@ export const FAQ_OWNER_TODOS = [
 ] as const;
 
 export default function Faq() {
+  const t = useTranslations('faq');
+  const items = t.raw('items') as FaqItem[];
   const [open, setOpen] = useState<number | null>(0);
 
   return (
@@ -61,18 +33,18 @@ export default function Faq() {
         <div className="md:sticky md:top-24 self-start">
           <SectionHeading
             align="start"
-            label="FAQ"
-            title="Questions, answered."
-            sub="Everything else — the team reads every message."
+            label={t('label')}
+            title={t('title')}
+            sub={t('subtitle')}
           />
         </div>
 
         {/* Accordion */}
         <div className="divide-y divide-white/[0.06] border-y border-white/[0.06]">
-          {FAQS.map((item, i) => {
+          {items.map((item, i) => {
             const isOpen = open === i;
             return (
-              <div key={item.q}>
+              <div key={item.question}>
                 <button
                   type="button"
                   id={`faq-trigger-${i}`}
@@ -84,7 +56,7 @@ export default function Faq() {
                     isOpen ? 'text-white' : 'text-white/60 hover:text-white/90'
                   )}
                 >
-                  {item.q}
+                  {item.question}
                   <span
                     aria-hidden="true"
                     className={cn(
@@ -108,7 +80,7 @@ export default function Faq() {
                       transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
                       className="overflow-hidden"
                     >
-                      <p className="pb-5 pe-8 text-[13.5px] leading-relaxed text-white/50">{item.a}</p>
+                      <p className="pb-5 pe-8 text-[13.5px] leading-relaxed text-white/50">{item.answer}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>

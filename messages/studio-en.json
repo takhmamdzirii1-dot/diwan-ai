@@ -1,0 +1,26 @@
+{
+  "auth": {
+    "signInTitle": "Sign in to VANTRA",
+    "createTitle": "Create your VANTRA account",
+    "signInSubtitle": "Return to your unified AI workspace",
+    "createSubtitle": "Bring Chat, Image and Video into one workspace",
+    "close": "Close",
+    "signIn": "Sign in",
+    "createAccount": "Create account",
+    "googleFailed": "Could not sign in with Google.",
+    "missingCredentials": "Enter both your email and password.",
+    "signInSuccess": "Signed in. Opening VANTRA Studio…",
+    "createSuccess": "Account created. Opening VANTRA Studio…",
+    "verificationSent": "Verification link sent. Check your inbox.",
+    "authenticationFailed": "Authentication failed. Check your details and try again.",
+    "continueGoogle": "Continue with Google",
+    "orEmail": "or email",
+    "fullName": "Full name",
+    "email": "Email address",
+    "password": "Password",
+    "submitSignIn": "Sign in to account",
+    "submitCreate": "Create account",
+    "noAccount": "New to VANTRA?",
+    "hasAccount": "Already have an account?"
+  }
+}

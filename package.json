@@ -7,7 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "verify:i18n": "node scripts/verify-marketing-locales.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai": "^0.0.66",
@@ -29,6 +30,7 @@
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "next": "^16.3.1",
+    "next-intl": "^4.14.2",
     "puppeteer-core": "^25.8.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",

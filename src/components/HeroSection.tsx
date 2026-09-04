@@ -3,7 +3,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Lock, Sparkles } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { LiquidMetalButton } from '@/components/ui/liquid-metal-button';
+import { HERO_STAT_VALUES } from '../content/marketingFacts';
 import { Magnetic } from './landing/ui';
 
 interface HeroSectionProps {
@@ -19,14 +21,12 @@ const PATHS = [
   { left: '70%', rotate: 14, duration: 8, delay: 2.6 },
 ];
 
-const STATS = [
-  { num: '12+', label: 'Supported Models' },
-  { num: 'DA', label: 'Local Billing' },
-  { num: '1', label: 'Shared Balance' },
-  { num: '3', label: 'Chat · Image · Video' },
-];
-
 export default function HeroSection({ user, onEnterStudio, onRequireAuth }: HeroSectionProps) {
+  const t = useTranslations('hero');
+  const stats = (t.raw('stats') as { label: string }[]).map((stat, index) => ({
+    ...stat,
+    number: HERO_STAT_VALUES[index],
+  }));
   const reduce = useReducedMotion();
   const [heroPrompt, setHeroPrompt] = useState('');
   const [simulating, setSimulating] = useState(false);
@@ -140,7 +140,7 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
           transition={{ duration: 0.5 }}
           className="border border-white/[0.12] bg-white/[0.04] backdrop-blur-md rounded-full px-4 py-1.5 text-xs font-medium text-white/75"
         >
-          Global AI. Local payment.
+          {t('badge')}
         </motion.div>
 
         <motion.h1
@@ -149,7 +149,7 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
           transition={{ duration: 0.6, delay: 0.08 }}
           className="mx-auto max-w-3xl leading-[1.08] text-5xl md:text-7xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60 mt-8"
         >
-          Leading AI models. One balance.
+          {t('title')}
         </motion.h1>
 
         <motion.p
@@ -158,7 +158,7 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
           transition={{ duration: 0.6, delay: 0.16 }}
           className="max-w-2xl text-white/55 text-lg mt-6 leading-relaxed"
         >
-          Chat, create images, and generate video in one workspace — with local payment built for Algeria.
+          {t('subtitle')}
         </motion.p>
 
         {/* ── THE HOOK: interactive prompt bar ── */}
@@ -183,13 +183,13 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
                   value={heroPrompt}
                   onChange={(e) => setHeroPrompt(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && submit()}
-                  placeholder="Ask anything. Create anything."
+                  placeholder={t('placeholder')}
                   dir="auto"
                   maxLength={300}
-                  aria-label="Ask anything or describe what you want to create"
+                  aria-label={t('inputLabel')}
                   className="flex-1 min-w-0 bg-transparent border-0 outline-none text-white text-[14px] placeholder:text-white/35 py-2.5"
                 />
-                <LiquidMetalButton viewMode="icon" label="Generate" onClick={submit} />
+                <LiquidMetalButton viewMode="icon" label={t('generate')} onClick={submit} />
               </motion.div>
             ) : (
               <motion.div
@@ -202,21 +202,21 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
                 <div className="relative rounded-xl overflow-hidden aspect-video">
                   <img
                     src={simSrc}
-                    alt="Your render preview"
+                    alt={t('previewAlt')}
                     className="w-full h-full object-cover blur-lg scale-110"
                   />
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/45">
                     <Lock className="h-5 w-5 text-white/85" />
-                    <p className="text-[13.5px] font-medium text-white">Your render is ready.</p>
+                    <p className="text-[13.5px] font-medium text-white">{t('ready')}</p>
                     <button
                       type="button"
                       onClick={claim}
                       className="h-10 px-6 rounded-xl bg-white text-black text-[13px] font-semibold hover:bg-gray-200 transition-colors cursor-pointer active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                     >
-                      Create a free account to reveal
+                      {t('reveal')}
                     </button>
                     <p className="text-[10.5px] text-white/45">
-                      Your prompt is saved and waiting inside the Studio.
+                      {t('promptSaved')}
                     </p>
                   </div>
                 </div>
@@ -230,7 +230,7 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
                   }}
                   className="mt-2.5 text-[11px] text-white/40 hover:text-white/70 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 rounded px-1"
                 >
-                  ← Try another prompt
+                  {t('tryAgain')}
                 </button>
               </motion.div>
             )}
@@ -247,7 +247,7 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
               >
                 <div className="mt-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 flex items-center gap-3">
                   <span className="text-[11px] font-mono text-white/50 shrink-0">
-                    Rendering… {Math.round(simProgress)}%
+                    {t('rendering', { progress: Math.round(simProgress) })}
                   </span>
                   <div className="flex-1 h-1 rounded-full bg-white/10 overflow-hidden">
                     <div
@@ -270,7 +270,7 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
         >
           <Magnetic strength={0.18}>
             <LiquidMetalButton
-              label={user ? 'Open Studio' : 'Start Free'}
+              label={user ? t('openStudio') : t('start')}
               onClick={handlePrimaryAction}
             />
           </Magnetic>
@@ -278,7 +278,7 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
             href="#pricing"
             className="h-[46px] px-7 inline-flex items-center rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-md text-[14.5px] font-medium text-white/60 hover:text-white/90 hover:bg-white/[0.05] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
           >
-            See Pricing
+            {t('seePricing')}
           </a>
         </motion.div>
 
@@ -289,7 +289,7 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
           transition={{ duration: 0.6, delay: 0.42 }}
           className="mt-8 text-[11px] tracking-[0.12em] text-white/55"
         >
-          Pay locally in DA · No international card required
+          {t('trust')}
         </motion.p>
 
         {/* Stats */}
@@ -299,9 +299,9 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
           transition={{ duration: 0.7, delay: 0.44 }}
           className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-[68px] border-t border-white/[0.06] pt-10 max-w-5xl mx-auto w-full"
         >
-          {STATS.map((s) => (
+          {stats.map((s) => (
             <div key={s.label} className="flex flex-col items-center gap-2">
-              <span className="text-3xl font-bold text-white">{s.num}</span>
+              <span dir="ltr" className="text-3xl font-bold text-white">{s.number}</span>
               <span className="text-sm text-white/45">{s.label}</span>
             </div>
           ))}
