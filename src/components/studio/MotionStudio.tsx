@@ -203,7 +203,7 @@ export default function MotionStudio() {
           {/* Cost — outside the bar, right-aligned, tiny */}
           <div className="flex justify-end px-2 pt-2">
             <span className="text-[10px] text-white/30 uppercase tracking-widest">
-              {cost} pts
+              {cost} Unified Credits
             </span>
           </div>
         </div>

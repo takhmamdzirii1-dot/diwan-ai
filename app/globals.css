@@ -11,6 +11,39 @@
   --font-sans: var(--font-inter), var(--font-cairo), ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
+/* Studio-only semantic surface and motion system. Marketing pages remain untouched. */
+.studio-shell,
+.studio-overlay-root {
+  --studio-bg: #070707;
+  --studio-surface: #0d0d0d;
+  --studio-surface-raised: #121212;
+  --studio-surface-elevated: #171717;
+  --studio-hover: rgba(255, 255, 255, 0.06);
+  --studio-selected: rgba(255, 255, 255, 0.09);
+  --studio-text-primary: rgba(255, 255, 255, 0.96);
+  --studio-text-secondary: rgba(255, 255, 255, 0.66);
+  --studio-text-muted: rgba(255, 255, 255, 0.44);
+  --studio-text-disabled: rgba(255, 255, 255, 0.3);
+  --studio-border-subtle: rgba(255, 255, 255, 0.06);
+  --studio-border: rgba(255, 255, 255, 0.1);
+  --studio-border-strong: rgba(255, 255, 255, 0.2);
+  --studio-overlay: rgba(0, 0, 0, 0.78);
+  --studio-shadow: 0 24px 64px -24px rgba(0, 0, 0, 0.94);
+}
+
+.studio-menu-enter {
+  animation: studio-menu-enter 180ms var(--ease-system) both;
+}
+
+@keyframes studio-menu-enter {
+  from { opacity: 0; transform: translateY(4px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-menu-enter { animation: none; }
+}
+
 .lab-bg::before {
   overflow: hidden;
   max-width: 100vw;

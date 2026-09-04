@@ -11,10 +11,10 @@ import { VantraLogo } from '../VantraLogo';
    white/…  neutral text + active states
    ───────────────────────────────────────────────────────── */
 export const SHELL_TOKENS = {
-  canvas: '#090909',
-  surface: '#101010',
-  raised: '#171717',
-  border: 'rgba(255,255,255,0.08)',
+  canvas: 'var(--studio-bg)',
+  surface: 'var(--studio-surface)',
+  raised: 'var(--studio-surface-raised)',
+  border: 'var(--studio-border)',
   topBarHeight: 56,
   sidebarWidth: 280,
 } as const;
@@ -33,7 +33,7 @@ export function TopBar({
 }) {
   return (
     <header
-      className="shrink-0 flex items-center gap-3 px-4 border-b border-white/[0.08] bg-[#0D0D0D]/90 backdrop-blur-xl"
+      className="shrink-0 flex items-center gap-3 px-4 border-b border-[var(--studio-border-subtle)] bg-[var(--studio-surface)]/90 backdrop-blur-xl"
       style={{ height: SHELL_TOKENS.topBarHeight }}
     >
       {onOpenNav && (
@@ -81,7 +81,7 @@ export function WorkspaceShell({
   className?: string;
 }) {
   return (
-    <div className={cn('flex flex-col h-full min-h-0 bg-[#090909]', className)}>
+    <div className={cn('flex flex-col h-full min-h-0 bg-[var(--studio-bg)]', className)}>
       <TopBar title={title} subtitle={subtitle} onOpenNav={onOpenNav} actions={actions} />
       <div className="flex-1 min-h-0 relative">{children}</div>
     </div>
@@ -165,7 +165,7 @@ export function Segmented<T extends string>({
             tabIndex={active ? 0 : -1}
             onClick={() => onChange(o.value)}
             className={cn(
-              'relative rounded-full font-medium cursor-pointer transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
+              'relative rounded-full font-medium cursor-pointer transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-reduce:transition-none',
               size === 'sm' ? 'h-7 px-3 text-[11.5px]' : 'h-8 px-4 text-[12.5px]',
               active ? 'text-black' : 'text-white/50 hover:text-white/80'
             )}
@@ -197,7 +197,7 @@ export function PrimaryButton({
       {...rest}
       disabled={disabled}
       className={cn(
-        'h-11 rounded-xl text-[14px] font-semibold inline-flex items-center justify-center gap-2 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#090909]',
+        'h-11 rounded-xl text-[14px] font-semibold inline-flex items-center justify-center gap-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--studio-bg)] motion-reduce:transition-none',
         disabled
           ? 'bg-white/10 text-white/50 border border-white/10 cursor-not-allowed'
           : 'bg-white text-black hover:bg-white/90 active:scale-[0.99] cursor-pointer',
@@ -219,7 +219,7 @@ export function GhostButton({
     <button
       {...rest}
       className={cn(
-        'h-9 px-3.5 rounded-xl border border-white/10 text-[12.5px] font-medium text-white/70 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 disabled:opacity-50 disabled:cursor-not-allowed',
+        'h-9 px-3.5 rounded-xl border border-[var(--studio-border)] text-[12.5px] font-medium text-[var(--studio-text-secondary)] hover:text-white hover:bg-[var(--studio-hover)] transition-colors duration-150 cursor-pointer inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:text-[var(--studio-text-disabled)] disabled:cursor-not-allowed motion-reduce:transition-none',
         className
       )}
     >

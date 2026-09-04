@@ -6,24 +6,17 @@ import { Menu, ArrowDown, Plus, Zap, Swords, Database, Settings, Sparkles, Layou
 import { useChat } from '@ai-sdk/react';
 import useUser from '../../hooks/useUser';
 import { useModal } from '../../context/ModalContext';
-import { ClaudeChatInput, ModelSelector } from '@/components/ui/claude-style-chat-input';
+import { ClaudeChatInput } from '@/components/ui/claude-style-chat-input';
 import DashboardSidebar, { type Workspace as DashboardView } from './DashboardSidebar';
 import MessageBubble from './MessageBubble';
 import ImageCanvas from './ImageCanvas';
-import SettingsModal from './SettingsModal';
+import SettingsModal from './StudioSettingsDialog';
 import MotionStudio from './MotionStudio';
 import MediaLibrary from './MediaLibrary';
 import { VantraLogo } from '../VantraLogo';
 import { cn } from '@/lib/utils';
 import { GhostButton } from './AppShell';
-
-/* Real data pulled from the OpenRouter catalog */
-const MODELS = [
-  { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', name: 'Nemotron 3 Ultra', provider: 'NVIDIA', ctx: '1M', latency: 1200, badge: 'FREE', isFree: true },
-  { id: 'z-ai/glm-5.2:free', name: 'GLM 5.2', provider: 'Z.ai', ctx: '256K', latency: 700, badge: 'FREE', isFree: true },
-  { id: 'poolside/laguna-s-2.1:free', name: 'Laguna S 2.1', provider: 'Poolside', ctx: '128K', latency: 600, badge: 'FREE', isFree: true },
-  { id: 'minimax/minimax-m3:free', name: 'MiniMax M3', provider: 'MiniMax', ctx: '1M', latency: 500, badge: 'FREE', isFree: true },
-];
+import { CHAT_MODELS, DEFAULT_CHAT_MODEL } from '@/src/config/studio-registry';
 
 type CenterMode = 'chat' | 'image' | 'video' | 'library';
 
@@ -69,14 +62,14 @@ export default function StudioDashboard() {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const [selectedModelId, setSelectedModelId] = useState(MODELS[0].id);
+  const [selectedModelId, setSelectedModelId] = useState(DEFAULT_CHAT_MODEL.id);
   const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null);
   const sendStartRef = useRef<number>(0);
 
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
-  const activeModel = MODELS.find((m) => m.id === selectedModelId) || MODELS[0];
+  const activeModel = CHAT_MODELS.find((model) => model.id === selectedModelId) || DEFAULT_CHAT_MODEL;
 
   useEffect(() => {
     try {
@@ -261,7 +254,7 @@ export default function StudioDashboard() {
 
   const handleSend = useCallback(
     async (data: { message: string; isThinkingEnabled: boolean; files?: Array<{ file: File; preview?: string | null; type: string }> }) => {
-      if (!user && !activeModel.isFree) {
+      if (!user && (activeModel.verifiedCreditCost ?? 0) > 0) {
         openAuthModal('signin');
         return;
       }
@@ -313,7 +306,7 @@ export default function StudioDashboard() {
         }
       );
     },
-    [append, selectedModelId, activeSessionId, sessions, activeModel.isFree, user, openAuthModal]
+    [append, selectedModelId, activeSessionId, sessions, activeModel.verifiedCreditCost, user, openAuthModal]
   );
 
   /** Direct append for suggested prompts — bypasses handleSend's
@@ -322,7 +315,7 @@ export default function StudioDashboard() {
    *  and the debounced persistence — not inline before the append call. */
   const handleSuggestedPrompt = useCallback(
     (text: string) => {
-      if (!user && !activeModel.isFree) {
+      if (!user && (activeModel.verifiedCreditCost ?? 0) > 0) {
         openAuthModal('signin');
         return;
       }
@@ -342,7 +335,7 @@ export default function StudioDashboard() {
         { body: { model: selectedModelId } }
       );
     },
-    [append, selectedModelId, activeSessionId, sessions, activeModel.isFree, user, openAuthModal]
+    [append, selectedModelId, activeSessionId, sessions, activeModel.verifiedCreditCost, user, openAuthModal]
   );
 
   const totalTokens = useMemo(
@@ -357,7 +350,7 @@ export default function StudioDashboard() {
   const isEmpty = messages.length === 0;
 
   return (
-    <div className="relative flex h-[100dvh] w-full overflow-hidden bg-black text-white font-sans">
+    <div className="studio-shell relative flex h-[100dvh] w-full overflow-hidden bg-[var(--studio-bg)] text-white font-sans">
       {/* Sidebar */}
       <DashboardSidebar
         activeWorkspace={centerMode}
@@ -413,7 +406,7 @@ export default function StudioDashboard() {
                     style={{ overflowAnchor: 'none' }}
                   >
                     <div className={cn(
-                      'w-full flex justify-center transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]',
+                      'w-full flex justify-center transition-[min-height,padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none',
                       isEmpty ? 'min-h-full items-center py-6' : 'pt-6'
                     )}>
                       <div className="mx-auto w-full max-w-4xl px-6 flex flex-col gap-y-8">
@@ -564,13 +557,14 @@ export default function StudioDashboard() {
                   <div className="pointer-events-auto mx-auto w-full max-w-4xl px-6">
                     <ClaudeChatInput
                       onSendMessage={handleSend}
-                      models={MODELS.map((m) => ({
-                        id: m.id,
-                        name: m.name,
-                        description: `${m.provider} · ${m.ctx}`,
-                        badge: m.badge,
-                        isFree: m.isFree,
-                        requiresAuth: !m.isFree,
+                      models={CHAT_MODELS.map((model) => ({
+                        id: model.id,
+                        name: model.displayName,
+                        provider: model.provider,
+                        availability: model.availability,
+                        enabled: model.enabled,
+                        verifiedCreditCost: model.verifiedCreditCost,
+                        requiresAuth: (model.verifiedCreditCost ?? 0) > 0,
                       }))}
                       selectedModelId={selectedModelId}
                       onSelectModel={setSelectedModelId}
@@ -609,7 +603,12 @@ export default function StudioDashboard() {
         </div>
       </main>
 
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        selectedChatModelId={selectedModelId}
+        onSelectChatModel={setSelectedModelId}
+      />
     </div>
   );
 }
