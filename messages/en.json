@@ -79,11 +79,11 @@
   "workflow": {
     "label": "Workflow",
     "title": "From thought to artifact in three moves.",
-    "subtitle": "Describe what you need, generate it, then take the result with you.",
+    "subtitle": "Describe what you need, create it, then use the result your way.",
     "steps": [
-      { "title": "Describe", "description": "Write a prompt in plain language for the result you want." },
-      { "title": "Generate", "description": "Create text, images, or video from the same workspace." },
-      { "title": "Download", "description": "Download generated images directly or revisit saved work in your media library." }
+      { "title": "Describe", "description": "Tell VANTRA what you want in plain language." },
+      { "title": "Create", "description": "Generate chat, images, or video in one workspace." },
+      { "title": "Use", "description": "Save, export, or revisit your work anytime." }
     ]
   },
   "testimonials": {

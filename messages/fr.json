@@ -76,11 +76,11 @@
   "workflow": {
     "label": "Méthode",
     "title": "De l’idée au résultat, en trois gestes.",
-    "subtitle": "Décrivez votre besoin, générez, puis récupérez votre création.",
+    "subtitle": "Décrivez votre besoin, créez, puis utilisez le résultat à votre façon.",
     "steps": [
-      { "title": "Décrivez", "description": "Expliquez simplement le résultat que vous souhaitez obtenir." },
-      { "title": "Générez", "description": "Créez du texte, des images ou de la vidéo depuis le même espace." },
-      { "title": "Téléchargez", "description": "Téléchargez vos images ou retrouvez vos créations enregistrées dans la médiathèque." }
+      { "title": "Décrivez", "description": "Dites à VANTRA ce que vous voulez en langage naturel." },
+      { "title": "Créez", "description": "Générez du chat, des images ou de la vidéo dans un seul espace." },
+      { "title": "Utilisez", "description": "Enregistrez, exportez ou retrouvez votre travail à tout moment." }
     ]
   },
   "testimonials": {
