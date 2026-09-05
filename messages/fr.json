@@ -119,13 +119,14 @@
     "title": "Vos questions, sans détour.",
     "subtitle": "Les réponses essentielles avant de commencer.",
     "items": [
-      { "question": "Comment fonctionne le paiement local ?", "answer": "VANTRA accepte le paiement local en dinars algériens. Les moyens disponibles sont affichés au moment du paiement." },
-      { "question": "Ai-je besoin d’une carte internationale ?", "answer": "Non. Une carte internationale n’est pas nécessaire pour le paiement local. Les moyens disponibles sont affichés au moment du paiement." },
-      { "question": "Comment fonctionnent les Crédits VANTRA unifiés ?", "answer": "Un seul système de crédits VANTRA couvre les expériences Chat, Image et Vidéo compatibles. Vous ne gérez pas des crédits séparés pour chaque outil." },
-      { "question": "Quels modèles d’IA puis-je utiliser ?", "answer": "VANTRA réunit plusieurs modèles d’IA compatibles dans un seul espace. Les choix disponibles apparaissent dans chaque mode de création." },
-      { "question": "Que se passe-t-il quand mes crédits sont épuisés ?", "answer": "Vous pouvez ajouter des crédits à votre compte VANTRA et continuer à utiliser l’espace de travail." },
-      { "question": "Un seul abonnement couvre-t-il le Chat, l’Image et la Vidéo ?", "answer": "Oui. VANTRA réunit les trois modes de création dans une plateforme avec des Crédits VANTRA unifiés, au lieu d’abonnements IA séparés." },
-      { "question": "Que puis-je faire avec le contenu généré ?", "answer": "Les images générées peuvent être téléchargées, et vos créations enregistrées restent accessibles dans la médiathèque." }
+      { "question": "Comment fonctionne le paiement local ?", "answer": "Payez en dinars algériens avec les moyens de paiement locaux disponibles lors du paiement." },
+      { "question": "Ai-je besoin d’une carte internationale ?", "answer": "Non. VANTRA est conçu pour prendre en charge les options de paiement local en Algérie sans exiger de carte internationale." },
+      { "question": "Quelle est la différence entre Free, Pro et Max ?", "answer": "Chaque formule offre un niveau différent d’accès aux modèles, de crédits mensuels, de limites de génération et de priorité." },
+      { "question": "Comment fonctionnent les Crédits unifiés ?", "answer": "Un seul solde VANTRA est utilisé pour le Chat, l’Image et la Vidéo. Les modèles et les types de génération peuvent consommer des quantités de crédits différentes." },
+      { "question": "Que se passe-t-il quand mes crédits sont épuisés ?", "answer": "Votre accès dépend de votre formule actuelle. Vous pouvez attendre la prochaine réinitialisation des crédits ou choisir une formule avec une allocation plus importante." },
+      { "question": "Quels modèles d’IA puis-je utiliser ?", "answer": "Les modèles disponibles dépendent de votre formule et des modèles actuellement pris en charge par VANTRA." },
+      { "question": "Puis-je utiliser le Chat, l’Image et la Vidéo avec une seule formule ?", "answer": "Oui. VANTRA réunit le Chat, l’Image et la Vidéo dans un seul espace sous le même solde partagé." },
+      { "question": "Que puis-je faire avec le contenu généré ?", "answer": "Vous pouvez enregistrer, retrouver, exporter ou continuer à travailler avec le contenu généré dans VANTRA." }
     ]
   },
   "finalCta": { "title": "Créez dans tous les formats.", "subtitle": "Réunissez le Chat, l’Image et la Vidéo dans un seul espace avec des Crédits VANTRA unifiés.", "button": "Commencer avec VANTRA" },

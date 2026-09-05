@@ -122,13 +122,14 @@
     "title": "Questions, answered.",
     "subtitle": "Clear answers before you start.",
     "items": [
-      { "question": "How do local payments work?", "answer": "VANTRA supports local payment in Algerian dinar. Available payment methods are shown at checkout." },
-      { "question": "Do I need an international card?", "answer": "No international card is required for local payment. Available payment methods are shown at checkout." },
-      { "question": "How do Unified Credits work?", "answer": "One VANTRA credit system covers supported Chat, Image and Video experiences, so you do not manage separate credits for each tool." },
-      { "question": "Which AI models can I use?", "answer": "VANTRA brings multiple supported AI models into one workspace. Available choices are shown inside each creation mode." },
-      { "question": "What happens when my credits run out?", "answer": "You can add credits to your VANTRA account and continue using the workspace." },
-      { "question": "Does one plan cover Chat, Image and Video?", "answer": "Yes. VANTRA is designed as one platform for all three creation modes, using Unified Credits instead of separate AI subscriptions." },
-      { "question": "What can I do with generated content?", "answer": "Generated images can be downloaded, and saved image generations can be revisited in the media library." }
+      { "question": "How do local payments work?", "answer": "Pay in Algerian dinar using the local payment methods available at checkout." },
+      { "question": "Do I need an international card?", "answer": "No. VANTRA is designed to support local payment options in Algeria without requiring an international card." },
+      { "question": "What’s the difference between Free, Pro, and Max?", "answer": "Each plan gives a different level of model access, monthly credits, generation limits, and generation priority." },
+      { "question": "How do Unified Credits work?", "answer": "One VANTRA balance is used across Chat, Image, and Video. Different models and generation types may use different amounts of credits." },
+      { "question": "What happens when my credits run out?", "answer": "Your access depends on your current plan. You can wait for the next credit reset or move to a plan with a larger allowance." },
+      { "question": "Which AI models can I use?", "answer": "Available models depend on your plan and the models currently supported by VANTRA." },
+      { "question": "Can I use Chat, Image, and Video with one plan?", "answer": "Yes. VANTRA brings Chat, Image, and Video into one workspace under the same shared balance." },
+      { "question": "What can I do with generated content?", "answer": "You can save, revisit, export, or continue working with generated content inside VANTRA." }
     ]
   },
   "finalCta": {
