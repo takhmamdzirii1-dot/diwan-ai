@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Menu, ArrowDown, Plus, Zap, Swords, Database, Settings, Sparkles, LayoutGrid, MessageSquare, Image as ImageIcon, Video, PenLine, Code2, Lightbulb, BarChart3, RefreshCw, FileText } from 'lucide-react';
 import { useChat } from '@ai-sdk/react';
 import useUser from '../../hooks/useUser';
@@ -54,6 +54,7 @@ const MAGIC_SKILLS = [
 ];
 
 export default function StudioDashboard() {
+  const reduceMotion = useReducedMotion();
   const { user, refreshBalance } = useUser();
   const { openAuthModal } = useModal();
 
@@ -386,15 +387,14 @@ export default function StudioDashboard() {
 
         {/* Center content */}
         <div className="flex-1 relative min-h-0 overflow-hidden">
-          <AnimatePresence initial={false}>
+          <>
             {/* ── Chat Studio ── */}
             {centerMode === 'chat' && (
               <motion.div
                 key="chat"
-                initial={{ opacity: 0 }}
+                initial={reduceMotion ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.18 }}
+                transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }}
                 className="absolute inset-0 flex flex-col min-h-0 overflow-hidden"
               >
                 {/* Scrollable Message Timeline Area */}
@@ -457,7 +457,7 @@ export default function StudioDashboard() {
                                         </div>
                                         <span className="font-medium text-white/90">{skill.title}</span>
                                       </div>
-                                      <p className="text-[12.5px] text-white/40 leading-relaxed font-normal">
+                                      <p className="text-[12.5px] text-white/55 leading-relaxed font-normal">
                                         {skill.desc}
                                       </p>
                                     </button>
@@ -581,25 +581,25 @@ export default function StudioDashboard() {
 
           {/* ── Image Canvas ── */}
           {centerMode === 'image' && (
-            <motion.div key="image" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} className="absolute inset-0">
+            <motion.div key="image" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }} className="absolute inset-0">
               <ImageCanvas />
             </motion.div>
           )}
 
             {/* ── Motion Studio ── */}
             {centerMode === 'video' && (
-              <motion.div key="video" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} className="absolute inset-0">
+              <motion.div key="video" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }} className="absolute inset-0">
                 <MotionStudio />
               </motion.div>
             )}
 
             {/* ── Library ── */}
             {centerMode === 'library' && (
-              <motion.div key="library" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} className="absolute inset-0">
+              <motion.div key="library" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }} className="absolute inset-0">
                 <MediaLibrary />
               </motion.div>
             )}
-          </AnimatePresence>
+          </>
         </div>
       </main>
 

@@ -125,7 +125,7 @@
   "123": "audit-dump.mjs",
   "124": "audit-pill.mjs",
   "125": "dotenv",
-  "126": "@heyputer/puter.js",
+  "126": "clsx",
   "127": "motion",
   "128": "react-use-measure",
   "129": "verify-logo.mjs",

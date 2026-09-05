@@ -92,7 +92,7 @@
       "file_type": "code",
       "norm_label": "attachedfile",
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L14"
+      "source_location": "L13"
     },
     {
       "id": "components_ui_claude_style_chat_input_chatmodeloption",
@@ -105,7 +105,7 @@
       "file_type": "code",
       "norm_label": "chatmodeloption",
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L22"
+      "source_location": "L21"
     },
     {
       "id": "components_ui_claude_style_chat_input_claudechatinputprops",
@@ -118,7 +118,7 @@
       "file_type": "code",
       "norm_label": "claudechatinputprops",
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L40"
+      "source_location": "L39"
     },
     {
       "id": "components_ui_claude_style_chat_input_claudesendpayload",
@@ -131,33 +131,7 @@
       "file_type": "code",
       "norm_label": "claudesendpayload",
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L32"
-    },
-    {
-      "id": "components_ui_liquid_metal_button_liquidmetalbuttonprops",
-      "label": "LiquidMetalButtonProps",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "claude-style-chat-input.tsx",
-      "file_type": "code",
-      "norm_label": "liquidmetalbuttonprops",
-      "source_file": "components/ui/liquid-metal-button.tsx",
-      "source_location": "L6"
-    },
-    {
-      "id": "src_components_herosection_herosectionprops",
-      "label": "HeroSectionProps",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "claude-style-chat-input.tsx",
-      "file_type": "code",
-      "norm_label": "herosectionprops",
-      "source_file": "src/components/HeroSection.tsx",
-      "source_location": "L11"
+      "source_location": "L31"
     },
     {
       "id": "src_config_studio_registry_studioavailability",
@@ -641,6 +615,19 @@
       "source_location": "L13"
     },
     {
+      "id": "components_ui_liquid_metal_button_liquidmetalbuttonprops",
+      "label": "LiquidMetalButtonProps",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "[locale]/layout.tsx",
+      "file_type": "code",
+      "norm_label": "liquidmetalbuttonprops",
+      "source_file": "components/ui/liquid-metal-button.tsx",
+      "source_location": "L6"
+    },
+    {
       "id": "i18n_routing_locale",
       "label": "Locale",
       "_callable": true,
@@ -677,6 +664,19 @@
       "file_type": "code",
       "norm_label": "localizedpricingtier",
       "source_file": "src/components/GlobalPricing.tsx",
+      "source_location": "L11"
+    },
+    {
+      "id": "src_components_herosection_herosectionprops",
+      "label": "HeroSectionProps",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "[locale]/layout.tsx",
+      "file_type": "code",
+      "norm_label": "herosectionprops",
+      "source_file": "src/components/HeroSection.tsx",
       "source_location": "L11"
     },
     {
@@ -1060,7 +1060,7 @@
       "file_type": "code",
       "norm_label": "claudechatinput()",
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L264"
+      "source_location": "L263"
     },
     {
       "id": "components_ui_claude_style_chat_input_clockicon",
@@ -1072,7 +1072,7 @@
       "file_type": "code",
       "norm_label": "clockicon()",
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L792"
+      "source_location": "L753"
     },
     {
       "id": "components_ui_claude_style_chat_input_filepreviewcard",
@@ -1084,7 +1084,7 @@
       "file_type": "code",
       "norm_label": "filepreviewcard()",
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L62"
+      "source_location": "L61"
     },
     {
       "id": "components_ui_claude_style_chat_input_formatfilesize",
@@ -1096,7 +1096,7 @@
       "file_type": "code",
       "norm_label": "formatfilesize()",
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L53"
+      "source_location": "L52"
     },
     {
       "id": "components_ui_claude_style_chat_input_micicon",
@@ -1108,7 +1108,7 @@
       "file_type": "code",
       "norm_label": "micicon()",
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L801"
+      "source_location": "L762"
     },
     {
       "id": "components_ui_claude_style_chat_input_modelselector",
@@ -1120,7 +1120,7 @@
       "file_type": "code",
       "norm_label": "modelselector()",
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L138"
+      "source_location": "L137"
     },
     {
       "id": "components_ui_claude_style_chat_input_pastedcontentcard",
@@ -1132,43 +1132,7 @@
       "file_type": "code",
       "norm_label": "pastedcontentcard()",
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L111"
-    },
-    {
-      "id": "components_ui_liquid_metal_button_liquidmetalbutton",
-      "label": "LiquidMetalButton()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "claude-style-chat-input.tsx",
-      "file_type": "code",
-      "norm_label": "liquidmetalbutton()",
-      "source_file": "components/ui/liquid-metal-button.tsx",
-      "source_location": "L12"
-    },
-    {
-      "id": "src_components_herosection_hashseed",
-      "label": "hashSeed()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "claude-style-chat-input.tsx",
-      "file_type": "code",
-      "norm_label": "hashseed()",
-      "source_file": "src/components/HeroSection.tsx",
-      "source_location": "L313"
-    },
-    {
-      "id": "src_components_herosection_herosection",
-      "label": "HeroSection()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "claude-style-chat-input.tsx",
-      "file_type": "code",
-      "norm_label": "herosection()",
-      "source_file": "src/components/HeroSection.tsx",
-      "source_location": "L24"
+      "source_location": "L110"
     },
     {
       "id": "app_root_layout_redirectrootlayout",
@@ -1564,7 +1528,7 @@
       "file_type": "code",
       "norm_label": "content_title()",
       "source_file": "src/components/studio/StudioDashboard.tsx",
-      "source_location": "L346"
+      "source_location": "L347"
     },
     {
       "id": "src_components_studio_studioworkspace_studioworkspace",
@@ -2083,6 +2047,18 @@
       "source_location": "L6"
     },
     {
+      "id": "components_ui_liquid_metal_button_liquidmetalbutton",
+      "label": "LiquidMetalButton()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "[locale]/layout.tsx",
+      "file_type": "code",
+      "norm_label": "liquidmetalbutton()",
+      "source_file": "components/ui/liquid-metal-button.tsx",
+      "source_location": "L12"
+    },
+    {
       "id": "i18n_messages_loadmessages",
       "label": "loadMessages()",
       "_callable": true,
@@ -2141,6 +2117,30 @@
       "norm_label": "globalpricing()",
       "source_file": "src/components/GlobalPricing.tsx",
       "source_location": "L17"
+    },
+    {
+      "id": "src_components_herosection_hashseed",
+      "label": "hashSeed()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "[locale]/layout.tsx",
+      "file_type": "code",
+      "norm_label": "hashseed()",
+      "source_file": "src/components/HeroSection.tsx",
+      "source_location": "L313"
+    },
+    {
+      "id": "src_components_herosection_herosection",
+      "label": "HeroSection()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "[locale]/layout.tsx",
+      "file_type": "code",
+      "norm_label": "herosection()",
+      "source_file": "src/components/HeroSection.tsx",
+      "source_location": "L24"
     },
     {
       "id": "src_components_originallandingpage_originallandingpage",
@@ -3075,39 +3075,6 @@
       "source_location": "L1"
     },
     {
-      "id": "components_ui_liquid_metal_button",
-      "label": "liquid-metal-button.tsx",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "claude-style-chat-input.tsx",
-      "file_type": "code",
-      "norm_label": "liquid-metal-button.tsx",
-      "source_file": "components/ui/liquid-metal-button.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_herosection",
-      "label": "HeroSection.tsx",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "claude-style-chat-input.tsx",
-      "file_type": "code",
-      "norm_label": "herosection.tsx",
-      "source_file": "src/components/HeroSection.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_herosection_paths",
-      "label": "PATHS",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "claude-style-chat-input.tsx",
-      "file_type": "code",
-      "norm_label": "paths",
-      "source_file": "src/components/HeroSection.tsx",
-      "source_location": "L18"
-    },
-    {
       "id": "app_fonts",
       "label": "fonts.ts",
       "_origin": "ast",
@@ -3999,26 +3966,26 @@
       "source_location": "L27"
     },
     {
-      "id": "package_dependencies_heyputer_puter_js",
-      "label": "@heyputer/puter.js",
+      "id": "package_dependencies_clsx",
+      "label": "clsx",
       "_origin": "ast",
       "community": 126,
-      "community_name": "@heyputer/puter.js",
+      "community_name": "clsx",
       "file_type": "code",
-      "norm_label": "@heyputer/puter.js",
+      "norm_label": "clsx",
       "source_file": "package.json",
-      "source_location": "L17"
+      "source_location": "L26"
     },
     {
-      "id": "heyputer_puter_js",
-      "label": "@heyputer/puter.js",
+      "id": "clsx",
+      "label": "clsx",
       "_origin": "ast",
       "community": 126,
-      "community_name": "@heyputer/puter.js",
+      "community_name": "clsx",
       "file_type": "concept",
-      "norm_label": "@heyputer/puter.js",
+      "norm_label": "clsx",
       "source_file": "package.json",
-      "source_location": "L17"
+      "source_location": "L26"
     },
     {
       "id": "package_dependencies_motion",
@@ -5872,15 +5839,15 @@
       "source_location": "L13"
     },
     {
-      "id": "package_dependencies_clsx",
-      "label": "clsx",
+      "id": "package_dependencies_heyputer_puter_js",
+      "label": "@heyputer/puter.js",
       "_origin": "ast",
       "community": 30,
       "community_name": "dependencies",
       "file_type": "code",
-      "norm_label": "clsx",
+      "norm_label": "@heyputer/puter.js",
       "source_file": "package.json",
-      "source_location": "L26"
+      "source_location": "L17"
     },
     {
       "id": "package_dependencies_puppeteer_core",
@@ -5916,15 +5883,15 @@
       "source_location": "L39"
     },
     {
-      "id": "clsx",
-      "label": "clsx",
+      "id": "heyputer_puter_js",
+      "label": "@heyputer/puter.js",
       "_origin": "ast",
       "community": 30,
       "community_name": "dependencies",
       "file_type": "concept",
-      "norm_label": "clsx",
+      "norm_label": "@heyputer/puter.js",
       "source_file": "package.json",
-      "source_location": "L26"
+      "source_location": "L17"
     },
     {
       "id": "puppeteer_core",
@@ -6092,6 +6059,17 @@
       "source_location": "L1"
     },
     {
+      "id": "components_ui_liquid_metal_button",
+      "label": "liquid-metal-button.tsx",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "[locale]/layout.tsx",
+      "file_type": "code",
+      "norm_label": "liquid-metal-button.tsx",
+      "source_file": "components/ui/liquid-metal-button.tsx",
+      "source_location": "L1"
+    },
+    {
       "id": "i18n_messages",
       "label": "messages.ts",
       "_origin": "ast",
@@ -6233,6 +6211,28 @@
       "norm_label": "globalpricing.tsx",
       "source_file": "src/components/GlobalPricing.tsx",
       "source_location": "L1"
+    },
+    {
+      "id": "src_components_herosection",
+      "label": "HeroSection.tsx",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "[locale]/layout.tsx",
+      "file_type": "code",
+      "norm_label": "herosection.tsx",
+      "source_file": "src/components/HeroSection.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_herosection_paths",
+      "label": "PATHS",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "[locale]/layout.tsx",
+      "file_type": "code",
+      "norm_label": "paths",
+      "source_file": "src/components/HeroSection.tsx",
+      "source_location": "L18"
     },
     {
       "id": "src_content_marketingfacts",
@@ -9254,7 +9254,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L512",
+      "source_location": "L508",
       "weight": 1.0
     },
     {
@@ -9266,7 +9266,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L87",
+      "source_location": "L86",
       "weight": 1.0
     },
     {
@@ -9278,7 +9278,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L194",
+      "source_location": "L193",
       "weight": 1.0
     },
     {
@@ -10046,7 +10046,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/studio/StudioDashboard.tsx",
-      "source_location": "L57",
+      "source_location": "L58",
       "weight": 1.0
     },
     {
@@ -10058,7 +10058,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/studio/StudioDashboard.tsx",
-      "source_location": "L58",
+      "source_location": "L59",
       "weight": 1.0
     },
     {
@@ -10202,7 +10202,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/studio/StudioDashboard.tsx",
-      "source_location": "L346",
+      "source_location": "L347",
       "weight": 1.0
     },
     {
@@ -10490,7 +10490,7 @@
       "confidence_score": 1.0,
       "context": "field",
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L26",
+      "source_location": "L25",
       "weight": 1.0
     },
     {
@@ -10941,18 +10941,6 @@
     },
     {
       "source": "components_ui_claude_style_chat_input",
-      "target": "components_ui_liquid_metal_button_liquidmetalbutton",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L6",
-      "weight": 1.0
-    },
-    {
-      "source": "components_ui_claude_style_chat_input",
       "target": "src_config_studio_registry_studioavailability",
       "relation": "imports",
       "_origin": "ast",
@@ -10960,7 +10948,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L8",
+      "source_location": "L7",
       "weight": 1.0
     },
     {
@@ -13365,18 +13353,6 @@
     },
     {
       "source": "components_ui_claude_style_chat_input",
-      "target": "components_ui_liquid_metal_button",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L6",
-      "weight": 1.0
-    },
-    {
-      "source": "components_ui_claude_style_chat_input",
       "target": "src_config_studio_registry",
       "relation": "imports_from",
       "_origin": "ast",
@@ -13384,7 +13360,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L8",
+      "source_location": "L7",
       "weight": 1.0
     },
     {
@@ -16093,18 +16069,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L111",
-      "weight": 1.0
-    },
-    {
-      "source": "components_ui_claude_style_chat_input",
-      "target": "components_ui_claude_style_chat_input_modelselector",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L138",
+      "source_location": "L110",
       "weight": 1.0
     },
     {
@@ -16115,7 +16080,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L14",
+      "source_location": "L13",
+      "weight": 1.0
+    },
+    {
+      "source": "components_ui_claude_style_chat_input",
+      "target": "components_ui_claude_style_chat_input_modelselector",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/ui/claude-style-chat-input.tsx",
+      "source_location": "L137",
       "weight": 1.0
     },
     {
@@ -16126,7 +16102,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L22",
+      "source_location": "L21",
       "weight": 1.0
     },
     {
@@ -16137,7 +16113,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L264",
+      "source_location": "L263",
       "weight": 1.0
     },
     {
@@ -16148,7 +16124,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L32",
+      "source_location": "L31",
       "weight": 1.0
     },
     {
@@ -16159,7 +16135,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L40",
+      "source_location": "L39",
       "weight": 1.0
     },
     {
@@ -16170,7 +16146,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L53",
+      "source_location": "L52",
       "weight": 1.0
     },
     {
@@ -16181,7 +16157,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L62",
+      "source_location": "L61",
       "weight": 1.0
     },
     {
@@ -16192,7 +16168,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L792",
+      "source_location": "L753",
       "weight": 1.0
     },
     {
@@ -16203,7 +16179,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/ui/claude-style-chat-input.tsx",
-      "source_location": "L801",
+      "source_location": "L762",
       "weight": 1.0
     },
     {
@@ -20769,5 +20745,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "2d982ad516d17d9293fa00d5c402cc47c98097a1"
+  "built_at_commit": "3253aa998fbae6ed8991a4ebe6e7d50031e00954"
 }

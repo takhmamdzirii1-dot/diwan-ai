@@ -90,9 +90,9 @@
     "semantic_hash": "d2f30524e07674a0507496a839fefa19"
   },
   "components/ui/claude-style-chat-input.tsx": {
-    "mtime": 1788564402.6154227,
-    "seen": 1788564719.9636965,
-    "ast_hash": "9ff46fc64822daa488f89e0b3494d832",
+    "mtime": 1788582983.9955995,
+    "seen": 1788583351.3683643,
+    "ast_hash": "37c0c60bcfb3ecd77d056dca88a240cd",
     "semantic_hash": ""
   },
   "components/ui/textarea.tsx": {
@@ -438,9 +438,9 @@
     "semantic_hash": ""
   },
   "src/components/studio/StudioDashboard.tsx": {
-    "mtime": 1788564397.057526,
-    "seen": 1788564720.0836725,
-    "ast_hash": "6b2cf8266421e12c4ce9d48a0e100dec",
+    "mtime": 1788583401.573552,
+    "seen": 1788583513.161923,
+    "ast_hash": "6551060db9dde1dbe3e1c70be06f9482",
     "semantic_hash": ""
   },
   "src/components/studio/StudioWorkspace.tsx": {
@@ -636,9 +636,9 @@
     "semantic_hash": ""
   },
   "src/components/studio/ImageCanvas.tsx": {
-    "mtime": 1788566280.033649,
-    "seen": 1788566331.480672,
-    "ast_hash": "771f81aa179f74c63b01eda40b28585c",
+    "mtime": 1788583406.6424358,
+    "seen": 1788583513.1609328,
+    "ast_hash": "e6dd7050187b7ad0fc5221054adc8ba9",
     "semantic_hash": ""
   },
   "scripts/verify-settings.mjs": {
@@ -702,9 +702,9 @@
     "semantic_hash": ""
   },
   "src/components/studio/MotionStudio.tsx": {
-    "mtime": 1788566282.7544596,
-    "seen": 1788566331.4816105,
-    "ast_hash": "a3156ae2f9cf1534aad4f32254a31732",
+    "mtime": 1788583409.2609336,
+    "seen": 1788583513.1616907,
+    "ast_hash": "4567ddbaf30dcfc04a5453a93121a3f3",
     "semantic_hash": ""
   },
   "src/components/studio/VideoConfigPopover.tsx": {
@@ -720,9 +720,9 @@
     "semantic_hash": ""
   },
   "src/components/studio/MediaLibrary.tsx": {
-    "mtime": 1788564408.6017847,
-    "seen": 1788564720.0822694,
-    "ast_hash": "e3ba72dc3e9cbbeaebdee5db305be95e",
+    "mtime": 1788583404.119594,
+    "seen": 1788583513.1614442,
+    "ast_hash": "80a2dead9f476a121b0632c420d2f3e1",
     "semantic_hash": ""
   },
   "scripts/verify-final.mjs": {
@@ -732,9 +732,9 @@
     "semantic_hash": ""
   },
   "src/components/studio/AppShell.tsx": {
-    "mtime": 1788557945.4766774,
-    "seen": 1788558386.47797,
-    "ast_hash": "f96eb6083b3f323a40a18b59da0b4b76",
+    "mtime": 1788582879.6704247,
+    "seen": 1788583351.4011264,
+    "ast_hash": "edbba0742b6c0a9d16e98b95bf589748",
     "semantic_hash": ""
   },
   "scripts/verify-hero.mjs": {

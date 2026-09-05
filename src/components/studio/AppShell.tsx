@@ -55,7 +55,7 @@ export function TopBar({
         </div>
         <div className="min-w-0 flex-1">
           <h1 className="text-[14px] font-semibold text-white truncate leading-tight">{title}</h1>
-          {subtitle && <p className="text-[11.5px] text-white/40 truncate leading-tight mt-0.5">{subtitle}</p>}
+          {subtitle && <p className="text-[11.5px] text-white/55 truncate leading-tight mt-0.5">{subtitle}</p>}
         </div>
       </div>
 
@@ -109,7 +109,7 @@ export const ScrollArea = React.forwardRef<HTMLDivElement, React.HTMLAttributes<
 /** Section label used across panels and popovers. */
 export function PanelLabel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <p className={cn('px-1 mb-2 text-[11px] font-semibold tracking-widest uppercase text-white/40', className)}>
+    <p className={cn('px-1 mb-2 text-[11px] font-semibold tracking-widest uppercase text-white/50', className)}>
       {children}
     </p>
   );
@@ -249,8 +249,8 @@ export function StateBlock({
           {icon}
         </div>
       )}
-      <p className="mt-5 text-[14.5px] font-medium text-white/70">{title}</p>
-      {description && <p className="mt-1.5 text-xs text-white/30 max-w-xs leading-relaxed">{description}</p>}
+      <p className="mt-5 text-[14.5px] font-medium text-white/80">{title}</p>
+      {description && <p className="mt-1.5 text-xs text-white/50 max-w-xs leading-relaxed">{description}</p>}
       {action && <div className="mt-5">{action}</div>}
     </div>
   );

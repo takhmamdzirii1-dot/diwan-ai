@@ -1,16 +1,16 @@
 # Graph Report - diwan-ai-main  (2026-09-05)
 
 ## Corpus Check
-- 207 files · ~266,789 words
+- 207 files · ~266,743 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 784 nodes · 1022 edges · 148 communities (96 shown, 52 thin omitted)
+- 784 nodes · 1020 edges · 148 communities (96 shown, 52 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 2 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `2d982ad5`
+- Built from commit: `3253aa99`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -84,7 +84,7 @@
 - audit-crash.mjs
 - audit-final.mjs
 - dotenv
-- @heyputer/puter.js
+- clsx
 - motion
 - react-use-measure
 - verify-hero-copy.mjs
@@ -136,8 +136,8 @@ Cohesion: 0.09
 Nodes (12): FAQS, FEATURES, HeroCinematicBackgroundProps, STEPS, CategoryType, LEDGER_MODELS, LiveLedgerCard(), LiveLedgerCardProps (+4 more)
 
 ### Community 1 - "claude-style-chat-input.tsx"
-Cohesion: 0.12
-Nodes (15): AttachedFile, ChatModelOption, ClaudeChatInput(), ClaudeChatInputProps, ClaudeSendPayload, FilePreviewCard(), formatFileSize(), ModelSelector() (+7 more)
+Cohesion: 0.18
+Nodes (9): AttachedFile, ChatModelOption, ClaudeChatInput(), ClaudeChatInputProps, ClaudeSendPayload, FilePreviewCard(), formatFileSize(), ModelSelector() (+1 more)
 
 ### Community 2 - "devDependencies"
 Cohesion: 0.06
@@ -197,15 +197,15 @@ Nodes (9): CAMERA_MOTIONS, CameraMotion, DURATIONS, VIDEO_MODELS, VideoConfig, V
 
 ### Community 30 - "dependencies"
 Cohesion: 0.22
-Nodes (9): clsx, dependencies, clsx, puppeteer-core, react-dom, rehype-raw, puppeteer-core, react-dom (+1 more)
+Nodes (9): @heyputer/puter.js, dependencies, @heyputer/puter.js, puppeteer-core, react-dom, rehype-raw, puppeteer-core, react-dom (+1 more)
 
 ### Community 31 - "MediaLibrary.tsx"
 Cohesion: 0.21
 Nodes (12): appendToImageLibrary(), GeneratedImage, IMAGE_LIBRARY_KEY, ImageResultCard(), readImageLibrary(), FilterKey, FILTERS, formatDuration() (+4 more)
 
 ### Community 32 - "[locale]/layout.tsx"
-Cohesion: 0.08
-Nodes (23): MarketingLocaleLayout(), metadata, dynamic, dynamicParams, generateMetadata(), languageAlternates, loadMessages(), messageLoaders (+15 more)
+Cohesion: 0.07
+Nodes (29): MarketingLocaleLayout(), metadata, dynamic, dynamicParams, generateMetadata(), languageAlternates, LiquidMetalButton(), LiquidMetalButtonProps (+21 more)
 
 ### Community 33 - "LLM Council Transcript — VANTRA Localization Architecture"
 Cohesion: 0.08
@@ -276,16 +276,16 @@ Nodes (4): MessageBubble(), MessageBubbleProps, useSmoothText(), detectDir()
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `cn()` connect `cn` to `[locale]/layout.tsx`, `claude-style-chat-input.tsx`, `AppShell.tsx`, `MotionStudio.tsx`, `SettingsModal.tsx`, `StudioDashboard.tsx`, `MessageBubble.tsx`, `StudioDashboard`, `VideoConfigPopover.tsx`, `DashboardSidebar.tsx`, `src/components/ui/logo-cloud-3.tsx`, `ImageConfigPopover.tsx`, `src/components/OriginalLandingPage.tsx`, `MediaLibrary.tsx`, `StudioSettingsDialog.tsx`?**
-  _High betweenness centrality (0.071) - this node is a cross-community bridge._
+  _High betweenness centrality (0.072) - this node is a cross-community bridge._
 - **Why does `getModelCost()` connect `generate-image/route.ts` to `src/context/ModalContext.tsx`?**
   _High betweenness centrality (0.033) - this node is a cross-community bridge._
 - **What connects `metadata`, `languageAlternates`, `dynamicParams` to the rest of the system?**
   _326 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `src/components/LiveLedgerCard.tsx` be split into smaller, more focused modules?**
   _Cohesion score 0.09116809116809117 - nodes in this community are weakly interconnected._
-- **Should `claude-style-chat-input.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.11904761904761904 - nodes in this community are weakly interconnected._
 - **Should `devDependencies` be split into smaller, more focused modules?**
   _Cohesion score 0.06451612903225806 - nodes in this community are weakly interconnected._
 - **Should `compilerOptions` be split into smaller, more focused modules?**
   _Cohesion score 0.07142857142857142 - nodes in this community are weakly interconnected._
+- **Should `router.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.1051693404634581 - nodes in this community are weakly interconnected._

@@ -21,7 +21,7 @@ export type ImageRequestDraft = {
 };
 
 function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) {
-  return <label htmlFor={htmlFor} className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/45">{children}</label>;
+  return <label htmlFor={htmlFor} className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/55">{children}</label>;
 }
 
 export default function ImageCanvas({ onGenerate }: { onGenerate?: (draft: ImageRequestDraft) => void | Promise<void> }) {
@@ -91,19 +91,19 @@ export default function ImageCanvas({ onGenerate }: { onGenerate?: (draft: Image
             <p className="mt-2 max-w-sm text-[13px] leading-relaxed text-[var(--studio-text-secondary)]">Shape a visual, attach a reference, and prepare a generation request.</p>
           </div>
 
-          <form className="space-y-6" onSubmit={submitDraft} noValidate>
+          <form className="space-y-5" onSubmit={submitDraft} noValidate>
             <div className="space-y-2">
               <FieldLabel htmlFor="image-prompt">Prompt</FieldLabel>
-              <textarea id="image-prompt" value={prompt} onChange={(event) => { setPrompt(event.target.value); setError(null); }} rows={5} placeholder="Describe the subject, setting, light, and composition…" className="w-full resize-y rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3.5 py-3 text-[14px] leading-relaxed text-white outline-none transition-[border-color,background-color] duration-150 placeholder:text-white/25 hover:bg-[var(--studio-hover)] focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none" />
+              <textarea id="image-prompt" value={prompt} onChange={(event) => { setPrompt(event.target.value); setError(null); }} rows={5} placeholder="Describe the subject, setting, light, and composition…" className="w-full resize-y rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3.5 py-3 text-[14px] leading-relaxed text-white outline-none transition-[border-color,background-color] duration-150 placeholder:text-white/40 hover:bg-[var(--studio-hover)] focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none" />
             </div>
 
             <div className="space-y-2">
               <FieldLabel>Reference image</FieldLabel>
-              <input ref={fileInputRef} type="file" accept="image/*" className="sr-only" onChange={(event) => { chooseReference(event.target.files?.[0]); event.target.value = ''; }} />
+              <input ref={fileInputRef} type="file" accept="image/*" aria-label="Choose reference image" className="sr-only" onChange={(event) => { chooseReference(event.target.files?.[0]); event.target.value = ''; }} />
               {referenceUrl ? (
                 <div className="flex items-center gap-3 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] p-2.5">
                   <img src={referenceUrl} alt="Selected reference" className="h-14 w-14 rounded-lg object-cover" />
-                  <div className="min-w-0 flex-1"><p className="truncate text-[12.5px] font-medium text-white/85">{referenceFile?.name}</p><p className="mt-0.5 text-[11px] text-white/40">Local preview · not uploaded</p></div>
+                  <div className="min-w-0 flex-1"><p className="truncate text-[12.5px] font-medium text-white/85">{referenceFile?.name}</p><p className="mt-0.5 text-[11px] text-white/55">Local preview · not uploaded</p></div>
                   <button type="button" onClick={clearReference} aria-label="Remove reference image" className="flex h-9 w-9 items-center justify-center rounded-lg text-white/45 transition-[color,background-color] duration-150 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><X className="h-4 w-4" /></button>
                 </div>
               ) : (
@@ -122,17 +122,17 @@ export default function ImageCanvas({ onGenerate }: { onGenerate?: (draft: Image
 
             <div className="rounded-xl border border-[var(--studio-border-subtle)] bg-white/[0.015]">
               <button type="button" onClick={() => setAdvancedOpen((open) => !open)} aria-expanded={advancedOpen} aria-controls="image-advanced" className="flex h-11 w-full items-center justify-between px-3.5 text-[12.5px] font-medium text-white/65 transition-[color,background-color] duration-150 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><span className="flex items-center gap-2"><SlidersHorizontal className="h-4 w-4" />Advanced</span><ChevronDown className={cn('h-4 w-4 transition-transform duration-150 motion-reduce:transition-none', advancedOpen && 'rotate-180')} /></button>
-              <AnimatePresence initial={false}>{advancedOpen && <motion.div id="image-advanced" initial={reduceMotion ? false : { height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.18 }} className="overflow-hidden"><div className="grid grid-cols-1 gap-4 border-t border-[var(--studio-border-subtle)] p-3.5 sm:grid-cols-2"><div className="space-y-2 sm:col-span-2"><FieldLabel htmlFor="negative-prompt">Negative prompt</FieldLabel><input id="negative-prompt" value={negativePrompt} onChange={(event) => setNegativePrompt(event.target.value)} placeholder="Used only when the selected model supports it" className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white outline-none placeholder:text-white/25 focus-visible:ring-2 focus-visible:ring-white/40" /></div><div className="space-y-2"><FieldLabel htmlFor="image-seed">Seed</FieldLabel><input id="image-seed" inputMode="numeric" value={seed} onChange={(event) => setSeed(event.target.value.replace(/\D/g, ''))} placeholder="Random" className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white outline-none placeholder:text-white/25 focus-visible:ring-2 focus-visible:ring-white/40" /></div><p className="self-end pb-2 text-[11px] leading-relaxed text-white/35">Advanced values are passed only when a connected model supports them.</p></div></motion.div>}</AnimatePresence>
+              <AnimatePresence initial={false}>{advancedOpen && <motion.div id="image-advanced" initial={reduceMotion ? false : { height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.18 }} className="overflow-hidden"><div className="grid grid-cols-1 gap-3 border-t border-[var(--studio-border-subtle)] p-3 sm:grid-cols-2"><div className="space-y-1.5 sm:col-span-2"><FieldLabel htmlFor="negative-prompt">Negative prompt</FieldLabel><input id="negative-prompt" value={negativePrompt} onChange={(event) => setNegativePrompt(event.target.value)} placeholder="Used only when the selected model supports it" className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white outline-none placeholder:text-white/40 focus-visible:ring-2 focus-visible:ring-white/40" /></div><div className="space-y-1.5"><FieldLabel htmlFor="image-seed">Seed</FieldLabel><input id="image-seed" inputMode="numeric" value={seed} onChange={(event) => setSeed(event.target.value.replace(/\D/g, ''))} placeholder="Random" className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white outline-none placeholder:text-white/40 focus-visible:ring-2 focus-visible:ring-white/40" /></div><p className="self-end pb-1 text-[11px] leading-relaxed text-white/50">Advanced values apply when the selected model supports them.</p></div></motion.div>}</AnimatePresence>
             </div>
 
             {error && <p role="alert" className="text-[12px] text-red-300">{error}</p>}
             <PrimaryButton type="submit" className="w-full">Generate</PrimaryButton>
-            <p className="text-center text-[10.5px] text-white/35">Frontend preview only · no request is sent</p>
+            <p className="text-center text-[11px] text-white/55">Generation will be available soon</p>
           </form>
         </section>
 
         <section aria-label="Image results" className="flex min-h-[420px] items-center justify-center p-5 sm:p-8 lg:min-h-full">
-          {readyDraft ? <StateBlock icon={<ImageIcon className="h-6 w-6" />} title="Configuration ready" description={`${IMAGE_MODELS.find((model) => model.id === readyDraft.modelId)?.displayName ?? 'Image model'} · ${readyDraft.aspectRatio} · ${readyDraft.outputCount} output${readyDraft.outputCount === 1 ? '' : 's'}. Connect a generation API to render results here.`} /> : <StateBlock icon={<ImageIcon className="h-6 w-6" />} title="Your images will appear here" description="Describe an image and configure the request. No placeholder generations are shown." />}
+          {readyDraft ? <StateBlock icon={<ImageIcon className="h-6 w-6" />} title="Configuration ready" description={`${IMAGE_MODELS.find((model) => model.id === readyDraft.modelId)?.displayName ?? 'Image model'} · ${readyDraft.aspectRatio} · ${readyDraft.outputCount} output${readyDraft.outputCount === 1 ? '' : 's'}. Generation will be available soon.`} /> : <StateBlock icon={<ImageIcon className="h-6 w-6" />} title="Your images will appear here" description="Describe an image and configure the request." />}
         </section>
       </div>
     </div>

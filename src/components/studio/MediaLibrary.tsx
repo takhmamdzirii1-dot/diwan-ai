@@ -168,7 +168,7 @@ export default function MediaLibrary() {
         <div className="flex items-end justify-between gap-4">
           <div>
             <h2 className="text-[22px] font-semibold tracking-tight text-white">Library</h2>
-            <p className="text-[12.5px] text-white/40 mt-1">
+            <p className="text-[12.5px] text-white/55 mt-1">
               {visible.length} item{visible.length === 1 ? '' : 's'}
             </p>
           </div>
@@ -219,7 +219,7 @@ export default function MediaLibrary() {
               <FolderOpen className="h-6 w-6 text-white/15" />
             </div>
             <p className="mt-5 text-[14.5px] font-medium text-white/55">Your creations will appear here.</p>
-            <p className="mt-1.5 text-xs text-white/20 max-w-xs">
+            <p className="mt-1.5 text-xs text-white/50 max-w-xs">
               Saved images and videos will collect in this library.
             </p>
           </div>

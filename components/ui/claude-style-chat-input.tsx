@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Plus, ChevronDown, Square, X, FileText, Loader2, Check, Archive, Sparkles, Image as ImageIcon, Layers } from "lucide-react";
+import { Plus, ChevronDown, Square, X, FileText, Loader2, Check, Archive, Sparkles, Image as ImageIcon, Layers, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { LiquidMetalButton } from './liquid-metal-button';
 import { useTranslations } from 'next-intl';
 import type { StudioAvailability } from '@/src/config/studio-registry';
 
@@ -504,9 +503,6 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
     };
 
     const hasContent = !!(message.trim() || files.length > 0 || pastedContent.length > 0);
-    const [isFocused, setIsFocused] = useState(false);
-    const glowActive = isFocused || message.trim().length > 0 || isLoading;
-
     return (
         <div
             className={cn("relative isolate w-full", className)}
@@ -514,45 +510,8 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
             onDragLeave={onDragLeave}
             onDrop={onDrop}
         >
-                {/* ── Bottom breathing glow ── */}
-                <div
-                    aria-hidden="true"
-                    className={cn(
-                        "pointer-events-none absolute left-[10%] right-[10%] -bottom-[18px] h-[36px] z-0 transition-opacity duration-300",
-                        glowActive ? "vantra-glow-breathe opacity-100" : "opacity-0"
-                    )}
-                    style={{
-                        background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.16) 0%, rgba(220,225,235,0.08) 35%, transparent 72%)',
-                        filter: 'blur(18px)',
-                    }}
-                />
-
-                {/* ── Orbiting border highlight ── */}
-                <div
-                    aria-hidden="true"
-                    className={cn(
-                        "pointer-events-none absolute inset-[-1px] rounded-[inherit] p-[1px] z-0 transition-opacity duration-300 overflow-hidden",
-                        glowActive ? "opacity-100" : "opacity-0"
-                    )}
-                    style={{
-                        WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                        WebkitMaskComposite: 'xor',
-                        maskComposite: 'exclude',
-                    }}
-                >
-                    <div
-                        className="vantra-orbit-ring absolute inset-[-200%]"
-                        style={{
-                            background: 'conic-gradient(from 0deg, transparent 0deg 320deg, rgba(255,255,255,0.03) 327deg, rgba(255,255,255,1) 338deg, rgba(255,255,255,0.10) 347deg, transparent 355deg 360deg)',
-                        }}
-                    />
-                </div>
-
                 {/* ── Real composer surface ── */}
-                <div className={cn(
-                    "relative z-10 w-full border bg-[#0A0A0B] shadow-2xl backdrop-blur-xl transition-colors duration-300 rounded-2xl flex flex-col justify-between min-h-[104px] max-h-[360px] p-3",
-                    glowActive ? "border-white/[0.18]" : "border-white/5"
-                )}>
+                <div className="relative z-10 flex min-h-[104px] max-h-[360px] w-full flex-col justify-between rounded-2xl border border-white/10 bg-[#0A0A0B] p-3 shadow-2xl backdrop-blur-xl transition-[border-color] duration-150 focus-within:border-white/20 motion-reduce:transition-none">
 
                 {/* Attachments above input */}
                 {(files.length > 0 || pastedContent.length > 0) && (
@@ -582,8 +541,6 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                             onChange={(e) => setMessage(e.target.value)}
                             onPaste={handlePaste}
                             onKeyDown={handleKeyDown}
-                            onFocus={() => setIsFocused(true)}
-                            onBlur={() => setIsFocused(false)}
                             placeholder={placeholder}
                         dir="auto"
                         autoFocus={autoFocus}
@@ -733,11 +690,15 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                 <Square className="w-3.5 h-3.5 fill-current" />
                             </button>
                         ) : (
-                            <LiquidMetalButton
-                                viewMode="icon"
-                                label="Send"
+                            <button
+                                type="button"
                                 onClick={handleSend}
-                            />
+                                disabled={!hasContent}
+                                aria-label="Send"
+                                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white text-black transition-[background-color,transform] duration-150 hover:bg-white/90 active:scale-[0.97] disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-white/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-reduce:transition-none"
+                            >
+                                <ArrowUp className="h-[18px] w-[18px]" />
+                            </button>
                         )}
                     </div>
                 </div>
