@@ -171,7 +171,7 @@ export default function DashboardSidebar({
         aria-label={t('navigation')}
         aria-hidden={!isMobileOpen ? undefined : false}
         className={cn(
-          'flex flex-col fixed lg:static top-0 bottom-0 start-0 z-50 w-64 h-full bg-[var(--studio-surface)] border-e border-[var(--studio-border-subtle)] transition-transform duration-250 motion-reduce:transition-none',
+          'studio-sidebar flex flex-col fixed lg:static top-0 bottom-0 start-0 z-50 w-64 h-full bg-[var(--studio-surface)] border-e border-[var(--studio-border-subtle)] transition-[transform,width] duration-250 motion-reduce:transition-none',
           isMobileOpen ? 'translate-x-0' : '-translate-x-full rtl:translate-x-full lg:translate-x-0'
         )}
       >

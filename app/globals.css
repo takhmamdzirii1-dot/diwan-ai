@@ -44,6 +44,128 @@
   .studio-menu-enter { animation: none; }
 }
 
+/* Shared Image/Video creation shell: spacious on large screens, denser on short laptops. */
+@media (min-width: 1024px) and (max-width: 1519px) {
+  .studio-shell .studio-sidebar {
+    width: clamp(220px, 18vw, 240px);
+  }
+}
+
+@media (min-width: 1024px) and (min-height: 901px) and (max-height: 1080px) {
+  .studio-shell .studio-creation-controls {
+    padding: 24px;
+  }
+
+  .studio-shell .studio-creation-header {
+    margin-bottom: 20px;
+  }
+
+  .studio-shell .studio-creation-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .studio-shell .studio-creation-form > * {
+    margin-block: 0;
+  }
+
+  .studio-shell .studio-creation-prompt {
+    height: 130px;
+    min-height: 130px;
+  }
+
+  .studio-shell .studio-creation-reference {
+    min-height: 64px;
+  }
+
+  .studio-shell .studio-video-reference-model {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .studio-shell .studio-camera-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .studio-shell .studio-camera-grid > button {
+    padding-inline: 5px;
+    font-size: 10.5px;
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 900px) {
+  .studio-shell .studio-creation-workspace {
+    grid-template-columns: minmax(400px, 430px) minmax(0, 1fr);
+    gap: 24px;
+    padding: 16px 24px;
+  }
+
+  .studio-shell .studio-creation-controls {
+    padding: 20px;
+  }
+
+  .studio-shell .studio-creation-header {
+    margin-bottom: 16px;
+  }
+
+  .studio-shell .studio-creation-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .studio-shell .studio-creation-form > * {
+    margin-block: 0;
+  }
+
+  .studio-shell .studio-creation-prompt {
+    height: 112px;
+    min-height: 112px;
+  }
+
+  .studio-shell .studio-creation-reference {
+    min-height: 56px;
+  }
+
+  .studio-shell .studio-video-reference-model {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .studio-shell .studio-camera-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .studio-shell .studio-camera-grid > button {
+    min-height: 40px;
+    padding-inline: 4px;
+    font-size: 10px;
+  }
+
+  .studio-shell .studio-creation-preview {
+    top: 0;
+    padding: 24px;
+  }
+
+  .studio-shell .studio-creation-action {
+    margin-inline: -4px;
+    padding-inline: 4px;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1120px) {
+  .studio-shell .studio-creation-workspace {
+    grid-template-columns: minmax(390px, 410px) minmax(0, 1fr);
+    gap: 20px;
+    padding-inline: 20px;
+  }
+}
+
 .lab-bg::before {
   overflow: hidden;
   max-width: 100vw;

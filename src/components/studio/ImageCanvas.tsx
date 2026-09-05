@@ -6,6 +6,7 @@ import { ChevronDown, ImageIcon, Paperclip, SlidersHorizontal, X } from 'lucide-
 import { cn } from '@/lib/utils';
 import { IMAGE_MODELS, isModelSelectable } from '@/src/config/studio-registry';
 import { PrimaryButton, StateBlock } from './AppShell';
+import CreationWorkspace from './CreationWorkspace';
 
 const ASPECT_RATIOS = ['1:1', '4:3', '16:9', '9:16'] as const;
 const OUTPUT_COUNTS = [1, 2, 3, 4] as const;
@@ -82,19 +83,19 @@ export default function ImageCanvas({ onGenerate }: { onGenerate?: (draft: Image
   };
 
   return (
-    <div className="custom-scrollbar h-full overflow-y-auto bg-[var(--studio-bg)] text-white">
-      <div className="mx-auto grid min-h-full w-full max-w-[1440px] grid-cols-1 lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]">
-        <section className="border-b border-[var(--studio-border-subtle)] p-5 sm:p-6 lg:border-b-0 lg:border-e lg:p-8">
-          <div className="mb-7">
+    <CreationWorkspace
+      previewLabel="Image results"
+      controls={<>
+          <div className="studio-creation-header mb-7">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">Image Studio</p>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white">Create an image</h1>
             <p className="mt-2 max-w-sm text-[13px] leading-relaxed text-[var(--studio-text-secondary)]">Shape a visual, attach a reference, and prepare a generation request.</p>
           </div>
 
-          <form className="space-y-5" onSubmit={submitDraft} noValidate>
+          <form className="studio-creation-form space-y-5" onSubmit={submitDraft} noValidate>
             <div className="space-y-2">
               <FieldLabel htmlFor="image-prompt">Prompt</FieldLabel>
-              <textarea id="image-prompt" value={prompt} onChange={(event) => { setPrompt(event.target.value); setError(null); }} rows={5} placeholder="Describe the subject, setting, light, and composition…" className="w-full resize-y rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3.5 py-3 text-[14px] leading-relaxed text-white outline-none transition-[border-color,background-color] duration-150 placeholder:text-white/40 hover:bg-[var(--studio-hover)] focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none" />
+              <textarea id="image-prompt" value={prompt} onChange={(event) => { setPrompt(event.target.value); setError(null); }} rows={5} placeholder="Describe the subject, setting, light, and composition…" className="studio-creation-prompt w-full resize-y rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3.5 py-3 text-[14px] leading-relaxed text-white outline-none transition-[border-color,background-color] duration-150 placeholder:text-white/40 hover:bg-[var(--studio-hover)] focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none" />
             </div>
 
             <div className="space-y-2">
@@ -107,7 +108,7 @@ export default function ImageCanvas({ onGenerate }: { onGenerate?: (draft: Image
                   <button type="button" onClick={clearReference} aria-label="Remove reference image" className="flex h-9 w-9 items-center justify-center rounded-lg text-white/45 transition-[color,background-color] duration-150 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><X className="h-4 w-4" /></button>
                 </div>
               ) : (
-                <button type="button" onClick={() => fileInputRef.current?.click()} className="flex min-h-20 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/[0.02] text-[12.5px] font-medium text-white/55 transition-[color,background-color,border-color] duration-150 hover:border-white/25 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><Paperclip className="h-4 w-4" />Add reference image</button>
+                <button type="button" onClick={() => fileInputRef.current?.click()} className="studio-creation-reference flex min-h-20 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/[0.02] text-[12.5px] font-medium text-white/55 transition-[color,background-color,border-color] duration-150 hover:border-white/25 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><Paperclip className="h-4 w-4" />Add reference image</button>
               )}
             </div>
 
@@ -126,15 +127,12 @@ export default function ImageCanvas({ onGenerate }: { onGenerate?: (draft: Image
             </div>
 
             {error && <p role="alert" className="text-[12px] text-red-300">{error}</p>}
-            <PrimaryButton type="submit" className="w-full">Generate</PrimaryButton>
-            <p className="text-center text-[11px] text-white/55">Generation will be available soon</p>
+            <div className="studio-creation-action space-y-2"><PrimaryButton type="submit" className="w-full">Generate</PrimaryButton><p className="text-center text-[11px] text-white/55">Generation will be available soon</p></div>
           </form>
-        </section>
-
-        <section aria-label="Image results" className="flex min-h-[420px] items-center justify-center p-5 sm:p-8 lg:min-h-full">
+        </>}
+      preview={<div className="flex min-h-[300px] w-full items-center justify-center lg:aspect-video lg:min-h-0">
           {readyDraft ? <StateBlock icon={<ImageIcon className="h-6 w-6" />} title="Configuration ready" description={`${IMAGE_MODELS.find((model) => model.id === readyDraft.modelId)?.displayName ?? 'Image model'} · ${readyDraft.aspectRatio} · ${readyDraft.outputCount} output${readyDraft.outputCount === 1 ? '' : 's'}. Generation will be available soon.`} /> : <StateBlock icon={<ImageIcon className="h-6 w-6" />} title="Your images will appear here" description="Describe an image and configure the request." />}
-        </section>
-      </div>
-    </div>
+        </div>}
+    />
   );
 }
