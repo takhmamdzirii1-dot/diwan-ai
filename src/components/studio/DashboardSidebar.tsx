@@ -170,9 +170,9 @@ export default function DashboardSidebar({
         ref={asideRef}
         aria-label={t('navigation')}
         aria-hidden={!isMobileOpen ? undefined : false}
+        style={{ insetInlineStart: isMobileOpen ? 0 : '-100%' }}
         className={cn(
-          'studio-sidebar flex flex-col fixed lg:static top-0 bottom-0 start-0 z-50 w-64 h-full bg-[var(--studio-surface)] border-e border-[var(--studio-border-subtle)] transition-[transform,width] duration-250 motion-reduce:transition-none',
-          isMobileOpen ? 'translate-x-0' : '-translate-x-full rtl:translate-x-full lg:translate-x-0'
+          'studio-sidebar flex flex-col fixed lg:static top-0 bottom-0 z-50 w-64 h-full bg-[var(--studio-surface)] border-e border-[var(--studio-border-subtle)] transition-[inset-inline-start,width] duration-200 motion-reduce:transition-none'
         )}
       >
         {/* Brand — matches 56px top bar height */}

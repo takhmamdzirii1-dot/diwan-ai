@@ -49,6 +49,7 @@ const MAGIC_SKILLS = [
 export default function StudioDashboard() {
   const reduceMotion = useReducedMotion();
   const t = useTranslations('studio.chat');
+  const sidebarT = useTranslations('studio.sidebar');
   const { user, refreshBalance } = useUser();
   const { openAuthModal } = useModal();
 
@@ -347,9 +348,9 @@ export default function StudioDashboard() {
         <button
           type="button"
           onClick={() => setIsMobileNavOpen(true)}
-          aria-label="Open navigation"
+          aria-label={sidebarT('openNavigation')}
           aria-expanded={isMobileNavOpen}
-          className="lg:hidden absolute top-3.5 left-4 z-40 p-2 rounded-xl bg-[#111216]/80 border border-white/10 text-white/70 hover:text-white backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg"
+          className="lg:hidden absolute top-3.5 start-4 z-40 p-2 rounded-xl bg-[#111216]/80 border border-white/10 text-white/70 hover:text-white backdrop-blur-md transition-[color,background-color,transform] duration-150 active:scale-95 cursor-pointer shadow-lg motion-reduce:transition-none"
         >
           <Menu className="h-4 w-4" />
         </button>

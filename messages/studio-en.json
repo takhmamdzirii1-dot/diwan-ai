@@ -110,6 +110,9 @@
         "summarizeDoc": { "title": "Summarize a document", "description": "Turn a long document into a clear, useful brief.", "prompt": "Help me summarize a document." }
       }
     },
+    "image": {
+      "eyebrow": "Image Studio", "demoMode": "Demo mode", "title": "Create an image", "description": "Test the creation flow with a bundled local sample. No generation request or credits are used.", "resultsLabel": "Image demo results", "prompt": "Prompt", "promptPlaceholder": "Describe the subject, setting, light, and composition…", "reference": "Reference image", "chooseReference": "Choose reference image", "selectedReference": "Selected reference", "removeReference": "Remove reference image", "localPreview": "Local preview · not uploaded", "addReference": "Add reference image", "model": "Model", "beta": "Beta", "aspectRatio": "Aspect ratio", "outputs": "Outputs", "advanced": "Advanced", "negativePrompt": "Negative prompt", "negativePlaceholder": "Used only when the selected model supports it", "seed": "Seed", "random": "Random", "advancedNote": "Advanced values apply only when supported.", "generateDemo": "Run demo", "generating": "Preparing demo · {progress}%", "demoNote": "Local demo only · no request or credits", "preparing": "Preparing local demo", "progress": "{progress}% complete", "configurationReady": "Configuration ready", "configurationDescription": "{ratio} · {count} output(s)", "emptyTitle": "Your demo preview will appear here", "emptyDescription": "Describe an image and run the local demo.", "demoAssetAlt": "Bundled VANTRA image sample", "demoAssetDisclosure": "Bundled sample asset · not AI-generated in this session", "errors": { "reference": "Choose an image file for the reference.", "prompt": "Describe the image you want to test.", "model": "Choose an available image model.", "demo": "The local demo could not be prepared." }
+    },
     "video": {
       "referenceOptional": "Reference · Optional",
       "referenceRequired": "Reference · Required",
@@ -119,8 +122,9 @@
       "localPreview": "Local preview · not uploaded",
       "addReference": "Add reference image",
       "model": "Model",
-      "noModels": "No connected video models"
+      "noModels": "No connected video models", "eyebrow": "Video Studio", "demoMode": "Demo mode", "title": "Direct the scene", "description": "Test the video workflow with a bundled local sample. No generation request or credits are used.", "previewLabel": "Video demo preview", "modeLabel": "Video generation mode", "textToVideo": "Text to Video", "imageToVideo": "Image to Video", "prompt": "Scene prompt", "promptPlaceholder": "Describe the action, environment, lighting, and shot…", "duration": "Duration", "aspectRatio": "Aspect ratio", "durations": { "five": "5 seconds", "ten": "10 seconds" }, "demoModel": "Local demo preview", "generateDemo": "Run demo", "generating": "Preparing demo · {progress}%", "demoNote": "Local demo only · no request or credits", "preparing": "Preparing local demo", "progress": "{progress}% complete", "emptyTitle": "Demo preview ready for testing", "emptyDescription": "Configure a scene and run the local demo.", "demoAssetAlt": "Bundled VANTRA video sample frame", "demoAssetDisclosure": "Bundled sample frame · not AI-generated in this session", "errors": { "reference": "Choose an image file for the video reference.", "prompt": "Describe the scene you want to test.", "referenceRequired": "Add a reference image for Image to Video.", "demo": "The local demo could not be prepared." }
     },
+    "videoControls": { "cameraMotion": "Camera motion", "camera": { "static": "Static", "pushin": "Push in", "pullout": "Pull out", "panleft": "Pan left", "panright": "Pan right", "orbit": "Orbit" }, "advanced": "Advanced", "negativePrompt": "Negative prompt", "negativePlaceholder": "Used only when a connected model supports it" },
     "library": {
       "eyebrow": "Workspace",
       "title": "Library",
@@ -137,7 +141,7 @@
       "generatedImage": "Generated image", "untitled": "Untitled creation", "image": "Image",
       "openPreview": "Open preview", "preview": "Creation preview", "closePreview": "Close preview",
       "select": "Select creation", "download": "Download", "delete": "Delete", "cancel": "Cancel",
-      "deleteSelected": "Delete selected ({count})", "confirmDelete": "Delete {count} selected?"
+      "deleteSelected": "Delete selected ({count})", "confirmDelete": "Delete {count} selected?", "demoMode": "Demo mode", "demoAsset": "Local sample", "demoAssetAlt": "Bundled VANTRA sample", "demoDisclosure": "Bundled local sample · not AI-generated in this session", "video": "Video", "undo": "Undo"
     }
   },
   "auth": {
