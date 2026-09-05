@@ -670,20 +670,22 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                             <button
                                 type="button"
                                 onClick={onStop}
-                                className="inline-flex items-center justify-center h-8 w-8 shrink-0 rounded-lg bg-white/10 border border-white/15 text-white/80 hover:bg-white/20 active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                                title="Stop generating"
+                                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10 p-0 text-white/85 transition-[color,background-color,border-color,transform] duration-160 ease-out hover:border-white/25 hover:bg-white/15 hover:text-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0B] motion-reduce:transition-none"
                                 aria-label="Stop generating"
                             >
-                                <Square className="w-3.5 h-3.5 fill-current" />
+                                <Square aria-hidden="true" className="h-3.5 w-3.5 fill-current" />
                             </button>
                         ) : (
                             <button
                                 type="button"
                                 onClick={handleSend}
                                 disabled={!hasContent}
-                                aria-label="Send"
-                                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white text-black transition-[background-color,transform] duration-150 hover:bg-white/90 active:scale-[0.97] disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-white/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-reduce:transition-none"
+                                title={hasContent ? "Send message" : "Enter a message to send"}
+                                aria-label="Send message"
+                                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white bg-white p-0 text-black transition-[color,background-color,border-color,transform] duration-160 ease-out hover:scale-[1.03] hover:bg-white/90 active:scale-95 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-white/35 disabled:hover:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0B] motion-reduce:transition-none"
                             >
-                                <ArrowUp className="h-[18px] w-[18px]" />
+                                <ArrowUp aria-hidden="true" className="h-[18px] w-[18px]" strokeWidth={2.25} />
                             </button>
                         )}
                     </div>
