@@ -109,11 +109,10 @@
     "localPayment": "Paiement local disponible",
     "monthlyCadence": "/ mois",
     "tiers": [
-      { "name": "Gratuit", "blurb": "Découvrez l’espace IA unifié de VANTRA.", "cta": "Commencer avec VANTRA" },
-      { "name": "Pro", "blurb": "Pour créer régulièrement avec le Chat, l’Image et la Vidéo.", "cta": "Choisir Pro" },
-      { "name": "Max", "blurb": "Pour les flux créatifs les plus exigeants.", "cta": "Choisir Max" }
-    ],
-    "benefits": ["Chat, Image et Vidéo dans un seul espace", "Crédits VANTRA unifiés pour tous les modes", "Plusieurs modèles d’IA compatibles sur une plateforme"]
+      { "name": "Gratuit", "blurb": "Essayez VANTRA", "cta": "Commencer avec VANTRA", "features": ["Chat, Image et Vidéo", "Modèles standard", "Crédits mensuels de démarrage", "Limites de génération standard", "1 génération active"] },
+      { "name": "Pro", "blurb": "Pour les créateurs réguliers", "cta": "Choisir Pro", "features": ["Chat, Image et Vidéo", "Accès aux modèles avancés", "Plus de crédits mensuels", "Limites de génération supérieures", "Générations prioritaires"] },
+      { "name": "Max", "blurb": "Pour un usage intensif", "cta": "Choisir Max", "features": ["Chat, Image et Vidéo", "Accès aux modèles premium", "Le plus de crédits mensuels", "Limites de génération maximales", "Priorité de génération maximale"] }
+    ]
   },
   "faq": {
     "label": "FAQ",

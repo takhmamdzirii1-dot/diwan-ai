@@ -112,11 +112,10 @@
     "localPayment": "Local payment available",
     "monthlyCadence": "/ month",
     "tiers": [
-      { "name": "Free", "blurb": "Explore VANTRA’s unified AI workspace.", "cta": "Start using VANTRA" },
-      { "name": "Pro", "blurb": "For regular work across Chat, Image and Video.", "cta": "Choose Pro" },
-      { "name": "Max", "blurb": "For more demanding creative workflows.", "cta": "Choose Max" }
-    ],
-    "benefits": ["Chat, Image and Video in one workspace", "Unified Credits across creation modes", "Multiple supported AI models in one platform"]
+      { "name": "Free", "blurb": "Try VANTRA", "cta": "Start using VANTRA", "features": ["Chat, Image & Video", "Standard models", "Starter monthly credits", "Standard generation limits", "1 active generation"] },
+      { "name": "Pro", "blurb": "For regular creators", "cta": "Choose Pro", "features": ["Chat, Image & Video", "Advanced model access", "More monthly credits", "Higher generation limits", "Priority generations"] },
+      { "name": "Max", "blurb": "For heavy usage", "cta": "Choose Max", "features": ["Chat, Image & Video", "Premium model access", "Highest monthly credits", "Highest generation limits", "Top generation priority"] }
+    ]
   },
   "faq": {
     "label": "FAQ",
