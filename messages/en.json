@@ -133,12 +133,17 @@
     ]
   },
   "finalCta": {
-    "title": "Create across every medium.",
-    "subtitle": "Bring Chat, Image and Video together in one workspace with Unified Credits.",
-    "button": "Start using VANTRA"
+    "eyebrow": "READY WHEN YOU ARE",
+    "title": "One workspace. Every medium.",
+    "subtitle": "Chat, create images, and generate video with one shared VANTRA balance.",
+    "button": "Start using VANTRA →",
+    "microcopy": "Chat · Image · Video · Local payment in DA"
   },
   "footer": {
     "aria": "Footer navigation",
+    "models": "Models",
+    "pricing": "Pricing",
+    "faq": "FAQ",
     "terms": "Terms",
     "privacy": "Privacy",
     "twitter": "X / Twitter",

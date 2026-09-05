@@ -129,8 +129,8 @@
       { "question": "Que puis-je faire avec le contenu généré ?", "answer": "Vous pouvez enregistrer, retrouver, exporter ou continuer à travailler avec le contenu généré dans VANTRA." }
     ]
   },
-  "finalCta": { "title": "Créez dans tous les formats.", "subtitle": "Réunissez le Chat, l’Image et la Vidéo dans un seul espace avec des Crédits VANTRA unifiés.", "button": "Commencer avec VANTRA" },
-  "footer": { "aria": "Navigation de pied de page", "terms": "Conditions", "privacy": "Confidentialité", "twitter": "X / Twitter", "status": "Statut" },
+  "finalCta": { "eyebrow": "QUAND VOUS VOULEZ", "title": "Un espace. Tous les formats.", "subtitle": "Discutez, créez des images et générez des vidéos avec un seul solde VANTRA partagé.", "button": "Commencer avec VANTRA →", "microcopy": "Chat · Image · Vidéo · Paiement local en DA" },
+  "footer": { "aria": "Navigation de pied de page", "models": "Modèles", "pricing": "Tarifs", "faq": "FAQ", "terms": "Conditions", "privacy": "Confidentialité", "twitter": "X / Twitter", "status": "Statut" },
   "auth": {
     "signInTitle": "Connectez-vous à VANTRA",
     "createTitle": "Créez votre compte VANTRA",
