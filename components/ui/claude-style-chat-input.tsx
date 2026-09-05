@@ -414,21 +414,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
             };
         });
 
-        setFiles(prev => [...prev, ...newFiles]);
-
-        setMessage(prev => {
-            if (prev) return prev;
-            if (newFiles.length === 1) {
-                return newFiles[0].type.startsWith('image/') ? "Analyzed image..." : "Analyzed document...";
-            }
-            return `Analyzed ${newFiles.length} files...`;
-        });
-
-        newFiles.forEach(f => {
-            setTimeout(() => {
-                setFiles(prev => prev.map(p => p.id === f.id ? { ...p, uploadStatus: 'complete' } : p));
-            }, 700 + Math.random() * 800);
-        });
+        setFiles(prev => [...prev, ...newFiles.map((file) => ({ ...file, uploadStatus: 'complete' as const }))]);
     }, []);
 
     const onDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
@@ -462,7 +448,6 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                 id: Math.random().toString(36).slice(2, 11),
                 content: text
             }]);
-            if (!message) setMessage("Analyzed pasted text...");
         }
     };
 
@@ -544,7 +529,8 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                             placeholder={placeholder}
                         dir="auto"
                         autoFocus={autoFocus}
-                        className="w-full bg-transparent border-0 outline-none text-white text-[15px] sm:text-[16px] placeholder:text-white/30 resize-none overflow-y-auto custom-scrollbar-thin leading-relaxed block antialiased px-3 py-1.5"
+                        aria-label={placeholder}
+                        className="block w-full resize-none overflow-y-auto border-0 bg-transparent px-3 py-1.5 text-[15px] leading-relaxed text-white outline-none placeholder:text-white/40 focus-visible:ring-0 sm:text-[16px] custom-scrollbar-thin"
                         rows={1}
                         style={{ minHeight: '2.4em', maxHeight: '240px' }}
                     />
@@ -560,7 +546,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                 type="button"
                                 onClick={() => setMultimodalMenuOpen(!multimodalMenuOpen)}
                                 className={cn(
-                                    "inline-flex items-center justify-center shrink-0 transition-colors duration-200 h-8 w-8 rounded-lg active:scale-95 cursor-pointer",
+                                    "inline-flex items-center justify-center shrink-0 transition-colors duration-150 h-9 w-9 rounded-lg active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none",
                                     multimodalMenuOpen
                                         ? "bg-white/10 text-white"
                                         : "text-white/40 hover:text-white hover:bg-white/[0.07]"

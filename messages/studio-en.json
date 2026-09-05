@@ -91,6 +91,53 @@
       "connectionSuccess": "Pollinations connected. Your scoped key is active for 7 days.",
       "connectionFailed": "Connection failed. Try again.",
       "disconnectFailed": "Could not disconnect."
+    },
+    "chat": {
+      "emptyTitle": "What will you create today?",
+      "emptyPlaceholder": "Ask anything or choose a starting point…",
+      "placeholder": "Message VANTRA…",
+      "thinking": "Thinking…",
+      "errorFallback": "The model is unavailable right now. Try again in a moment.",
+      "retry": "Retry",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyMessage": "Copy response",
+      "retryResponse": "Retry response",
+      "starters": {
+        "writeCode": { "title": "Write code", "description": "Draft, explain, or improve code with clear constraints.", "prompt": "Help me write or improve some code." },
+        "analyzeImage": { "title": "Analyze an image", "description": "Review a visual, extract details, or explain what you see.", "prompt": "Help me analyze an image." },
+        "planVideo": { "title": "Plan a video", "description": "Shape a scene, storyboard, or production-ready concept.", "prompt": "Help me plan a video concept." },
+        "summarizeDoc": { "title": "Summarize a document", "description": "Turn a long document into a clear, useful brief.", "prompt": "Help me summarize a document." }
+      }
+    },
+    "video": {
+      "referenceOptional": "Reference · Optional",
+      "referenceRequired": "Reference · Required",
+      "chooseReference": "Choose video reference image",
+      "selectedReference": "Selected video reference",
+      "removeReference": "Remove video reference",
+      "localPreview": "Local preview · not uploaded",
+      "addReference": "Add reference image",
+      "model": "Model",
+      "noModels": "No connected video models"
+    },
+    "library": {
+      "eyebrow": "Workspace",
+      "title": "Library",
+      "count": "{count, plural, one {# item} other {# items}}",
+      "searchLabel": "Search library",
+      "searchPlaceholder": "Search prompts or models…",
+      "filterLabel": "Filter library",
+      "all": "All", "images": "Images", "videos": "Videos",
+      "sortLabel": "Sort library", "newest": "Newest", "oldest": "Oldest",
+      "viewLabel": "Library view", "grid": "Grid view", "list": "List view",
+      "loading": "Loading library", "errorTitle": "Library unavailable", "errorDescription": "Saved creations could not be read on this device.", "retry": "Retry",
+      "emptyTitle": "Your creations will appear here", "emptyDescription": "Images and videos you save will collect in this library.",
+      "noVideos": "No saved videos yet", "noResults": "No matching creations", "noResultsDescription": "Try a different search or filter.",
+      "generatedImage": "Generated image", "untitled": "Untitled creation", "image": "Image",
+      "openPreview": "Open preview", "preview": "Creation preview", "closePreview": "Close preview",
+      "select": "Select creation", "download": "Download", "delete": "Delete", "cancel": "Cancel",
+      "deleteSelected": "Delete selected ({count})", "confirmDelete": "Delete {count} selected?"
     }
   },
   "auth": {

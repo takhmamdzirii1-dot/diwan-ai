@@ -1,13 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-import { Copy, Check, Terminal, Share, RefreshCw, Sparkles, Image as ImageIcon, FileImage, FileText } from 'lucide-react';
+import { Copy, Check, Terminal, RefreshCw, Sparkles, FileImage, FileText } from 'lucide-react';
 import type { Message } from '@ai-sdk/react';
 import { useSmoothText } from '../../hooks/useSmoothText';
 import { detectDir } from '../../lib/direction';
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
 export interface MessageBubbleProps {
   message: Message;
@@ -70,7 +71,8 @@ function AttachmentThumbnail({ attachment }: { attachment: { name: string; url?:
 export default function MessageBubble({ message, isLatest, isStreaming, isThinking, onRegenerate }: MessageBubbleProps) {
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
   const [copiedMessage, setCopiedMessage] = useState(false);
-  const [shared, setShared] = useState(false);
+  const reduceMotion = useReducedMotion();
+  const t = useTranslations('studio.chat');
   const codeBlockCounter = useRef(0);
   codeBlockCounter.current = 0;
 
@@ -129,23 +131,11 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
     setTimeout(() => setCopiedMessage(false), 2000);
   };
 
-  const handleShare = async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: 'VANTRA AI', text: message.content });
-      } else {
-        await navigator.clipboard.writeText(message.content);
-        setShared(true);
-        setTimeout(() => setShared(false), 2000);
-      }
-    } catch {}
-  };
-
   return (
     <motion.div
-      initial={{ opacity: 0, y: 15 }}
+      initial={reduceMotion ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
+      transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.32, 0.72, 0, 1] }}
       className="group relative flex flex-col gap-2 w-full min-w-0"
     >
       {/* Header meta - AI only (Claude style with RTL support) */}
@@ -170,7 +160,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
       <div className={`w-full flex ${isUser ? 'justify-end' : 'justify-start'}`}>
         {isUser ? (
           <div
-            className="w-fit flex flex-col gap-3 ml-auto self-end bg-white/[0.05] border border-white/[0.02] text-white/90 px-5 py-3 rounded-3xl rounded-br-sm shadow-sm backdrop-blur-sm max-w-[80%]"
+            className="ms-auto flex w-fit max-w-[88%] self-end flex-col gap-3 rounded-2xl rounded-ee-sm border border-white/[0.07] bg-white/[0.055] px-4 py-3 text-white/90 shadow-sm sm:max-w-[80%] sm:px-5"
             dir={isRTL ? 'rtl' : 'ltr'}
           >
             {/* Visual Attachment Rendering */}
@@ -212,7 +202,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
             {/* Thinking state indicator */}
             {isThinking && (
               <div className="flex items-center gap-2 text-[13.5px] text-white/60 animate-pulse mb-3" role="status">
-                <span className="font-sans antialiased text-white/70 font-normal">Thinking…</span>
+                <span className="font-sans antialiased text-white/70 font-normal">{t('thinking')}</span>
               </div>
             )}
 
@@ -334,12 +324,12 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                             {copiedCodeId === blockId ? (
                               <>
                                 <Check className="h-3 w-3 text-[#FFFFFF]" />
-                                <span className="text-[#FFFFFF]">Copied</span>
+                                <span className="text-[#FFFFFF]">{t('copied')}</span>
                               </>
                             ) : (
                               <>
                                 <Copy className="h-3 w-3" />
-                                <span>Copy</span>
+                                <span>{t('copy')}</span>
                               </>
                             )}
                           </button>
@@ -374,8 +364,9 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                 <button
                   type="button"
                   onClick={handleCopyMessage}
-                  title="Copy message"
-                  className="size-8 flex items-center justify-center rounded-md hover:bg-white/[0.06] text-white/60 hover:text-white transition-colors cursor-pointer active:scale-90"
+                  title={t('copyMessage')}
+                  aria-label={t('copyMessage')}
+                  className="flex size-9 cursor-pointer items-center justify-center rounded-lg text-white/60 transition-colors duration-150 hover:bg-white/[0.06] hover:text-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"
                 >
                   {copiedMessage ? <Check className="h-3.5 w-3.5 text-white" /> : <Copy className="h-3.5 w-3.5" />}
                 </button>
@@ -383,20 +374,13 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                   <button
                     type="button"
                     onClick={onRegenerate}
-                    title="Regenerate response"
-                    className="size-8 flex items-center justify-center rounded-md hover:bg-white/[0.06] text-white/60 hover:text-white transition-colors cursor-pointer active:scale-90"
+                    title={t('retryResponse')}
+                    aria-label={t('retryResponse')}
+                    className="flex size-9 cursor-pointer items-center justify-center rounded-lg text-white/60 transition-colors duration-150 hover:bg-white/[0.06] hover:text-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"
                   >
                     <RefreshCw className="h-3.5 w-3.5" />
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={handleShare}
-                  title="Share"
-                  className="size-8 flex items-center justify-center rounded-md hover:bg-white/[0.06] text-white/60 hover:text-white transition-colors cursor-pointer active:scale-90"
-                >
-                  {shared ? <Check className="h-3.5 w-3.5 text-white" /> : <Share className="h-3.5 w-3.5" />}
-                </button>
               </div>
             )}
           </div>

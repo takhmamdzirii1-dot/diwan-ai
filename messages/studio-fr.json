@@ -1,0 +1,21 @@
+{
+  "studio": {
+    "sidebar": {
+      "navigation": "Navigation du Studio", "openNavigation": "Ouvrir la navigation", "closeNavigation": "Fermer la navigation", "newChat": "Nouvelle discussion", "create": "Créer", "workspace": "Espace de travail", "system": "Système", "chat": "Chat", "image": "Image", "video": "Vidéo", "library": "Bibliothèque", "settings": "Paramètres", "recentChats": "Discussions récentes", "recentGenerations": "Images récentes", "recentRenders": "Vidéos récentes", "recentCreations": "Créations récentes", "noRecentChats": "Aucune discussion récente", "noRecentGenerations": "Aucune image récente", "noRecentRenders": "Aucune vidéo récente", "noRecentCreations": "Aucune création récente", "deleteChat": "Supprimer la discussion : {title}", "unifiedCredits": "Crédits VANTRA unifiés", "balance": "Solde", "guest": "Invité", "freePlan": "Formule gratuite", "profileMenu": "Menu du profil", "signIn": "Se connecter", "signOut": "Se déconnecter"
+    },
+    "chat": {
+      "emptyTitle": "Qu’allez-vous créer aujourd’hui ?", "emptyPlaceholder": "Posez une question ou choisissez un point de départ…", "placeholder": "Écrivez à VANTRA…", "thinking": "Réflexion…", "errorFallback": "Le modèle est momentanément indisponible. Réessayez dans un instant.", "retry": "Réessayer", "copy": "Copier", "copied": "Copié", "copyMessage": "Copier la réponse", "retryResponse": "Relancer la réponse",
+      "starters": {
+        "writeCode": { "title": "Écrire du code", "description": "Rédigez, expliquez ou améliorez du code avec des contraintes claires.", "prompt": "Aidez-moi à écrire ou améliorer du code." },
+        "analyzeImage": { "title": "Analyser une image", "description": "Examinez un visuel, relevez ses détails ou expliquez son contenu.", "prompt": "Aidez-moi à analyser une image." },
+        "planVideo": { "title": "Préparer une vidéo", "description": "Structurez une scène, un storyboard ou un concept prêt à produire.", "prompt": "Aidez-moi à préparer un concept vidéo." },
+        "summarizeDoc": { "title": "Résumer un document", "description": "Transformez un long document en synthèse claire et utile.", "prompt": "Aidez-moi à résumer un document." }
+      }
+    },
+    "video": { "referenceOptional": "Référence · Facultative", "referenceRequired": "Référence · Obligatoire", "chooseReference": "Choisir une image de référence", "selectedReference": "Image de référence sélectionnée", "removeReference": "Retirer l’image de référence", "localPreview": "Aperçu local · non envoyé", "addReference": "Ajouter une référence", "model": "Modèle", "noModels": "Aucun modèle vidéo connecté" },
+    "library": {
+      "eyebrow": "Espace de travail", "title": "Bibliothèque", "count": "{count, plural, one {# élément} other {# éléments}}", "searchLabel": "Rechercher dans la bibliothèque", "searchPlaceholder": "Rechercher un prompt ou un modèle…", "filterLabel": "Filtrer la bibliothèque", "all": "Tout", "images": "Images", "videos": "Vidéos", "sortLabel": "Trier la bibliothèque", "newest": "Plus récents", "oldest": "Plus anciens", "viewLabel": "Affichage de la bibliothèque", "grid": "Vue en grille", "list": "Vue en liste", "loading": "Chargement de la bibliothèque", "errorTitle": "Bibliothèque indisponible", "errorDescription": "Les créations enregistrées sur cet appareil sont illisibles.", "retry": "Réessayer", "emptyTitle": "Vos créations apparaîtront ici", "emptyDescription": "Les images et vidéos enregistrées seront regroupées dans cette bibliothèque.", "noVideos": "Aucune vidéo enregistrée", "noResults": "Aucune création correspondante", "noResultsDescription": "Essayez une autre recherche ou un autre filtre.", "generatedImage": "Image générée", "untitled": "Création sans titre", "image": "Image", "openPreview": "Ouvrir l’aperçu", "preview": "Aperçu de la création", "closePreview": "Fermer l’aperçu", "select": "Sélectionner la création", "download": "Télécharger", "delete": "Supprimer", "cancel": "Annuler", "deleteSelected": "Supprimer la sélection ({count})", "confirmDelete": "Supprimer les {count} éléments ?"
+    },
+    "localizationReviewRequired": ["image studio", "remaining video form copy", "settings", "composer attachment menu", "attachment fallbacks"]
+  }
+}

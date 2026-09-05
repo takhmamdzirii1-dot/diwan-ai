@@ -81,7 +81,7 @@
 
   .studio-shell .studio-video-reference-model {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 42fr) minmax(0, 58fr);
     gap: 16px;
   }
 
@@ -132,7 +132,7 @@
 
   .studio-shell .studio-video-reference-model {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 42fr) minmax(0, 58fr);
     gap: 12px;
   }
 
@@ -155,6 +155,32 @@
   .studio-shell .studio-creation-action {
     margin-inline: -4px;
     padding-inline: 4px;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .studio-shell .studio-video-reference-model {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.studio-shell :is(button, input, select, textarea, [role="button"], [role="tab"]):focus-visible {
+  outline: none;
+}
+
+.studio-shell [data-studio-control] {
+  transition-property: color, background-color, border-color, opacity, transform;
+  transition-duration: 160ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-shell *,
+  .studio-overlay-root * {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

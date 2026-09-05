@@ -1,253 +1,91 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Copy, Download, FolderOpen, Play, Trash2 } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { Check, Download, Grid2X2, Image as ImageIcon, List, Search, Trash2, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
-import {
-  IMAGE_LIBRARY_KEY,
-  readImageLibrary,
-  type GeneratedImage,
-} from './ImageResultCard';
+import { IMAGE_LIBRARY_KEY, type GeneratedImage } from './ImageResultCard';
+import { GhostButton, StateBlock } from './AppShell';
 
-type MediaKind = 'image' | 'video';
 type FilterKey = 'all' | 'images' | 'videos';
-
-interface MediaItem {
-  id: string;
-  kind: MediaKind;
-  url: string;
-  poster?: string;
-  prompt?: string;
-  model?: string;
-  ratio?: string;
-  /** seconds — videos only */
-  duration?: number;
-  createdAt?: number;
-}
-
-const FILTERS: { key: FilterKey; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'images', label: 'Images' },
-  { key: 'videos', label: 'Videos' },
-];
-
-function formatDuration(seconds: number) {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
-
-/* ── Media card ─────────────────────────────────────────── */
-
-function MediaCard({ item }: { item: MediaItem }) {
-  const [copied, setCopied] = useState(false);
-  const src = item.kind === 'video' ? item.poster || '' : item.url;
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(item.url === '#' ? item.poster || '' : item.url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* clipboard blocked */
-    }
-  };
-
-  const handleDownload = () => {
-    const target = item.url === '#' ? item.poster : item.url;
-    if (target) window.open(target, '_blank', 'noopener,noreferrer');
-  };
-
-  return (
-    <div className="group relative overflow-hidden rounded-xl border border-white/10 bg-[#1A1C20]">
-      <img
-        src={src}
-        alt={item.prompt || 'Generated media'}
-        loading="lazy"
-        className="w-full h-auto block object-cover"
-      />
-
-      {/* Bottom gradient overlay on hover */}
-      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/85 via-black/35 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-      {/* Video affordance — always visible so kind reads instantly */}
-      {item.kind === 'video' && (
-        <>
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="h-12 w-12 rounded-full border border-white/25 bg-black/40 backdrop-blur-md flex items-center justify-center">
-              <Play className="h-5 w-5 text-white/90 ms-0.5" fill="currentColor" />
-            </div>
-          </div>
-          {typeof item.duration === 'number' && (
-            <span className="absolute bottom-2.5 end-2.5 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-md border border-white/10 text-[10.5px] font-mono text-white/80">
-              {formatDuration(item.duration)}
-            </span>
-          )}
-        </>
-      )}
-
-      {/* Hover action bar */}
-      <div className="absolute top-2.5 end-2.5 flex items-center gap-1 p-1 rounded-xl border border-white/10 bg-black/60 backdrop-blur-xl opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
-        <button
-          type="button"
-          onClick={handleDownload}
-          aria-label="Download"
-          title="Download"
-          className="h-8 w-8 flex items-center justify-center rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer active:scale-95"
-        >
-          <Download className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={handleCopy}
-          aria-label="Copy link"
-          title={copied ? 'Copied' : 'Copy link'}
-          className="h-8 w-8 flex items-center justify-center rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer active:scale-95"
-        >
-          {copied ? <Check className="h-4 w-4 text-white" /> : <Copy className="h-4 w-4" />}
-        </button>
-      </div>
-
-      {/* Meta revealed with the gradient */}
-      <div className="absolute inset-x-0 bottom-0 p-3.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-        {item.prompt && (
-          <p className="text-[12px] text-white/90 line-clamp-2 leading-relaxed">{item.prompt}</p>
-        )}
-        {item.model && (
-          <p className="mt-1 text-[10px] font-mono uppercase tracking-[0.14em] text-white/45">
-            {item.model}
-            {item.ratio ? ` · ${item.ratio}` : ''}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* ── Library ────────────────────────────────────────────── */
+type SortKey = 'newest' | 'oldest';
+type ViewKey = 'grid' | 'list';
+type MediaItem = GeneratedImage & { id: string; kind: 'image' };
 
 export default function MediaLibrary() {
-  const [filter, setFilter] = useState<FilterKey>('all');
+  const t = useTranslations('studio.library');
+  const reduceMotion = useReducedMotion();
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [saved, setSaved] = useState<GeneratedImage[]>([]);
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [filter, setFilter] = useState<FilterKey>('all');
+  const [sort, setSort] = useState<SortKey>('newest');
+  const [view, setView] = useState<ViewKey>('grid');
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [preview, setPreview] = useState<MediaItem | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
-    setSaved(readImageLibrary());
+    try {
+      const parsed = JSON.parse(localStorage.getItem(IMAGE_LIBRARY_KEY) || '[]');
+      if (!Array.isArray(parsed)) throw new Error('Invalid library data');
+      setSaved(parsed);
+      setStatus('ready');
+    } catch { setStatus('error'); }
   }, []);
 
-  const items: MediaItem[] = useMemo(() => {
-    const real: MediaItem[] = saved.map((img, i) => ({
-      id: `saved-${i}-${img.url}`,
-      kind: 'image',
-      url: img.url,
-      prompt: img.prompt,
-      model: img.model,
-      ratio: img.ratio,
-      createdAt: img.createdAt,
-    }));
-    return real;
-  }, [saved]);
+  useEffect(() => {
+    if (!preview) return;
+    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && setPreview(null);
+    window.addEventListener('keydown', onKey);
+    dialogRef.current?.focus();
+    return () => window.removeEventListener('keydown', onKey);
+  }, [preview]);
 
+  const items = useMemo<MediaItem[]>(() => saved.map((image, index) => ({ ...image, id: `${image.createdAt ?? index}-${image.url}`, kind: 'image' })), [saved]);
   const visible = useMemo(() => {
-    if (filter === 'images') return items.filter((i) => i.kind === 'image');
-    if (filter === 'videos') return items.filter((i) => i.kind === 'video');
-    return items;
-  }, [items, filter]);
+    const normalized = query.trim().toLocaleLowerCase();
+    return items.filter(() => filter !== 'videos').filter((item) => !normalized || `${item.prompt ?? ''} ${item.model ?? ''}`.toLocaleLowerCase().includes(normalized)).sort((a, b) => sort === 'newest' ? (b.createdAt ?? 0) - (a.createdAt ?? 0) : (a.createdAt ?? 0) - (b.createdAt ?? 0));
+  }, [filter, items, query, sort]);
 
-  const clearSaved = () => {
-    try {
-      localStorage.removeItem(IMAGE_LIBRARY_KEY);
-    } catch {}
-    setSaved([]);
+  const toggleSelected = (id: string) => setSelected((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  const deleteSelected = () => {
+    const next = items.filter((item) => !selected.has(item.id)).map(({ id: _id, kind: _kind, ...image }) => image);
+    localStorage.setItem(IMAGE_LIBRARY_KEY, JSON.stringify(next));
+    setSaved(next); setSelected(new Set()); setConfirmDelete(false);
   };
+  const download = (item: MediaItem) => window.open(item.url, '_blank', 'noopener,noreferrer');
 
-  return (
-    <div className="absolute inset-0 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-      <div className="max-w-6xl mx-auto w-full px-5 pt-8 pb-12">
-        {/* Header */}
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h2 className="text-[22px] font-semibold tracking-tight text-white">Library</h2>
-            <p className="text-[12.5px] text-white/55 mt-1">
-              {visible.length} item{visible.length === 1 ? '' : 's'}
-            </p>
+  return <div className="custom-scrollbar absolute inset-0 overflow-y-auto bg-[var(--studio-bg)]">
+    <div className="mx-auto w-full max-w-[1440px] px-4 pb-12 pt-16 sm:px-6 sm:pt-8 lg:px-8">
+      <header className="flex flex-col gap-5 border-b border-[var(--studio-border-subtle)] pb-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">{t('eyebrow')}</p><h1 className="mt-2 text-2xl font-semibold tracking-tight text-white">{t('title')}</h1><p className="mt-1.5 text-[13px] text-[var(--studio-text-secondary)]">{t('count', { count: visible.length })}</p></div>
+          <div className="flex flex-wrap items-center gap-2">
+            {selected.size > 0 && (confirmDelete ? <div className="flex items-center gap-2" role="alert"><span className="text-xs text-white/65">{t('confirmDelete', { count: selected.size })}</span><GhostButton onClick={deleteSelected} className="border-red-400/20 text-red-200 hover:bg-red-400/10"><Trash2 className="h-3.5 w-3.5" />{t('delete')}</GhostButton><GhostButton onClick={() => setConfirmDelete(false)}>{t('cancel')}</GhostButton></div> : <GhostButton onClick={() => setConfirmDelete(true)}><Trash2 className="h-3.5 w-3.5" />{t('deleteSelected', { count: selected.size })}</GhostButton>)}
+            <div className="flex rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-1" role="group" aria-label={t('viewLabel')}>{(['grid', 'list'] as const).map((option) => { const Icon = option === 'grid' ? Grid2X2 : List; return <button key={option} type="button" aria-label={t(option)} aria-pressed={view === option} onClick={() => setView(option)} className={cn('flex h-8 w-8 items-center justify-center rounded-lg transition-[color,background-color] duration-150 focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none', view === option ? 'bg-white text-black' : 'text-white/50 hover:bg-white/[0.06] hover:text-white')}><Icon className="h-4 w-4" /></button>; })}</div>
           </div>
-          {saved.length > 0 && (
-            <button
-              type="button"
-              onClick={clearSaved}
-              className="shrink-0 inline-flex items-center gap-2 h-9 px-3.5 rounded-xl border border-white/10 text-[12.5px] font-medium text-white/60 hover:text-white hover:bg-white/5 transition-colors cursor-pointer active:scale-[0.98]"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Clear saved
-            </button>
-          )}
         </div>
-
-        {/* Segmented filter */}
-        <div className="mt-5 inline-flex items-center gap-1 p-1 rounded-xl bg-white/5 border border-white/[0.07]">
-          {FILTERS.map((f) => {
-            const active = filter === f.key;
-            return (
-              <button
-                key={f.key}
-                type="button"
-                onClick={() => setFilter(f.key)}
-                aria-pressed={active}
-                className={cn(
-                  'relative h-8 px-4 rounded-full text-[12.5px] font-medium cursor-pointer transition-colors duration-200',
-                  active ? 'text-black' : 'text-white/50 hover:text-white/80'
-                )}
-              >
-                {active && (
-                  <motion.span
-                    layoutId="library-filter-indicator"
-                    className="absolute inset-0 z-0 bg-white rounded-full"
-                    transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-                  />
-                )}
-                <span className="relative z-10">{f.label}</span>
-              </button>
-            );
-          })}
+        <div className="grid gap-3 md:grid-cols-[minmax(240px,1fr)_auto_auto]">
+          <label className="relative block"><span className="sr-only">{t('searchLabel')}</span><Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('searchPlaceholder')} className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] ps-10 pe-3 text-[13px] text-white outline-none placeholder:text-white/35 focus-visible:ring-2 focus-visible:ring-white/40" /></label>
+          <div className="flex rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-1" role="group" aria-label={t('filterLabel')}>{(['all', 'images', 'videos'] as const).map((key) => <button key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(key)} className={cn('h-8 rounded-lg px-3 text-xs font-medium transition-[color,background-color] duration-150 focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none', filter === key ? 'bg-white text-black' : 'text-white/55 hover:bg-white/[0.06] hover:text-white')}>{t(key)}</button>)}</div>
+          <label><span className="sr-only">{t('sortLabel')}</span><select value={sort} onChange={(event) => setSort(event.target.value as SortKey)} className="h-10 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] px-3 text-xs text-white outline-none focus-visible:ring-2 focus-visible:ring-white/40"><option value="newest">{t('newest')}</option><option value="oldest">{t('oldest')}</option></select></label>
         </div>
+      </header>
 
-        {/* Grid */}
-        {visible.length === 0 ? (
-          <div className="min-h-[46vh] flex flex-col items-center justify-center text-center">
-            <div className="h-16 w-16 rounded-2xl border border-white/[0.07] bg-white/[0.025] flex items-center justify-center">
-              <FolderOpen className="h-6 w-6 text-white/15" />
-            </div>
-            <p className="mt-5 text-[14.5px] font-medium text-white/55">Your creations will appear here.</p>
-            <p className="mt-1.5 text-xs text-white/50 max-w-xs">
-              Saved images and videos will collect in this library.
-            </p>
-          </div>
-        ) : (
-          <div className="mt-7 columns-1 sm:columns-2 lg:columns-3 gap-4 [column-fill:_balance]">
-            <AnimatePresence initial={false}>
-              {visible.map((item, i) => (
-                <motion.div
-                  key={item.id}
-                  layout
-                  initial={{ opacity: 0, y: 14 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.97 }}
-                  transition={{
-                    type: 'spring',
-                    stiffness: 320,
-                    damping: 30,
-                    delay: Math.min(i, 8) * 0.035,
-                  }}
-                  className="mb-4 break-inside-avoid"
-                >
-                  <MediaCard item={item} />
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        )}
-      </div>
+      {status === 'loading' && <div className="grid grid-cols-1 gap-4 pt-6 sm:grid-cols-2 lg:grid-cols-3" aria-label={t('loading')}>{[0,1,2].map((item) => <div key={item} className="aspect-[4/3] animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.025] motion-reduce:animate-none" />)}</div>}
+      {status === 'error' && <StateBlock className="min-h-[52vh]" icon={<ImageIcon className="h-6 w-6" />} title={t('errorTitle')} description={t('errorDescription')} action={<GhostButton onClick={() => location.reload()}>{t('retry')}</GhostButton>} />}
+      {status === 'ready' && visible.length === 0 && <StateBlock className="min-h-[52vh]" icon={<ImageIcon className="h-6 w-6" />} title={query ? t('noResults') : filter === 'videos' ? t('noVideos') : t('emptyTitle')} description={query ? t('noResultsDescription') : t('emptyDescription')} />}
+      {status === 'ready' && visible.length > 0 && <motion.div layout className={cn('pt-6', view === 'grid' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3' : 'flex flex-col gap-3')}>
+        {visible.map((item) => <motion.article layout key={item.id} transition={{ duration: reduceMotion ? 0 : 0.16 }} className={cn('group relative overflow-hidden rounded-2xl border bg-[var(--studio-surface)] transition-[border-color,background-color] duration-150 motion-reduce:transition-none', selected.has(item.id) ? 'border-white/30 bg-white/[0.06]' : 'border-[var(--studio-border-subtle)] hover:border-white/15', view === 'list' && 'flex min-h-24 items-center')}>
+          <button type="button" onClick={() => setPreview(item)} aria-label={t('openPreview')} className={cn('block min-w-0 text-start focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40', view === 'grid' ? 'w-full' : 'flex flex-1 items-center')}><img src={item.url} alt={item.prompt || t('generatedImage')} loading="lazy" className={cn('object-cover', view === 'grid' ? 'aspect-[4/3] w-full' : 'h-24 w-28 shrink-0')} /><div className="min-w-0 p-3.5"><p className="line-clamp-2 text-[13px] leading-relaxed text-white/80">{item.prompt || t('untitled')}</p><p className="mt-1 truncate text-[10.5px] uppercase tracking-[0.12em] text-white/40">{item.model || t('image')}</p></div></button>
+          <div className="absolute end-2.5 top-2.5 flex gap-1 rounded-xl border border-white/10 bg-black/70 p-1 opacity-100 backdrop-blur-xl sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"><button type="button" onClick={() => toggleSelected(item.id)} aria-label={t('select')} aria-pressed={selected.has(item.id)} className={cn('flex h-8 w-8 items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-white/40', selected.has(item.id) ? 'bg-white text-black' : 'text-white/65 hover:bg-white/10 hover:text-white')}><Check className="h-4 w-4" /></button><button type="button" onClick={() => download(item)} aria-label={t('download')} className="flex h-8 w-8 items-center justify-center rounded-lg text-white/65 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40"><Download className="h-4 w-4" /></button></div>
+        </motion.article>)}
+      </motion.div>}
     </div>
-  );
+
+    <AnimatePresence>{preview && <motion.div className="fixed inset-0 z-[80] flex items-center justify-center bg-[var(--studio-overlay)] p-4 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.16 }} onMouseDown={(event) => event.target === event.currentTarget && setPreview(null)}><motion.div ref={dialogRef} role="dialog" aria-modal="true" aria-label={t('preview')} tabIndex={-1} initial={reduceMotion ? false : { opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: reduceMotion ? 0 : 0.16 }} className="studio-overlay-root relative max-h-[92dvh] w-full max-w-5xl overflow-hidden rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface-elevated)] shadow-[var(--studio-shadow)]"><button type="button" onClick={() => setPreview(null)} aria-label={t('closePreview')} className="absolute end-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-black/70 text-white/70 backdrop-blur-xl hover:text-white focus-visible:ring-2 focus-visible:ring-white/40"><X className="h-4 w-4" /></button><img src={preview.url} alt={preview.prompt || t('generatedImage')} className="max-h-[76dvh] w-full object-contain bg-black" /><div className="flex items-center justify-between gap-4 border-t border-white/[0.07] p-4"><div className="min-w-0"><p className="line-clamp-2 text-sm text-white/80">{preview.prompt || t('untitled')}</p><p className="mt-1 text-xs text-white/45">{preview.model || t('image')}</p></div><GhostButton onClick={() => download(preview)}><Download className="h-4 w-4" />{t('download')}</GhostButton></div></motion.div></motion.div>}</AnimatePresence>
+  </div>;
 }

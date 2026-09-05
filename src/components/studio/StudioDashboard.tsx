@@ -17,6 +17,7 @@ import { VantraLogo } from '../VantraLogo';
 import { cn } from '@/lib/utils';
 import { GhostButton } from './AppShell';
 import { CHAT_MODELS, DEFAULT_CHAT_MODEL } from '@/src/config/studio-registry';
+import { useTranslations } from 'next-intl';
 
 type CenterMode = 'chat' | 'image' | 'video' | 'library';
 
@@ -29,32 +30,25 @@ interface ChatSession {
 const MAGIC_SKILLS = [
   {
     icon: Code2,
-    title: 'Write Code',
-    desc: 'Generate type-safe components, refactor logic, or debug complex issues.',
-    prompt: 'Write a type-safe TypeScript React hook for debounced async search with abort signal cancellation.',
+    key: 'writeCode',
   },
   {
     icon: ImageIcon,
-    title: 'Analyze Image',
-    desc: 'Extract OCR text, critique UI designs, or diagnose layout bugs.',
-    prompt: 'Analyze this UI screenshot and provide actionable CSS layout and accessibility improvements.',
+    key: 'analyzeImage',
   },
   {
     icon: Video,
-    title: 'Generate Video',
-    desc: 'Create scene prompts, cinematographic camera directions, and storyboards.',
-    prompt: 'Create a 4-shot cinematic video storyboard prompt with camera movement and lighting specs.',
+    key: 'planVideo',
   },
   {
     icon: FileText,
-    title: 'Summarize Doc',
-    desc: 'Synthesize PDFs, technical RFCs, or documentation into concise briefs.',
-    prompt: 'Synthesize the key architectural decisions, tradeoffs, and next steps from this document.',
+    key: 'summarizeDoc',
   },
-];
+] as const;
 
 export default function StudioDashboard() {
   const reduceMotion = useReducedMotion();
+  const t = useTranslations('studio.chat');
   const { user, refreshBalance } = useUser();
   const { openAuthModal } = useModal();
 
@@ -310,34 +304,9 @@ export default function StudioDashboard() {
     [append, selectedModelId, activeSessionId, sessions, activeModel.verifiedCreditCost, user, openAuthModal]
   );
 
-  /** Direct append for suggested prompts — bypasses handleSend's
-   *  session creation + state updates that could abort the stream.
-   *  Session materialisation happens via the `sessions` dependency effect
-   *  and the debounced persistence — not inline before the append call. */
-  const handleSuggestedPrompt = useCallback(
-    (text: string) => {
-      if (!user && (activeModel.verifiedCreditCost ?? 0) > 0) {
-        openAuthModal('signin');
-        return;
-      }
-      // Lazy session materialisation — fire-and-forget, does NOT block append
-      if (activeSessionId) {
-        const exists = sessions.some((s) => s.id === activeSessionId);
-        if (!exists) {
-          const t = content_title(text);
-          setSessions((prev) =>
-            [{ id: activeSessionId, title: t, createdAt: Date.now() }, ...prev].slice(0, 30)
-          );
-        }
-      }
-      sendStartRef.current = performance.now();
-      append(
-        { role: 'user', content: text },
-        { body: { model: selectedModelId } }
-      );
-    },
-    [append, selectedModelId, activeSessionId, sessions, activeModel.verifiedCreditCost, user, openAuthModal]
-  );
+  const handleStarter = useCallback((text: string) => {
+    window.dispatchEvent(new CustomEvent('vantra-prefill-prompt', { detail: { prompt: text } }));
+  }, []);
 
   const totalTokens = useMemo(
     () => Math.ceil(messages.reduce((acc, m) => acc + (m.content?.length || 0), 0) / 4),
@@ -409,7 +378,7 @@ export default function StudioDashboard() {
                       'w-full flex justify-center transition-[min-height,padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none',
                       isEmpty ? 'min-h-full items-center py-6' : 'pt-6'
                     )}>
-                      <div className="mx-auto w-full max-w-4xl px-6 flex flex-col gap-y-8">
+                      <div className="mx-auto flex w-full max-w-4xl flex-col gap-y-7 px-4 sm:px-6">
                         {/* Empty State: Headline & Magic Skills Cards (Animated Exit) */}
                         <AnimatePresence>
                           {isEmpty && (
@@ -429,36 +398,36 @@ export default function StudioDashboard() {
                               <motion.h2
                                 initial={{ opacity: 0, y: -6 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.3 }}
-                                className="text-xl font-medium text-white/90 mb-6"
+                                transition={{ duration: reduceMotion ? 0 : 0.16 }}
+                                className="mb-5 text-xl font-medium tracking-tight text-white/90 sm:text-2xl"
                               >
-                                What are we building today?
+                                {t('emptyTitle')}
                               </motion.h2>
 
                               {/* 2nd (Middle): Magic Skills Grid */}
                               <motion.div
                                 initial={{ opacity: 0, y: 6 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.35, delay: 0.05 }}
-                                className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full text-start mb-6"
+                                transition={{ duration: reduceMotion ? 0 : 0.16 }}
+                                className="mb-5 grid w-full grid-cols-1 gap-3 text-start sm:grid-cols-2"
                               >
                                 {MAGIC_SKILLS.map((skill) => {
                                   const Icon = skill.icon;
                                   return (
                                     <button
-                                      key={skill.title}
+                                      key={skill.key}
                                       type="button"
-                                      onClick={() => handleSuggestedPrompt(skill.prompt)}
-                                      className="flex flex-col gap-2 p-4 rounded-xl border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.06] hover:border-white/[0.1] transition-all cursor-pointer text-sm text-white/70 hover:text-white text-start group active:scale-[0.99]"
+                                      onClick={() => handleStarter(t(`starters.${skill.key}.prompt`))}
+                                      className="group flex min-h-24 cursor-pointer flex-col gap-2 rounded-xl border border-white/[0.07] bg-white/[0.025] p-4 text-start text-sm text-white/70 transition-[color,background-color,border-color,transform] duration-150 hover:border-white/[0.14] hover:bg-white/[0.06] hover:text-white active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"
                                     >
                                       <div className="flex items-center gap-2.5">
                                         <div className="h-7 w-7 rounded-lg border border-white/10 bg-white/[0.04] flex items-center justify-center text-white/90 shrink-0 group-hover:border-white/20 transition-colors">
                                           <Icon className="h-3.5 w-3.5" />
                                         </div>
-                                        <span className="font-medium text-white/90">{skill.title}</span>
+                                        <span className="font-medium text-white/90">{t(`starters.${skill.key}.title`)}</span>
                                       </div>
                                       <p className="text-[12.5px] text-white/55 leading-relaxed font-normal">
-                                        {skill.desc}
+                                        {t(`starters.${skill.key}.description`)}
                                       </p>
                                     </button>
                                   );
@@ -473,7 +442,7 @@ export default function StudioDashboard() {
                           <motion.div
                             initial={{ opacity: 0, y: 12 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
+                            transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }}
                             className="flex flex-col gap-y-8 w-full"
                           >
                             {messages.map((msg, idx) => (
@@ -496,7 +465,7 @@ export default function StudioDashboard() {
                                 <Sparkles className="h-3 w-3 text-white/70" />
                               </div>
                             </div>
-                            <span className="font-sans antialiased text-white/70 font-normal">Thinking…</span>
+                            <span className="font-sans antialiased text-white/70 font-normal">{t('thinking')}</span>
                           </div>
                         )}
 
@@ -509,15 +478,15 @@ export default function StudioDashboard() {
                                   try {
                                     return error?.message?.includes('{')
                                       ? JSON.parse(error.message).error || error.message
-                                      : error?.message || 'The engine is busy. Try again in a moment.';
+                                      : error?.message || t('errorFallback');
                                   } catch {
-                                    return error?.message || 'The engine is busy. Try again in a moment.';
+                                    return error?.message || t('errorFallback');
                                   }
                                 })()}
                               </p>
                               <GhostButton onClick={() => reload()} className="mt-3">
                                 <RefreshCw className="h-3.5 w-3.5" />
-                                Retry
+                                {t('retry')}
                               </GhostButton>
                             </div>
                           </div>
@@ -570,7 +539,7 @@ export default function StudioDashboard() {
                       onSelectModel={setSelectedModelId}
                       isLoading={isLoading}
                       onStop={stop}
-                      placeholder={isEmpty ? 'Ask anything or pick a skill above…' : 'How can I help you today?'}
+                      placeholder={isEmpty ? t('emptyPlaceholder') : t('placeholder')}
                       autoFocus={isEmpty}
                       onSignInClick={user ? undefined : () => openAuthModal('signin')}
                     />
