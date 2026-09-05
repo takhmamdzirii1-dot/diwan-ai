@@ -1099,7 +1099,7 @@
   },
   "supabase/migrations/user_provider_connections.sql": {
     "mtime": 1787985901.4500034,
-    "seen": 1788566348.1404202,
+    "seen": 1788583530.814075,
     "ast_hash": "",
     "semantic_hash": ""
   },
