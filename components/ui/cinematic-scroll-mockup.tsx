@@ -24,12 +24,17 @@ export function CinematicScrollMockup() {
     (feature, index) => ({ ...feature, image: FEATURE_IMAGES[index] })
   );
   const containerRef = useRef<HTMLElement>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [desktopActiveIndex, setDesktopActiveIndex] = useState(0);
+  const [mobileActiveIndex, setMobileActiveIndex] = useState(0);
   const prefersReducedMotion = useReducedMotion();
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"],
+  });
+  const { scrollYProgress: mobileScrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start 85%", "end 15%"],
   });
 
   const scale = useTransform(scrollYProgress, [0, 0.2], [1.3, 0.9]);
@@ -43,9 +48,15 @@ export function CinematicScrollMockup() {
   const lineProgress = [chatProgress, imageProgress, videoProgress];
 
   useMotionValueEvent(scrollYProgress, "change", (latest) => {
-    if (latest < 0.33) setActiveIndex(0);
-    else if (latest >= 0.33 && latest < 0.65) setActiveIndex(1);
-    else setActiveIndex(2);
+    if (latest < 0.33) setDesktopActiveIndex(0);
+    else if (latest >= 0.33 && latest < 0.65) setDesktopActiveIndex(1);
+    else setDesktopActiveIndex(2);
+  });
+
+  useMotionValueEvent(mobileScrollYProgress, "change", (latest) => {
+    if (latest < 0.34) setMobileActiveIndex(0);
+    else if (latest < 0.67) setMobileActiveIndex(1);
+    else setMobileActiveIndex(2);
   });
 
   return (
@@ -53,9 +64,66 @@ export function CinematicScrollMockup() {
       id="showcase"
       ref={containerRef}
       aria-label={t("aria")}
-      className="relative h-[400vh]"
+      className="relative lg:h-[400vh]"
     >
-      <div className="sticky top-0 flex h-screen w-full max-w-[100vw] items-center justify-center overflow-hidden supports-[height:100svh]:h-[100svh]">
+      <div className="px-5 py-20 sm:px-8 md:py-24 lg:hidden">
+        <div className="mx-auto max-w-3xl">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/40">
+            {t("eyebrow")}
+          </p>
+          <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+            {t("titleOne")} {t("titleTwo")}
+          </h2>
+
+          <div className="relative mt-12">
+            <div aria-hidden="true" className="absolute bottom-0 start-0 top-0 w-px bg-white/10">
+              <motion.div
+                style={{ scaleY: mobileScrollYProgress, transformOrigin: "top" }}
+                className="h-full w-px bg-white/85"
+              />
+            </div>
+
+            <div className="space-y-16 ps-6 sm:ps-8">
+              {features.map((feature, index) => {
+                const isActive = mobileActiveIndex === index;
+                return (
+                  <motion.article
+                    key={feature.label}
+                    initial={prefersReducedMotion ? false : { opacity: 0, y: 20, scale: 0.985 }}
+                    whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                    viewport={{ amount: 0.22 }}
+                    transition={{ duration: prefersReducedMotion ? 0 : 0.32, ease: [0.22, 1, 0.36, 1] }}
+                    className="min-w-0"
+                  >
+                    <div className="flex items-baseline gap-3">
+                      <span className={`font-mono text-[10px] transition-colors duration-200 motion-reduce:transition-none ${isActive ? "text-white/75" : "text-white/35"}`}>
+                        0{index + 1}
+                      </span>
+                      <h3 className={`text-xl font-medium tracking-tight transition-colors duration-200 motion-reduce:transition-none ${isActive ? "text-white" : "text-white/45"}`}>
+                        {feature.label}
+                      </h3>
+                    </div>
+                    <p className="mt-3 max-w-2xl text-[15px] leading-7 text-white/60">
+                      {feature.description}
+                    </p>
+                    <div className="relative mt-6 aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black/60 shadow-[0_20px_60px_-36px_rgba(255,255,255,0.2)]">
+                      <Image
+                        src={feature.image}
+                        alt={feature.alt}
+                        fill
+                        sizes="(max-width: 1023px) calc(100vw - 64px)"
+                        className="object-cover object-center"
+                      />
+                    </div>
+                  </motion.article>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="sticky top-0 hidden h-screen w-full max-w-[100vw] items-center justify-center overflow-hidden supports-[height:100svh]:h-[100svh] lg:flex">
         <motion.div
           data-cinematic-copy
           style={{
@@ -75,7 +143,7 @@ export function CinematicScrollMockup() {
 
           <div className="mt-10 space-y-0" aria-live="polite">
             {features.map((feature, index) => {
-              const isActive = activeIndex === index;
+              const isActive = desktopActiveIndex === index;
 
               return (
                 <div
@@ -119,7 +187,7 @@ export function CinematicScrollMockup() {
 
         <motion.div
           data-cinematic-mockup
-          data-active-index={activeIndex}
+          data-active-index={desktopActiveIndex}
           style={{
             scale: prefersReducedMotion ? 0.9 : scale,
             x: prefersReducedMotion ? (isRtl ? "-20%" : "20%") : x,
@@ -146,8 +214,8 @@ export function CinematicScrollMockup() {
               {features.map((feature, index) => (
                 <motion.div
                   key={feature.label}
-                  aria-hidden={activeIndex !== index}
-                  animate={{ opacity: activeIndex === index ? 1 : 0 }}
+                  aria-hidden={desktopActiveIndex !== index}
+                  animate={{ opacity: desktopActiveIndex === index ? 1 : 0 }}
                   transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
                   className="absolute inset-0"
                 >

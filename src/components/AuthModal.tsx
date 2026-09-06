@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, Lock, User, ArrowRight, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { VantraLogo } from './VantraLogo';
 
@@ -22,6 +23,7 @@ export default function AuthModal({
 }: AuthModalProps) {
   const t = useTranslations('auth');
   const isRtl = useLocale() === 'ar';
+  const router = useRouter();
   const supabase = createClient();
   const [internalIsOpen, setInternalIsOpen] = useState<boolean>(false);
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
@@ -129,13 +131,9 @@ export default function AuthModal({
 
         if (data.user) {
           setSuccessMsg(t('signInSuccess'));
-          setTimeout(() => {
-            onSuccess?.();
-            handleClose();
-            if (typeof window !== 'undefined') {
-              window.location.href = '/studio';
-            }
-          }, 400);
+          onSuccess?.();
+          handleClose();
+          router.replace('/studio');
         }
       } else {
         const { data, error } = await supabase.auth.signUp({
@@ -152,13 +150,9 @@ export default function AuthModal({
 
         if (data.session) {
           setSuccessMsg(t('createSuccess'));
-          setTimeout(() => {
-            onSuccess?.();
-            handleClose();
-            if (typeof window !== 'undefined') {
-              window.location.href = '/studio';
-            }
-          }, 400);
+          onSuccess?.();
+          handleClose();
+          router.replace('/studio');
         } else {
           setSuccessMsg(t('verificationSent'));
         }

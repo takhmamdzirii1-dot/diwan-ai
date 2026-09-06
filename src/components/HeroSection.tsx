@@ -10,6 +10,7 @@ import { Magnetic } from './landing/ui';
 
 interface HeroSectionProps {
   user: { email?: string } | null;
+  authLoading: boolean;
   onEnterStudio: (prompt?: string) => void;
   onRequireAuth: () => void;
 }
@@ -21,7 +22,7 @@ const PATHS = [
   { left: '70%', rotate: 14, duration: 8, delay: 2.6 },
 ];
 
-export default function HeroSection({ user, onEnterStudio, onRequireAuth }: HeroSectionProps) {
+export default function HeroSection({ user, authLoading, onEnterStudio, onRequireAuth }: HeroSectionProps) {
   const t = useTranslations('hero');
   const stats = (t.raw('stats') as { label: string }[]).map((stat, index) => ({
     ...stat,
@@ -47,7 +48,7 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
 
   const submit = () => {
     const p = heroPrompt.trim();
-    if (!p || simulating) return;
+    if (!p || simulating || authLoading) return;
     setLastPrompt(p);
     stashPrompt(p);
 
@@ -88,6 +89,7 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
   }, [simulating, reduce]);
 
   const handlePrimaryAction = () => {
+    if (authLoading) return;
     if (user) {
       onEnterStudio();
     } else {
@@ -268,7 +270,7 @@ export default function HeroSection({ user, onEnterStudio, onRequireAuth }: Hero
         >
           <Magnetic strength={0.18}>
             <LiquidMetalButton
-              label={user ? t('openStudio') : t('start')}
+              label={authLoading ? t('openStudio') : user ? t('openStudio') : t('start')}
               onClick={handlePrimaryAction}
             />
           </Magnetic>

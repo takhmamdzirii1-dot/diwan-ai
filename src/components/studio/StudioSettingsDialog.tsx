@@ -156,7 +156,7 @@ function ModelsPanel({ selectedId, onSelect }: { selectedId: string; onSelect: (
 
 function CreditsPanel() {
   const t = useTranslations('studio.settings');
-  const { user, balance, isLoading } = useUser();
+  const { user, balance, balanceStatus } = useUser();
   return (
     <div className="space-y-6">
       <SectionHeader title={t('creditsBilling')} description={t('creditsDescription')} />
@@ -164,7 +164,7 @@ function CreditsPanel() {
         <StaticRow label={t('currentPlan')} value={user ? t('freePlan') : t('guest')} />
         <StaticRow
           label={t('unifiedCreditsBalance')}
-          value={user && !isLoading ? balance.toLocaleString() : t('balanceUnavailable')}
+          value={user && balanceStatus === 'ready' && balance !== null ? balance.toLocaleString() : t('balanceUnavailable')}
         />
       </div>
       <p className="text-[11.5px] text-[var(--studio-text-muted)]">{t('renewalUnavailable')}</p>

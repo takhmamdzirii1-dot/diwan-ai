@@ -110,6 +110,11 @@ export default function LiveLedgerCard({ onOpenAuth }: LiveLedgerCardProps) {
     setError(null);
     const promptToRun = customPrompt.trim() || currentModel.prompt;
 
+    if (activeBalance === null) {
+      setError('Balance unavailable. Please try again.');
+      return;
+    }
+
     if (activeBalance < currentModel.cost) {
       setError('Insufficient points! Please top up your balance.');
       if (onOpenAuth && !user) {
@@ -238,7 +243,7 @@ export default function LiveLedgerCard({ onOpenAuth }: LiveLedgerCardProps) {
                 animate={{ opacity: 1, y: 0 }}
                 className="font-mono text-base font-bold text-[#FFFFFF]"
               >
-                {activeBalance.toLocaleString()}
+                {activeBalance === null ? '—' : activeBalance.toLocaleString()}
               </motion.span>
               <span className="ml-1 text-[11px] font-semibold text-[#FFFFFF] font-mono">PTS</span>
 

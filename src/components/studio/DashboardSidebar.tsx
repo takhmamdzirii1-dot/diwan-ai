@@ -64,7 +64,7 @@ export default function DashboardSidebar({
   onCloseMobile,
 }: DashboardSidebarProps) {
   const t = useTranslations('studio.sidebar');
-  const { user, signOut, balance, isLoading } = useUser();
+  const { user, signOut, balance, balanceStatus } = useUser();
   const { openAuthModal } = useModal();
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -304,8 +304,10 @@ export default function DashboardSidebar({
             <PanelLabel className="px-0 mb-1">{t('unifiedCredits')}</PanelLabel>
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-[11px] text-[var(--studio-text-muted)]">{t('balance')}</span>
-              <span className="font-mono text-[12px] font-semibold text-white" aria-live="polite">
-                {user && !isLoading ? balance.toLocaleString() : '—'}
+              <span className="font-mono text-[12px] font-semibold text-white" aria-live="polite" aria-busy={balanceStatus === 'loading'}>
+                {balanceStatus === 'loading' ? (
+                  <span className="block h-3 w-12 animate-pulse rounded bg-white/10 motion-reduce:animate-none" aria-hidden="true" />
+                ) : user && balanceStatus === 'ready' && balance !== null ? balance.toLocaleString() : '—'}
               </span>
             </div>
           </div>

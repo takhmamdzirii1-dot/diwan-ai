@@ -91,11 +91,40 @@ export default function MediaLibrary() {
       {status === 'loading' && <div className="grid grid-cols-1 gap-4 pt-6 sm:grid-cols-2 lg:grid-cols-3" aria-label={t('loading')}>{[0,1,2].map((item) => <div key={item} className="aspect-[4/3] animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.025] motion-reduce:animate-none" />)}</div>}
       {status === 'error' && <StateBlock className="min-h-[52vh]" icon={<ImageIcon className="h-6 w-6" />} title={t('errorTitle')} description={t('errorDescription')} action={<GhostButton onClick={() => location.reload()}>{t('retry')}</GhostButton>} />}
       {status === 'ready' && visible.length === 0 && <StateBlock className="min-h-[52vh]" icon={<ImageIcon className="h-6 w-6" />} title={query ? t('noResults') : filter === 'videos' ? t('noVideos') : t('emptyTitle')} description={query ? t('noResultsDescription') : t('emptyDescription')} />}
-      {status === 'ready' && visible.length > 0 && <motion.div layout className={cn('pt-6', view === 'grid' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3' : 'flex flex-col gap-3')}>
-        {visible.map((item) => <motion.article layout key={item.id} transition={{ duration: reduceMotion ? 0 : 0.16 }} className={cn('group relative overflow-hidden rounded-2xl border bg-[var(--studio-surface)] transition-[border-color,background-color] duration-150 motion-reduce:transition-none', selected.has(item.id) ? 'border-white/30 bg-white/[0.06]' : 'border-[var(--studio-border-subtle)] hover:border-white/15', view === 'list' && 'flex min-h-24 items-center')}>
-          <button type="button" onClick={() => setPreview(item)} aria-label={t('openPreview')} className={cn('block min-w-0 text-start focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40', view === 'grid' ? 'w-full' : 'flex flex-1 items-center')}><img src={item.assetUrl} alt={t('demoAssetAlt')} loading="lazy" className={cn('object-cover', view === 'grid' ? 'aspect-[4/3] w-full' : 'h-24 w-28 shrink-0')} /><div className="min-w-0 p-3.5"><p className="line-clamp-2 text-[13px] leading-relaxed text-white/80">{item.prompt || t('untitled')}</p><p className="mt-1 truncate text-[10.5px] uppercase tracking-[0.12em] text-white/50">{item.kind === 'video' ? t('video') : t('image')} · {t('demoAsset')}</p></div></button>
-          <div className="absolute end-2.5 top-2.5 flex gap-1 rounded-xl border border-white/10 bg-black/70 p-1 opacity-100 backdrop-blur-xl sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"><button type="button" onClick={() => toggleSelected(item.id)} aria-label={t('select')} aria-pressed={selected.has(item.id)} className={cn('flex h-8 w-8 items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-white/40', selected.has(item.id) ? 'bg-white text-black' : 'text-white/65 hover:bg-white/10 hover:text-white')}><Check className="h-4 w-4" /></button><button type="button" onClick={() => download(item)} aria-label={t('download')} className="flex h-8 w-8 items-center justify-center rounded-lg text-white/65 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40"><Download className="h-4 w-4" /></button></div>
-        </motion.article>)}
+      {status === 'ready' && visible.length > 0 && <motion.div layout className={cn('pt-6', view === 'grid' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3' : 'flex flex-col gap-2')}>
+        {visible.map((item) => view === 'list' ? (
+          <motion.article
+            layout
+            key={item.id}
+            transition={{ duration: reduceMotion ? 0 : 0.16 }}
+            className={cn(
+              'group flex min-h-[82px] min-w-0 items-center overflow-hidden rounded-xl border bg-[var(--studio-surface)] transition-[border-color,background-color] duration-150 motion-reduce:transition-none',
+              selected.has(item.id) ? 'border-white/30 bg-white/[0.06]' : 'border-[var(--studio-border-subtle)] hover:border-white/15'
+            )}
+          >
+            <button
+              type="button"
+              onClick={() => setPreview(item)}
+              aria-label={t('openPreview')}
+              className="grid min-w-0 flex-1 grid-cols-[72px_minmax(0,1fr)] items-center text-start focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40 sm:grid-cols-[104px_minmax(0,1fr)]"
+            >
+              <img src={item.assetUrl} alt={t('demoAssetAlt')} loading="lazy" className="h-[82px] w-[72px] shrink-0 object-cover sm:w-[104px]" />
+              <div className="min-w-0 px-3 py-2.5 sm:px-4">
+                <p className="truncate text-[13px] leading-relaxed text-white/80" title={item.prompt || t('untitled')}>{item.prompt || t('untitled')}</p>
+                <p className="mt-1 truncate text-[10.5px] uppercase tracking-[0.12em] text-white/50">{item.kind === 'video' ? t('video') : t('image')} · {t('demoAsset')}</p>
+              </div>
+            </button>
+            <div className="flex shrink-0 items-center gap-1 pe-2 sm:pe-3">
+              <button type="button" onClick={() => toggleSelected(item.id)} aria-label={t('select')} aria-pressed={selected.has(item.id)} className={cn('flex h-10 w-10 items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-white/40', selected.has(item.id) ? 'bg-white text-black' : 'text-white/65 hover:bg-white/10 hover:text-white')}><Check className="h-4 w-4" /></button>
+              <button type="button" onClick={() => download(item)} aria-label={t('download')} className="flex h-10 w-10 items-center justify-center rounded-lg text-white/65 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40"><Download className="h-4 w-4" /></button>
+            </div>
+          </motion.article>
+        ) : (
+          <motion.article layout key={item.id} transition={{ duration: reduceMotion ? 0 : 0.16 }} className={cn('group relative overflow-hidden rounded-2xl border bg-[var(--studio-surface)] transition-[border-color,background-color] duration-150 motion-reduce:transition-none', selected.has(item.id) ? 'border-white/30 bg-white/[0.06]' : 'border-[var(--studio-border-subtle)] hover:border-white/15')}>
+            <button type="button" onClick={() => setPreview(item)} aria-label={t('openPreview')} className="block w-full min-w-0 text-start focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40"><img src={item.assetUrl} alt={t('demoAssetAlt')} loading="lazy" className="aspect-[4/3] w-full object-cover" /><div className="min-w-0 p-3.5"><p className="line-clamp-2 text-[13px] leading-relaxed text-white/80">{item.prompt || t('untitled')}</p><p className="mt-1 truncate text-[10.5px] uppercase tracking-[0.12em] text-white/50">{item.kind === 'video' ? t('video') : t('image')} · {t('demoAsset')}</p></div></button>
+            <div className="absolute end-2.5 top-2.5 flex gap-1 rounded-xl border border-white/10 bg-black/70 p-1 opacity-100 backdrop-blur-xl sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"><button type="button" onClick={() => toggleSelected(item.id)} aria-label={t('select')} aria-pressed={selected.has(item.id)} className={cn('flex h-8 w-8 items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-white/40', selected.has(item.id) ? 'bg-white text-black' : 'text-white/65 hover:bg-white/10 hover:text-white')}><Check className="h-4 w-4" /></button><button type="button" onClick={() => download(item)} aria-label={t('download')} className="flex h-8 w-8 items-center justify-center rounded-lg text-white/65 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40"><Download className="h-4 w-4" /></button></div>
+          </motion.article>
+        ))}
       </motion.div>}
     </div>
 

@@ -11,6 +11,7 @@ import { Link, usePathname } from '@/i18n/navigation';
 interface LandingHeaderProps {
   /** Supabase user (null = guest) */
   user: { email?: string; user_metadata?: { full_name?: string } } | null;
+  authLoading: boolean;
   onSignIn: () => void;
   onOpenStudio: () => void;
   /** Logged-out primary CTA — opens the signup modal (matches hero Start Free) */
@@ -31,7 +32,7 @@ const LOCALES = ['fr', 'ar', 'en'] as const;
 
 /** Auth-aware glass header. Transparent at top, frosted after scroll.
  *  Desktop: brand · centered nav · auth actions. Mobile: brand · Start Free · menu. */
-export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFree }: LandingHeaderProps) {
+export default function LandingHeader({ user, authLoading, onSignIn, onOpenStudio, onStartFree }: LandingHeaderProps) {
   const t = useTranslations('navigation');
   const locale = useLocale();
   const pathname = usePathname();
@@ -197,7 +198,9 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
         {/* Desktop auth actions */}
         <div className="hidden xl:flex shrink-0 items-center gap-2">
           {languageSwitcher()}
-          {user ? (
+          {authLoading ? (
+            <div className="h-9 w-[188px] animate-pulse rounded-xl border border-white/[0.06] bg-white/[0.035] motion-reduce:animate-none" aria-hidden="true" />
+          ) : user ? (
             <>
               <span
                 className="flex min-w-0 max-w-[160px] items-center gap-2 h-9 ps-1.5 pe-3 rounded-full border border-white/[0.08] bg-white/[0.025]"
@@ -232,12 +235,13 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
 
         {/* Mobile actions — compact primary CTA + menu trigger */}
         <div className="flex xl:hidden items-center gap-2">
-          {!user && (
+          {authLoading ? (
+            <div className="h-11 w-24 animate-pulse rounded-xl border border-white/[0.06] bg-white/[0.035] motion-reduce:animate-none" aria-hidden="true" />
+          ) : !user ? (
             <button type="button" onClick={onStartFree} className={cn(primaryBtn, 'px-3.5 text-[12px]')}>
               {t('start')}
             </button>
-          )}
-          {user && (
+          ) : (
             <span
               className="h-11 w-11 rounded-full bg-white/[0.10] border border-white/10 flex items-center justify-center text-[11px] font-bold text-white"
               title={displayName}
@@ -283,7 +287,9 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
               </div>
 
               <div className="border-t border-white/[0.06] mt-3 pt-3 flex flex-col gap-2">
-                {user ? (
+                {authLoading ? (
+                  <div className="h-11 w-full animate-pulse rounded-xl border border-white/[0.06] bg-white/[0.035] motion-reduce:animate-none" aria-hidden="true" />
+                ) : user ? (
                   <>
                     <span className="flex min-w-0 max-w-full items-center gap-2.5 min-h-11 px-1" title={displayName}>
                       <span className="h-7 w-7 shrink-0 rounded-full bg-white/[0.10] border border-white/10 flex items-center justify-center text-[11px] font-bold text-white">

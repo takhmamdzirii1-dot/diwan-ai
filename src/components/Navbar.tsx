@@ -103,7 +103,7 @@ export default function Navbar({ onOpenAuth, onOpenTopUp }: NavbarProps) {
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-[#FFFFFF]" />
                 </span>
                 <span className="font-mono text-xs font-bold text-[#FFFFFF]">
-                  {balance.toLocaleString()}
+                  {balance === null ? '—' : balance.toLocaleString()}
                 </span>
                 <span className="text-[10px] font-semibold text-[rgba(245,246,248,0.6)] font-mono">
                   PTS

@@ -28,7 +28,7 @@ import useUser from '../hooks/useUser';
  */
 export default function OriginalLandingPage() {
   const locale = useLocale();
-  const { user } = useUser();
+  const { user, isLoading } = useUser();
   const { openAuthModal, openTopUpModal } = useModal();
   const router = useRouter();
 
@@ -48,7 +48,11 @@ export default function OriginalLandingPage() {
     []
   );
 
-  const handleGetStarted = () => (user ? openTopUpModal() : openAuthModal('signup'));
+  const handleGetStarted = () => {
+    if (isLoading) return;
+    if (user) openTopUpModal();
+    else openAuthModal('signup');
+  };
 
   return (
     <div className="landing-grid-background min-h-screen text-white antialiased">
@@ -61,15 +65,17 @@ export default function OriginalLandingPage() {
 
       <LandingHeader
         user={user}
-        onSignIn={() => openAuthModal('signin')}
+        authLoading={isLoading}
+        onSignIn={() => !isLoading && openAuthModal('signin')}
         onOpenStudio={() => enterStudio()}
-        onStartFree={() => openAuthModal('signup')}
+        onStartFree={() => !isLoading && openAuthModal('signup')}
       />
 
       <HeroSection
         user={user}
+        authLoading={isLoading}
         onEnterStudio={enterStudio}
-        onRequireAuth={() => openAuthModal('signup')}
+        onRequireAuth={() => !isLoading && openAuthModal('signup')}
       />
 
       <PartnersSection />

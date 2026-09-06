@@ -198,6 +198,10 @@
   .studio-shell .studio-creation-preview {
     padding: clamp(20px, 3.125vw, 24px);
   }
+
+  .studio-shell .studio-creation-header > :first-child {
+    padding-inline-start: 36px;
+  }
 }
 
 .lab-bg::before {

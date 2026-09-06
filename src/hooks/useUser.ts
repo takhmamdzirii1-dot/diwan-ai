@@ -1,102 +1,148 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import type { User, Session } from '@supabase/supabase-js';
+import { useCallback, useSyncExternalStore } from 'react';
+import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase/client';
 
-export interface UseUserReturn {
+export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
+export type BalanceStatus = 'loading' | 'ready' | 'unavailable';
+
+interface UserSnapshot {
   user: User | null;
   session: Session | null;
+  status: AuthStatus;
+  balance: number | null;
+  balanceStatus: BalanceStatus;
+}
+
+export interface UseUserReturn extends UserSnapshot {
   isLoading: boolean;
-  balance: number;
   refreshBalance: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
-export function useUser(): UseUserReturn {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [balance, setBalance] = useState<number>(10000);
+const listeners = new Set<() => void>();
+const serverSnapshot: UserSnapshot = {
+  user: null,
+  session: null,
+  status: 'loading',
+  balance: null,
+  balanceStatus: 'loading',
+};
 
-  const fetchBalance = useCallback(async (userId?: string) => {
-    if (!userId) return;
-    try {
-      // 1. Attempt RPC call
-      const { data: rpcBalance, error: rpcError } = await supabase.rpc('get_user_balance');
-      if (!rpcError && typeof rpcBalance === 'number') {
-        setBalance(rpcBalance);
-        return;
-      }
+let snapshot: UserSnapshot = serverSnapshot;
+let authStarted = false;
+let authRevision = 0;
+let balanceRevision = 0;
 
-      // 2. Fallback attempt to query profile table if RPC doesn't exist
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('balance, points')
-        .eq('id', userId)
-        .single();
+function emit(next: UserSnapshot) {
+  snapshot = next;
+  listeners.forEach((listener) => listener());
+}
 
-      if (profile) {
-        setBalance(profile.balance ?? profile.points ?? 10000);
-      }
-    } catch {
-      // Keep existing balance if RPC/table is not yet initialized in database
+async function fetchVerifiedBalance(userId: string) {
+  const requestRevision = ++balanceRevision;
+  emit({ ...snapshot, balance: null, balanceStatus: 'loading' });
+
+  try {
+    const { data, error } = await supabase
+      .from('credits')
+      .select('balance')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (requestRevision !== balanceRevision || snapshot.user?.id !== userId) return;
+
+    const value = data?.balance;
+    const parsed = typeof value === 'number' ? value : Number(value);
+    if (error || value == null || !Number.isFinite(parsed)) {
+      emit({ ...snapshot, balance: null, balanceStatus: 'unavailable' });
+      return;
     }
+
+    emit({ ...snapshot, balance: parsed, balanceStatus: 'ready' });
+  } catch {
+    if (requestRevision === balanceRevision && snapshot.user?.id === userId) {
+      emit({ ...snapshot, balance: null, balanceStatus: 'unavailable' });
+    }
+  }
+}
+
+function applySession(session: Session | null) {
+  const nextUser = session?.user ?? null;
+
+  if (!nextUser) {
+    balanceRevision += 1;
+    emit({
+      user: null,
+      session: null,
+      status: 'unauthenticated',
+      balance: null,
+      balanceStatus: 'unavailable',
+    });
+    return;
+  }
+
+  const isSameUser = snapshot.user?.id === nextUser.id;
+  emit({
+    user: nextUser,
+    session,
+    status: 'authenticated',
+    balance: isSameUser ? snapshot.balance : null,
+    balanceStatus: isSameUser ? snapshot.balanceStatus : 'loading',
+  });
+
+  if (!isSameUser || snapshot.balanceStatus !== 'ready') {
+    void fetchVerifiedBalance(nextUser.id);
+  }
+}
+
+function startAuth() {
+  if (authStarted) return;
+  authStarted = true;
+
+  supabase.auth.onAuthStateChange((_event, session) => {
+    authRevision += 1;
+    applySession(session);
+  });
+
+  const initialRevision = authRevision;
+  void supabase.auth.getSession().then(({ data, error }) => {
+    if (error || initialRevision !== authRevision) return;
+    applySession(data.session);
+  });
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  startAuth();
+  return () => listeners.delete(listener);
+}
+
+function getSnapshot() {
+  return snapshot;
+}
+
+function getServerSnapshot() {
+  return serverSnapshot;
+}
+
+export function useUser(): UseUserReturn {
+  const state = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+
+  const refreshBalance = useCallback(async () => {
+    if (snapshot.user) await fetchVerifiedBalance(snapshot.user.id);
   }, []);
 
-  useEffect(() => {
-    let mounted = true;
-
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchBalance(session.user.id);
-      }
-      setIsLoading(false);
-    });
-
-    // Listen for real-time auth state changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchBalance(session.user.id);
-      }
-      setIsLoading(false);
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, [fetchBalance]);
-
-  const signOut = async () => {
-    setIsLoading(true);
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-    setBalance(10000);
-    setIsLoading(false);
-  };
-
-  const refreshBalance = async () => {
-    if (user) {
-      await fetchBalance(user.id);
-    }
-  };
+  const signOut = useCallback(async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    applySession(null);
+  }, []);
 
   return {
-    user,
-    session,
-    isLoading,
-    balance,
+    ...state,
+    isLoading: state.status === 'loading',
     refreshBalance,
     signOut,
   };
