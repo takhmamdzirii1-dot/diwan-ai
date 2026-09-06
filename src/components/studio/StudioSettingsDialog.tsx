@@ -189,7 +189,7 @@ function CreditsPanel() {
     <div className="space-y-6">
       <SectionHeader title={t('planCredits')} description={t('creditsDescription')} />
       <div className="rounded-2xl border border-[var(--studio-border-subtle)] bg-[var(--studio-surface-raised)] px-5">
-        <StaticRow label={t('currentPlan')} value={user ? t('planUnavailable') : t('guest')} />
+        <StaticRow label={t('currentPlan')} value={user ? t('freePlan') : t('guest')} />
         <StaticRow
           label={t('unifiedCreditsBalance')}
           value={user && balanceStatus === 'ready' && balance !== null ? balance.toLocaleString() : t('balanceUnavailable')}
@@ -255,7 +255,7 @@ export default function StudioSettingsDialog({
         initial={reduceMotion ? false : { opacity: 0, scale: 0.98, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: reduceMotion ? 0 : 0.18, ease: [0.22, 1, 0.36, 1] }}
-        className="relative flex h-[100dvh] w-full flex-col overflow-hidden border-[var(--studio-border)] bg-[var(--studio-surface-elevated)] shadow-[var(--studio-shadow)] sm:h-auto sm:max-h-[86vh] sm:max-w-4xl sm:flex-row sm:rounded-2xl sm:border"
+        className="relative flex h-[100dvh] w-full flex-col overflow-hidden border-[var(--studio-border)] bg-[var(--studio-surface-elevated)] shadow-[var(--studio-shadow)] sm:h-[min(640px,86vh)] sm:max-w-4xl sm:flex-row sm:rounded-2xl sm:border"
       >
         <div className="shrink-0 overflow-x-auto border-b border-[var(--studio-border-subtle)] bg-[var(--studio-surface)] p-3 sm:w-60 sm:overflow-visible sm:border-b-0 sm:border-e">
           <p id="studio-settings-title" className="hidden px-3 pb-3 pt-2 text-[10px] font-mono font-semibold uppercase tracking-[0.22em] text-[var(--studio-text-muted)] sm:block">{t('title')}</p>

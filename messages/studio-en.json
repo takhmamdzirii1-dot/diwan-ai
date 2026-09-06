@@ -65,7 +65,7 @@
       "modelPickerNote": "You can still choose a model inside each workspace.",
       "creditsDescription": "Your current plan and verified Unified Credits balance.",
       "currentPlan": "Current plan",
-      "planUnavailable": "Unavailable",
+      "freePlan": "Free",
       "unifiedCreditsBalance": "Unified Credits balance",
       "balanceUnavailable": "Balance unavailable"
     },
