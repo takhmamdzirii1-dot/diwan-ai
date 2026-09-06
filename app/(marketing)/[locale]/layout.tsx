@@ -12,7 +12,7 @@ import '../../globals.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://ai-alpha-delta-six.vercel.app'),
-  icons: { icon: '/icon.svg' },
+  icons: { icon: [{ url: '/icon.svg', type: 'image/svg+xml' }, { url: '/brand/vantra-icon-32.png', sizes: '32x32', type: 'image/png' }], apple: '/brand/vantra-icon-256.png' },
 };
 
 export default async function MarketingLocaleLayout({

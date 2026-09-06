@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
+import { VantraWordmark } from '../VantraLogo';
 
 type SupportingFeature = {
   title: string;
@@ -39,12 +40,12 @@ function PaymentVisual() {
         <span aria-hidden="true" className="absolute inset-x-5 top-0 h-px bg-white/20" />
         <span aria-hidden="true" className="absolute -bottom-1.5 -right-1.5 h-6 w-6 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.98)_0%,rgba(255,255,255,0.46)_22%,rgba(255,255,255,0.1)_48%,transparent_72%)] blur-[3px]" />
         <div className="flex items-center justify-between text-[8px] font-semibold tracking-[0.2em] text-white/38">
-          <span>VANTRA</span>
+          <VantraWordmark className="w-10 h-[7px]" />
           <span>LOCAL</span>
         </div>
         <div className="mt-6 text-center text-[54px] font-semibold leading-none tracking-[-0.06em] text-[#f7f7f7]">DA</div>
         <div className="mt-4 flex items-center justify-between border-t border-white/[0.12] pt-2 text-[7px] font-medium tracking-[0.15em] text-white/38">
-          <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-2.5 w-3.5 rounded-sm border border-white/20 bg-white/[0.035]" />VANTRA</span>
+          <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-2.5 w-3.5 rounded-sm border border-white/20 bg-white/[0.035]" /><VantraWordmark className="w-9 h-1.5" /></span>
           <span>•••• 2040</span>
         </div>
       </div>

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useTranslations } from 'next-intl';
-import { VantraLogo } from './VantraLogo';
+import { VantraLogo, VantraWordmark } from './VantraLogo';
 
 const LINKS = [
   { key: 'models', href: '#models' },
@@ -21,11 +21,11 @@ export default function GlobalFooter() {
     <footer className="border-t border-white/[0.075] py-8 md:py-9">
       <div className="mx-auto flex max-w-[1600px] flex-col items-center justify-between gap-7 px-6 sm:flex-row md:px-10 lg:px-14">
         {/* Brand */}
-        <div className="flex items-center gap-2.5">
+        <div dir="ltr" className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.12]">
             <VantraLogo className="h-3.5 w-3.5" />
           </div>
-          <span className="text-[12.5px] font-semibold tracking-[0.16em] text-white/85">VANTRA</span>
+          <VantraWordmark />
           <span className="text-[11px] text-white/38">© 2026</span>
         </div>
 

@@ -1,24 +1,10 @@
-import React from 'react';
-export function VantraLogo({ className = "w-8 h-8" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 100 100"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-    >
-      {/* حرف الـ V - رمادي معدني هادئ يندمج مع الخلفية */}
-      <path
-        d="M 18 20 L 50 85 L 82 20 L 68 20 L 50 58 L 32 20 Z"
-        fill="#9CA3AF" /* لون رمادي أنيق (Tailwind gray-400) */
-        className="opacity-80"
-      />
+import Image from 'next/image';
 
-      {/* نجمة الذكاء الاصطناعي - أبيض ناصع جداً للفت الانتباه (High Contrast) */}
-      <path
-        d="M 50 12 L 53.5 35 L 76 38.5 L 53.5 42 L 50 65 L 46.5 42 L 24 38.5 L 46.5 35 Z"
-        fill="#FFFFFF"
-      />
-    </svg>
-  );
+/** Official Brand Pack v1 artwork; never mirrored with the UI locale. */
+export function VantraLogo({ className = 'w-8 h-8', tone = 'dark' }: { className?: string; tone?: 'dark' | 'light' }) {
+  return <Image src={`/brand/vantra-mark-${tone}.svg`} alt="VANTRA" width={100} height={100} unoptimized dir="ltr" className={`shrink-0 object-contain ${className}`} style={{ transform: 'none' }} />;
+}
+
+export function VantraWordmark({ className = 'w-[72px] h-3', tone = 'white' }: { className?: string; tone?: 'white' | 'dark' }) {
+  return <Image src={`/brand/vantra-wordmark-${tone}.svg`} alt="VANTRA" width={288} height={48} unoptimized dir="ltr" className={`shrink-0 object-contain ${className}`} style={{ transform: 'none' }} />;
 }

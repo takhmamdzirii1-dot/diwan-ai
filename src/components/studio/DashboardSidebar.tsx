@@ -15,7 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { VantraLogo } from '../VantraLogo';
+import { VantraLogo, VantraWordmark } from '../VantraLogo';
 import useUser from '../../hooks/useUser';
 import { useModal } from '../../context/ModalContext';
 import { cn } from '@/lib/utils';
@@ -177,11 +177,11 @@ export default function DashboardSidebar({
       >
         {/* Brand — matches 56px top bar height */}
         <div className="flex items-center justify-between h-14 shrink-0 px-4 border-b border-white/[0.08]">
-          <div className="flex items-center gap-2.5">
+          <div dir="ltr" className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-lg border border-white/10 flex items-center justify-center bg-white/[0.03]">
               <VantraLogo className="w-4 h-4" />
             </div>
-            <span className="text-[13px] font-semibold tracking-[0.14em] text-white">VANTRA</span>
+            <VantraWordmark />
             <span className="text-[9.5px] font-mono uppercase tracking-[0.2em] text-white/30 mt-0.5">Studio</span>
           </div>
           {isMobileOpen && (

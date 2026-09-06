@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
-import { VantraLogo } from '../VantraLogo';
+import { VantraLogo, VantraWordmark } from '../VantraLogo';
 import { cn } from '@/lib/utils';
 import { Link, usePathname } from '@/i18n/navigation';
 
@@ -181,11 +181,12 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           className="min-h-11 md:min-h-0 flex items-center gap-2.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 rounded-lg"
           aria-label={t('backToTop')}
+          dir="ltr"
         >
           <span className="h-8 w-8 rounded-lg border border-white/10 bg-white/[0.03] flex items-center justify-center">
             <VantraLogo className="w-4 h-4" />
           </span>
-          <span className="text-[13px] font-semibold tracking-[0.16em] text-white">VANTRA</span>
+          <VantraWordmark />
         </button>
 
         {/* Desktop nav — optically centered between brand and actions */}

@@ -1,4 +1,6 @@
-import { Cairo, IBM_Plex_Mono, Inter } from 'next/font/google';
+import { Cairo, IBM_Plex_Mono, Inter, Sora } from 'next/font/google';
+
+export const sora = Sora({ subsets: ['latin'], weight: ['500', '600'], variable: '--font-sora', display: 'swap' });
 
 export const inter = Inter({
   subsets: ['latin'],
@@ -19,4 +21,4 @@ export const ibmPlexMono = IBM_Plex_Mono({
   display: 'swap',
 });
 
-export const rootFontClasses = `${inter.variable} ${cairo.variable} ${ibmPlexMono.variable}`;
+export const rootFontClasses = `${inter.variable} ${cairo.variable} ${ibmPlexMono.variable} ${sora.variable}`;

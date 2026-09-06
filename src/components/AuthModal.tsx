@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Mail, Lock, User, ArrowRight, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, Mail, Lock, User, ArrowRight, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
+import { VantraLogo } from './VantraLogo';
 
 export interface AuthModalProps {
   isOpen?: boolean;
@@ -207,7 +208,7 @@ export default function AuthModal({
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-3.5">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#FFFFFF]/15 border border-[#FFFFFF]/30 text-[#FFFFFF] shadow-[0_0_20px_rgba(255,255,255,0.15)]">
-                <Sparkles className="h-5 w-5" />
+                <VantraLogo className="h-5 w-5" />
               </div>
               <div>
                 <h3 id="vantra-auth-modal-title" className="text-xl font-bold text-white tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>

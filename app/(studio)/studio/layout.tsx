@@ -12,7 +12,7 @@ import '../../globals.css';
 export const metadata: Metadata = {
   title: 'VANTRA Studio',
   description: 'VANTRA unified AI workspace.',
-  icons: { icon: '/icon.svg' },
+  icons: { icon: [{ url: '/icon.svg', type: 'image/svg+xml' }, { url: '/brand/vantra-icon-32.png', sizes: '32x32', type: 'image/png' }], apple: '/brand/vantra-icon-256.png' },
 };
 
 function mergeMessages(base: Record<string, any>, translated: Record<string, any>): Record<string, any> {

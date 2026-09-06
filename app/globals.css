@@ -537,6 +537,15 @@ html[dir="ltr"] .modal-title {
   letter-spacing: -0.02em;
 }
 
+/* Brand-facing headings only; dense product typography stays unchanged. */
+html[dir="ltr"] .landing-grid-background :is(h1, h2) {
+  font-family: var(--font-sora), var(--font-inter), sans-serif;
+}
+
+html[dir="rtl"] :is(h1, h2, h3, h4, p, label, button, a, span) {
+  letter-spacing: normal;
+}
+
 html[dir="rtl"] .icon-dir {
   transform: scaleX(-1);
   display: inline-block;
