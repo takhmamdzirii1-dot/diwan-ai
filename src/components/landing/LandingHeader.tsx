@@ -183,10 +183,10 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
           aria-label={t('backToTop')}
           dir="ltr"
         >
-          <span className="h-8 w-8 rounded-lg border border-white/10 bg-white/[0.03] flex items-center justify-center">
-            <VantraLogo className="w-4 h-4" />
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03]">
+            <VantraLogo tone="dark" className="h-[22px] w-[22px]" />
           </span>
-          <VantraWordmark />
+          <VantraWordmark tone="white" className="h-[13px] w-[76px]" />
         </button>
 
         {/* Desktop nav — optically centered between brand and actions */}

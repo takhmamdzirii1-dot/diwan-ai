@@ -178,10 +178,10 @@ export default function DashboardSidebar({
         {/* Brand — matches 56px top bar height */}
         <div className="flex items-center justify-between h-14 shrink-0 px-4 border-b border-white/[0.08]">
           <div dir="ltr" className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg border border-white/10 flex items-center justify-center bg-white/[0.03]">
-              <VantraLogo className="w-4 h-4" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03]">
+              <VantraLogo tone="dark" className="h-[22px] w-[22px]" />
             </div>
-            <VantraWordmark />
+            <VantraWordmark tone="white" className="h-[13px] w-[74px]" />
             <span className="text-[9.5px] font-mono uppercase tracking-[0.2em] text-white/30 mt-0.5">Studio</span>
           </div>
           {isMobileOpen && (

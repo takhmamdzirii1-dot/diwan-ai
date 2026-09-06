@@ -192,6 +192,14 @@
   }
 }
 
+/* Keep the legacy marketing section spacing from leaking into Studio creation panels. */
+@media (max-width: 1023px) {
+  .studio-shell .studio-creation-controls,
+  .studio-shell .studio-creation-preview {
+    padding: clamp(20px, 3.125vw, 24px);
+  }
+}
+
 .lab-bg::before {
   overflow: hidden;
   max-width: 100vw;
