@@ -8,7 +8,7 @@ import { DEFAULT_VIDEO_MODEL, isModelSelectable, VIDEO_MODELS } from '@/src/conf
 import { PrimaryButton, Segmented, StateBlock } from './AppShell';
 import CreationWorkspace from './CreationWorkspace';
 import { useTranslations } from 'next-intl';
-import { addDemoMedia, runDemoGeneration, type DemoMediaItem } from './demo-media';
+import { demoMediaRepository, runDemoGeneration, type DemoMediaItem } from './media-repository';
 
 const DURATIONS = ['5 seconds', '10 seconds'] as const;
 const ASPECT_RATIOS = ['16:9', '9:16', '1:1'] as const;
@@ -87,7 +87,7 @@ export default function MotionStudio({ onGenerate }: { onGenerate?: (draft: Vide
     setError(null); setProgress(0); setDemoStatus('loading');
     try {
       await runDemoGeneration(setProgress, prompt.trim() === 'demo:error');
-      const result = addDemoMedia({ kind: 'video', prompt: prompt.trim(), model: t('demoModel'), aspectRatio });
+      const result = await demoMediaRepository.create({ kind: 'video', prompt: prompt.trim(), model: t('demoModel'), aspectRatio });
       setDemoResult(result); setDemoStatus('success');
     } catch { setError(t('errors.demo')); setDemoStatus('error'); }
   };

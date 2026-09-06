@@ -8,7 +8,7 @@ import { useTranslations } from 'next-intl';
 import { IMAGE_MODELS, isModelSelectable } from '@/src/config/studio-registry';
 import { PrimaryButton, StateBlock } from './AppShell';
 import CreationWorkspace from './CreationWorkspace';
-import { addDemoMedia, runDemoGeneration, type DemoMediaItem } from './demo-media';
+import { demoMediaRepository, runDemoGeneration, type DemoMediaItem } from './media-repository';
 
 const ASPECT_RATIOS = ['1:1', '4:3', '16:9', '9:16'] as const;
 const OUTPUT_COUNTS = [1, 2, 3, 4] as const;
@@ -93,7 +93,7 @@ export default function ImageCanvas({ onGenerate }: { onGenerate?: (draft: Image
       await runDemoGeneration(setProgress, draft.prompt === 'demo:error');
       let result: DemoMediaItem | null = null;
       for (let index = 0; index < outputCount; index += 1) {
-        result = addDemoMedia({ kind: 'image', prompt: draft.prompt, model: selectedModel.displayName, aspectRatio });
+        result = await demoMediaRepository.create({ kind: 'image', prompt: draft.prompt, model: selectedModel.displayName, aspectRatio });
       }
       setDemoResult(result);
       setDemoStatus('success');

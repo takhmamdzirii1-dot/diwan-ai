@@ -5,7 +5,8 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Check, Download, Grid2X2, Image as ImageIcon, List, Search, Trash2, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
-import { DEMO_LIBRARY_EVENT, downloadDemoMedia, readDemoLibrary, writeDemoLibrary, type DemoMediaItem } from './demo-media';
+import type { DemoMediaItem } from './demo-media';
+import { demoMediaRepository } from './media-repository';
 import { GhostButton, StateBlock } from './AppShell';
 
 type FilterKey = 'all' | 'images' | 'videos';
@@ -29,13 +30,16 @@ export default function MediaLibrary() {
   const [undoItems, setUndoItems] = useState<DemoMediaItem[] | null>(null);
 
   useEffect(() => {
-    try {
-      setSaved(readDemoLibrary());
-      setStatus('ready');
-    } catch { setStatus('error'); }
-    const sync = () => { try { setSaved(readDemoLibrary()); setStatus('ready'); } catch { setStatus('error'); } };
-    window.addEventListener(DEMO_LIBRARY_EVENT, sync);
-    return () => window.removeEventListener(DEMO_LIBRARY_EVENT, sync);
+    let active = true;
+    const sync = async () => {
+      try {
+        const items = await demoMediaRepository.list();
+        if (active) { setSaved(items); setStatus('ready'); }
+      } catch { if (active) setStatus('error'); }
+    };
+    void sync();
+    const unsubscribe = demoMediaRepository.subscribe(() => { void sync(); });
+    return () => { active = false; unsubscribe(); };
   }, []);
 
   useEffect(() => {
@@ -53,15 +57,17 @@ export default function MediaLibrary() {
   }, [filter, items, query, sort]);
 
   const toggleSelected = (id: string) => setSelected((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
-  const deleteSelected = () => {
+  const deleteSelected = async () => {
     const removed = items.filter((item) => selected.has(item.id));
     const next = items.filter((item) => !selected.has(item.id));
-    writeDemoLibrary(next);
-    setUndoItems(removed);
-    setSaved(next); setSelected(new Set()); setConfirmDelete(false);
+    try {
+      await demoMediaRepository.remove(selected);
+      setUndoItems(removed);
+      setSaved(next); setSelected(new Set()); setConfirmDelete(false);
+    } catch { setStatus('error'); }
   };
-  const undoDelete = () => { if (!undoItems) return; const next = [...undoItems, ...saved]; writeDemoLibrary(next); setSaved(next); setUndoItems(null); };
-  const download = async (item: MediaItem) => { try { await downloadDemoMedia(item); } catch { setStatus('error'); } };
+  const undoDelete = async () => { if (!undoItems) return; const next = [...undoItems, ...saved]; try { await demoMediaRepository.replace(next); setSaved(next); setUndoItems(null); } catch { setStatus('error'); } };
+  const download = async (item: MediaItem) => { try { await demoMediaRepository.download(item); } catch { setStatus('error'); } };
 
   return <div className="custom-scrollbar absolute inset-0 overflow-y-auto bg-[var(--studio-bg)]">
     <div className="mx-auto w-full max-w-[1440px] px-4 pb-12 pt-16 sm:px-6 sm:pt-8 lg:px-8">
