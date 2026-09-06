@@ -31,6 +31,7 @@ export default function PartnersSection() {
 
   return (
     <section
+      id="models"
       aria-label={t('aria')}
       className='relative -mt-[180px] !py-9 md:!py-10 border-b border-white/[0.04] overflow-hidden'
     >

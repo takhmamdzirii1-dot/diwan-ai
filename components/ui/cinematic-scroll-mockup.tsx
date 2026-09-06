@@ -50,6 +50,7 @@ export function CinematicScrollMockup() {
 
   return (
     <section
+      id="showcase"
       ref={containerRef}
       aria-label={t("aria")}
       className="relative h-[400vh]"
