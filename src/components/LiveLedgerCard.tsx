@@ -83,7 +83,7 @@ export interface LiveLedgerCardProps {
 }
 
 export default function LiveLedgerCard({ onOpenAuth }: LiveLedgerCardProps) {
-  const { user, session, balance: userBalance, refreshBalance } = useUser();
+  const { user, session, balance: userBalance, refreshBalance } = useUser({ loadBalance: true });
   const [localBalance, setLocalBalance] = useState<number>(10000);
   const [activeTab, setActiveTab] = useState<CategoryType>('chat');
   const [isDeducting, setIsDeducting] = useState<boolean>(false);

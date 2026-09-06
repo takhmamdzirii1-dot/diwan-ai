@@ -99,7 +99,7 @@ export default function AuthModal({
         provider: 'google',
         options: {
           redirectTo:
-            typeof window !== 'undefined' ? `${window.location.origin}/auth/callback?next=/studio` : undefined,
+            typeof window !== 'undefined' ? `${window.location.origin}/auth/callback?next=/studio/chat` : undefined,
         },
       });
       if (error) throw error;
@@ -133,7 +133,7 @@ export default function AuthModal({
           setSuccessMsg(t('signInSuccess'));
           onSuccess?.();
           handleClose();
-          router.replace('/studio');
+          router.replace('/studio/chat');
         }
       } else {
         const { data, error } = await supabase.auth.signUp({
@@ -152,7 +152,7 @@ export default function AuthModal({
           setSuccessMsg(t('createSuccess'));
           onSuccess?.();
           handleClose();
-          router.replace('/studio');
+          router.replace('/studio/chat');
         } else {
           setSuccessMsg(t('verificationSent'));
         }

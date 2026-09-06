@@ -6,8 +6,8 @@ import { ModalProvider } from '../../../src/context/ModalContext';
 import studioMessages from '../../../messages/studio-en.json';
 import studioFrench from '../../../messages/studio-fr.json';
 import studioArabic from '../../../messages/studio-ar.json';
-import { rootFontClasses } from '../../fonts';
-import '../../globals.css';
+import DocumentLocale from '../../../src/components/DocumentLocale';
+import StudioWorkspace from '../../../src/components/studio/StudioWorkspace';
 
 export const metadata: Metadata = {
   title: 'VANTRA Studio',
@@ -29,14 +29,14 @@ export default async function StudioRootLayout({ children }: { children: React.R
   const translated = locale === 'fr' ? studioFrench : locale === 'ar' ? studioArabic : {};
   const messages = mergeMessages(studioMessages, translated);
   return (
-    <html lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'} className={`dark ${rootFontClasses}`}>
-      <body className="studio-overlay-root bg-[#070707] text-[#F5F6F8] antialiased min-h-screen relative">
-        <NextIntlClientProvider locale={locale} messages={messages}>
-          <ModalProvider>
-            {children}
-          </ModalProvider>
-        </NextIntlClientProvider>
-      </body>
-    </html>
+    <div lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'} className="studio-overlay-root min-h-screen bg-[#070707] text-[#F5F6F8]">
+      <DocumentLocale locale={locale} />
+      <NextIntlClientProvider locale={locale} messages={messages}>
+        <ModalProvider>
+          {children}
+          <StudioWorkspace />
+        </ModalProvider>
+      </NextIntlClientProvider>
+    </div>
   );
 }

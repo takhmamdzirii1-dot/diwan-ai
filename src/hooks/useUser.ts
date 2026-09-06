@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase/client';
 
@@ -21,6 +21,10 @@ export interface UseUserReturn extends UserSnapshot {
   signOut: () => Promise<void>;
 }
 
+export interface UseUserOptions {
+  loadBalance?: boolean;
+}
+
 const listeners = new Set<() => void>();
 const serverSnapshot: UserSnapshot = {
   user: null,
@@ -32,15 +36,17 @@ const serverSnapshot: UserSnapshot = {
 
 let snapshot: UserSnapshot = serverSnapshot;
 let authStarted = false;
-let authRevision = 0;
 let balanceRevision = 0;
+let balanceFetchUserId: string | null = null;
 
 function emit(next: UserSnapshot) {
   snapshot = next;
   listeners.forEach((listener) => listener());
 }
 
-async function fetchVerifiedBalance(userId: string) {
+async function fetchVerifiedBalance(userId: string, force = false) {
+  if (!force && balanceFetchUserId === userId) return;
+  balanceFetchUserId = userId;
   const requestRevision = ++balanceRevision;
   emit({ ...snapshot, balance: null, balanceStatus: 'loading' });
 
@@ -65,6 +71,8 @@ async function fetchVerifiedBalance(userId: string) {
     if (requestRevision === balanceRevision && snapshot.user?.id === userId) {
       emit({ ...snapshot, balance: null, balanceStatus: 'unavailable' });
     }
+  } finally {
+    if (balanceFetchUserId === userId) balanceFetchUserId = null;
   }
 }
 
@@ -92,9 +100,6 @@ function applySession(session: Session | null) {
     balanceStatus: isSameUser ? snapshot.balanceStatus : 'loading',
   });
 
-  if (!isSameUser || snapshot.balanceStatus !== 'ready') {
-    void fetchVerifiedBalance(nextUser.id);
-  }
 }
 
 function startAuth() {
@@ -102,14 +107,7 @@ function startAuth() {
   authStarted = true;
 
   supabase.auth.onAuthStateChange((_event, session) => {
-    authRevision += 1;
     applySession(session);
-  });
-
-  const initialRevision = authRevision;
-  void supabase.auth.getSession().then(({ data, error }) => {
-    if (error || initialRevision !== authRevision) return;
-    applySession(data.session);
   });
 }
 
@@ -127,11 +125,17 @@ function getServerSnapshot() {
   return serverSnapshot;
 }
 
-export function useUser(): UseUserReturn {
+export function useUser({ loadBalance = false }: UseUserOptions = {}): UseUserReturn {
   const state = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
+  useEffect(() => {
+    if (loadBalance && state.user && state.balanceStatus === 'loading') {
+      void fetchVerifiedBalance(state.user.id);
+    }
+  }, [loadBalance, state.balanceStatus, state.user]);
+
   const refreshBalance = useCallback(async () => {
-    if (snapshot.user) await fetchVerifiedBalance(snapshot.user.id);
+    if (snapshot.user) await fetchVerifiedBalance(snapshot.user.id, true);
   }, []);
 
   const signOut = useCallback(async () => {

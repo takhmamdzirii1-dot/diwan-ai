@@ -156,7 +156,7 @@ function ModelsPanel({ selectedId, onSelect }: { selectedId: string; onSelect: (
 
 function CreditsPanel() {
   const t = useTranslations('studio.settings');
-  const { user, balance, balanceStatus } = useUser();
+  const { user, balance, balanceStatus } = useUser({ loadBalance: true });
   return (
     <div className="space-y-6">
       <SectionHeader title={t('creditsBilling')} description={t('creditsDescription')} />

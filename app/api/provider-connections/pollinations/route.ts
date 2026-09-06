@@ -35,7 +35,7 @@ export async function GET(request: Request) {
 
     // ── OAuth callback ──
     if (code || state || oauthError) {
-      const studioUrl = new URL('/studio', url.origin);
+      const studioUrl = new URL('/studio/chat', url.origin);
 
       // Helper: redirect back to studio with an error + cleaned cookies
       const failWith = (errorCode: string) => {

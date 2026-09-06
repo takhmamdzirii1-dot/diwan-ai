@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { motion, useScroll, useSpring } from 'framer-motion';
@@ -14,7 +14,6 @@ import FinalCta from './landing/FinalCta';
 import PartnersSection from './landing/PartnersSection';
 import GlobalFooter from './GlobalFooter';
 import LandingHeader from './landing/LandingHeader';
-import CinematicEnter from './landing/CinematicEnter';
 import WhyVantra from './landing/WhyVantra';
 import { useModal } from '../context/ModalContext';
 import useUser from '../hooks/useUser';
@@ -32,8 +31,6 @@ export default function OriginalLandingPage() {
   const { openAuthModal, openTopUpModal } = useModal();
   const router = useRouter();
 
-  const [entering, setEntering] = useState(false);
-
   const { scrollYProgress } = useScroll();
   const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 26, mass: 0.3 });
 
@@ -43,14 +40,20 @@ export default function OriginalLandingPage() {
       try {
         if (prompt) sessionStorage.setItem('vantra_pending_prompt', prompt);
       } catch {}
-      setEntering(true); // CinematicEnter routes to /studio on complete
+      router.push('/studio/chat');
     },
-    []
+    [router]
   );
 
-  const handleGetStarted = () => {
+  const handlePricingAction = () => {
     if (isLoading) return;
     if (user) openTopUpModal();
+    else openAuthModal('signup');
+  };
+
+  const handlePrimaryAction = () => {
+    if (isLoading) return;
+    if (user) enterStudio();
     else openAuthModal('signup');
   };
 
@@ -83,19 +86,10 @@ export default function OriginalLandingPage() {
       <WhyVantra />
       <HowItWorks />
       <Testimonials />
-      <GlobalPricing onGetStarted={handleGetStarted} />
+      <GlobalPricing onGetStarted={handlePricingAction} />
       <Faq />
-      <FinalCta onGetStarted={handleGetStarted} />
+      <FinalCta onGetStarted={handlePrimaryAction} />
       <GlobalFooter />
-
-      {/* Cinematic Landing → Studio bridge */}
-      <CinematicEnter
-        active={entering}
-        onComplete={() => {
-          router.push('/studio');
-          setEntering(false);
-        }}
-      />
     </div>
   );
 }

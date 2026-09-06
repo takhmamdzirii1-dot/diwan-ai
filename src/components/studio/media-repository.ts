@@ -83,7 +83,12 @@ const mapGeneration = (row: GenerationRow): ProductionMediaRecord => ({
   updatedAt: row.updated_at,
 });
 
-/** Prepared production adapter. It is intentionally not activated while Studio is in Demo mode. */
+/**
+ * Prepared production adapter. It is intentionally not activated while Studio is in Demo mode.
+ * Production boundary: create one job, let the provider run asynchronously, receive the result by
+ * webhook into Supabase, and deliver media directly from Storage/provider CDN. Never poll a Vercel
+ * Function or proxy large media downloads through one.
+ */
 export class SupabaseMediaRepository implements MediaRepository<ProductionMediaRecord> {
   constructor(private readonly client: SupabaseClient) {}
 

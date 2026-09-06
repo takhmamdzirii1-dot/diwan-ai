@@ -15,6 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import Link from 'next/link';
 import { VantraLogo, VantraWordmark } from '../VantraLogo';
 import useUser from '../../hooks/useUser';
 import { useModal } from '../../context/ModalContext';
@@ -30,7 +31,6 @@ export interface SidebarSession {
 
 interface DashboardSidebarProps {
   activeWorkspace?: Workspace;
-  onWorkspaceChange?: (w: Workspace) => void;
   onNewChat?: () => void;
   onOpenSettings?: () => void;
   sessions?: SidebarSession[];
@@ -53,7 +53,6 @@ const WORKSPACE_ITEMS: { id: Workspace; label: 'library'; icon: React.ElementTyp
 
 export default function DashboardSidebar({
   activeWorkspace = 'chat',
-  onWorkspaceChange,
   onNewChat,
   onOpenSettings,
   sessions = [],
@@ -64,7 +63,7 @@ export default function DashboardSidebar({
   onCloseMobile,
 }: DashboardSidebarProps) {
   const t = useTranslations('studio.sidebar');
-  const { user, signOut, balance, balanceStatus } = useUser();
+  const { user, signOut, balance, balanceStatus } = useUser({ loadBalance: true });
   const { openAuthModal } = useModal();
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -219,14 +218,12 @@ export default function DashboardSidebar({
               const active = activeWorkspace === ws.id;
               const Icon = ws.icon;
               return (
-                <button
+                <Link
                   key={ws.id}
-                  type="button"
+                  href={`/studio/${ws.id}`}
+                  prefetch={false}
                   aria-current={active ? 'page' : undefined}
-                  onClick={() => {
-                    onWorkspaceChange?.(ws.id);
-                    onCloseMobile?.();
-                  }}
+                  onClick={onCloseMobile}
                   className={cn(
                     'w-full flex items-center gap-2.5 px-2.5 h-8.5 rounded-lg text-[12.5px] font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
                     active
@@ -236,7 +233,7 @@ export default function DashboardSidebar({
                 >
                   <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-white' : 'text-white/40')} />
                   <span className="truncate">{t(ws.label)}</span>
-                </button>
+                </Link>
               );
             })}
           </nav>
@@ -250,14 +247,12 @@ export default function DashboardSidebar({
               const active = activeWorkspace === ws.id;
               const Icon = ws.icon;
               return (
-                <button
+                <Link
                   key={ws.id}
-                  type="button"
+                  href={`/studio/${ws.id}`}
+                  prefetch={false}
                   aria-current={active ? 'page' : undefined}
-                  onClick={() => {
-                    onWorkspaceChange?.(ws.id);
-                    onCloseMobile?.();
-                  }}
+                  onClick={onCloseMobile}
                   className={cn(
                     'w-full flex items-center gap-2.5 px-2.5 h-8.5 rounded-lg text-[12.5px] font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
                     active
@@ -267,7 +262,7 @@ export default function DashboardSidebar({
                 >
                   <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-white' : 'text-white/40')} />
                   <span className="truncate">{t(ws.label)}</span>
-                </button>
+                </Link>
               );
             })}
           </nav>

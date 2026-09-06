@@ -13,7 +13,7 @@ export interface NavbarProps {
 }
 
 export default function Navbar({ onOpenAuth, onOpenTopUp }: NavbarProps) {
-  const { user, balance, signOut, isLoading } = useUser();
+  const { user, balance, signOut, isLoading } = useUser({ loadBalance: true });
   const { openAuthModal, openTopUpModal } = useModal();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);

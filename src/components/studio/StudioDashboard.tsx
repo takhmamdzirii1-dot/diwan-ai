@@ -7,7 +7,7 @@ import { useChat } from '@ai-sdk/react';
 import useUser from '../../hooks/useUser';
 import { useModal } from '../../context/ModalContext';
 import { ClaudeChatInput } from '@/components/ui/claude-style-chat-input';
-import DashboardSidebar, { type Workspace as DashboardView } from './DashboardSidebar';
+import DashboardSidebar from './DashboardSidebar';
 import MessageBubble from './MessageBubble';
 import ImageCanvas from './ImageCanvas';
 import SettingsModal from './StudioSettingsDialog';
@@ -46,15 +46,19 @@ const MAGIC_SKILLS = [
   },
 ] as const;
 
-export default function StudioDashboard() {
+export default function StudioDashboard({
+  activeWorkspace,
+  onWorkspaceChange,
+}: {
+  activeWorkspace: CenterMode;
+  onWorkspaceChange: (workspace: CenterMode) => void;
+}) {
   const reduceMotion = useReducedMotion();
   const t = useTranslations('studio.chat');
   const sidebarT = useTranslations('studio.sidebar');
   const { user, refreshBalance } = useUser();
   const { openAuthModal } = useModal();
 
-  const [view, setView] = useState<'models' | 'chat' | 'arena' | 'datahub' | 'settings'>('chat');
-  const [centerMode, setCenterMode] = useState<CenterMode>('chat');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -101,10 +105,7 @@ export default function StudioDashboard() {
       const pending = sessionStorage.getItem('vantra_pending_prompt');
       if (pending) {
         sessionStorage.removeItem('vantra_pending_prompt');
-        const t = setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('vantra-prefill-prompt', { detail: { prompt: pending } }));
-        }, 900);
-        return () => clearTimeout(t);
+        window.dispatchEvent(new CustomEvent('vantra-prefill-prompt', { detail: { prompt: pending } }));
       }
     } catch {}
   }, []);
@@ -143,14 +144,14 @@ export default function StudioDashboard() {
     // Lazy creation: no DB/list record yet â€” just a draft id so the composer stays live.
     setActiveSessionId(`draft-${Date.now()}`);
     setMessages([]);
-  }, [stop, setMessages]);
+    onWorkspaceChange('chat');
+  }, [onWorkspaceChange, stop, setMessages]);
 
   const handleSelectSession = useCallback((sessionId: string) => {
     stop();
-    setView('chat');
-    setCenterMode('chat');
     setActiveSessionId(sessionId);
-  }, [stop]);
+    onWorkspaceChange('chat');
+  }, [onWorkspaceChange, stop]);
 
   const handleDeleteSession = useCallback((sessionId: string) => {
     try {
@@ -324,11 +325,7 @@ export default function StudioDashboard() {
     <div className="studio-shell relative flex h-[100dvh] w-full overflow-hidden bg-[var(--studio-bg)] text-white font-sans">
       {/* Sidebar */}
       <DashboardSidebar
-        activeWorkspace={centerMode}
-        onWorkspaceChange={(w) => {
-          setView('chat');
-          setCenterMode(w);
-        }}
+        activeWorkspace={activeWorkspace}
         onNewChat={handleNewChat}
         sessions={sessions.map((s) => ({ id: s.id, title: s.title }))}
         activeSessionId={activeSessionId}
@@ -359,7 +356,7 @@ export default function StudioDashboard() {
         <div className="flex-1 relative min-h-0 overflow-hidden">
           <>
             {/* ── Chat Studio ── */}
-            {centerMode === 'chat' && (
+            {activeWorkspace === 'chat' && (
               <motion.div
                 key="chat"
                 initial={reduceMotion ? false : { opacity: 0 }}
@@ -550,21 +547,21 @@ export default function StudioDashboard() {
             )}
 
           {/* ── Image Canvas ── */}
-          {centerMode === 'image' && (
+          {activeWorkspace === 'image' && (
             <motion.div key="image" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }} className="absolute inset-0">
               <ImageCanvas />
             </motion.div>
           )}
 
             {/* ── Motion Studio ── */}
-            {centerMode === 'video' && (
+            {activeWorkspace === 'video' && (
               <motion.div key="video" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }} className="absolute inset-0">
                 <MotionStudio />
               </motion.div>
             )}
 
             {/* ── Library ── */}
-            {centerMode === 'library' && (
+            {activeWorkspace === 'library' && (
               <motion.div key="library" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }} className="absolute inset-0">
                 <MediaLibrary />
               </motion.div>
