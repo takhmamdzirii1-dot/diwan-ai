@@ -20,8 +20,8 @@ interface LandingHeaderProps {
 /** Nav links → landing section anchors */
 const NAV_LINKS = [
   { key: 'models', id: 'models' },
-  { key: 'pricing', id: 'pricing' },
   { key: 'studio', id: 'showcase' },
+  { key: 'pricing', id: 'pricing' },
   { key: 'faq', id: 'faq' },
 ] as const;
 
@@ -153,7 +153,7 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
           className={cn(
             'flex min-h-9 min-w-9 items-center justify-center rounded-lg px-2 text-[10.5px] font-semibold tracking-[0.08em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
             locale === nextLocale
-              ? 'bg-white text-black'
+              ? 'bg-[#d4d4d4] text-[#171717] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]'
               : 'text-white/45 hover:bg-white/[0.06] hover:text-white'
           )}
         >
@@ -166,7 +166,7 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
   return (
     <header
       className={cn(
-        'fixed top-0 inset-x-0 z-[90] transition-all duration-300',
+        'fixed top-0 inset-x-0 z-[90] transition-[background-color,border-color,backdrop-filter] duration-200',
         scrolled
           ? 'bg-[#050505]/75 backdrop-blur-xl border-b border-white/[0.06]'
           : 'bg-transparent border-b border-transparent'
@@ -197,13 +197,13 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
           {user ? (
             <>
               <span
-                className="flex items-center gap-2 h-9 ps-1.5 pe-3.5 rounded-full border border-white/10 bg-white/[0.04]"
+                className="flex min-w-0 max-w-[160px] items-center gap-2 h-9 ps-1.5 pe-3 rounded-full border border-white/[0.08] bg-white/[0.025]"
                 title={displayName}
               >
-                <span className="h-6 w-6 rounded-full bg-white/[0.10] border border-white/10 flex items-center justify-center text-[10.5px] font-bold text-white">
+                <span className="h-6 w-6 shrink-0 rounded-full bg-white/[0.10] border border-white/10 flex items-center justify-center text-[10.5px] font-bold text-white">
                   {displayName[0].toUpperCase()}
                 </span>
-                <span className="text-[12px] font-medium text-white/85 max-w-[120px] truncate">
+                <span className="min-w-0 text-[12px] font-medium text-white/70 max-w-[110px] truncate">
                   {displayName}
                 </span>
               </span>
@@ -291,11 +291,11 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
               <div className="border-t border-white/[0.06] mt-3 pt-3 flex flex-col gap-2">
                 {user ? (
                   <>
-                    <span className="flex items-center gap-2.5 min-h-11 px-1">
-                      <span className="h-7 w-7 rounded-full bg-white/[0.10] border border-white/10 flex items-center justify-center text-[11px] font-bold text-white">
+                    <span className="flex min-w-0 max-w-full items-center gap-2.5 min-h-11 px-1" title={displayName}>
+                      <span className="h-7 w-7 shrink-0 rounded-full bg-white/[0.10] border border-white/10 flex items-center justify-center text-[11px] font-bold text-white">
                         {displayName[0].toUpperCase()}
                       </span>
-                      <span className="text-[13px] font-medium text-white/85 truncate">
+                      <span className="min-w-0 max-w-full text-[13px] font-medium text-white/70 truncate">
                         {displayName}
                       </span>
                     </span>
