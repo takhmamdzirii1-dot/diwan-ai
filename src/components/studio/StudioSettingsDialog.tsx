@@ -255,9 +255,9 @@ export default function StudioSettingsDialog({
         initial={reduceMotion ? false : { opacity: 0, scale: 0.98, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: reduceMotion ? 0 : 0.18, ease: [0.22, 1, 0.36, 1] }}
-        className="relative flex h-[100dvh] w-full flex-col overflow-hidden border-[var(--studio-border)] bg-[var(--studio-surface-elevated)] shadow-[var(--studio-shadow)] sm:h-[min(640px,86vh)] sm:max-w-4xl sm:flex-row sm:rounded-2xl sm:border"
+        className="relative flex h-[100dvh] w-full flex-col overflow-hidden border-[var(--studio-border)] bg-[var(--studio-surface-elevated)] shadow-[var(--studio-shadow)] sm:h-[min(520px,86vh)] sm:max-w-4xl sm:flex-row sm:rounded-2xl sm:border"
       >
-        <div className="shrink-0 overflow-x-auto border-b border-[var(--studio-border-subtle)] bg-[var(--studio-surface)] p-3 sm:w-60 sm:overflow-visible sm:border-b-0 sm:border-e">
+        <div className="hidden shrink-0 border-b border-[var(--studio-border-subtle)] bg-[var(--studio-surface)] p-3 sm:block sm:w-60 sm:border-b-0 sm:border-e">
           <p id="studio-settings-title" className="hidden px-3 pb-3 pt-2 text-[10px] font-mono font-semibold uppercase tracking-[0.22em] text-[var(--studio-text-muted)] sm:block">{t('title')}</p>
           <div className="flex gap-1 sm:flex-col">
             {TABS.map(({ id, key, icon: Icon }) => (
@@ -281,11 +281,25 @@ export default function StudioSettingsDialog({
         </div>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="flex h-14 shrink-0 items-center justify-between border-b border-[var(--studio-border-subtle)] px-5 sm:hidden">
-            <span className="text-[13px] font-semibold text-white">{t('title')}</span>
-            <button type="button" onClick={onClose} aria-label={t('close')} className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--studio-text-secondary)] transition-[color,background-color] duration-150 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
-              <X className="h-4 w-4" />
-            </button>
+          <div className="shrink-0 border-b border-[var(--studio-border-subtle)] bg-[var(--studio-surface)] px-4 pb-3 sm:hidden">
+            <div className="flex h-14 items-center justify-between">
+              <span className="text-[13px] font-semibold text-white">{t('title')}</span>
+              <button type="button" onClick={onClose} aria-label={t('close')} className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--studio-text-secondary)] transition-[color,background-color] duration-150 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <label htmlFor="settings-mobile-section" className="sr-only">{t('title')}</label>
+            <div className="relative">
+              <select
+                id="settings-mobile-section"
+                value={tab}
+                onChange={(event) => setTab(event.target.value as TabId)}
+                className="h-11 w-full appearance-none rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] ps-3.5 pe-10 text-[13px] font-medium text-white outline-none transition-[background-color,border-color] duration-150 focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/50 motion-reduce:transition-none"
+              >
+                {TABS.map(({ id, key }) => <option key={id} value={id}>{t(key)}</option>)}
+              </select>
+              <ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" aria-hidden="true" />
+            </div>
           </div>
           <button type="button" onClick={onClose} aria-label={t('close')} className="absolute end-4 top-4 hidden h-8 w-8 items-center justify-center rounded-lg text-[var(--studio-text-muted)] transition-[color,background-color] duration-150 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:flex">
             <X className="h-4 w-4" />
