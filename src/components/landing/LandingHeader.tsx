@@ -19,8 +19,10 @@ interface LandingHeaderProps {
 
 /** Nav links → landing section anchors */
 const NAV_LINKS = [
-  { key: 'models', id: 'models' },
   { key: 'studio', id: 'showcase' },
+  { key: 'why', id: 'why-vantra' },
+  { key: 'workflow', id: 'how' },
+  { key: 'signals', id: 'signals' },
   { key: 'pricing', id: 'pricing' },
   { key: 'faq', id: 'faq' },
 ] as const;
@@ -84,7 +86,7 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
 
   /* Close the mobile menu if the viewport grows past the desktop breakpoint */
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)');
+    const mq = window.matchMedia('(min-width: 1280px)');
     const onChange = () => mq.matches && setMenuOpen(false);
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
@@ -172,7 +174,7 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
           : 'bg-transparent border-b border-transparent'
       )}
     >
-      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between gap-6">
+      <div className="max-w-[1440px] mx-auto px-6 h-16 flex items-center justify-between gap-3 xl:gap-5">
         {/* Brand */}
         <button
           type="button"
@@ -187,12 +189,12 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
         </button>
 
         {/* Desktop nav — optically centered between brand and actions */}
-        <nav aria-label={t('primaryLabel')} className="hidden lg:flex items-center gap-7 mx-auto">
+        <nav aria-label={t('primaryLabel')} className="hidden xl:flex shrink-0 items-center gap-3 2xl:gap-5 mx-auto whitespace-nowrap">
           {NAV_LINKS.map((l) => navLink(l))}
         </nav>
 
         {/* Desktop auth actions */}
-        <div className="hidden lg:flex items-center gap-2.5">
+        <div className="hidden xl:flex shrink-0 items-center gap-2">
           {languageSwitcher()}
           {user ? (
             <>
@@ -228,7 +230,7 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
         </div>
 
         {/* Mobile actions — compact primary CTA + menu trigger */}
-        <div className="flex lg:hidden items-center gap-2">
+        <div className="flex xl:hidden items-center gap-2">
           {!user && (
             <button type="button" onClick={onStartFree} className={cn(primaryBtn, 'px-3.5 text-[12px]')}>
               {t('start')}
@@ -266,22 +268,13 @@ export default function LandingHeader({ user, onSignIn, onOpenStudio, onStartFre
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="lg:hidden absolute top-full inset-x-0 bg-[#050505]/95 backdrop-blur-xl border-b border-white/[0.08]"
+            className="xl:hidden absolute top-full inset-x-0 max-h-[calc(100svh-64px)] overflow-y-auto bg-[#050505]/95 backdrop-blur-xl border-b border-white/[0.08]"
           >
             <nav aria-label={t('mobileLabel')} className="px-6 py-4 flex flex-col">
               {NAV_LINKS.map((l) => (
-                <a
-                  key={l.id}
-                  href={`#${l.id}`}
-                  onClick={() => setMenuOpen(false)}
-                  aria-current={active === l.id ? 'true' : undefined}
-                  className={cn(
-                    'min-h-11 flex items-center text-[14.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 rounded px-1',
-                    active === l.id ? 'text-white' : 'text-white/75 hover:text-white'
-                  )}
-                >
-                  {t(l.key)}
-                </a>
+                <div key={l.id} className="flex min-h-11 items-center">
+                  {navLink(l, () => setMenuOpen(false))}
+                </div>
               ))}
 
               <div className="border-t border-white/[0.06] mt-3 pt-3">
