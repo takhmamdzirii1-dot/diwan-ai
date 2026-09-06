@@ -37,6 +37,10 @@ export function CinematicScrollMockup() {
   const textOpacity = useTransform(scrollYProgress, [0.1, 0.2, 1], [0, 1, 1], {
     clamp: true,
   });
+  const chatProgress = useTransform(scrollYProgress, [0, 0.33], [0, 1]);
+  const imageProgress = useTransform(scrollYProgress, [0.33, 0.65], [0, 1]);
+  const videoProgress = useTransform(scrollYProgress, [0.65, 1], [0, 1]);
+  const lineProgress = [chatProgress, imageProgress, videoProgress];
 
   useMotionValueEvent(scrollYProgress, "change", (latest) => {
     if (latest < 0.33) setActiveIndex(0);
@@ -76,8 +80,13 @@ export function CinematicScrollMockup() {
                 <div
                   key={feature.label}
                   data-active={isActive || undefined}
-                  className="border-t border-white/10 py-5"
+                  className="relative border-t border-white/10 py-5"
                 >
+                  <motion.span
+                    aria-hidden="true"
+                    style={{ scaleX: lineProgress[index], transformOrigin: "left" }}
+                    className="pointer-events-none absolute inset-x-0 -top-px h-px bg-white/75 shadow-[0_0_4px_rgba(255,255,255,0.12)]"
+                  />
                   <div className="flex items-baseline gap-4">
                     <span
                       className={`font-mono text-[10px] transition-[color] duration-200 ${
