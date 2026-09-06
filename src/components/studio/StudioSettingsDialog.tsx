@@ -1,19 +1,17 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import {
   Bot,
   Check,
   ChevronDown,
-  CircleUserRound,
   CreditCard,
-  KeyRound,
   Settings2,
-  ShieldCheck,
   X,
 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import useUser from '../../hooks/useUser';
 import {
@@ -22,16 +20,17 @@ import {
   isModelSelectable,
 } from '@/src/config/studio-registry';
 
-type TabId = 'general' | 'models' | 'personalization' | 'credits' | 'connections' | 'privacy';
+type TabId = 'general' | 'models' | 'credits';
+type StartScreen = 'chat' | 'image' | 'video' | 'library';
 
-const TABS: { id: TabId; key: 'general' | 'modelsRouting' | 'personalization' | 'creditsBilling' | 'connections' | 'dataPrivacy'; icon: React.ElementType }[] = [
+const TABS: { id: TabId; key: 'general' | 'aiPreferences' | 'planCredits'; icon: React.ElementType }[] = [
   { id: 'general', key: 'general', icon: Settings2 },
-  { id: 'models', key: 'modelsRouting', icon: Bot },
-  { id: 'personalization', key: 'personalization', icon: CircleUserRound },
-  { id: 'credits', key: 'creditsBilling', icon: CreditCard },
-  { id: 'connections', key: 'connections', icon: KeyRound },
-  { id: 'privacy', key: 'dataPrivacy', icon: ShieldCheck },
+  { id: 'models', key: 'aiPreferences', icon: Bot },
+  { id: 'credits', key: 'planCredits', icon: CreditCard },
 ];
+
+const START_SCREENS: StartScreen[] = ['chat', 'image', 'video', 'library'];
+const LOCALES = ['en', 'fr', 'ar'] as const;
 
 function SectionHeader({ title, description }: { title: string; description: string }) {
   return (
@@ -51,21 +50,33 @@ function StaticRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PreviewState({ children, badge }: { children: React.ReactNode; badge: string }) {
-  return (
-    <div className="rounded-2xl border border-[var(--studio-border-subtle)] bg-[var(--studio-surface-raised)] p-5">
-      <span className="rounded-full border border-[var(--studio-border)] bg-white/[0.04] px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-white/55">
-        {badge}
-      </span>
-      <p className="mt-3 text-[12.5px] leading-relaxed text-[var(--studio-text-secondary)]">{children}</p>
-    </div>
-  );
-}
-
 function GeneralPanel() {
   const t = useTranslations('studio.settings');
+  const locale = useLocale();
+  const router = useRouter();
   const { user } = useUser();
+  const [startScreen, setStartScreen] = useState<StartScreen>('chat');
   const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || t('guest');
+
+  useEffect(() => {
+    const saved = document.cookie
+      .split('; ')
+      .find((entry) => entry.startsWith('vantra_studio_start='))
+      ?.split('=')[1];
+    if (START_SCREENS.includes(saved as StartScreen)) setStartScreen(saved as StartScreen);
+  }, []);
+
+  const selectLocale = (nextLocale: (typeof LOCALES)[number]) => {
+    if (nextLocale === locale) return;
+    document.cookie = `vantra_locale=${nextLocale}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    router.refresh();
+  };
+
+  const selectStartScreen = (screen: StartScreen) => {
+    setStartScreen(screen);
+    document.cookie = `vantra_studio_start=${screen}; Path=/; Max-Age=31536000; SameSite=Lax`;
+  };
+
   return (
     <div className="space-y-6">
       <SectionHeader title={t('general')} description={t('generalDescription')} />
@@ -78,10 +89,28 @@ function GeneralPanel() {
           <p className="truncate text-[11.5px] text-[var(--studio-text-muted)]">{user?.email ?? t('notSignedIn')}</p>
         </div>
       </div>
-      <div className="rounded-2xl border border-[var(--studio-border-subtle)] bg-[var(--studio-surface-raised)] px-5">
-        <StaticRow label={t('language')} value={t('english')} />
-        <StaticRow label={t('appearance')} value={t('dark')} />
-        <StaticRow label={t('startScreen')} value={t('chat')} />
+      <div className="space-y-5 rounded-2xl border border-[var(--studio-border-subtle)] bg-[var(--studio-surface-raised)] p-5">
+        <fieldset>
+          <legend className="text-[12px] font-medium text-white/85">{t('language')}</legend>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {LOCALES.map((value) => (
+              <button key={value} type="button" aria-pressed={locale === value} onClick={() => selectLocale(value)} className={cn('h-9 min-w-12 rounded-lg border px-3 text-[12px] font-semibold uppercase transition-[color,background-color,border-color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-reduce:transition-none', locale === value ? 'border-[var(--studio-border-strong)] bg-[var(--studio-selected)] text-white' : 'border-[var(--studio-border)] text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-white')}>
+                {value}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend className="text-[12px] font-medium text-white/85">{t('startScreen')}</legend>
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {START_SCREENS.map((screen) => (
+              <button key={screen} type="button" aria-pressed={startScreen === screen} onClick={() => selectStartScreen(screen)} className={cn('h-9 rounded-lg border px-3 text-[12px] font-medium transition-[color,background-color,border-color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-reduce:transition-none', startScreen === screen ? 'border-[var(--studio-border-strong)] bg-[var(--studio-selected)] text-white' : 'border-[var(--studio-border)] text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-white')}>
+                {t(screen)}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-[11.5px] text-[var(--studio-text-muted)]">{t('startScreenDescription')}</p>
+        </fieldset>
       </div>
     </div>
   );
@@ -94,7 +123,7 @@ function ModelsPanel({ selectedId, onSelect }: { selectedId: string; onSelect: (
   const current = CHAT_MODELS.find((model) => model.id === selectedId) ?? CHAT_MODELS[0];
   return (
     <div className="space-y-6">
-      <SectionHeader title={t('modelsRouting')} description={t('modelDescription')} />
+      <SectionHeader title={t('aiPreferences')} description={t('modelDescription')} />
       <div className="space-y-2">
         <label className="text-[12px] font-medium text-[var(--studio-text-secondary)]">{t('defaultChatModel')}</label>
         <div className="relative">
@@ -132,7 +161,7 @@ function ModelsPanel({ selectedId, onSelect }: { selectedId: string; onSelect: (
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-[12.5px] font-medium text-white">{model.displayName}</span>
-                      <span className="block text-[11px] text-[var(--studio-text-muted)]">{model.provider} · {modelT(model.availability)}</span>
+                      <span className="block text-[11px] text-[var(--studio-text-muted)]">{modelT(model.availability)}</span>
                     </span>
                     {model.id === selectedId && <Check className="h-4 w-4 text-white" />}
                   </button>
@@ -147,9 +176,8 @@ function ModelsPanel({ selectedId, onSelect }: { selectedId: string; onSelect: (
           label={t('defaultImageModel')}
           value={`${DEFAULT_IMAGE_MODEL.displayName} · ${modelT(DEFAULT_IMAGE_MODEL.availability)}`}
         />
-        <StaticRow label={t('videoModel')} value={t('notConnected')} />
       </div>
-      <p className="text-[11.5px] leading-relaxed text-[var(--studio-text-muted)]">{t('routingNote')}</p>
+      <p className="text-[11.5px] leading-relaxed text-[var(--studio-text-muted)]">{t('modelPickerNote')}</p>
     </div>
   );
 }
@@ -159,124 +187,13 @@ function CreditsPanel() {
   const { user, balance, balanceStatus } = useUser({ loadBalance: true });
   return (
     <div className="space-y-6">
-      <SectionHeader title={t('creditsBilling')} description={t('creditsDescription')} />
+      <SectionHeader title={t('planCredits')} description={t('creditsDescription')} />
       <div className="rounded-2xl border border-[var(--studio-border-subtle)] bg-[var(--studio-surface-raised)] px-5">
-        <StaticRow label={t('currentPlan')} value={user ? t('freePlan') : t('guest')} />
+        <StaticRow label={t('currentPlan')} value={user ? t('planUnavailable') : t('guest')} />
         <StaticRow
           label={t('unifiedCreditsBalance')}
           value={user && balanceStatus === 'ready' && balance !== null ? balance.toLocaleString() : t('balanceUnavailable')}
         />
-      </div>
-      <p className="text-[11.5px] text-[var(--studio-text-muted)]">{t('renewalUnavailable')}</p>
-    </div>
-  );
-}
-
-function ConnectionsPanel() {
-  const t = useTranslations('studio.settings');
-  const [status, setStatus] = useState<'loading' | 'connected' | 'disconnected' | 'expired' | 'error'>('loading');
-  const [expiresAt, setExpiresAt] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState(false);
-
-  const refresh = useCallback(async () => {
-    setStatus('loading');
-    setMessage(null);
-    setError(false);
-    try {
-      const response = await fetch('/api/provider-connections/pollinations', {
-        signal: AbortSignal.timeout(6_000),
-      });
-      if (response.status === 401) {
-        setStatus('disconnected');
-        setExpiresAt(null);
-        return;
-      }
-      if (!response.ok) throw new Error(`Connection check failed (${response.status})`);
-      const data = await response.json();
-      setStatus(data.connected ? (data.expired ? 'expired' : 'connected') : 'disconnected');
-      setExpiresAt(data.expiresAt ?? null);
-    } catch {
-      setStatus('error');
-      setExpiresAt(null);
-      setMessage(t('connectionFailed'));
-      setError(true);
-    }
-  }, [t]);
-
-  useEffect(() => { refresh(); }, [refresh]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const connected = params.get('connected');
-    const providerError = params.get('provider_error');
-    if (connected === 'pollinations') {
-      setMessage(t('connectionSuccess'));
-      setError(false);
-    } else if (providerError) {
-      setMessage(t('connectionFailed'));
-      setError(true);
-    }
-    if (connected || providerError) {
-      params.delete('connected');
-      params.delete('provider_error');
-      const query = params.toString();
-      window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
-    }
-  }, [t]);
-
-  const disconnect = async () => {
-    setBusy(true);
-    try {
-      await fetch('/api/provider-connections/pollinations', { method: 'DELETE' });
-      await refresh();
-    } catch {
-      setMessage(t('disconnectFailed'));
-      setError(true);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <SectionHeader title={t('connections')} description={t('connectionsDescription')} />
-      <div className="rounded-2xl border border-[var(--studio-border-subtle)] bg-[var(--studio-surface-raised)] p-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="text-[13.5px] font-medium text-white">Pollinations</p>
-              {status !== 'loading' && (
-                <span className="rounded-full border border-[var(--studio-border)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white/65">
-                  {status === 'connected'
-                    ? t('connected')
-                    : status === 'expired'
-                      ? t('expired')
-                      : status === 'error'
-                        ? t('error')
-                        : t('disconnected')}
-                </span>
-              )}
-            </div>
-            <p className="mt-1 max-w-md text-[12px] leading-relaxed text-[var(--studio-text-secondary)]">{t('pollinationsDescription')}</p>
-          </div>
-          {status === 'connected' && expiresAt && (
-            <span className="text-[10.5px] font-mono text-[var(--studio-text-muted)]">{t('renews', { date: new Date(expiresAt).toLocaleDateString() })}</span>
-          )}
-        </div>
-        {message && <p role={error ? 'alert' : 'status'} className={cn('mt-3 text-[11.5px]', error ? 'text-red-300' : 'text-white/65')}>{message}</p>}
-        <div className="mt-4">
-          {status === 'connected' ? (
-            <button type="button" onClick={disconnect} disabled={busy} className="h-9 rounded-xl border border-[var(--studio-border)] px-3.5 text-[12px] font-medium text-[var(--studio-text-secondary)] transition-[color,background-color] duration-150 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:cursor-not-allowed disabled:opacity-40">
-              {t('disconnect')}
-            </button>
-          ) : (
-            <button type="button" onClick={() => { setBusy(true); window.location.href = '/api/provider-connections/pollinations/authorize'; }} disabled={busy || status === 'loading'} className="h-10 rounded-xl bg-white px-5 text-[12.5px] font-semibold text-black transition-[background-color,transform] duration-150 hover:bg-gray-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:cursor-not-allowed disabled:opacity-40">
-              {status === 'loading' ? t('checking') : t('connectPollinations')}
-            </button>
-          )}
-        </div>
       </div>
     </div>
   );
@@ -376,14 +293,7 @@ export default function StudioSettingsDialog({
           <div className="flex-1 overflow-y-auto p-5 sm:p-7">
             {tab === 'general' && <GeneralPanel />}
             {tab === 'models' && <ModelsPanel selectedId={selectedChatModelId} onSelect={onSelectChatModel} />}
-            {tab === 'personalization' && (
-              <div className="space-y-6"><SectionHeader title={t('personalization')} description={t('personalizationDescription')} /><PreviewState badge={t('preview')}>{t('personalizationUnavailable')}</PreviewState></div>
-            )}
             {tab === 'credits' && <CreditsPanel />}
-            {tab === 'connections' && <ConnectionsPanel />}
-            {tab === 'privacy' && (
-              <div className="space-y-6"><SectionHeader title={t('dataPrivacy')} description={t('dataDescription')} /><PreviewState badge={t('preview')}>{t('dataUnavailable')}</PreviewState></div>
-            )}
           </div>
         </div>
       </motion.div>
