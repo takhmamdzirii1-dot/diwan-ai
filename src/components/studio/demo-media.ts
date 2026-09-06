@@ -54,14 +54,9 @@ export async function runDemoGeneration(onProgress: (progress: number) => void, 
   }
 }
 
-export async function downloadDemoMedia(item: DemoMediaItem) {
-  const response = await fetch(item.assetUrl);
-  if (!response.ok) throw new Error('demo-download');
-  const blob = await response.blob();
-  const objectUrl = URL.createObjectURL(blob);
+export function downloadDemoMedia(item: DemoMediaItem) {
   const anchor = document.createElement('a');
-  anchor.href = objectUrl;
+  anchor.href = item.assetUrl;
   anchor.download = `vantra-${item.kind}-demo.png`;
   anchor.click();
-  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
 }
