@@ -1,341 +1,247 @@
-<!-- BEGIN:nextjs-agent-rules -->
+# AGENTS.md — VANTRA
 
-# This is NOT the Next.js you know
+Rules for every agent/contributor working on VANTRA.
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+## Project
 
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+- Next.js 16 App Router, TypeScript, Tailwind CSS 4
+- Supabase = current Auth + Database authority
+- Vercel = hosting/deployment
+- Cloudflare = DNS
+- Canonical domain: https://joinvantra.com
+- EN / FR / AR, Arabic RTL
+- Dark monochrome VANTRA design, no light mode
 
-<!-- END:nextjs-agent-rules -->
+Two contributors work from separate computers.
+GitHub `origin/main` is the shared source of truth.
+Never assume the local checkout contains the other contributor's latest work.
 
-# VANTRA Studio — Project Identity
+## 1. Start every task safely
 
-You are working on **VANTRA Studio**: a premium, monochrome, multi-provider AI SaaS workspace (Chat / Image / Video / Library). The design language is strict Apple/Vercel monochrome — deep blacks (#050505 → #0A0A0B), pure white active states, neutral grays, zero gold/bronze/purple/blue/gradients. Every component must feel like Linear/Vercel: calm, minimal, expensive.
+First read this `AGENTS.md`.
 
-## Tech Stack
+Then run:
 
-- **Framework**: Next.js 16 (App Router, Turbopack)
-- **Language**: TypeScript (strict off, but lint clean required)
-- **Styling**: Tailwind CSS v4 (`@theme` in globals.css, NOT tailwind.config)
-- **Fonts**: next/font/google — Inter (latin), Cairo (arabic), IBM Plex Mono (code) — self-hosted, zero CDN links
-- **Auth**: Supabase (Google OAuth + email/password)
-- **Database**: Supabase Postgres (profiles, credits, chat_sessions, messages, user_provider_connections)
-- **Chat AI**: OpenRouter (streaming via @ai-sdk/react useChat)
-- **Voice**: Groq Whisper (POST /api/transcribe)
-- **Image Gen**: Provider router (Pollinations free / Puter User-Pays / Mock) via /api/generate-image
-- **Design**: Framer Motion springs [0.22, 1, 0.36, 1], Lucide icons, no other icon libs
-
-## Project Structure
-
-```
-app/                    ← Next.js routes + API
-  api/generate/chat/    ← chat streaming (OpenRouter)
-  api/generate-image/   ← image gen (provider router)
-  api/transcribe/       ← voice-to-text (Groq whisper-large-v3)
-  api/provider-connections/pollinations/  ← OAuth callback + status
-components/ui/          ← shared UI (claude-style-chat-input, liquid-metal-button, etc.)
-src/components/studio/  ← StudioDashboard, DashboardSidebar, MessageBubble, ImageCanvas, MotionStudio, MediaLibrary, SettingsModal, AppShell, etc.
-src/components/landing/ ← HowItWorks, TerminalShowcase, Testimonials, Faq, FinalCta, PartnersSection, LandingHeader, CinematicEnter
-src/components/         ← OriginalLandingPage, AuthModal, HeroSection, ShowcaseSection, VantraLogo, etc.
-lib/ai/image-providers/ ← provider abstraction (types, router, pollinations, puter, mock)
-lib/supabase/           ← client + server Supabase clients
-context/ModalContext    ← openAuthModal / openTopUpModal
-hooks/useUser.ts        ← Supabase session + balance
+```bash
+git status
+git fetch origin
 ```
 
-## Design Rules (NEVER VIOLATE)
+If the working tree is clean:
 
-1. **Monochrome only**: #050505 → #0A0A0B surfaces, pure white active, text-white/XX opacity. Zero gold/bronze/purple/blue/gradients/neon.
-2. **Motion**: Framer Motion springs `[0.22, 1, 0.36, 1]`, durations < 300ms for UI, staggered delays. No bouncy effects.
-3. **Buttons**: Primary = `bg-white text-black hover:bg-gray-200`. Secondary = `border-white/10 bg-white/[0.03]`. Disabled = `bg-white/10 text-white/50`.
-4. **Borders**: `border-white/[0.05–0.08]` for subtle, `border-white/10` for standard.
-5. **Glassmorphism**: `backdrop-blur-xl bg-black/60` — only on composer bars, popovers, action overlays.
-6. **Typography**: `font-sans` (Inter/Cairo), section labels = `text-[11px] tracking-widest uppercase text-white/40`, headings `tracking-tight`.
-7. **Spacing**: 4px/8px system. Rounded: `rounded-xl` for buttons/inputs, `rounded-2xl` for cards, `rounded-full` for pills.
-8. **RTL**: Use logical properties (`ms-`, `me-`, `ps-`, `pe-`, `start-`, `end-`) — Arabic must mirror correctly.
-9. **A11y**: `aria-label` on all icon buttons, `aria-expanded` on toggles, `aria-selected` on tabs, `focus-visible:ring-2 focus-visible:ring-white/40` everywhere.
-10. **Ambient**: VantraAmbientBackground provides the living-system glow. Never add particles, stars, or neon.
+```bash
+git pull --ff-only origin main
+```
 
-## Key Architectural Patterns
+If there are uncommitted local changes:
+- do not stash automatically;
+- do not discard/reset them;
+- inspect and report them first.
 
-- **Lazy sessions**: `+ New Chat` creates a draft (`draft-{ts}`), not a DB record. Record is created on first message only.
-- **Provider router**: `lib/ai/image-providers/router.ts` — free ↔ free auto-fallback. Puter (user-funded) never silently falls back. Paid requires explicit user permission.
-- **BYOP tokens**: encrypted with AES-256-GCM (`PROVIDER_TOKEN_ENCRYPTION_KEY`), stored in `user_provider_connections`, decrypted server-side only.
-- **localStorage cap**: sessions max 30, messages max 50/session, debounced 400ms.
-- **No secrets in client**: `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `POLLINATIONS_APP_KEY`, `PROVIDER_TOKEN_ENCRYPTION_KEY`, `SUPABASE_SERVICE_ROLE_KEY` — all server-side only.
+Never use `git push --force` or `git reset --hard` unless the user explicitly authorizes it.
 
-## Critical CSS Lessons (NEVER REPEAT)
+## 2. Graphify first
 
-1. **Never use unlayered element selectors** (`p { ... }`, `button { ... }`) — they beat ALL Tailwind utilities via cascade layers. Use `@layer base { ... }` or class-based selectors.
-2. **No `transition: all`** — specify exact properties. Unintended props animate off-GPU.
-3. **Tailwind v4 @theme**: custom fonts go in `@theme { --font-sans: ... }` in globals.css, NOT tailwind.config.
-4. **`bg-white` doesn't work on buttons** if a base `background: none` rule is unlayered. Always check cascade conflicts.
+After Git sync, use Graphify before broadly reading project files:
 
-## Deploy
+```bash
+graphify query "<what am I looking for>"
+graphify affected "<file/component>"
+graphify explain "<name>"
+```
 
-- **Vercel**: `vercel deploy --prod --yes` from project root (linked to `ai-alpha` project)
-- **URL**: https://ai-alpha-delta-six.vercel.app
-- **Env vars on Vercel**: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, OPENROUTER_API_KEY, GROQ_API_KEY, POLLINATIONS_APP_KEY, PROVIDER_TOKEN_ENCRYPTION_KEY
+Use Graphify to locate relevant code and dependencies.
+Read full files only when Graphify lacks enough detail.
 
-## Graphify Protocol (MANDATORY — never skip)
+If pulled commits may have made the graph stale, run:
 
-Before reading ANY project files, query the Graphify graph first and prefer its scoped answers:
+```bash
+graphify update .
+```
 
-- Locate code: `graphify query "<what am I looking for>"` (run from project root)
-- Impact check before edits: `graphify affected "<file/component>"`
-- Explain a component: `graphify explain "<name>"`
-- After finishing edits, refresh the graph: `graphify update .`
+After completing code changes, refresh Graphify once:
 
-Read full files ONLY when the graph lacks the detail. This saves tokens and speeds up every session.
+```bash
+graphify update .
+```
 
-## GIT SYNC RULES (follow every session)
+Do not repeat the same update unnecessarily if a confirmed hook already refreshed the final code state.
 
-1. START: `git pull origin main` — if conflicts: `git stash` → `git pull` → `git stash pop`
-2. WORK: make your changes
-3. CHECK: `git diff` — review what changed, make sure nothing is broken
-4. COMMIT: `git add .` → `git commit -m "clear description of what changed"`
-5. PUSH: `git push origin main`
-6. NEVER skip step 1. NEVER sit on uncommitted changes. NEVER force push.
+Goal: keep project context current and reduce unnecessary file reads/token usage.
 
-If `git pull` causes conflicts:
+## 3. Scope and architecture safety
 
-- Read the conflicted files carefully.
-- Keep BOTH changes if they don't overlap.
-- Keep the NEWER change if they do.
-- Ask the team lead if unsure.
+Only modify files required by the current task.
 
-If a build fails after pulling:
+Do not:
+- perform unrelated refactors;
+- rename/reformat unrelated files;
+- delete unfamiliar work from the other contributor;
+- change architecture unless required by the task.
 
-- Run `npm run build` to find the error.
-- Fix it before pushing.
-- If you cannot fix it: `git revert` and ask for help.
+Preserve these foundations unless explicitly asked:
+- stable Supabase user IDs are the identity anchor;
+- credits/financial state are server-authoritative;
+- Demo Image/Video must never consume real credits;
+- unknown pricing fails closed;
+- real billing follows reserve → settle/release;
+- secrets and provider credentials stay server-side;
+- normal users may choose models but should not see provider infrastructure;
+- existing Chat streaming must not be broken casually.
 
-## GIT SYNC RULES (follow every session — BOTH agents)
+Never expose service-role keys, provider keys, webhook secrets, DB passwords, encryption keys, or admin credentials.
 
-1. **START**: `git pull origin main` — if conflicts: `git stash` → `git pull` → `git stash pop`
-2. **WORK**: make your changes
-3. **CHECK**: `git diff` — review what changed, make sure nothing is broken
-4. **COMMIT**: `git add .` → `git commit -m "clear description of what changed"`
-5. **PUSH**: `git push origin main`
-6. **NEVER skip step 1.** NEVER sit on uncommitted changes. NEVER force push.
+## 4. UI rules
 
-If git pull causes conflicts:
-- Read the conflicted files carefully
-- Keep BOTH changes if they don't overlap
-- Keep the NEWER change if they do
-- Ask the team lead if unsure
+Preserve VANTRA's current design:
+- dark monochrome;
+- premium Linear/Vercel-style;
+- no light mode, particles, neon clutter, or unnecessary redesigns;
+- reuse existing components/tokens;
+- normal motion should generally stay under 300ms;
+- avoid `transition: all`;
+- preserve EN/FR/AR and RTL;
+- keep keyboard/focus/accessibility behavior.
 
-If a build fails after pulling:
-- Run `npm run build` to find the error
-- Fix it before pushing
-- If you cannot fix it: `git revert` and ask for help
+Do not redesign the homepage or shared navigation unless explicitly requested.
 
-## Work Protocol
+## 5. Verify before commit
 
-1. Never claim "done" without proof: screenshot + computed-style numbers from the live page.
-2. Run `npm run lint` and `npm run build` before any deploy.
-3. Follow installed skills (emil-design-eng values, improve-animations audit values) — never invent motion values.
-4. Always `git add` + `git commit` + `git push origin main` after completing significant work. **Push is NOT optional.** The user approved this as a standing instruction. Forgetting push = forgetting the work.
-5. Always `graphify update .` after code changes (post-commit hook also does this).
-6. AUTO-DEPLOY ALWAYS (user standing instruction): after completing any code change — run `npm run lint` + `npm run build`, then immediately `vercel deploy --prod --yes` WITHOUT waiting for the user to ask. Retry once on transient `fetch failed`. Verify the production URL afterwards.
-7. **After EVERY deploy**: `graphify update .` must also run. Never deploy without updating the graph.
+Use verification appropriate to the task.
 
-## LLM Council Policy
+For significant code changes, normally run:
 
-The LLM Council is an optional, high-cost reasoning workflow for important decisions.
+```bash
+npm run lint
+npm run build
+```
 
-It must NEVER run silently.
+For UI work, verify affected desktop/mobile/RTL behavior.
+For backend/database/API work, use relevant tests, logs, SQL/API checks instead of forcing screenshot-based proof.
 
-### Explicit activation
+Do not claim success if verification failed.
 
-Run the Council when the user explicitly requests it with phrases such as:
-
-- council this
-- run the council
-- pressure-test this
-- stress-test this
-- war room this
-- debate this
-
-Equivalent Arabic requests count as explicit activation, including:
+## 6. Commit only task work
 
-- شغل المجلس
-- خل المجلس يحلل هذا
-- اعمل council لهذا
-- اختبر هذا بالمجلس
-- شغل LLM Council
+Before staging:
 
-Before an actual Council session begins, visibly announce:
+```bash
+git status
+git diff
+```
 
-🧠 LLM COUNCIL ACTIVATED
+Never blindly use `git add .`.
 
-Then state:
+Stage only files belonging to the current task, then inspect:
 
-Decision:
-[short decision being analyzed]
+```bash
+git add <task-files>
+git diff --cached
+```
 
-Reason:
-[why Council-level reasoning is justified]
+Commit with a clear message:
 
-Process:
-5 Advisors → Anonymous Peer Review → Chairman
+```bash
+git commit -m "clear task description"
+```
 
-Never run the Council invisibly.
+Never include unrelated edits, temporary files, accidental secrets, or another contributor's unfinished work.
 
-### Smart recommendation mode
+## 7. Check GitHub again before every push
 
-For genuinely high-impact decisions, recommend the Council BEFORE implementation but do NOT automatically activate it.
+The other contributor may have pushed while you were working.
 
-Use wording similar to:
+Run:
 
-🧠 Council recommended: this is a high-impact decision.
-Would you like me to run the LLM Council before we proceed?
+```bash
+git fetch origin
+```
 
-A recommendation is NOT authorization.
+If `origin/main` changed:
+- inspect incoming commits;
+- reconcile safely;
+- rerun relevant verification;
+- never overwrite them.
 
-Wait for explicit user approval before running the full Council.
+For unpublished local commits, `git rebase origin/main` may be used only after understanding incoming changes.
 
-### Recommend Council when appropriate for
+If conflicts occur:
+- never choose by timestamp;
+- never blindly choose ours/theirs;
+- preserve both when compatible;
+- if intent genuinely conflicts or is unclear, STOP and report it.
 
-- pricing strategy
-- subscription plans
-- credit economics
-- shared balance economics
-- unit economics
-- business model
-- monetization
-- launch strategy
-- major product positioning
-- major go-to-market decisions
-- important provider/model strategy
-- major architecture decisions
-- expensive infrastructure decisions
-- major irreversible data-model decisions
-- major security architecture
-- significant product pivots
-- adding/removing core capabilities
-- major UX/product-direction changes that are expensive to reverse
+Never force-push over another contributor.
 
-For VANTRA specifically, strongly consider recommending it for:
+## 8. Push and deploy
 
-- Hobby / Pro / Studio structure
-- DZD pricing
-- shared balance design
-- credit consumption rules
-- model cost allocation
-- margin protection
-- free vs paid usage
-- launch pricing
-- Algeria-first vs international expansion
-- core AI model/provider selection
-- major changes to the unified Chat / Image / Video proposition
+After successful verification and synchronization:
 
-### Do NOT use Council for routine work
+```bash
+git push origin main
+```
 
-Do not run or recommend Council for:
+Vercel Git Integration is the normal production deployment path:
 
-- CSS
-- padding/spacing
-- typography tweaks
-- small copy edits
-- normal frontend components
-- lint problems
-- TypeScript errors
-- ordinary bugs
-- small refactors
-- dependency maintenance
-- file renaming
-- minor responsive fixes
-- routine implementation
-- simple factual questions
-- questions with one objectively correct technical answer
+```text
+push origin/main
+→ Vercel auto-deploy
+→ verify affected production functionality
+```
 
-Examples that should NOT trigger Council:
+Do not normally run `vercel deploy --prod`, because it can duplicate the Git-triggered deployment.
 
-"Make this navbar responsive."
-"Fix this TypeScript error."
-"Should this padding be 48px or 56px?"
-"Change this button text."
-"Fix this component bug."
+Current pre-launch policy: production deploy after a successful `main` push is automatic and does not require separate approval.
 
-### Decision threshold
+Verify affected functionality at:
+https://joinvantra.com
 
-Before recommending Council, ask internally:
+## 9. Completion report
 
-"If this choice is wrong, could it materially cost money, customers, time, positioning, architecture stability, or be expensive to reverse?"
+Report briefly:
+- what changed;
+- files changed;
+- verification result;
+- commit hash;
+- push status;
+- production deploy status;
+- Graphify refresh status;
+- unresolved warnings/risks.
 
-If no:
-continue normally.
+Never claim push/deploy succeeded if it did not.
 
-If yes:
-recommend Council.
+## 10. Public/legal safety
 
-Do not over-trigger.
+Do not publish internal project IDs, private endpoints, API keys, DB internals, service-role details, provider secrets, or security configuration.
 
-### Token protection
+Do not claim VANTRA is a registered company unless that becomes factually true.
 
-The full Council may run ONLY when:
+## 11. LLM Council
 
-1. the user explicitly requests it,
+Never run Council silently.
+Recommend it only for genuinely high-impact decisions such as pricing, credits/margins, provider strategy, major architecture/security/database changes, or major product pivots.
+Explicit user approval is required before running it.
 
-or
+## Golden workflow
 
-2. the agent recommends it and the user explicitly approves.
+```text
+read AGENTS.md
+→ git status
+→ git fetch
+→ git pull --ff-only
+→ Graphify query/affected/explain
+→ scoped edits
+→ verify
+→ graphify update .
+→ git diff
+→ stage task files only
+→ commit
+→ git fetch again
+→ reconcile upstream if needed
+→ push main
+→ Vercel auto-deploy
+→ verify production
+→ report
+```
 
-Never interpret silence as approval.
-
-Normal work should use normal reasoning.
-
-### Duplicate-run protection
-
-Before running Council, check existing Council reports/transcripts if available.
-
-If essentially the same decision was already analyzed and no material inputs changed, tell the user instead of automatically repeating it.
-
-Offer:
-
-- show/use the previous verdict
-- or run a fresh Council if explicitly requested
-
-### VANTRA factual grounding
-
-When Council is used for VANTRA, inspect repository context first.
-
-Use factual information from:
-
-- AGENTS.md
-- actual code/configuration
-- project documentation
-- previous Council reports
-- user-provided business facts
-
-Do not invent:
-
-- revenue
-- margins
-- customer counts
-- conversion rates
-- provider agreements
-- partnerships
-- AI model costs
-- pricing
-- payment capabilities
-- launch metrics
-
-Clearly identify missing information.
-
-### Council completion
-
-Every completed Council session should clearly end with:
-
-🧠 LLM COUNCIL COMPLETE
-
-and surface:
-
-- Final recommendation
-- Highest-confidence agreement
-- Biggest disagreement
-- Most important blind spot
-- The one thing to do first
-
-Preserve the report/transcript behavior defined by the installed skill.
+Protect existing work. Never trade safety for speed.
