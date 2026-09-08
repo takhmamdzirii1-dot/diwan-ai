@@ -8,6 +8,7 @@ import {
   ChevronDown,
   CheckCircle2,
   CreditCard,
+  KeyRound,
   Loader2,
   Mail,
   Settings2,
@@ -65,6 +66,13 @@ function GeneralPanel() {
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordConfirmation, setPasswordConfirmation] = useState('');
+  const [reauthCode, setReauthCode] = useState('');
+  const [reauthRequired, setReauthRequired] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || t('guest');
 
   useEffect(() => {
@@ -114,6 +122,56 @@ function GeneralPanel() {
       setEmailError(t('emailChangeFailed'));
     } finally {
       setEmailLoading(false);
+    }
+  };
+
+  const changePassword = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(null);
+
+    if (newPassword.length < 6) {
+      setPasswordError(t('passwordTooShort'));
+      return;
+    }
+    if (newPassword !== passwordConfirmation) {
+      setPasswordError(t('passwordMismatch'));
+      return;
+    }
+    if (reauthRequired && !reauthCode.trim()) {
+      setPasswordError(t('reauthCodeRequired'));
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+        ...(reauthRequired ? { nonce: reauthCode.trim() } : {}),
+      });
+
+      if (error?.code === 'reauthentication_needed') {
+        const { error: reauthError } = await supabase.auth.reauthenticate();
+        if (reauthError) throw reauthError;
+        setReauthRequired(true);
+        setPasswordSuccess(t('reauthEmailSent'));
+        return;
+      }
+      if (error?.code === 'reauthentication_not_valid') {
+        setPasswordError(t('reauthInvalid'));
+        return;
+      }
+      if (error) throw error;
+
+      setNewPassword('');
+      setPasswordConfirmation('');
+      setReauthCode('');
+      setReauthRequired(false);
+      setPasswordSuccess(t('passwordChanged'));
+    } catch {
+      setPasswordError(t('passwordChangeFailed'));
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -172,7 +230,7 @@ function GeneralPanel() {
             />
           </div>
           {(emailError || emailSuccess) && (
-            <p role="status" className={cn('flex items-center gap-2 text-[11.5px]', emailError ? 'text-red-300' : 'text-white/75')}>
+            <p role={emailError ? 'alert' : 'status'} className={cn('flex items-start gap-2 text-[11.5px] leading-relaxed', emailError ? 'text-red-300' : 'text-white/75')}>
               {emailSuccess && <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />}
               {emailError || emailSuccess}
             </p>
@@ -184,6 +242,72 @@ function GeneralPanel() {
           >
             {emailLoading && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
             {t('sendEmailChange')}
+          </button>
+        </form>
+      )}
+      {user && (
+        <form onSubmit={changePassword} className="space-y-3 rounded-2xl border border-[var(--studio-border-subtle)] bg-[var(--studio-surface-raised)] p-5">
+          <div>
+            <label htmlFor="settings-new-password" className="text-[12px] font-medium text-white/85">{t('changePassword')}</label>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--studio-text-muted)]">{t('changePasswordDescription')}</p>
+          </div>
+          <div className="relative">
+            <KeyRound className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--studio-text-muted)]" aria-hidden="true" />
+            <input
+              id="settings-new-password"
+              type="password"
+              required
+              minLength={6}
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              placeholder={t('newPassword')}
+              className="h-11 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] ps-10 pe-3.5 text-[13px] text-white outline-none transition-[background-color,border-color] duration-150 placeholder:text-[var(--studio-text-muted)] focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/50 motion-reduce:transition-none"
+            />
+          </div>
+          <div className="relative">
+            <KeyRound className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--studio-text-muted)]" aria-hidden="true" />
+            <input
+              type="password"
+              required
+              minLength={6}
+              autoComplete="new-password"
+              aria-label={t('confirmNewPassword')}
+              value={passwordConfirmation}
+              onChange={(event) => setPasswordConfirmation(event.target.value)}
+              placeholder={t('confirmNewPassword')}
+              className="h-11 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] ps-10 pe-3.5 text-[13px] text-white outline-none transition-[background-color,border-color] duration-150 placeholder:text-[var(--studio-text-muted)] focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/50 motion-reduce:transition-none"
+            />
+          </div>
+          {reauthRequired && (
+            <div className="space-y-2 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-3">
+              <label htmlFor="settings-reauth-code" className="text-[11.5px] font-medium text-white/80">{t('reauthCode')}</label>
+              <p className="text-[11px] leading-relaxed text-[var(--studio-text-muted)]">{t('reauthCodeDescription')}</p>
+              <input
+                id="settings-reauth-code"
+                type="text"
+                required
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={reauthCode}
+                onChange={(event) => setReauthCode(event.target.value)}
+                className="h-10 w-full rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[13px] tracking-[0.18em] text-white outline-none transition-[border-color] duration-150 focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/50 motion-reduce:transition-none"
+              />
+            </div>
+          )}
+          {(passwordError || passwordSuccess) && (
+            <p role={passwordError ? 'alert' : 'status'} className={cn('flex items-start gap-2 text-[11.5px] leading-relaxed', passwordError ? 'text-red-300' : 'text-white/75')}>
+              {passwordSuccess && <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
+              {passwordError || passwordSuccess}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={passwordLoading || !newPassword || !passwordConfirmation}
+            className="flex h-10 items-center justify-center gap-2 rounded-xl bg-white px-4 text-[12.5px] font-semibold text-black transition-[background-color,transform] duration-150 hover:bg-white/85 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 motion-reduce:transition-none"
+          >
+            {passwordLoading && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
+            {reauthRequired ? t('confirmPasswordChange') : t('savePassword')}
           </button>
         </form>
       )}
