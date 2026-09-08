@@ -7,10 +7,11 @@ import { useLocale, useTranslations } from 'next-intl';
 import { VantraLogo, VantraWordmark } from '../VantraLogo';
 import { cn } from '@/lib/utils';
 import { Link, usePathname } from '@/i18n/navigation';
+import { updateUserLanguageIfNeeded } from '@/src/lib/auth/user-language';
 
 interface LandingHeaderProps {
   /** Supabase user (null = guest) */
-  user: { email?: string; user_metadata?: { full_name?: string } } | null;
+  user: { email?: string; user_metadata?: { full_name?: string; language?: string } } | null;
   authLoading: boolean;
   onSignIn: () => void;
   onOpenStudio: () => void;
@@ -149,7 +150,10 @@ export default function LandingHeader({ user, authLoading, onSignIn, onOpenStudi
           key={nextLocale}
           href={`${pathname}${routeHash}`}
           locale={nextLocale}
-          onClick={() => mobile && setMenuOpen(false)}
+          onClick={() => {
+            if (mobile) setMenuOpen(false);
+            void updateUserLanguageIfNeeded(user, nextLocale).catch(() => undefined);
+          }}
           aria-current={locale === nextLocale ? 'page' : undefined}
           aria-label={t(`languages.${nextLocale}`)}
           title={t(`languages.${nextLocale}`)}

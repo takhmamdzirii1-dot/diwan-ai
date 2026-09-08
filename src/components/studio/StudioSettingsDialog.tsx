@@ -6,7 +6,10 @@ import {
   Bot,
   Check,
   ChevronDown,
+  CheckCircle2,
   CreditCard,
+  Loader2,
+  Mail,
   Settings2,
   X,
 } from 'lucide-react';
@@ -14,6 +17,8 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import useUser from '../../hooks/useUser';
+import { supabase } from '../../lib/supabase/client';
+import { updateUserLanguageIfNeeded } from '../../lib/auth/user-language';
 import {
   CHAT_MODELS,
   DEFAULT_IMAGE_MODEL,
@@ -56,6 +61,10 @@ function GeneralPanel() {
   const router = useRouter();
   const { user } = useUser();
   const [startScreen, setStartScreen] = useState<StartScreen>('chat');
+  const [newEmail, setNewEmail] = useState('');
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
   const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || t('guest');
 
   useEffect(() => {
@@ -68,6 +77,7 @@ function GeneralPanel() {
 
   const selectLocale = (nextLocale: (typeof LOCALES)[number]) => {
     if (nextLocale === locale) return;
+    void updateUserLanguageIfNeeded(user, nextLocale).catch(() => undefined);
     document.cookie = `vantra_locale=${nextLocale}; Path=/; Max-Age=31536000; SameSite=Lax`;
     router.refresh();
   };
@@ -75,6 +85,36 @@ function GeneralPanel() {
   const selectStartScreen = (screen: StartScreen) => {
     setStartScreen(screen);
     document.cookie = `vantra_studio_start=${screen}; Path=/; Max-Age=31536000; SameSite=Lax`;
+  };
+
+  const requestEmailChange = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!user) return;
+
+    const email = newEmail.trim().toLowerCase();
+    setEmailError(null);
+    setEmailSuccess(null);
+
+    if (email === user.email?.toLowerCase()) {
+      setEmailError(t('emailUnchanged'));
+      return;
+    }
+
+    setEmailLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser(
+        { email },
+        { emailRedirectTo: `${window.location.origin}/auth/callback?next=/studio/chat` }
+      );
+      if (error) throw error;
+
+      setNewEmail('');
+      setEmailSuccess(t('emailChangeSent'));
+    } catch {
+      setEmailError(t('emailChangeFailed'));
+    } finally {
+      setEmailLoading(false);
+    }
   };
 
   return (
@@ -112,6 +152,41 @@ function GeneralPanel() {
           <p className="mt-2 text-[11.5px] text-[var(--studio-text-muted)]">{t('startScreenDescription')}</p>
         </fieldset>
       </div>
+      {user && (
+        <form onSubmit={requestEmailChange} className="space-y-3 rounded-2xl border border-[var(--studio-border-subtle)] bg-[var(--studio-surface-raised)] p-5">
+          <div>
+            <label htmlFor="settings-email-change" className="text-[12px] font-medium text-white/85">{t('changeEmail')}</label>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--studio-text-muted)]">{t('changeEmailDescription')}</p>
+          </div>
+          <div className="relative">
+            <Mail className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--studio-text-muted)]" aria-hidden="true" />
+            <input
+              id="settings-email-change"
+              type="email"
+              required
+              autoComplete="email"
+              value={newEmail}
+              onChange={(event) => setNewEmail(event.target.value)}
+              placeholder={t('newEmail')}
+              className="h-11 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] ps-10 pe-3.5 text-[13px] text-white outline-none transition-[background-color,border-color] duration-150 placeholder:text-[var(--studio-text-muted)] focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/50 motion-reduce:transition-none"
+            />
+          </div>
+          {(emailError || emailSuccess) && (
+            <p role="status" className={cn('flex items-center gap-2 text-[11.5px]', emailError ? 'text-red-300' : 'text-white/75')}>
+              {emailSuccess && <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />}
+              {emailError || emailSuccess}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={emailLoading || !newEmail.trim()}
+            className="flex h-10 items-center justify-center gap-2 rounded-xl bg-white px-4 text-[12.5px] font-semibold text-black transition-[background-color,transform] duration-150 hover:bg-white/85 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 motion-reduce:transition-none"
+          >
+            {emailLoading && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
+            {t('sendEmailChange')}
+          </button>
+        </form>
+      )}
     </div>
   );
 }

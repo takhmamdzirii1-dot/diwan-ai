@@ -162,6 +162,7 @@
     "signIn": "Sign in",
     "createAccount": "Create account",
     "googleFailed": "Could not sign in with Google.",
+    "missingEmail": "Enter your email address.",
     "missingCredentials": "Enter both your email and password.",
     "signInSuccess": "Signed in. Opening VANTRA Studio…",
     "createSuccess": "Account created. Opening VANTRA Studio…",
@@ -175,6 +176,22 @@
     "submitSignIn": "Sign in to account",
     "submitCreate": "Create account",
     "noAccount": "New to VANTRA?",
-    "hasAccount": "Already have an account?"
+    "hasAccount": "Already have an account?",
+    "forgotPassword": "Forgot password?",
+    "resetRequestTitle": "Reset your password",
+    "resetRequestSubtitle": "We’ll send a secure reset link to your email.",
+    "sendResetLink": "Send reset link",
+    "resetEmailSent": "If an account exists for this email, a reset link is on its way.",
+    "backToSignIn": "Back to sign in",
+    "newPasswordTitle": "Choose a new password",
+    "newPasswordSubtitle": "Enter a new password for your VANTRA account.",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "updatePassword": "Update password",
+    "passwordTooShort": "Use at least 6 characters.",
+    "passwordMismatch": "The passwords do not match.",
+    "passwordUpdated": "Your password has been updated.",
+    "invalidResetLink": "This reset link is invalid or has expired. Request a new one.",
+    "returnToStudio": "Continue to VANTRA Studio"
   }
 }

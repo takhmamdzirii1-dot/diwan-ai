@@ -67,7 +67,14 @@
       "currentPlan": "Current plan",
       "freePlan": "Free",
       "unifiedCreditsBalance": "Unified Credits balance",
-      "balanceUnavailable": "Balance unavailable"
+      "balanceUnavailable": "Balance unavailable",
+      "changeEmail": "Change email address",
+      "changeEmailDescription": "We’ll send confirmation instructions before your account email changes.",
+      "newEmail": "New email address",
+      "sendEmailChange": "Send confirmation",
+      "emailUnchanged": "Enter a different email address.",
+      "emailChangeSent": "Confirmation instructions have been sent.",
+      "emailChangeFailed": "The email change could not be started. Try again."
     },
     "chat": {
       "emptyTitle": "What will you create today?",

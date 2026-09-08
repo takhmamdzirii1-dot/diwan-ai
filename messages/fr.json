@@ -143,6 +143,7 @@
     "signIn": "Se connecter",
     "createAccount": "Créer un compte",
     "googleFailed": "La connexion avec Google a échoué.",
+    "missingEmail": "Saisissez votre adresse e-mail.",
     "missingCredentials": "Saisissez votre e-mail et votre mot de passe.",
     "signInSuccess": "Connexion réussie. Ouverture de VANTRA Studio…",
     "createSuccess": "Compte créé. Ouverture de VANTRA Studio…",
@@ -156,6 +157,22 @@
     "submitSignIn": "Se connecter",
     "submitCreate": "Créer mon compte",
     "noAccount": "Nouveau sur VANTRA ?",
-    "hasAccount": "Vous avez déjà un compte ?"
+    "hasAccount": "Vous avez déjà un compte ?",
+    "forgotPassword": "Mot de passe oublié ?",
+    "resetRequestTitle": "Réinitialisez votre mot de passe",
+    "resetRequestSubtitle": "Nous vous enverrons un lien sécurisé par e-mail.",
+    "sendResetLink": "Envoyer le lien",
+    "resetEmailSent": "Si un compte correspond à cette adresse, le lien de réinitialisation est en route.",
+    "backToSignIn": "Retour à la connexion",
+    "newPasswordTitle": "Choisissez un nouveau mot de passe",
+    "newPasswordSubtitle": "Saisissez un nouveau mot de passe pour votre compte VANTRA.",
+    "newPassword": "Nouveau mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "updatePassword": "Mettre à jour le mot de passe",
+    "passwordTooShort": "Utilisez au moins 6 caractères.",
+    "passwordMismatch": "Les mots de passe ne correspondent pas.",
+    "passwordUpdated": "Votre mot de passe a été mis à jour.",
+    "invalidResetLink": "Ce lien est invalide ou a expiré. Demandez-en un nouveau.",
+    "returnToStudio": "Continuer vers VANTRA Studio"
   }
 }

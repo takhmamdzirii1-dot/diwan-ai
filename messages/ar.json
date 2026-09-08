@@ -143,6 +143,7 @@
     "signIn": "تسجيل الدخول",
     "createAccount": "إنشاء حساب",
     "googleFailed": "تعذّر تسجيل الدخول عبر Google.",
+    "missingEmail": "أدخل بريدك الإلكتروني.",
     "missingCredentials": "أدخل البريد الإلكتروني وكلمة المرور.",
     "signInSuccess": "تم تسجيل الدخول. جارٍ فتح VANTRA Studio…",
     "createSuccess": "تم إنشاء الحساب. جارٍ فتح VANTRA Studio…",
@@ -156,6 +157,22 @@
     "submitSignIn": "تسجيل الدخول",
     "submitCreate": "إنشاء الحساب",
     "noAccount": "جديد على VANTRA؟",
-    "hasAccount": "لديك حساب بالفعل؟"
+    "hasAccount": "لديك حساب بالفعل؟",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "resetRequestTitle": "أعد تعيين كلمة المرور",
+    "resetRequestSubtitle": "سنرسل رابط إعادة تعيين آمن إلى بريدك الإلكتروني.",
+    "sendResetLink": "إرسال رابط إعادة التعيين",
+    "resetEmailSent": "إذا وُجد حساب بهذا البريد، فسيصلك رابط إعادة التعيين.",
+    "backToSignIn": "العودة إلى تسجيل الدخول",
+    "newPasswordTitle": "اختر كلمة مرور جديدة",
+    "newPasswordSubtitle": "أدخل كلمة مرور جديدة لحسابك في VANTRA.",
+    "newPassword": "كلمة المرور الجديدة",
+    "confirmPassword": "تأكيد كلمة المرور الجديدة",
+    "updatePassword": "تحديث كلمة المرور",
+    "passwordTooShort": "استخدم 6 أحرف على الأقل.",
+    "passwordMismatch": "كلمتا المرور غير متطابقتين.",
+    "passwordUpdated": "تم تحديث كلمة المرور.",
+    "invalidResetLink": "هذا الرابط غير صالح أو انتهت صلاحيته. اطلب رابطاً جديداً.",
+    "returnToStudio": "المتابعة إلى VANTRA Studio"
   }
 }

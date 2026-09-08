@@ -15,6 +15,8 @@ export interface AuthModalProps {
   onSuccess?: () => void;
 }
 
+type AuthMode = 'signin' | 'signup' | 'forgot';
+
 export default function AuthModal({
   isOpen: propIsOpen,
   onClose: propOnClose,
@@ -22,11 +24,12 @@ export default function AuthModal({
   onSuccess,
 }: AuthModalProps) {
   const t = useTranslations('auth');
-  const isRtl = useLocale() === 'ar';
+  const locale = useLocale() as 'en' | 'fr' | 'ar';
+  const isRtl = locale === 'ar';
   const router = useRouter();
   const supabase = createClient();
   const [internalIsOpen, setInternalIsOpen] = useState<boolean>(false);
-  const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -111,7 +114,11 @@ export default function AuthModal({
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
+    if (!email) {
+      setError(t('missingEmail'));
+      return;
+    }
+    if (mode !== 'forgot' && !password) {
       setError(t('missingCredentials'));
       return;
     }
@@ -121,7 +128,12 @@ export default function AuthModal({
     setSuccessMsg(null);
 
     try {
-      if (mode === 'signin') {
+      if (mode === 'forgot') {
+        const redirectTo = `${window.location.origin}/auth/callback?next=/${locale}/reset-password`;
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+        if (error) throw error;
+        setSuccessMsg(t('resetEmailSent'));
+      } else if (mode === 'signin') {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -140,8 +152,10 @@ export default function AuthModal({
           email,
           password,
           options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=/studio/chat`,
             data: {
               full_name: fullName.trim() || undefined,
+              language: locale,
             },
           },
         });
@@ -206,12 +220,18 @@ export default function AuthModal({
               </div>
               <div>
                 <h3 id="vantra-auth-modal-title" className="text-xl font-bold text-white tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>
-                  {mode === 'signin' ? t('signInTitle') : t('createTitle')}
+                  {mode === 'signin'
+                    ? t('signInTitle')
+                    : mode === 'signup'
+                      ? t('createTitle')
+                      : t('resetRequestTitle')}
                 </h3>
                 <p className="text-xs text-[#94A3B8] mt-0.5">
                   {mode === 'signin'
                     ? t('signInSubtitle')
-                    : t('createSubtitle')}
+                    : mode === 'signup'
+                      ? t('createSubtitle')
+                      : t('resetRequestSubtitle')}
                 </p>
               </div>
             </div>
@@ -227,7 +247,7 @@ export default function AuthModal({
           </div>
 
           {/* Segmented Control Pill Switcher */}
-          <div className="vantra-tab-track mb-5">
+          {mode !== 'forgot' && <div className="vantra-tab-track mb-5">
             <button
               type="button"
               onClick={() => {
@@ -250,7 +270,7 @@ export default function AuthModal({
             >
               {t('createAccount')}
             </button>
-          </div>
+          </div>}
 
           {/* Error / Success Feedback Alerts */}
           {error && (
@@ -276,7 +296,7 @@ export default function AuthModal({
           )}
 
           {/* Google OAuth Button - Monochrome */}
-          <button
+          {mode !== 'forgot' && <button
             type="button"
             disabled={googleLoading || loading}
             onClick={handleGoogleSignIn}
@@ -305,16 +325,16 @@ export default function AuthModal({
               </svg>
             )}
             <span className="font-medium">{t('continueGoogle')}</span>
-          </button>
+          </button>}
 
           {/* Clean Horizontal Divider */}
-          <div className="flex items-center gap-4 my-4">
+          {mode !== 'forgot' && <div className="flex items-center gap-4 my-4">
             <div className="flex-1 h-px bg-white/10" />
             <span className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider">
               {t('orEmail')}
             </span>
             <div className="flex-1 h-px bg-white/10" />
-          </div>
+          </div>}
 
           {/* Email & Password Form */}
           <form onSubmit={handleEmailAuth} className="space-y-4">
@@ -353,10 +373,25 @@ export default function AuthModal({
               </div>
             </div>
 
-            <div>
-              <label className="text-xs font-semibold text-[#CBD5E1] block mb-1.5">
-                {t('password')}
-              </label>
+            {mode !== 'forgot' && <div>
+              <div className="mb-1.5 flex items-center justify-between gap-3">
+                <label className="text-xs font-semibold text-[#CBD5E1]">
+                  {t('password')}
+                </label>
+                {mode === 'signin' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('forgot');
+                      setError(null);
+                      setSuccessMsg(null);
+                    }}
+                    className="text-xs font-semibold text-white/70 transition-colors duration-150 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                  >
+                    {t('forgotPassword')}
+                  </button>
+                )}
+              </div>
               <div className="vantra-input-wrap">
                 <Lock className="vantra-input-icon" />
                 <input
@@ -369,7 +404,7 @@ export default function AuthModal({
                   className="vantra-input-field"
                 />
               </div>
-            </div>
+            </div>}
 
             {/* Primary Action Button */}
             <button
@@ -381,7 +416,13 @@ export default function AuthModal({
                 <Loader2 className="h-5 w-5 animate-spin text-[#050506]" />
               ) : (
                 <>
-                  <span>{mode === 'signin' ? t('submitSignIn') : t('submitCreate')}</span>
+                  <span>
+                    {mode === 'signin'
+                      ? t('submitSignIn')
+                      : mode === 'signup'
+                        ? t('submitCreate')
+                        : t('sendResetLink')}
+                  </span>
                   <ArrowRight className={`h-4 w-4 text-[#050506] ${isRtl ? 'rotate-180' : ''}`} />
                 </>
               )}
@@ -391,7 +432,7 @@ export default function AuthModal({
           {/* Bottom Switch Note */}
           <div className="text-center pt-4 mt-4 border-t border-white/[0.08]">
             <p className="text-xs text-[#64748B]">
-              {mode === 'signin' ? t('noAccount') : t('hasAccount')}
+              {mode === 'signin' ? t('noAccount') : mode === 'signup' ? t('hasAccount') : null}
               <button
                 type="button"
                 onClick={() => {
@@ -401,7 +442,7 @@ export default function AuthModal({
                 }}
                 className="ms-1.5 font-bold text-[#FFFFFF] hover:underline cursor-pointer"
               >
-                {mode === 'signin' ? t('createAccount') : t('signIn')}
+                {mode === 'signin' ? t('createAccount') : mode === 'signup' ? t('signIn') : t('backToSignIn')}
               </button>
             </p>
           </div>
