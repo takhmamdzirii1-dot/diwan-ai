@@ -1,21 +1,23 @@
 'use client';
 
 import React from 'react';
-import { useTranslations } from 'next-intl';
+import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
 import { VantraLogo, VantraWordmark } from './VantraLogo';
-
-const LINKS = [
-  { key: 'models', href: '#models' },
-  { key: 'pricing', href: '#pricing' },
-  { key: 'faq', href: '#faq' },
-  { key: 'terms', href: '#' },
-  { key: 'privacy', href: '#' },
-  { key: 'status', href: '#' },
-  { key: 'twitter', href: 'https://x.com', external: true },
-];
 
 export default function GlobalFooter() {
   const t = useTranslations('footer');
+  const locale = useLocale();
+  const links = [
+    { key: 'models', href: `/${locale}#models` },
+    { key: 'pricing', href: `/${locale}#pricing` },
+    { key: 'faq', href: `/${locale}#faq` },
+    { key: 'terms', href: `/${locale}/terms` },
+    { key: 'privacy', href: `/${locale}/privacy` },
+    { key: 'billing', href: `/${locale}/billing` },
+    { key: 'status', href: '#' },
+    { key: 'twitter', href: 'https://x.com', external: true },
+  ];
 
   return (
     <footer className="border-t border-white/[0.075] py-8 md:py-9">
@@ -31,15 +33,15 @@ export default function GlobalFooter() {
 
         {/* Links */}
         <nav aria-label={t('aria')} className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3 sm:justify-end lg:gap-x-7">
-          {LINKS.map((l) => (
-            <a
+          {links.map((l) => (
+            <Link
               key={l.key}
               href={l.href}
               {...(l.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
               className="rounded text-[13px] text-white/45 transition-colors duration-200 hover:text-white/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
             >
               {t(l.key)}
-            </a>
+            </Link>
           ))}
         </nav>
       </div>

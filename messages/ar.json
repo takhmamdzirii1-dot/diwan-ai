@@ -133,7 +133,7 @@
     ]
   },
   "finalCta": { "eyebrow": "جاهزون عندما تكون جاهزًا", "title": "مساحة واحدة. كل الوسائط.", "subtitle": "دردش وأنشئ الصور وولّد الفيديو برصيد VANTRA مشترك واحد.", "button": "ابدأ مع VANTRA ←", "microcopy": "دردشة · صور · فيديو · دفع محلي بالدج" },
-  "footer": { "aria": "روابط أسفل الصفحة", "models": "النماذج", "pricing": "الأسعار", "faq": "الأسئلة الشائعة", "terms": "الشروط", "privacy": "الخصوصية", "twitter": "X / Twitter", "status": "الحالة" },
+  "footer": { "aria": "روابط أسفل الصفحة", "models": "النماذج", "pricing": "الأسعار", "faq": "الأسئلة الشائعة", "terms": "الشروط", "privacy": "الخصوصية", "billing": "الفوترة", "twitter": "X / Twitter", "status": "الحالة" },
   "auth": {
     "signInTitle": "سجّل الدخول إلى VANTRA",
     "createTitle": "أنشئ حسابك في VANTRA",

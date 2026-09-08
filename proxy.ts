@@ -16,5 +16,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/(fr|ar|en)/:path*'],
+  matcher: ['/', '/(privacy|terms|billing)', '/(fr|ar|en)/:path*'],
 };
