@@ -1,0 +1,60 @@
+{
+  "Admin": {
+    "brand": "Administration VANTRA", "internal": "Propriétaire uniquement", "backToStudio": "Retour au Studio",
+    "nav": { "overview": "Vue d’ensemble", "providers": "Fournisseurs", "models": "Modèles", "users": "Utilisateurs", "jobs": "Tâches / Usage" },
+    "common": {
+      "enabled": "Activé", "disabled": "Désactivé", "available": "Disponible", "unavailable": "Indisponible",
+      "notConfigured": "Les données d’administration sont indisponibles car l’accès serveur de reporting n’est pas configuré.",
+      "queryFailed": "Impossible de charger les données. Consultez les journaux serveur.",
+      "noData": "Aucune donnée enregistrée", "never": "Jamais", "minorUnits": "{value} unités mineures {currency}",
+      "credits": "{value} Crédits VANTRA unifiés", "milliseconds": "{value} ms", "readOnly": "Lecture seule en v1"
+    },
+    "overview": {
+      "title": "Vue d’ensemble", "description": "Un aperçu factuel des utilisateurs, générations et données financières de VANTRA.",
+      "totalUsers": "Utilisateurs", "totalGenerations": "Générations", "successfulJobs": "Tâches réussies",
+      "failedJobs": "Tâches échouées", "creditsConsumed": "Crédits consommés", "providerCost": "Coût fournisseurs",
+      "recentActivity": "Activité récente", "noActivity": "Aucune activité enregistrée"
+    },
+    "providers": {
+      "title": "Fournisseurs", "description": "Configuration et télémétrie issues de l’infrastructure partagée.",
+      "name": "Fournisseur", "modality": "Modalité", "state": "État", "health": "Santé", "role": "Rôle",
+      "requests": "Requêtes", "failures": "Échecs", "latency": "Latence moy.", "cost": "Coût cumulé",
+      "lastError": "Dernière erreur", "testTitle": "Test propriétaire Runware", "testDescription": "Lancer une requête image contrôlée sans exposer les identifiants du fournisseur."
+    },
+    "models": {
+      "title": "Modèles", "description": "Données vérifiées du registre. Les prix manquants restent indisponibles.",
+      "provider": "Fournisseur", "modelId": "ID du modèle", "displayName": "Nom affiché", "modality": "Modalité",
+      "state": "État", "providerCost": "Dernier coût réel", "creditPrice": "Prix en crédits VANTRA", "priority": "Priorité"
+    },
+    "users": {
+      "title": "Utilisateurs", "description": "Rechercher les comptes et consulter leurs crédits et usages réels.",
+      "search": "Rechercher par e-mail ou ID utilisateur", "searchAction": "Rechercher", "email": "E-mail", "plan": "Formule",
+      "balance": "Solde de crédits", "usage": "Crédits utilisés", "generations": "Générations", "status": "État du compte",
+      "created": "Créé le", "lastSignIn": "Dernière connexion", "showing": "Jusqu’à 100 résultats parmi {total} utilisateurs.",
+      "truncated": "La source a atteint la limite de sécurité de la v1.", "safeActions": "Aucune modification de solde, facturation ou compte n’est exposée en v1."
+    },
+    "jobs": {
+      "title": "Tâches / Usage", "description": "Générations et dispatchs fournisseurs issus des tables existantes.",
+      "time": "Date", "source": "Source", "user": "Utilisateur", "modality": "Modalité", "providerModel": "Fournisseur / modèle",
+      "status": "État", "cost": "Coût fournisseur réel", "details": "Détails", "generation": "Génération", "dispatch": "Dispatch"
+    },
+    "status": {
+      "healthy": "Opérationnel", "attention": "À surveiller", "idle": "Aucune requête enregistrée", "unconfigured": "Non configuré",
+      "demo": "Démo", "client_managed": "Géré côté client", "available": "Disponible", "beta": "Bêta", "preview": "Aperçu",
+      "unavailable": "Indisponible", "temporarily_unavailable": "Temporairement indisponible", "internal_test": "Test interne",
+      "not_in_studio": "Absent du Studio", "active": "Actif", "unconfirmed": "Non confirmé", "suspended": "Suspendu",
+      "queued": "En attente", "processing": "En cours", "completed": "Terminé", "failed": "Échoué", "cancelled": "Annulé",
+      "pending": "En attente", "leased": "Réservé", "dispatched": "Envoyé", "started": "Démarré", "submitted": "Soumis",
+      "unknown": "Inconnu", "reserve": "Réservé", "settle": "Réglé", "release": "Libéré", "refund": "Remboursé",
+      "grant": "Accordé", "adjustment": "Ajusté"
+    },
+    "role": { "primary": "Principal", "backup": "Secours", "optional": "Optionnel", "unassigned": "Non attribué" },
+    "providerTest": {
+      "provider": "Fournisseur", "prompt": "Prompt", "promptPlaceholder": "Décrivez une image à générer…",
+      "generate": "Générer l’image test", "generating": "Génération…", "result": "Résultat",
+      "resultAlt": "Résultat du test Runware", "summary": "Résumé de la réponse", "emptyTitle": "Aucun résultat pour le moment",
+      "emptyDescription": "Lancez une requête contrôlée pour examiner la réponse du fournisseur.",
+      "genericError": "Le test a échoué. Consultez les journaux serveur pour les détails de la requête."
+    }
+  }
+}

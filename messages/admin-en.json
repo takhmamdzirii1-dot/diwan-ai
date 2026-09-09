@@ -1,0 +1,62 @@
+{
+  "Admin": {
+    "brand": "VANTRA Admin",
+    "internal": "Owner only",
+    "backToStudio": "Back to Studio",
+    "nav": { "overview": "Overview", "providers": "Providers", "models": "Models", "users": "Users", "jobs": "Jobs / Usage" },
+    "common": {
+      "enabled": "Enabled", "disabled": "Disabled", "available": "Available", "unavailable": "Unavailable",
+      "notConfigured": "Admin data is unavailable because the server reporting credential is not configured.",
+      "queryFailed": "Admin data could not be loaded. Check the server logs.",
+      "noData": "No recorded data yet", "never": "Never", "minorUnits": "{value} minor units {currency}",
+      "credits": "{value} Unified Credits", "milliseconds": "{value} ms", "readOnly": "Read-only in v1"
+    },
+    "overview": {
+      "title": "Overview", "description": "A factual snapshot of VANTRA users, generations and financial records.",
+      "totalUsers": "Total users", "totalGenerations": "Total generations", "successfulJobs": "Successful jobs",
+      "failedJobs": "Failed jobs", "creditsConsumed": "Credits consumed", "providerCost": "Provider cost",
+      "recentActivity": "Recent activity", "noActivity": "No recorded activity yet"
+    },
+    "providers": {
+      "title": "Providers", "description": "Configuration and telemetry from the shared provider and financial infrastructure.",
+      "name": "Provider", "modality": "Modality", "state": "State", "health": "Health", "role": "Role",
+      "requests": "Requests", "failures": "Failures", "latency": "Avg. latency", "cost": "Accumulated cost",
+      "lastError": "Last error", "testTitle": "Runware owner test", "testDescription": "Run one controlled image request without exposing provider credentials."
+    },
+    "models": {
+      "title": "Models", "description": "Verified model registry data. Missing prices remain unavailable.",
+      "provider": "Provider", "modelId": "Model ID", "displayName": "Display name", "modality": "Modality",
+      "state": "State", "providerCost": "Latest real provider cost", "creditPrice": "VANTRA credit price", "priority": "Priority"
+    },
+    "users": {
+      "title": "Users", "description": "Search authenticated users and inspect their real credit and usage records.",
+      "search": "Search by email or user ID", "searchAction": "Search", "email": "Email", "plan": "Plan",
+      "balance": "Credit balance", "usage": "Credits used", "generations": "Generations", "status": "Account status",
+      "created": "Created", "lastSignIn": "Last sign-in", "showing": "Showing up to 100 matches from {total} users.",
+      "truncated": "The result source reached the v1 safety limit.", "safeActions": "No balance, billing or account mutations are exposed in v1."
+    },
+    "jobs": {
+      "title": "Jobs / Usage", "description": "Generation records and provider dispatch history from existing tables.",
+      "time": "Time", "source": "Source", "user": "User", "modality": "Modality", "providerModel": "Provider / model",
+      "status": "Status", "cost": "Real provider cost", "details": "Details", "generation": "Generation", "dispatch": "Dispatch"
+    },
+    "status": {
+      "healthy": "Healthy", "attention": "Attention", "idle": "No recorded requests", "unconfigured": "Unconfigured",
+      "demo": "Demo", "client_managed": "Client-managed", "available": "Available", "beta": "Beta", "preview": "Preview",
+      "unavailable": "Unavailable", "temporarily_unavailable": "Temporarily unavailable", "internal_test": "Internal test",
+      "not_in_studio": "Not in Studio", "active": "Active", "unconfirmed": "Unconfirmed", "suspended": "Suspended",
+      "queued": "Queued", "processing": "Processing", "completed": "Completed", "failed": "Failed", "cancelled": "Cancelled",
+      "pending": "Pending", "leased": "Leased", "dispatched": "Dispatched", "started": "Started", "submitted": "Submitted",
+      "unknown": "Unknown", "reserve": "Reserved", "settle": "Settled", "release": "Released", "refund": "Refunded",
+      "grant": "Granted", "adjustment": "Adjusted"
+    },
+    "role": { "primary": "Primary", "backup": "Backup", "optional": "Optional", "unassigned": "Unassigned" },
+    "providerTest": {
+      "provider": "Provider", "prompt": "Prompt", "promptPlaceholder": "Describe one image to generate…",
+      "generate": "Generate test image", "generating": "Generating…", "result": "Result",
+      "resultAlt": "Runware provider test result", "summary": "Response summary", "emptyTitle": "No test result yet",
+      "emptyDescription": "Run one controlled request to inspect the provider response.",
+      "genericError": "The provider test failed. Check the server logs for the request details."
+    }
+  }
+}

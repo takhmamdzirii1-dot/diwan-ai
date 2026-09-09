@@ -1,0 +1,60 @@
+{
+  "Admin": {
+    "brand": "إدارة VANTRA", "internal": "للمالك فقط", "backToStudio": "العودة إلى الاستوديو",
+    "nav": { "overview": "نظرة عامة", "providers": "المزوّدون", "models": "النماذج", "users": "المستخدمون", "jobs": "المهام / الاستخدام" },
+    "common": {
+      "enabled": "مفعّل", "disabled": "معطّل", "available": "متاح", "unavailable": "غير متاح",
+      "notConfigured": "بيانات الإدارة غير متاحة لأن صلاحية تقارير الخادم غير مهيأة.",
+      "queryFailed": "تعذّر تحميل بيانات الإدارة. راجع سجلات الخادم.",
+      "noData": "لا توجد بيانات مسجّلة", "never": "أبداً", "minorUnits": "{value} وحدة صغرى {currency}",
+      "credits": "{value} من أرصدة VANTRA الموحّدة", "milliseconds": "{value} مللي ثانية", "readOnly": "للقراءة فقط في الإصدار الأول"
+    },
+    "overview": {
+      "title": "نظرة عامة", "description": "ملخص واقعي لمستخدمي VANTRA وعمليات الإنشاء والسجلات المالية.",
+      "totalUsers": "إجمالي المستخدمين", "totalGenerations": "إجمالي عمليات الإنشاء", "successfulJobs": "المهام الناجحة",
+      "failedJobs": "المهام الفاشلة", "creditsConsumed": "الأرصدة المستهلكة", "providerCost": "تكلفة المزوّدين",
+      "recentActivity": "النشاط الأخير", "noActivity": "لا يوجد نشاط مسجّل"
+    },
+    "providers": {
+      "title": "المزوّدون", "description": "الإعدادات والقياسات من بنية المزوّدين والنظام المالي المشتركة.",
+      "name": "المزوّد", "modality": "النوع", "state": "الحالة", "health": "الصحة", "role": "الدور",
+      "requests": "الطلبات", "failures": "الإخفاقات", "latency": "متوسط الاستجابة", "cost": "التكلفة المتراكمة",
+      "lastError": "آخر خطأ", "testTitle": "اختبار Runware للمالك", "testDescription": "نفّذ طلب صورة مضبوطاً دون كشف بيانات اعتماد المزوّد."
+    },
+    "models": {
+      "title": "النماذج", "description": "بيانات سجل النماذج المتحقق منها. تبقى الأسعار المفقودة غير متاحة.",
+      "provider": "المزوّد", "modelId": "معرّف النموذج", "displayName": "الاسم الظاهر", "modality": "النوع",
+      "state": "الحالة", "providerCost": "آخر تكلفة فعلية", "creditPrice": "السعر بأرصدة VANTRA", "priority": "الأولوية"
+    },
+    "users": {
+      "title": "المستخدمون", "description": "ابحث في الحسابات وراجع أرصدتها واستخدامها الحقيقي.",
+      "search": "البحث بالبريد أو معرّف المستخدم", "searchAction": "بحث", "email": "البريد الإلكتروني", "plan": "الخطة",
+      "balance": "رصيد الأرصدة", "usage": "الأرصدة المستخدمة", "generations": "عمليات الإنشاء", "status": "حالة الحساب",
+      "created": "تاريخ الإنشاء", "lastSignIn": "آخر دخول", "showing": "عرض حتى 100 نتيجة من أصل {total} مستخدم.",
+      "truncated": "بلغ مصدر النتائج حد الأمان في الإصدار الأول.", "safeActions": "لا يتيح الإصدار الأول تعديل الأرصدة أو الفوترة أو الحسابات."
+    },
+    "jobs": {
+      "title": "المهام / الاستخدام", "description": "سجل الإنشاء وإرسال المزوّدين من الجداول الحالية.",
+      "time": "الوقت", "source": "المصدر", "user": "المستخدم", "modality": "النوع", "providerModel": "المزوّد / النموذج",
+      "status": "الحالة", "cost": "تكلفة المزوّد الفعلية", "details": "التفاصيل", "generation": "إنشاء", "dispatch": "إرسال"
+    },
+    "status": {
+      "healthy": "سليم", "attention": "يحتاج متابعة", "idle": "لا توجد طلبات مسجّلة", "unconfigured": "غير مهيأ",
+      "demo": "تجريبي", "client_managed": "يُدار من العميل", "available": "متاح", "beta": "بيتا", "preview": "معاينة",
+      "unavailable": "غير متاح", "temporarily_unavailable": "غير متاح مؤقتاً", "internal_test": "اختبار داخلي",
+      "not_in_studio": "غير موجود في الاستوديو", "active": "نشط", "unconfirmed": "غير مؤكد", "suspended": "موقوف",
+      "queued": "في الصف", "processing": "قيد المعالجة", "completed": "مكتمل", "failed": "فشل", "cancelled": "ملغى",
+      "pending": "معلّق", "leased": "محجوز", "dispatched": "أُرسل", "started": "بدأ", "submitted": "تم الإرسال",
+      "unknown": "غير معروف", "reserve": "محجوز", "settle": "تمت التسوية", "release": "تم التحرير", "refund": "مستردّ",
+      "grant": "ممنوح", "adjustment": "تسوية"
+    },
+    "role": { "primary": "أساسي", "backup": "احتياطي", "optional": "اختياري", "unassigned": "غير معيّن" },
+    "providerTest": {
+      "provider": "المزوّد", "prompt": "الوصف", "promptPlaceholder": "صِف صورة واحدة لإنشائها…",
+      "generate": "إنشاء صورة اختبارية", "generating": "جارٍ الإنشاء…", "result": "النتيجة",
+      "resultAlt": "نتيجة اختبار Runware", "summary": "ملخص الاستجابة", "emptyTitle": "لا توجد نتيجة اختبار بعد",
+      "emptyDescription": "نفّذ طلباً مضبوطاً لمراجعة استجابة المزوّد.",
+      "genericError": "فشل اختبار المزوّد. راجع سجلات الخادم لمعرفة تفاصيل الطلب."
+    }
+  }
+}
