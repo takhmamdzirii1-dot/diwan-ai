@@ -2,7 +2,7 @@
  * Image provider abstraction — VANTRA Studio
  *
  * Capabilities model:
- *  - "platform"        → VANTRA pays (mock/dev only right now)
+ *  - "platform"        → VANTRA pays (server-side only for real providers)
  *  - "free"            → genuinely free public endpoint (Pollinations anonymous/referrer tier)
  *  - "user_associated" → costs land on the end user's own provider account (Puter.js User-Pays)
  *  - "byop"            → user brings their own provider key/token (future: Pollinations Seed tier)

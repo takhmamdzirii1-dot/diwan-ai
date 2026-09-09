@@ -16,15 +16,18 @@ import type { ImageGenerateParams, ImageGenerationResult, ProviderMeta } from '.
 import { pollinationsMeta } from './pollinations';
 import { puterMeta } from './puter';
 import { mockMeta } from './mock';
+import { runwareMeta } from './runware-meta';
 
-export const PROVIDER_REGISTRY: Record<string, ProviderMeta> = {
+export const PROVIDER_REGISTRY = {
   [puterMeta.id]: puterMeta,
   [pollinationsMeta.id]: pollinationsMeta,
   [mockMeta.id]: mockMeta,
-};
+  [runwareMeta.id]: runwareMeta,
+} satisfies Record<string, ProviderMeta>;
 
+/** Providers exposed by the existing end-user picker. Runware remains owner-test only. */
 export const PROVIDER_ORDER = ['puter', 'pollinations', 'mock'] as const;
-export type ProviderId = (typeof PROVIDER_ORDER)[number] | 'auto';
+export type ProviderId = keyof typeof PROVIDER_REGISTRY | 'auto';
 
 export const AUTO_FALLBACK_CHAIN: string[] = ['pollinations', 'mock'];
 
