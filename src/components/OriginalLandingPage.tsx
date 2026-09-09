@@ -45,9 +45,9 @@ export default function OriginalLandingPage() {
     [router]
   );
 
-  const handlePricingAction = () => {
+  const handlePricingAction = (planId?: string) => {
     if (isLoading) return;
-    if (user) openTopUpModal();
+    if (user) openTopUpModal(planId ? { id: planId } : undefined);
     else openAuthModal('signup');
   };
 

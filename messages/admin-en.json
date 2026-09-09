@@ -3,7 +3,7 @@
     "brand": "VANTRA Admin",
     "internal": "Owner only",
     "backToStudio": "Back to Studio",
-    "nav": { "overview": "Overview", "providers": "Providers", "models": "Models", "users": "Users", "jobs": "Jobs / Usage" },
+    "nav": { "overview": "Overview", "providers": "Providers", "models": "Models", "users": "Users", "jobs": "Jobs / Usage", "payments": "Payments" },
     "common": {
       "enabled": "Enabled", "disabled": "Disabled", "available": "Available", "unavailable": "Unavailable",
       "notConfigured": "Admin data is unavailable because the server reporting credential is not configured.",
@@ -40,6 +40,12 @@
       "time": "Time", "source": "Source", "user": "User", "modality": "Modality", "providerModel": "Provider / model",
       "status": "Status", "cost": "Real provider cost", "details": "Details", "generation": "Generation", "dispatch": "Dispatch"
     },
+    "payments": {
+      "title": "Payments", "description": "Review manual transfers and their server-authoritative fulfillment record.",
+      "catalogTitle": "Plan catalog", "catalogDescription": "Publish the verified plans customers can select. Changes never alter existing payment-order snapshots.", "planSlug": "Internal slug", "planName": "Plan name", "priceDzd": "Price (DZD)", "planCredits": "Unified Credits", "displayOrder": "Display order", "planDescription": "Description (optional)", "active": "Active", "featured": "Featured", "savePlan": "Save plan", "saving": "Saving…", "newPlan": "New plan", "createPlan": "Create plan", "planActionFailed": "The plan could not be saved. Check the values and try again.",
+      "created": "Created", "user": "User", "amount": "Amount", "product": "Pack / plan", "reference": "VANTRA reference", "submission": "Submitted proof / reference", "status": "Status", "result": "Ledger / entitlement result", "audit": "Audit trail", "actions": "Owner actions",
+      "credit_pack": "Credit pack", "subscription": "Subscription", "credits": "{value} Unified Credits", "viewProof": "View proof", "noProof": "No proof file", "noPayments": "No payment requests yet", "reviewNote": "Review note (optional)", "approve": "Approve", "reject": "Reject", "confirmApprove": "Approve this payment? The verified entitlement will be granted exactly once.", "confirmReject": "Reject this payment?", "actionFailed": "The payment action could not be completed. Refresh and verify its current status."
+    },
     "status": {
       "healthy": "Healthy", "attention": "Attention", "idle": "No recorded requests", "unconfigured": "Unconfigured",
       "demo": "Demo", "client_managed": "Client-managed", "available": "Available", "beta": "Beta", "preview": "Preview",
@@ -47,7 +53,7 @@
       "not_in_studio": "Not in Studio", "active": "Active", "unconfirmed": "Unconfirmed", "suspended": "Suspended",
       "queued": "Queued", "processing": "Processing", "completed": "Completed", "failed": "Failed", "cancelled": "Cancelled",
       "pending": "Pending", "leased": "Leased", "dispatched": "Dispatched", "started": "Started", "submitted": "Submitted",
-      "unknown": "Unknown", "reserve": "Reserved", "settle": "Settled", "release": "Released", "refund": "Refunded",
+      "unknown": "Unknown", "reserve": "Reserved", "settle": "Settled", "release": "Released", "refund": "Refunded", "created": "Created", "approved": "Approved", "rejected": "Rejected", "expired": "Expired",
       "grant": "Granted", "adjustment": "Adjusted"
     },
     "role": { "primary": "Primary", "backup": "Backup", "optional": "Optional", "unassigned": "Unassigned" },

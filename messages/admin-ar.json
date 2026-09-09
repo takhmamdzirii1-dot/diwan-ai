@@ -1,7 +1,7 @@
 {
   "Admin": {
     "brand": "إدارة VANTRA", "internal": "للمالك فقط", "backToStudio": "العودة إلى الاستوديو",
-    "nav": { "overview": "نظرة عامة", "providers": "المزوّدون", "models": "النماذج", "users": "المستخدمون", "jobs": "المهام / الاستخدام" },
+    "nav": { "overview": "نظرة عامة", "providers": "المزوّدون", "models": "النماذج", "users": "المستخدمون", "jobs": "المهام / الاستخدام", "payments": "المدفوعات" },
     "common": {
       "enabled": "مفعّل", "disabled": "معطّل", "available": "متاح", "unavailable": "غير متاح",
       "notConfigured": "بيانات الإدارة غير متاحة لأن صلاحية تقارير الخادم غير مهيأة.",
@@ -38,6 +38,12 @@
       "time": "الوقت", "source": "المصدر", "user": "المستخدم", "modality": "النوع", "providerModel": "المزوّد / النموذج",
       "status": "الحالة", "cost": "تكلفة المزوّد الفعلية", "details": "التفاصيل", "generation": "إنشاء", "dispatch": "إرسال"
     },
+    "payments": {
+      "title": "المدفوعات", "description": "مراجعة التحويلات اليدوية ونتيجة تنفيذها المالي الموثّق على الخادم.",
+      "catalogTitle": "دليل الخطط", "catalogDescription": "انشر الخطط الموثقة التي يمكن للعملاء اختيارها. لا تغيّر التعديلات بيانات طلبات الدفع السابقة.", "planSlug": "المعرّف الداخلي", "planName": "اسم الخطة", "priceDzd": "السعر (دج)", "planCredits": "أرصدة VANTRA الموحّدة", "displayOrder": "ترتيب العرض", "planDescription": "الوصف (اختياري)", "active": "نشطة", "featured": "مميّزة", "savePlan": "حفظ الخطة", "saving": "جارٍ الحفظ…", "newPlan": "خطة جديدة", "createPlan": "إنشاء الخطة", "planActionFailed": "تعذّر حفظ الخطة. تحقّق من القيم وحاول مجدداً.",
+      "created": "تاريخ الإنشاء", "user": "المستخدم", "amount": "المبلغ", "product": "الباقة / الخطة", "reference": "مرجع VANTRA", "submission": "الإثبات / المرجع", "status": "الحالة", "result": "نتيجة السجل / الاستحقاق", "audit": "سجل التدقيق", "actions": "إجراءات المالك",
+      "credit_pack": "باقة أرصدة", "subscription": "اشتراك", "credits": "{value} رصيد موحّد", "viewProof": "عرض الإثبات", "noProof": "لا يوجد ملف إثبات", "noPayments": "لا توجد طلبات دفع", "reviewNote": "ملاحظة مراجعة (اختيارية)", "approve": "قبول", "reject": "رفض", "confirmApprove": "هل تريد قبول هذا الدفع؟ سيُمنح الاستحقاق الموثّق مرة واحدة فقط.", "confirmReject": "هل تريد رفض هذا الدفع؟", "actionFailed": "تعذّر تنفيذ الإجراء. حدّث الصفحة وتحقق من الحالة الحالية."
+    },
     "status": {
       "healthy": "سليم", "attention": "يحتاج متابعة", "idle": "لا توجد طلبات مسجّلة", "unconfigured": "غير مهيأ",
       "demo": "تجريبي", "client_managed": "يُدار من العميل", "available": "متاح", "beta": "بيتا", "preview": "معاينة",
@@ -45,7 +51,7 @@
       "not_in_studio": "غير موجود في الاستوديو", "active": "نشط", "unconfirmed": "غير مؤكد", "suspended": "موقوف",
       "queued": "في الصف", "processing": "قيد المعالجة", "completed": "مكتمل", "failed": "فشل", "cancelled": "ملغى",
       "pending": "معلّق", "leased": "محجوز", "dispatched": "أُرسل", "started": "بدأ", "submitted": "تم الإرسال",
-      "unknown": "غير معروف", "reserve": "محجوز", "settle": "تمت التسوية", "release": "تم التحرير", "refund": "مستردّ",
+      "unknown": "غير معروف", "reserve": "محجوز", "settle": "تمت التسوية", "release": "تم التحرير", "refund": "مستردّ", "created": "تم الإنشاء", "approved": "مقبول", "rejected": "مرفوض", "expired": "منتهي",
       "grant": "ممنوح", "adjustment": "تسوية"
     },
     "role": { "primary": "أساسي", "backup": "احتياطي", "optional": "اختياري", "unassigned": "غير معيّن" },

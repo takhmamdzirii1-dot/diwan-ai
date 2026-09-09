@@ -16,10 +16,7 @@ export interface ModalContextType {
 }
 
 const DEFAULT_TOPUP_PLAN: TopUpPlan = {
-  name: 'Pro Creator',
-  price: '4,500 DZD',
-  points: '35,000 Points',
-  ptsNum: 35000,
+  id: '',
 };
 
 const ModalContext = createContext<ModalContextType | undefined>(undefined);
@@ -59,24 +56,8 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
       openAuthModal(mode || 'signin');
     };
 
-    (window as any).openTopupModal = (planKey?: string) => {
-      let selectedPlan = DEFAULT_TOPUP_PLAN;
-      if (planKey === 'starter') {
-        selectedPlan = {
-          name: 'Starter Pack',
-          price: '1,500 DZD',
-          points: '10,000 Points',
-          ptsNum: 10000,
-        };
-      } else if (planKey === 'enterprise') {
-        selectedPlan = {
-          name: 'Enterprise / Agency',
-          price: '12,000 DZD',
-          points: '100,000 Points',
-          ptsNum: 100000,
-        };
-      }
-      openTopUpModal(selectedPlan);
+    (window as any).openTopupModal = () => {
+      openTopUpModal();
     };
 
     const handleCustomAuth = (e: any) => {

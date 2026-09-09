@@ -109,6 +109,11 @@
     "title": "منصّة واحدة. أرصدة VANTRA موحّدة.",
     "subtitle": "استخدم الدردشة والصور والفيديو والنماذج المدعومة من دون إدارة خدمات منفصلة.",
     "recommended": "موصى بها",
+    "catalogLoading": "جارٍ تحميل الخطط المتاحة",
+    "catalogPending": "لا توجد خطة مدفوعة متاحة حالياً. يمكن للمالك نشر الخطط من لوحة إدارة VANTRA.",
+    "catalogPlanDescription": "خطة VANTRA يضبطها المالك.",
+    "creditsIncluded": "أرصدة VANTRA الموحّدة",
+    "selectPlan": "اختر الخطة",
     "localPayment": "الدفع المحلي متاح",
     "monthlyCadence": "/ شهر",
     "tiers": [
@@ -174,5 +179,21 @@
     "passwordUpdated": "تم تحديث كلمة المرور.",
     "invalidResetLink": "هذا الرابط غير صالح أو انتهت صلاحيته. اطلب رابطاً جديداً.",
     "returnToStudio": "المتابعة إلى VANTRA Studio"
+  },
+  "payments": {
+    "title": "تعبئة الرصيد بالدينار", "subtitle": "اختر وسيلة دفع محلية.", "close": "إغلاق نافذة التعبئة",
+    "paymentMethod": "وسيلة الدفع", "baridimob": "بريدي موب", "ccp": "الحساب البريدي CCP", "manualMethod": "بريدي موب / يدوي", "manualBadge": "مراجعة يدوية",
+    "edahabia": "الذهبية", "cib": "بطاقة CIB", "automaticSoon": "تلقائي · قريباً",
+    "selectPlan": "اختر خطة", "catalogEmpty": "لا توجد خطة دفع نشطة حالياً.", "selectedPlan": "الخطة المختارة", "creditsShort": "أرصدة VANTRA الموحّدة", "selectedPack": "الباقة المختارة", "creditsAdded": "أرصدة VANTRA الموحّدة", "total": "المجموع",
+    "gatewayUnavailableTitle": "الدفع التلقائي غير مربوط بعد", "gatewayUnavailableDescription": "لن تطلب VANTRA رقم البطاقة أو الرمز السري أو CVV أو رمز OTP البنكي. سيتم التحقق عبر بوابة دفع رسمية فقط عند ربطها.", "useManual": "استخدام التحويل اليدوي",
+    "manualReviewNotice": "تتم مراجعة التحويلات اليدوية قبل تفعيل الأرصدة أو الخطة. إنشاء الطلب لا يضيف أي رصيد.", "createRequest": "إنشاء طلب دفع",
+    "transferReference": "مرجع دفع VANTRA الخاص بك", "accountHolder": "صاحب الحساب", "accountNumber": "رقم حساب CCP", "accountKey": "مفتاح CCP", "accountAddress": "عنوان الحساب",
+    "transferInstructions": "حوّل {amount} دج إلى الحساب أعلاه وأضف {reference} في وصف التحويل إن أمكن، ثم أرسل مرجع العملية للمراجعة.",
+    "transactionReference": "مرجع العملية أو التحويل", "transactionReferencePlaceholder": "أدخل المرجع الظاهر في بريدي موب", "proofOptional": "إضافة إثبات دفع (اختياري · JPG أو PNG أو WebP أو PDF · حتى 5 م.ب)", "submitForReview": "إرسال للمراجعة",
+    "pendingTitle": "في انتظار المراجعة", "pendingDescription": "تم إرسال التحويل للمراجعة. لن تُفعّل الأرصدة أو الخطة إلا بعد الموافقة.",
+    "paymentStatus": "حالة المدفوعات", "topUpAction": "تعبئة بالدينار", "loadingOrders": "جاري تحميل المدفوعات", "ordersUnavailable": "حالة المدفوعات غير متاحة حالياً.", "noOrders": "لا توجد طلبات دفع بعد.",
+    "products": { "starter": "باقة Starter", "creator_pro": "باقة Creator", "enterprise": "باقة Studio" },
+    "status": { "pending": "قيد المراجعة", "approved": "مقبول", "rejected": "مرفوض", "expired": "منتهي" },
+    "errors": { "AUTHENTICATION_REQUIRED": "سجّل الدخول قبل إنشاء طلب الدفع.", "MANUAL_TRANSFER_UNAVAILABLE": "بيانات التحويل اليدوي غير مهيأة بعد.", "GATEWAY_UNAVAILABLE": "وسيلة الدفع هذه غير متاحة بعد.", "PAYMENT_METHOD_UNAVAILABLE": "وسيلة الدفع هذه غير متاحة بعد.", "PAYMENT_CATALOG_UNAVAILABLE": "دليل الخطط غير متاح حالياً.", "PAYMENT_PLAN_UNAVAILABLE": "هذه الخطة لم تعد متاحة.", "PAYMENT_ORDER_EXPIRED": "انتهت صلاحية طلب الدفع. أنشئ طلباً جديداً.", "PAYMENT_ORDER_NOT_SUBMITTABLE": "لم يعد من الممكن إرسال طلب الدفع هذا.", "PAYMENT_ORDER_CREATE_FAILED": "تعذّر إنشاء طلب الدفع.", "INVALID_TRANSFER_REFERENCE": "أدخل مرجع تحويل صالحاً.", "INVALID_PAYMENT_PROOF": "استخدم ملف JPG أو PNG أو WebP أو PDF بحجم لا يتجاوز 5 م.ب.", "PAYMENT_PROOF_UPLOAD_FAILED": "تعذّر رفع إثبات الدفع.", "PAYMENT_SUBMISSION_FAILED": "تعذّر إرسال التحويل للمراجعة.", "generic": "تعذّر إكمال طلب الدفع. حاول مجدداً." }
   }
 }

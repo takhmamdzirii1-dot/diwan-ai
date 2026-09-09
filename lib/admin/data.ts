@@ -17,6 +17,8 @@ import type {
   AdminJobRow,
   AdminModelRow,
   AdminOverviewData,
+  AdminPaymentRow,
+  AdminPaymentPlan,
   AdminProviderRow,
   AdminUserRow,
   AdminUsersData,
@@ -321,6 +323,84 @@ export async function getAdminJobs(): Promise<AdminDataResult<AdminJobRow[]>> {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 150) };
   } catch (error) {
     console.error('[admin] jobs query failed', { message: error instanceof Error ? error.message : 'Unknown error' });
+    return failed([]);
+  }
+}
+
+export async function getAdminPayments(): Promise<AdminDataResult<AdminPaymentRow[]>> {
+  const client = await requireAdminDataAccess();
+  if (!client) return unavailable([]);
+  try {
+    const [orders, audits, auth] = await Promise.all([
+      client.from('payment_orders')
+        .select('id,user_id,plan_id,plan_name,order_kind,amount_dzd,credits_amount,payment_reference,customer_reference,proof_storage_path,status,submitted_at,reviewed_at,review_note,resulting_credit_transaction_id,resulting_entitlement_id,created_at')
+        .order('created_at', { ascending: false }).limit(200),
+      client.from('payment_audit_log').select('id,payment_order_id,actor_user_id,action,created_at')
+        .order('created_at', { ascending: false }).limit(1000),
+      allAuthUsers(client),
+    ]);
+    if (orders.error) throw orders.error;
+    if (audits.error) throw audits.error;
+    const emails = new Map(auth.users.map((user) => [user.id, user.email ?? '—']));
+    const auditsByOrder = new Map<string, any[]>();
+    for (const audit of audits.data ?? []) {
+      const list = auditsByOrder.get(audit.payment_order_id) ?? [];
+      list.push(audit);
+      auditsByOrder.set(audit.payment_order_id, list);
+    }
+    const rows = await Promise.all((orders.data ?? []).map(async (order: any) => {
+      let proofUrl: string | null = null;
+      if (order.proof_storage_path) {
+        const { data } = await client.storage.from('payment-proofs')
+          .createSignedUrl(order.proof_storage_path, 300);
+        proofUrl = data?.signedUrl ?? null;
+      }
+      return {
+        id: order.id,
+        userId: order.user_id,
+        userEmail: emails.get(order.user_id) ?? '—',
+        planId: order.plan_id,
+        planName: order.plan_name,
+        orderKind: order.order_kind,
+        amountDzd: order.amount_dzd,
+        creditsAmount: order.credits_amount == null ? null : numericString(order.credits_amount),
+        paymentReference: order.payment_reference,
+        customerReference: order.customer_reference,
+        proofUrl,
+        status: order.status,
+        submittedAt: order.submitted_at,
+        reviewedAt: order.reviewed_at,
+        reviewNote: order.review_note,
+        resultingCreditTransactionId: order.resulting_credit_transaction_id,
+        resultingEntitlementId: order.resulting_entitlement_id,
+        createdAt: order.created_at,
+        audit: (auditsByOrder.get(order.id) ?? []).map((audit) => ({
+          id: audit.id, action: audit.action, actorUserId: audit.actor_user_id, createdAt: audit.created_at,
+        })),
+      } satisfies AdminPaymentRow;
+    }));
+    return { available: true, data: rows };
+  } catch (error) {
+    console.error('[admin] payment query failed', { message: error instanceof Error ? error.message : 'Unknown error' });
+    return failed([]);
+  }
+}
+
+export async function getAdminPaymentPlans(): Promise<AdminDataResult<AdminPaymentPlan[]>> {
+  const client = await requireAdminDataAccess();
+  if (!client) return unavailable([]);
+  try {
+    const { data, error } = await client.from('payment_plans')
+      .select('id,slug,name,description,kind,price_dzd,unified_credits,active,display_order,featured')
+      .order('display_order').order('created_at');
+    if (error) throw error;
+    return { available: true, data: (data ?? []).map((plan) => ({
+      id: plan.id, slug: plan.slug, name: plan.name, description: plan.description,
+      kind: plan.kind, priceDzd: plan.price_dzd, unifiedCredits: numericString(plan.unified_credits),
+      active: plan.active, displayOrder: plan.display_order, featured: plan.featured,
+    })) };
+  } catch (error) {
+    console.error('[admin] payment plan query failed', { message: error instanceof Error ? error.message : 'Unknown error' });
     return failed([]);
   }
 }

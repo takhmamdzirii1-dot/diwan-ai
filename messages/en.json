@@ -112,6 +112,11 @@
     "title": "One platform. Unified Credits.",
     "subtitle": "Use Chat, Image, Video and supported AI models without managing separate services.",
     "recommended": "Recommended",
+    "catalogLoading": "Loading available plans",
+    "catalogPending": "No paid plan is available yet. The owner can publish plans from the VANTRA Admin Dashboard.",
+    "catalogPlanDescription": "A VANTRA plan configured by the owner.",
+    "creditsIncluded": "Unified Credits",
+    "selectPlan": "Select plan",
     "localPayment": "Local payment available",
     "monthlyCadence": "/ month",
     "tiers": [
@@ -193,5 +198,21 @@
     "passwordUpdated": "Your password has been updated.",
     "invalidResetLink": "This reset link is invalid or has expired. Request a new one.",
     "returnToStudio": "Continue to VANTRA Studio"
+  },
+  "payments": {
+    "title": "Top Up in DA", "subtitle": "Choose a local payment method.", "close": "Close top up dialog",
+    "paymentMethod": "Payment method", "baridimob": "BaridiMob", "ccp": "CCP", "manualMethod": "BaridiMob / Manual", "manualBadge": "Manual review",
+    "edahabia": "Edahabia", "cib": "CIB Card", "automaticSoon": "Automatic · Coming soon",
+    "selectPlan": "Select a plan", "catalogEmpty": "No active payment plan is available yet.", "selectedPlan": "Selected plan", "creditsShort": "Unified Credits", "selectedPack": "Selected pack", "creditsAdded": "Unified Credits", "total": "Total",
+    "gatewayUnavailableTitle": "Automatic checkout is not connected yet", "gatewayUnavailableDescription": "VANTRA will never collect your card number, PIN, CVV or banking OTP. CIB and Edahabia authentication will happen only on an official gateway when one is connected.", "useManual": "Use manual transfer",
+    "manualReviewNotice": "Manual transfers are reviewed before credits or plan access are activated. Creating a request does not grant credits.", "createRequest": "Create payment request",
+    "transferReference": "Your VANTRA payment reference", "accountHolder": "Account holder", "accountNumber": "CCP account number", "accountKey": "CCP key", "accountAddress": "Account address",
+    "transferInstructions": "Transfer {amount} DA to the account above and include {reference} in the transfer note where possible. Then submit the transaction reference for review.",
+    "transactionReference": "Transaction or transfer reference", "transactionReferencePlaceholder": "Enter the reference shown by BaridiMob", "proofOptional": "Add proof of payment (optional · JPG, PNG, WebP or PDF · max 5 MB)", "submitForReview": "Submit for verification",
+    "pendingTitle": "Pending verification", "pendingDescription": "Your transfer was submitted for owner review. Credits or plan access will activate only after approval.",
+    "paymentStatus": "Payment status", "topUpAction": "Top up in DA", "loadingOrders": "Loading payments", "ordersUnavailable": "Payment status is unavailable right now.", "noOrders": "No payment requests yet.",
+    "products": { "starter": "Starter Pack", "creator_pro": "Creator Pack", "enterprise": "Studio Pack" },
+    "status": { "pending": "Pending", "approved": "Approved", "rejected": "Rejected", "expired": "Expired" },
+    "errors": { "AUTHENTICATION_REQUIRED": "Sign in before creating a payment request.", "MANUAL_TRANSFER_UNAVAILABLE": "Manual transfer details are not configured yet.", "GATEWAY_UNAVAILABLE": "This payment method is not available yet.", "PAYMENT_METHOD_UNAVAILABLE": "This payment method is not available yet.", "PAYMENT_CATALOG_UNAVAILABLE": "The plan catalog is unavailable right now.", "PAYMENT_PLAN_UNAVAILABLE": "This plan is no longer available.", "PAYMENT_ORDER_EXPIRED": "This payment request has expired. Create a new one.", "PAYMENT_ORDER_NOT_SUBMITTABLE": "This payment request can no longer be submitted.", "PAYMENT_ORDER_CREATE_FAILED": "The payment request could not be created.", "INVALID_TRANSFER_REFERENCE": "Enter a valid transfer reference.", "INVALID_PAYMENT_PROOF": "Use a JPG, PNG, WebP or PDF file up to 5 MB.", "PAYMENT_PROOF_UPLOAD_FAILED": "The proof could not be uploaded.", "PAYMENT_SUBMISSION_FAILED": "The transfer could not be submitted for review.", "generic": "The payment request could not be completed. Try again." }
   }
 }

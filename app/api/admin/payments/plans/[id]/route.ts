@@ -1,0 +1,31 @@
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { getOwnerAccess } from '@/lib/auth/owner';
+import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
+
+const schema = z.object({
+  slug: z.string().regex(/^[a-z0-9_]{1,80}$/), name: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(500).nullable().optional(),
+  kind: z.enum(['credit_pack', 'subscription']), priceDzd: z.number().int().positive(),
+  unifiedCredits: z.number().int().positive(), active: z.boolean(),
+  displayOrder: z.number().int().min(-10000).max(10000), featured: z.boolean(),
+});
+
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const access = await getOwnerAccess();
+  if (!access.user) return NextResponse.json({ error: 'AUTHENTICATION_REQUIRED' }, { status: 401 });
+  if (!access.isOwner) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
+  const parsed = schema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: 'INVALID_PAYMENT_PLAN' }, { status: 400 });
+  const client = getSupabaseAdminClient();
+  if (!client) return NextResponse.json({ error: 'ADMIN_DATA_UNAVAILABLE' }, { status: 503 });
+  const { id } = await params;
+  const plan = parsed.data;
+  const { error } = await client.from('payment_plans').update({
+    slug: plan.slug, name: plan.name, description: plan.description || null, kind: plan.kind,
+    price_dzd: plan.priceDzd, unified_credits: plan.unifiedCredits, active: plan.active,
+    display_order: plan.displayOrder, featured: plan.featured,
+  }).eq('id', id);
+  if (error) return NextResponse.json({ error: 'PAYMENT_PLAN_UPDATE_FAILED' }, { status: 409 });
+  return NextResponse.json({ ok: true });
+}

@@ -1,7 +1,7 @@
 {
   "Admin": {
     "brand": "Administration VANTRA", "internal": "Propriétaire uniquement", "backToStudio": "Retour au Studio",
-    "nav": { "overview": "Vue d’ensemble", "providers": "Fournisseurs", "models": "Modèles", "users": "Utilisateurs", "jobs": "Tâches / Usage" },
+    "nav": { "overview": "Vue d’ensemble", "providers": "Fournisseurs", "models": "Modèles", "users": "Utilisateurs", "jobs": "Tâches / Usage", "payments": "Paiements" },
     "common": {
       "enabled": "Activé", "disabled": "Désactivé", "available": "Disponible", "unavailable": "Indisponible",
       "notConfigured": "Les données d’administration sont indisponibles car l’accès serveur de reporting n’est pas configuré.",
@@ -38,6 +38,12 @@
       "time": "Date", "source": "Source", "user": "Utilisateur", "modality": "Modalité", "providerModel": "Fournisseur / modèle",
       "status": "État", "cost": "Coût fournisseur réel", "details": "Détails", "generation": "Génération", "dispatch": "Dispatch"
     },
+    "payments": {
+      "title": "Paiements", "description": "Vérifiez les virements manuels et leur exécution financière côté serveur.",
+      "catalogTitle": "Catalogue des formules", "catalogDescription": "Publiez les formules vérifiées proposées aux clients. Les changements ne modifient jamais les commandes déjà créées.", "planSlug": "Identifiant interne", "planName": "Nom de la formule", "priceDzd": "Prix (DZD)", "planCredits": "Crédits VANTRA unifiés", "displayOrder": "Ordre d’affichage", "planDescription": "Description (facultative)", "active": "Active", "featured": "Mise en avant", "savePlan": "Enregistrer", "saving": "Enregistrement…", "newPlan": "Nouvelle formule", "createPlan": "Créer la formule", "planActionFailed": "Impossible d’enregistrer la formule. Vérifiez les valeurs et réessayez.",
+      "created": "Créé", "user": "Utilisateur", "amount": "Montant", "product": "Pack / formule", "reference": "Référence VANTRA", "submission": "Justificatif / référence", "status": "État", "result": "Écriture / droit résultant", "audit": "Journal d’audit", "actions": "Actions propriétaire",
+      "credit_pack": "Pack de crédits", "subscription": "Abonnement", "credits": "{value} crédits unifiés", "viewProof": "Voir le justificatif", "noProof": "Aucun fichier", "noPayments": "Aucune demande de paiement", "reviewNote": "Note de vérification (facultative)", "approve": "Approuver", "reject": "Rejeter", "confirmApprove": "Approuver ce paiement ? Le droit vérifié sera accordé une seule fois.", "confirmReject": "Rejeter ce paiement ?", "actionFailed": "L’action n’a pas abouti. Actualisez et vérifiez l’état actuel."
+    },
     "status": {
       "healthy": "Opérationnel", "attention": "À surveiller", "idle": "Aucune requête enregistrée", "unconfigured": "Non configuré",
       "demo": "Démo", "client_managed": "Géré côté client", "available": "Disponible", "beta": "Bêta", "preview": "Aperçu",
@@ -45,7 +51,7 @@
       "not_in_studio": "Absent du Studio", "active": "Actif", "unconfirmed": "Non confirmé", "suspended": "Suspendu",
       "queued": "En attente", "processing": "En cours", "completed": "Terminé", "failed": "Échoué", "cancelled": "Annulé",
       "pending": "En attente", "leased": "Réservé", "dispatched": "Envoyé", "started": "Démarré", "submitted": "Soumis",
-      "unknown": "Inconnu", "reserve": "Réservé", "settle": "Réglé", "release": "Libéré", "refund": "Remboursé",
+      "unknown": "Inconnu", "reserve": "Réservé", "settle": "Réglé", "release": "Libéré", "refund": "Remboursé", "created": "Créé", "approved": "Approuvé", "rejected": "Rejeté", "expired": "Expiré",
       "grant": "Accordé", "adjustment": "Ajusté"
     },
     "role": { "primary": "Principal", "backup": "Secours", "optional": "Optionnel", "unassigned": "Non attribué" },

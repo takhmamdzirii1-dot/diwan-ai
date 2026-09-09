@@ -109,6 +109,11 @@
     "title": "Une plateforme. Des Crédits VANTRA unifiés.",
     "subtitle": "Utilisez le Chat, l’Image, la Vidéo et les modèles compatibles sans multiplier les services.",
     "recommended": "Recommandé",
+    "catalogLoading": "Chargement des formules disponibles",
+    "catalogPending": "Aucune formule payante n’est disponible pour le moment. Le propriétaire peut publier les formules depuis l’administration VANTRA.",
+    "catalogPlanDescription": "Une formule VANTRA configurée par le propriétaire.",
+    "creditsIncluded": "Crédits VANTRA unifiés",
+    "selectPlan": "Choisir cette formule",
     "localPayment": "Paiement local disponible",
     "monthlyCadence": "/ mois",
     "tiers": [
@@ -174,5 +179,21 @@
     "passwordUpdated": "Votre mot de passe a été mis à jour.",
     "invalidResetLink": "Ce lien est invalide ou a expiré. Demandez-en un nouveau.",
     "returnToStudio": "Continuer vers VANTRA Studio"
+  },
+  "payments": {
+    "title": "Recharger en DA", "subtitle": "Choisissez un moyen de paiement local.", "close": "Fermer la fenêtre de recharge",
+    "paymentMethod": "Moyen de paiement", "baridimob": "BaridiMob", "ccp": "CCP", "manualMethod": "BaridiMob / Manuel", "manualBadge": "Vérification manuelle",
+    "edahabia": "Edahabia", "cib": "Carte CIB", "automaticSoon": "Automatique · Bientôt",
+    "selectPlan": "Choisir une formule", "catalogEmpty": "Aucune formule de paiement active n’est disponible pour le moment.", "selectedPlan": "Formule choisie", "creditsShort": "Crédits VANTRA unifiés", "selectedPack": "Pack choisi", "creditsAdded": "Crédits VANTRA unifiés", "total": "Total",
+    "gatewayUnavailableTitle": "Le paiement automatique n’est pas encore connecté", "gatewayUnavailableDescription": "VANTRA ne vous demandera jamais votre numéro de carte, PIN, CVV ou OTP bancaire. L’authentification CIB et Edahabia se fera uniquement sur une passerelle officielle lorsqu’elle sera connectée.", "useManual": "Utiliser le virement manuel",
+    "manualReviewNotice": "Les virements manuels sont vérifiés avant l’activation des crédits ou de la formule. La création d’une demande n’accorde aucun crédit.", "createRequest": "Créer la demande de paiement",
+    "transferReference": "Votre référence de paiement VANTRA", "accountHolder": "Titulaire du compte", "accountNumber": "Numéro de compte CCP", "accountKey": "Clé CCP", "accountAddress": "Adresse du compte",
+    "transferInstructions": "Virez {amount} DA vers le compte ci-dessus et ajoutez {reference} au motif si possible. Envoyez ensuite la référence de transaction pour vérification.",
+    "transactionReference": "Référence de transaction ou de virement", "transactionReferencePlaceholder": "Saisissez la référence affichée par BaridiMob", "proofOptional": "Ajouter un justificatif (facultatif · JPG, PNG, WebP ou PDF · 5 Mo max)", "submitForReview": "Envoyer pour vérification",
+    "pendingTitle": "Vérification en attente", "pendingDescription": "Votre virement a été envoyé pour vérification. Les crédits ou la formule seront activés uniquement après approbation.",
+    "paymentStatus": "État des paiements", "topUpAction": "Recharger en DA", "loadingOrders": "Chargement des paiements", "ordersUnavailable": "L’état des paiements est indisponible pour le moment.", "noOrders": "Aucune demande de paiement.",
+    "products": { "starter": "Pack Starter", "creator_pro": "Pack Creator", "enterprise": "Pack Studio" },
+    "status": { "pending": "En attente", "approved": "Approuvé", "rejected": "Rejeté", "expired": "Expiré" },
+    "errors": { "AUTHENTICATION_REQUIRED": "Connectez-vous avant de créer une demande.", "MANUAL_TRANSFER_UNAVAILABLE": "Les coordonnées de virement ne sont pas encore configurées.", "GATEWAY_UNAVAILABLE": "Ce moyen de paiement n’est pas encore disponible.", "PAYMENT_METHOD_UNAVAILABLE": "Ce moyen de paiement n’est pas encore disponible.", "PAYMENT_CATALOG_UNAVAILABLE": "Le catalogue des formules est indisponible pour le moment.", "PAYMENT_PLAN_UNAVAILABLE": "Cette formule n’est plus disponible.", "PAYMENT_ORDER_EXPIRED": "Cette demande de paiement a expiré. Créez-en une nouvelle.", "PAYMENT_ORDER_NOT_SUBMITTABLE": "Cette demande ne peut plus être envoyée.", "PAYMENT_ORDER_CREATE_FAILED": "La demande de paiement n’a pas pu être créée.", "INVALID_TRANSFER_REFERENCE": "Saisissez une référence de virement valide.", "INVALID_PAYMENT_PROOF": "Utilisez un fichier JPG, PNG, WebP ou PDF de 5 Mo maximum.", "PAYMENT_PROOF_UPLOAD_FAILED": "Le justificatif n’a pas pu être envoyé.", "PAYMENT_SUBMISSION_FAILED": "Le virement n’a pas pu être soumis.", "generic": "La demande de paiement n’a pas pu aboutir. Réessayez." }
   }
 }

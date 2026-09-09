@@ -1,24 +1,29 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
-import { formatDa, PRICING_FACTS } from '../content/marketingFacts';
-import type { Locale } from '../../i18n/routing';
+import type { PaymentPlan } from '@/lib/payments/types';
 
-interface LocalizedPricingTier {
-  name: string;
-  blurb: string;
-  cta: string;
-  features: string[];
-}
-
-export default function GlobalPricing({ onGetStarted }: { onGetStarted: () => void }) {
+export default function GlobalPricing({ onGetStarted }: { onGetStarted: (planId?: string) => void }) {
   const t = useTranslations('pricing');
-  const locale = useLocale() as Locale;
-  const tiers = t.raw('tiers') as LocalizedPricingTier[];
+  const locale = useLocale();
+  const [plans, setPlans] = useState<PaymentPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/payments/plans')
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok) throw new Error('catalog unavailable');
+        if (active) setPlans(body.plans ?? []);
+      })
+      .catch(() => { if (active) setPlans([]); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   return (
     <section id="pricing" className="relative overflow-hidden !py-24 md:!py-32">
@@ -53,21 +58,22 @@ export default function GlobalPricing({ onGetStarted }: { onGetStarted: () => vo
         </motion.p>
       </div>
 
-      {/* Tiers */}
-      <div className="mx-auto mt-14 grid max-w-[1240px] grid-cols-1 items-stretch gap-5 px-6 md:mt-[72px] md:grid-cols-3 lg:gap-6">
-        {tiers.map((tier, i) => {
-          const facts = PRICING_FACTS[i];
-          const recommended = i === 1;
-          const localPaymentAvailable = facts.amountDa > 0;
+      <div className={cn('mx-auto mt-14 grid max-w-[1240px] grid-cols-1 items-stretch gap-5 px-6 md:mt-[72px] lg:gap-6', plans.length > 1 && 'md:grid-cols-2', plans.length > 2 && 'lg:grid-cols-3')}>
+        {loading ? (
+          <div role="status" className="h-72 animate-pulse rounded-[24px] border border-white/[0.085] bg-white/[0.02]"><span className="sr-only">{t('catalogLoading')}</span></div>
+        ) : plans.length === 0 ? (
+          <div className="rounded-[24px] border border-dashed border-white/[0.1] bg-[#09090a]/90 px-8 py-14 text-center text-sm leading-relaxed text-white/50">{t('catalogPending')}</div>
+        ) : plans.map((plan, i) => {
+          const recommended = plan.featured;
           return (
           <motion.div
-            key={tier.name}
+            key={plan.id}
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-60px' }}
             transition={{ duration: 0.55, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
             className={cn(
-              'relative flex h-[500px] flex-col overflow-visible rounded-[24px] border p-7 transition-[background-color,border-color] duration-200 lg:h-[520px] lg:p-8',
+              'relative flex min-h-[390px] flex-col overflow-visible rounded-[24px] border p-7 transition-[background-color,border-color] duration-200 lg:p-8',
               recommended
                 ? 'border-white/[0.22] bg-[#111112] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_24px_70px_rgba(0,0,0,0.24)]'
                 : 'border-white/[0.085] bg-[#09090a]/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] hover:border-white/[0.13] hover:bg-[#0b0b0c]'
@@ -80,33 +86,19 @@ export default function GlobalPricing({ onGetStarted }: { onGetStarted: () => vo
               </span>
             )}
 
-            <p className="text-[13px] font-semibold text-white/65">{tier.name}</p>
+            <p className="text-[13px] font-semibold text-white/65">{plan.name}</p>
 
             <div className="mt-5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <span dir="ltr" className="text-[42px] font-bold leading-none tracking-[-0.045em] text-[#f7f7f7] lg:text-[46px]">{formatDa(facts.amountDa, locale)}</span>
-              {facts.monthly && <span className="text-[12px] font-medium text-white/35">{t('monthlyCadence')}</span>}
+              <span dir="ltr" className="text-[42px] font-bold leading-none tracking-[-0.045em] text-[#f7f7f7] lg:text-[46px]">{plan.priceDzd.toLocaleString(locale)} DA</span>
             </div>
-            {localPaymentAvailable && (
-              <p className="mt-3 text-[11px] font-medium text-white/40">{t('localPayment')}</p>
-            )}
+            <p className="mt-3 text-[11px] font-medium text-white/45">{plan.unifiedCredits.toLocaleString(locale)} {t('creditsIncluded')}</p>
 
-            <p className={cn('max-w-[300px] text-[13px] leading-[1.65] text-white/50', localPaymentAvailable ? 'mt-4' : 'mt-5')}>{tier.blurb}</p>
-
-            <ul className="mt-7 flex flex-1 flex-col gap-4 border-t border-white/[0.075] pt-7">
-              {tier.features.map((f) => (
-                <li key={f} className="flex items-start gap-3 text-[13px] leading-5 text-white/65">
-                  <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border border-white/[0.12] bg-white/[0.025]">
-                    <Check strokeWidth={1.8} className="h-2.5 w-2.5 text-white/80" />
-                  </span>
-                  <span>{f}</span>
-                </li>
-              ))}
-            </ul>
+            <p className="mt-6 flex-1 border-t border-white/[0.075] pt-7 text-[13px] leading-[1.65] text-white/50">{plan.description ?? t('catalogPlanDescription')}</p>
 
             <div className="mt-8 border-t border-white/[0.06] pt-6">
               <button
                 type="button"
-                onClick={onGetStarted}
+                onClick={() => onGetStarted(plan.id)}
                 className={cn(
                   'h-12 w-full cursor-pointer rounded-xl text-[13.5px] font-semibold transition-[background-color,color,border-color,transform] duration-200 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]',
                   recommended
@@ -114,7 +106,7 @@ export default function GlobalPricing({ onGetStarted }: { onGetStarted: () => vo
                     : 'border border-white/[0.14] bg-white/[0.025] text-white/85 hover:border-white/[0.22] hover:bg-white/[0.055] hover:text-white'
                 )}
               >
-                {tier.cta}
+                {t('selectPlan')}
               </button>
             </div>
           </motion.div>

@@ -3,11 +3,15 @@
 import { useLocale, useTranslations } from 'next-intl';
 import { AlertTriangle, Database, Search } from 'lucide-react';
 import RunwareProviderTest, { type ProviderTestCopy } from '@/src/components/internal/RunwareProviderTest';
+import AdminPaymentActions from './AdminPaymentActions';
+import AdminPaymentPlans from './AdminPaymentPlans';
 import type {
   AdminDataResult,
   AdminJobRow,
   AdminModelRow,
   AdminOverviewData,
+  AdminPaymentRow,
+  AdminPaymentPlan,
   AdminProviderRow,
   AdminUsersData,
   CostAmount,
@@ -90,4 +94,31 @@ export function UsersView({ result }: { result: AdminDataResult<AdminUsersData> 
 export function JobsView({ result }: { result: AdminDataResult<AdminJobRow[]> }) {
   const t = useTranslations('Admin');
   return <><PageHeader title={t('jobs.title')} description={t('jobs.description')} />{!result.available && <Notice reason={result.reason} />}{result.data.length ? <TableFrame><table className="w-full min-w-[1200px] text-start text-[11.5px]"><thead className="border-b border-white/[0.07] text-white/35"><tr>{['time','source','user','modality','providerModel','status','cost','details'].map((key) => <th key={key} className="px-4 py-3 font-medium">{t(`jobs.${key}`)}</th>)}</tr></thead><tbody>{result.data.map((job) => <tr key={`${job.source}:${job.id}`} className="border-b border-white/[0.05] last:border-0"><td className="whitespace-nowrap px-4 py-3.5 text-white/45"><DateValue value={job.createdAt} /></td><td className="px-4 py-3.5"><Badge>{t(`jobs.${job.source}`)}</Badge></td><td className="max-w-36 px-4 py-3.5"><code dir="ltr" className="block truncate text-[9.5px] text-white/35" title={job.userId}>{job.userId}</code></td><td className="px-4 py-3.5 text-white/55">{job.modality}</td><td className="max-w-72 px-4 py-3.5"><p className="truncate text-white/60">{job.provider ?? t('common.unavailable')}</p><code dir="ltr" className="block truncate text-[10px] text-white/35" title={job.modelId}>{job.modelId}</code></td><td className="px-4 py-3.5"><Status value={job.status} /></td><td className="px-4 py-3.5 text-white/50"><Cost value={job.providerCost} /></td><td className="max-w-80 px-4 py-3.5"><p className="line-clamp-2 text-white/45" title={job.error ?? job.prompt ?? undefined}>{job.error ?? job.prompt ?? '—'}</p></td></tr>)}</tbody></table></TableFrame> : <Empty />}</>;
+}
+
+export function PaymentsView({ plans, result }: { plans: AdminDataResult<AdminPaymentPlan[]>; result: AdminDataResult<AdminPaymentRow[]> }) {
+  const t = useTranslations('Admin');
+  return <>
+    <PageHeader title={t('payments.title')} description={t('payments.description')} />
+    {!plans.available && <Notice reason={plans.reason} />}
+    <AdminPaymentPlans plans={plans.data} />
+    {!result.available && <Notice reason={result.reason} />}
+    {result.data.length ? <TableFrame><table className="w-full min-w-[1500px] text-start text-[11.5px]">
+      <thead className="border-b border-white/[0.07] text-white/35"><tr>
+        {['created','user','amount','product','reference','submission','status','result','audit','actions'].map((key) => <th key={key} className="px-4 py-3 font-medium">{t(`payments.${key}`)}</th>)}
+      </tr></thead>
+      <tbody>{result.data.map((payment) => <tr key={payment.id} className="border-b border-white/[0.05] align-top last:border-0">
+        <td className="whitespace-nowrap px-4 py-3.5 text-white/45"><DateValue value={payment.createdAt} /></td>
+        <td className="max-w-64 px-4 py-3.5"><p className="truncate text-white/75" title={payment.userEmail}>{payment.userEmail}</p><code dir="ltr" className="block truncate text-[9.5px] text-white/30">{payment.userId}</code></td>
+        <td className="whitespace-nowrap px-4 py-3.5 font-medium text-white/75" dir="ltr">{payment.amountDzd.toLocaleString()} DA{payment.creditsAmount ? <span className="block text-[10px] font-normal text-white/40">{t('payments.credits', { value: payment.creditsAmount })}</span> : null}</td>
+        <td className="px-4 py-3.5 text-white/60"><p>{payment.planName}</p><Badge>{t(`payments.${payment.orderKind}`)}</Badge></td>
+        <td className="px-4 py-3.5"><code dir="ltr" className="text-white/65">{payment.paymentReference}</code></td>
+        <td className="max-w-60 px-4 py-3.5 text-white/55"><p className="break-words">{payment.customerReference ?? t('common.unavailable')}</p>{payment.proofUrl ? <a href={payment.proofUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block text-white underline underline-offset-4">{t('payments.viewProof')}</a> : <span className="mt-1 block text-white/30">{t('payments.noProof')}</span>}</td>
+        <td className="px-4 py-3.5"><Status value={payment.status} />{payment.submittedAt && <p className="mt-1.5 whitespace-nowrap text-[10px] text-white/35"><DateValue value={payment.submittedAt} /></p>}</td>
+        <td className="max-w-56 px-4 py-3.5 text-white/45">{payment.resultingCreditTransactionId ? <code dir="ltr" className="block truncate text-[9.5px]" title={payment.resultingCreditTransactionId}>{payment.resultingCreditTransactionId}</code> : payment.resultingEntitlementId ? <code dir="ltr" className="block truncate text-[9.5px]" title={payment.resultingEntitlementId}>{payment.resultingEntitlementId}</code> : '—'}</td>
+        <td className="max-w-56 px-4 py-3.5 text-white/45">{payment.audit.length ? payment.audit.map((event) => <p key={event.id} className="mb-1"><span className="text-white/65">{t.has(`status.${event.action}`) ? t(`status.${event.action}`) : event.action}</span> · <DateValue value={event.createdAt} /></p>) : '—'}</td>
+        <td className="px-4 py-3.5">{payment.status === 'pending' && payment.submittedAt ? <AdminPaymentActions paymentId={payment.id} /> : <span className="text-white/30">—</span>}</td>
+      </tr>)}</tbody>
+    </table></TableFrame> : <Empty label={t('payments.noPayments')} />}
+  </>;
 }

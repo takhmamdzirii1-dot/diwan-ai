@@ -85,3 +85,45 @@ export type AdminJobRow = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type AdminPaymentAudit = {
+  id: string;
+  action: string;
+  actorUserId: string | null;
+  createdAt: string;
+};
+
+export type AdminPaymentRow = {
+  id: string;
+  userId: string;
+  userEmail: string;
+  planId: string;
+  planName: string;
+  orderKind: 'credit_pack' | 'subscription';
+  amountDzd: number;
+  creditsAmount: string | null;
+  paymentReference: string;
+  customerReference: string | null;
+  proofUrl: string | null;
+  status: string;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+  resultingCreditTransactionId: string | null;
+  resultingEntitlementId: string | null;
+  createdAt: string;
+  audit: AdminPaymentAudit[];
+};
+
+export type AdminPaymentPlan = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  kind: 'credit_pack' | 'subscription';
+  priceDzd: number;
+  unifiedCredits: string;
+  active: boolean;
+  displayOrder: number;
+  featured: boolean;
+};

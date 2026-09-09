@@ -1,30 +1,3 @@
-export const TOPUP_PLANS = {
-  starter: {
-    id: 'starter',
-    name: 'Starter Pack • Beginner',
-    priceDZD: 1800,
-    priceFormatted: '1,800 DZD',
-    points: 2500,
-    pointsFormatted: '2,500 Points',
-  },
-  creatorPro: {
-    id: 'creator_pro',
-    name: 'Creator Pack • Pro',
-    priceDZD: 4500,
-    priceFormatted: '4,500 DZD',
-    points: 7500,
-    pointsFormatted: '7,500 Points',
-  },
-  enterprise: {
-    id: 'enterprise',
-    name: 'Studio Pack • Enterprise',
-    priceDZD: 12000,
-    priceFormatted: '12,000 DZD',
-    points: 22000,
-    pointsFormatted: '22,000 Points',
-  }
-};
-
 export const MODEL_PRICES: Record<string, { name: string; cost: number; category: string; provider?: string }> = {
   'anthropic/claude-opus-5': {
     name: 'Claude Opus 5',

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Activity, Boxes, ExternalLink, LayoutDashboard, Server, Users } from 'lucide-react';
+import { Activity, Boxes, CreditCard, ExternalLink, LayoutDashboard, Server, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VantraLogo } from '@/src/components/VantraLogo';
 
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: '/admin/models', key: 'models', icon: Boxes },
   { href: '/admin/users', key: 'users', icon: Users },
   { href: '/admin/jobs', key: 'jobs', icon: Activity },
+  { href: '/admin/payments', key: 'payments', icon: CreditCard },
 ] as const;
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {

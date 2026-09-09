@@ -18,6 +18,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import useUser from '../../hooks/useUser';
+import PaymentStatusList from '../payments/PaymentStatusList';
 import { supabase } from '../../lib/supabase/client';
 import { updateUserLanguageIfNeeded } from '../../lib/auth/user-language';
 import {
@@ -394,6 +395,7 @@ function CreditsPanel() {
           value={user && balanceStatus === 'ready' && balance !== null ? balance.toLocaleString() : t('balanceUnavailable')}
         />
       </div>
+      <PaymentStatusList enabled={Boolean(user)} />
     </div>
   );
 }
