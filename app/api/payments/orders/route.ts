@@ -32,7 +32,12 @@ export async function GET() {
     console.error('[payments] order list failed', { code: error.code });
     return NextResponse.json({ error: 'PAYMENT_ORDERS_UNAVAILABLE' }, { status: 503 });
   }
-  return NextResponse.json({ orders: data ?? [] });
+  const orders = (data ?? []).map((order) => (
+    order.status === 'pending' && !order.submitted_at
+      ? { ...order, status: 'draft' }
+      : order
+  ));
+  return NextResponse.json({ orders });
 }
 
 export async function POST(request: Request) {

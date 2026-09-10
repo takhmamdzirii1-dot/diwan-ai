@@ -385,11 +385,49 @@ function ModelsPanel({ selectedId, onSelect }: { selectedId: string; onSelect: (
 function CreditsPanel() {
   const t = useTranslations('studio.settings');
   const { user, balance, balanceStatus } = useUser({ loadBalance: true });
+  const [planName, setPlanName] = useState<string | null>(null);
+  const [planStatus, setPlanStatus] = useState<'loading' | 'ready' | 'unavailable'>('loading');
+
+  useEffect(() => {
+    let active = true;
+    if (!user) {
+      setPlanName(null);
+      setPlanStatus('ready');
+      return () => { active = false; };
+    }
+
+    setPlanStatus('loading');
+    void supabase
+      .rpc('get_current_user_entitlement')
+      .returns<{ plan_name: string }[]>()
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          setPlanName(null);
+          setPlanStatus('unavailable');
+          return;
+        }
+        setPlanName(data?.plan_name ?? null);
+        setPlanStatus('ready');
+      });
+
+    return () => { active = false; };
+  }, [user]);
+
+  const displayedPlan = !user
+    ? t('guest')
+    : planStatus === 'unavailable'
+      ? t('balanceUnavailable')
+      : planStatus === 'loading'
+        ? '…'
+        : planName ?? t('freePlan');
+
   return (
     <div className="space-y-6">
       <SectionHeader title={t('planCredits')} description={t('creditsDescription')} />
       <div className="rounded-2xl border border-[var(--studio-border-subtle)] bg-[var(--studio-surface-raised)] px-5">
-        <StaticRow label={t('currentPlan')} value={user ? t('freePlan') : t('guest')} />
+        <StaticRow label={t('currentPlan')} value={displayedPlan} />
         <StaticRow
           label={t('unifiedCreditsBalance')}
           value={user && balanceStatus === 'ready' && balance !== null ? balance.toLocaleString() : t('balanceUnavailable')}

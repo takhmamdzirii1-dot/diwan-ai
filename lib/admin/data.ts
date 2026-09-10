@@ -2,7 +2,7 @@ import 'server-only';
 
 import { notFound } from 'next/navigation';
 import type { User } from '@supabase/supabase-js';
-import { getOwnerAccess } from '@/lib/auth/owner';
+import { getOwnerAccess, isOwnerUser } from '@/lib/auth/owner';
 import { AUTO_FALLBACK_CHAIN, PROVIDER_REGISTRY } from '@/lib/ai/image-providers/router';
 import {
   DEFAULT_CHAT_MODEL,
@@ -177,7 +177,8 @@ export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewD
       client.from('generations').select('id', { count: 'exact', head: true }),
       client.from('generations').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
       client.from('generations').select('id', { count: 'exact', head: true }).eq('status', 'failed'),
-      client.from('payment_orders').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+      client.from('payment_orders').select('id', { count: 'exact', head: true })
+        .eq('status', 'pending').not('submitted_at', 'is', null),
     ]);
     for (const result of [generations, transactions, attempts, generationCount, completedCount, failedCount, pendingPaymentCount]) {
       if (result.error) throw result.error;
@@ -304,10 +305,11 @@ export async function getAdminUsers(query = ''): Promise<AdminDataResult<AdminUs
   const client = await requireAdminDataAccess();
   if (!client) return unavailable(empty);
   try {
-    const [auth, credits, usage, generations, paymentOrders] = await Promise.all([
+    const [auth, credits, usage, generations, paymentOrders, entitlements] = await Promise.all([
       allAuthUsers(client), allRows(client, 'credits', 'user_id,balance'),
       allRows(client, 'usage_records', 'user_id,credits_charged'), allRows(client, 'generations', 'user_id'),
       allRows(client, 'payment_orders', 'user_id'),
+      allRows(client, 'user_entitlements', 'user_id,plan_name,status,starts_at,ends_at'),
     ]);
     const balances = new Map(credits.map((row) => [row.user_id, numericString(row.balance)]));
     const usageByUser = new Map<string, bigint>();
@@ -318,13 +320,24 @@ export async function getAdminUsers(query = ''): Promise<AdminDataResult<AdminUs
     const paymentsByUser = new Map<string, number>();
     paymentOrders.forEach((row) => paymentsByUser.set(row.user_id, (paymentsByUser.get(row.user_id) ?? 0) + 1));
     const now = Date.now();
+    const plansByUser = new Map<string, { name: string; startsAt: number }>();
+    entitlements.forEach((row) => {
+      const endsAt = row.ends_at ? new Date(row.ends_at).getTime() : null;
+      if (row.status !== 'active' || (endsAt !== null && endsAt <= now)) return;
+      const startsAt = new Date(row.starts_at).getTime();
+      const current = plansByUser.get(row.user_id);
+      if (!current || startsAt > current.startsAt) {
+        plansByUser.set(row.user_id, { name: row.plan_name, startsAt });
+      }
+    });
     const normalizedQuery = query.trim().toLowerCase();
     const users: AdminUserRow[] = auth.users
       .filter((user) => !normalizedQuery || user.email?.toLowerCase().includes(normalizedQuery) || user.id.includes(normalizedQuery))
       .slice(0, 100).map((user) => {
         const bannedUntil = user.banned_until ? new Date(user.banned_until).getTime() : 0;
         return {
-          id: user.id, email: user.email ?? '—', plan: 'Free', creditBalance: balances.get(user.id) ?? null,
+          id: user.id, email: user.email ?? '—', plan: plansByUser.get(user.id)?.name ?? 'Free',
+          isOwner: isOwnerUser(user), creditBalance: balances.get(user.id) ?? null,
           creditsUsed: (usageByUser.get(user.id) ?? 0n).toString(), generationCount: generationsByUser.get(user.id) ?? 0,
           paymentOrderCount: paymentsByUser.get(user.id) ?? 0,
           status: bannedUntil > now ? 'suspended' : user.email_confirmed_at ? 'active' : 'unconfirmed',
@@ -442,7 +455,8 @@ export async function getAdminPayments(): Promise<AdminDataResult<AdminPaymentRo
         paymentReference: order.payment_reference,
         customerReference: order.customer_reference,
         proofUrl,
-        status: order.status,
+        status: order.status === 'draft' || (order.status === 'pending' && !order.submitted_at)
+          ? 'incomplete' : order.status,
         submittedAt: order.submitted_at,
         reviewedAt: order.reviewed_at,
         reviewNote: order.review_note,

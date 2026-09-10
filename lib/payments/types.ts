@@ -1,5 +1,5 @@
 export type PaymentMethod = 'baridimob' | 'ccp' | 'cib' | 'edahabia';
-export type PaymentStatus = 'pending' | 'approved' | 'rejected' | 'expired';
+export type PaymentStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'cancelled' | 'expired';
 export type PaymentOrderKind = 'credit_pack' | 'subscription';
 
 export type PaymentOrder = {

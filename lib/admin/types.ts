@@ -63,7 +63,8 @@ export type AdminModelRow = {
 export type AdminUserRow = {
   id: string;
   email: string;
-  plan: 'Free';
+  plan: string;
+  isOwner: boolean;
   creditBalance: string | null;
   creditsUsed: string;
   generationCount: number;
