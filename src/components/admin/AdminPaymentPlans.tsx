@@ -73,7 +73,7 @@ function planMatchesDraft(plan: AdminPaymentPlan, draft: Draft) {
 }
 
 function FieldHelp({ children }: { children: React.ReactNode }) {
-  return <span className="mt-1 block text-[11px] leading-relaxed text-[var(--studio-text-muted)]">{children}</span>;
+  return <span className="mt-1 block text-[11.5px] leading-relaxed text-[var(--studio-text-secondary)]">{children}</span>;
 }
 
 function PlanFields({ idPrefix, value, existing, onChange }: {
@@ -226,14 +226,14 @@ export default function AdminPaymentPlans({ plans }: { plans: AdminPaymentPlan[]
     ? <p role={feedback.tone === 'error' ? 'alert' : 'status'} className={`mt-3 flex items-center gap-1.5 text-[11px] ${feedback.tone === 'error' ? 'text-red-200' : 'text-white/70'}`}>
       {feedback.tone === 'success' && <Check className="h-3.5 w-3.5" aria-hidden="true" />}{feedback.message}</p> : null;
 
-  return <section className="mb-8 rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-4 shadow-[0_18px_50px_-40px_rgba(0,0,0,0.95)] sm:p-5">
-    <div className="mb-4 flex flex-wrap items-start justify-between gap-3 text-start">
+  return <section className="mb-8 rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-4 shadow-[0_18px_50px_-40px_rgba(0,0,0,0.95)]">
+    <div className="mb-3 flex flex-wrap items-start justify-between gap-3 text-start">
       <div><h2 className="text-[20px] font-semibold tracking-[-0.02em] text-white">{t('catalogTitle')}</h2><p className="mt-1 max-w-3xl text-[13px] leading-relaxed text-[var(--studio-text-secondary)]">{t('catalogDescription')}</p></div>
       <span className="rounded-full border border-[var(--studio-border)] bg-white/[0.045] px-2.5 py-1 text-[11px] font-semibold text-[var(--studio-text-secondary)]">{t('planCount', { count: catalogPlans.length })}</span>
     </div>
 
     {feedbackFor('catalog')}
-    <div className="mt-3 space-y-3">{catalogPlans.map((plan, index) => {
+    <div className="space-y-2.5">{catalogPlans.map((plan, index) => {
       const draft = drafts[plan.id] ?? toDraft(plan);
       const dirty = !planMatchesDraft(plan, draft);
       return <details key={plan.id} name="admin-plan-editor" className="group rounded-xl border border-[var(--studio-border)] bg-white/[0.02] open:bg-white/[0.035] open:shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">

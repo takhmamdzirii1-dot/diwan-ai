@@ -24,6 +24,7 @@ import type {
   AdminUsersData,
   CostAmount,
 } from './types';
+import { isMissingCustomerPricing } from './model-economics';
 
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 10;
@@ -104,11 +105,59 @@ function totalCosts(rows: any[]): CostAmount[] {
 const unavailable = <T,>(data: T): AdminDataResult<T> => ({ available: false, data, reason: 'not_configured' });
 const failed = <T,>(data: T): AdminDataResult<T> => ({ available: false, data, reason: 'query_failed' });
 
+function latestCostsByModel(rows: any[]) {
+  const latest = new Map<string, CostAmount>();
+  rows.slice().sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).forEach((row) => {
+    const key = String(row.provider_model);
+    if (!latest.has(key) && row.actual_cost_minor != null) {
+      latest.set(key, { currency: String(row.currency), minor: numericString(row.actual_cost_minor) });
+    }
+  });
+  return latest;
+}
+
+function providerCostState(provider: string, actualCost: CostAmount | null): AdminModelRow['providerCostState'] {
+  if (actualCost) return BigInt(actualCost.minor) === 0n ? 'free' : 'known';
+  const definition = Object.values(PROVIDER_REGISTRY).find((item) =>
+    item.id.toLowerCase() === provider.toLowerCase() || item.name.toLowerCase() === provider.toLowerCase());
+  return definition && ['free', 'user_associated', 'byop'].includes(definition.pricing) ? 'free' : 'unknown';
+}
+
+function buildAdminModelRows(latestCostByModel: Map<string, CostAmount>): AdminModelRow[] {
+  const defaultIds = new Set([DEFAULT_CHAT_MODEL?.id, DEFAULT_IMAGE_MODEL?.id, DEFAULT_VIDEO_MODEL?.id].filter(Boolean));
+  const registeredIds = new Set(STUDIO_MODELS.map((model) => model.id));
+  const rows: AdminModelRow[] = STUDIO_MODELS.map((model) => {
+    const providerCost = latestCostByModel.get(model.id) ?? null;
+    return {
+      key: `studio:${model.modality}:${model.id}`, provider: model.provider, modelId: model.id,
+      displayName: model.displayName, modality: model.modality, enabled: model.enabled,
+      availability: model.availability, providerCost, providerCostState: providerCostState(model.provider, providerCost),
+      creditPrice: model.verifiedCreditCost ?? null,
+      priority: defaultIds.has(model.id) ? 'primary' : model.fallbackAvailable ? 'backup' : 'unassigned',
+    };
+  });
+  for (const provider of Object.values(PROVIDER_REGISTRY)) {
+    for (const model of provider.models) {
+      if (registeredIds.has(model.id)) continue;
+      const providerCost = latestCostByModel.get(model.id) ?? null;
+      rows.push({
+        key: `provider:${provider.id}:${model.id}`, provider: provider.name, modelId: model.id,
+        displayName: model.name, modality: 'image', enabled: false,
+        availability: provider.id === 'runware' ? 'internal_test' : 'not_in_studio',
+        providerCost, providerCostState: providerCostState(provider.id, providerCost),
+        creditPrice: null, priority: 'unassigned',
+      });
+    }
+  }
+  return rows;
+}
+
 export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewData>> {
   const empty: AdminOverviewData = {
     totalUsers: null, totalGenerations: null, successfulJobs: null, failedJobs: null,
     providerIssues: null,
-    modelsMissingPricing: STUDIO_MODELS.filter((model) => model.enabled && model.verifiedCreditCost == null).length,
+    modelsMissingPricing: buildAdminModelRows(new Map()).filter(isMissingCustomerPricing).length,
+    modelsUnknownProviderCost: buildAdminModelRows(new Map()).filter((model) => model.providerCostState === 'unknown').length,
     creditsConsumed: null, pendingPayments: null, providerCosts: [], recentActivity: [],
   };
   const client = await requireAdminDataAccess();
@@ -120,7 +169,7 @@ export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewD
       client.from('generations').select('id,type,model_id,status,error_message,created_at')
         .order('created_at', { ascending: false }).limit(8),
       allRows(client, 'usage_records', 'credits_charged,created_at'),
-      allRows(client, 'provider_cost_records', 'provider,actual_cost_minor,currency,created_at'),
+      allRows(client, 'provider_cost_records', 'provider,provider_model,actual_cost_minor,currency,created_at'),
       client.from('credit_transactions').select('id,transaction_type,amount,reason,created_at')
         .order('created_at', { ascending: false }).limit(8),
       client.from('provider_attempts').select('provider,state,started_at')
@@ -145,8 +194,10 @@ export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewD
       }));
     const creditActivity: AdminActivity[] = (transactions.data ?? []).map((row: any) => ({
       id: `credit:${row.id}`, kind: 'credit', label: row.transaction_type,
-      detail: `${numericString(row.amount)} · ${row.reason}`, status: row.transaction_type, createdAt: row.created_at,
+      detail: numericString(row.amount), technicalDetail: row.reason,
+      status: row.transaction_type, createdAt: row.created_at,
     }));
+    const modelRows = buildAdminModelRows(latestCostsByModel(costs));
 
     return { available: true, data: {
       totalUsers: auth.truncated ? null : auth.users.length,
@@ -154,7 +205,8 @@ export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewD
       successfulJobs: completedCount.count ?? null,
       failedJobs: failedCount.count ?? null,
       providerIssues: [...latestAttemptByProvider.values()].filter((attempt) => attempt.state === 'failed').length,
-      modelsMissingPricing: empty.modelsMissingPricing,
+      modelsMissingPricing: modelRows.filter(isMissingCustomerPricing).length,
+      modelsUnknownProviderCost: modelRows.filter((model) => model.providerCostState === 'unknown').length,
       creditsConsumed: usage.length >= PAGE_SIZE * MAX_PAGES ? null : sumIntegerValues(usage, 'credits_charged'),
       pendingPayments: pendingPaymentCount.count ?? null,
       providerCosts: totalCosts(costs),
@@ -239,33 +291,7 @@ export async function getAdminModels(): Promise<AdminDataResult<AdminModelRow[]>
     const costs = client
       ? await allRows(client, 'provider_cost_records', 'provider,provider_model,actual_cost_minor,currency,created_at')
       : [];
-    const latestCostByModel = new Map<string, CostAmount>();
-    costs.slice().sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).forEach((row) => {
-      const key = String(row.provider_model);
-      if (!latestCostByModel.has(key) && row.actual_cost_minor != null) {
-        latestCostByModel.set(key, { currency: String(row.currency), minor: numericString(row.actual_cost_minor) });
-      }
-    });
-    const defaultIds = new Set([DEFAULT_CHAT_MODEL?.id, DEFAULT_IMAGE_MODEL?.id, DEFAULT_VIDEO_MODEL?.id].filter(Boolean));
-    const registeredIds = new Set(STUDIO_MODELS.map((model) => model.id));
-    const rows: AdminModelRow[] = STUDIO_MODELS.map((model) => ({
-      key: `studio:${model.modality}:${model.id}`, provider: model.provider, modelId: model.id,
-      displayName: model.displayName, modality: model.modality, enabled: model.enabled,
-      availability: model.availability, providerCost: latestCostByModel.get(model.id) ?? null,
-      creditPrice: model.verifiedCreditCost ?? null,
-      priority: defaultIds.has(model.id) ? 'primary' : model.fallbackAvailable ? 'backup' : 'unassigned',
-    }));
-    for (const provider of Object.values(PROVIDER_REGISTRY)) {
-      for (const model of provider.models) {
-        if (registeredIds.has(model.id)) continue;
-        rows.push({
-          key: `provider:${provider.id}:${model.id}`, provider: provider.name, modelId: model.id,
-          displayName: model.name, modality: 'image', enabled: false,
-          availability: provider.id === 'runware' ? 'internal_test' : 'not_in_studio',
-          providerCost: latestCostByModel.get(model.id) ?? null, creditPrice: null, priority: 'unassigned',
-        });
-      }
-    }
+    const rows = buildAdminModelRows(latestCostsByModel(costs));
     return client ? { available: true, data: rows } : unavailable(rows);
   } catch (error) {
     console.error('[admin] model query failed', { message: error instanceof Error ? error.message : 'Unknown error' });

@@ -43,21 +43,21 @@ export default function AdminPaymentActions({ paymentId, creditsAmount, onResolv
     } finally { setPendingAction(null); }
   };
 
-  return <div className="space-y-3 rounded-xl border border-[var(--studio-border-strong)] bg-[var(--studio-surface-elevated)] p-4 shadow-[0_18px_45px_-24px_rgba(0,0,0,0.95)]">
+  return <div className="space-y-2 rounded-xl border border-[var(--studio-border-strong)] bg-[var(--studio-surface-elevated)] p-3 shadow-[0_18px_45px_-24px_rgba(0,0,0,0.95)]">
     <label className="block text-start text-[12px] font-semibold text-white">
       {t('reviewNote')}
       <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={1000}
         placeholder={t('reviewNotePlaceholder')}
-        className="mt-1.5 h-10 w-full rounded-lg border border-[var(--studio-border)] bg-black/25 px-3 text-[12px] text-white outline-none placeholder:text-[var(--studio-text-muted)] focus-visible:border-[var(--studio-border-strong)]" />
+        className="mt-1 h-9 w-full rounded-lg border border-[var(--studio-border)] bg-black/25 px-3 text-[12px] text-white outline-none placeholder:text-[var(--studio-text-muted)] focus-visible:border-[var(--studio-border-strong)]" />
     </label>
     <p className="text-start text-[11px] leading-relaxed text-[var(--studio-text-secondary)]">{t('reviewHelp')}</p>
     <div className="flex gap-2">
       <button type="button" disabled={pendingAction !== null} onClick={() => void run('approve')}
-        className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-lg bg-white px-3 text-[12px] font-semibold text-black transition-[background-color,opacity] duration-150 hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none">
+        className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-white px-3 text-[12px] font-semibold text-black transition-[background-color,opacity] duration-150 hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none">
         {pendingAction === 'approve' ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Check className="h-3.5 w-3.5" aria-hidden="true" />}{pendingAction === 'approve' ? t('approving') : t('approve')}
       </button>
       <button type="button" disabled={pendingAction !== null} onClick={() => void run('reject')}
-        className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-lg border border-red-300/25 bg-red-300/[0.04] px-3 text-[12px] font-semibold text-red-100 transition-[background-color,opacity] duration-150 hover:bg-red-300/[0.1] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none">
+        className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-red-300/25 bg-red-300/[0.04] px-3 text-[12px] font-semibold text-red-100 transition-[background-color,opacity] duration-150 hover:bg-red-300/[0.1] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none">
         {pendingAction === 'reject' ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <X className="h-3.5 w-3.5" aria-hidden="true" />}{pendingAction === 'reject' ? t('rejecting') : t('reject')}
       </button>
     </div>

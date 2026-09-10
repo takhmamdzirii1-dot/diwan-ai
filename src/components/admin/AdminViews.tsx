@@ -11,9 +11,10 @@ import type {
   AdminDataResult, AdminJobRow, AdminModelRow, AdminOverviewData, AdminPaymentRow,
   AdminPaymentPlan, AdminProviderRow, AdminUsersData, CostAmount,
 } from '@/lib/admin/types';
+import { isMissingCustomerPricing } from '@/lib/admin/model-economics';
 
-function PageHeader({ title, description, children }: { title: string; description: string; children?: React.ReactNode }) {
-  return <header className="mb-7 flex flex-wrap items-end justify-between gap-4 text-start">
+function PageHeader({ title, description, children, compact = false }: { title: string; description: string; children?: React.ReactNode; compact?: boolean }) {
+  return <header className={`${compact ? 'mb-4' : 'mb-7'} flex flex-wrap items-end justify-between gap-4 text-start`}>
     <div><h1 className="text-[30px] font-bold leading-tight tracking-[-0.035em] text-white sm:text-[34px]">{title}</h1><p className="mt-2 max-w-3xl text-[14px] leading-relaxed text-[var(--studio-text-secondary)]">{description}</p></div>
     {children}
   </header>;
@@ -45,6 +46,13 @@ function TableFrame({ children }: { children: React.ReactNode }) {
 function Cost({ value }: { value: CostAmount | null }) {
   const t = useTranslations('Admin.common');
   return value ? <span dir="ltr" className="tabular-nums">{t('minorUnits', { value: value.minor, currency: value.currency })}</span> : <span aria-label={t('unavailable')}>—</span>;
+}
+
+function ProviderEconomics({ row }: { row: Pick<AdminModelRow, 'providerCost' | 'providerCostState'> }) {
+  const t = useTranslations('Admin.common');
+  if (row.providerCostState === 'free') return <span>{t('providerCostFree')}</span>;
+  if (row.providerCostState === 'known') return <Cost value={row.providerCost} />;
+  return <span>{t('providerCostUnknown')}</span>;
 }
 
 function DateValue({ value }: { value: string | null }) {
@@ -82,6 +90,17 @@ function SectionHeading({ title, description }: { title: string; description?: s
 
 const actionLinkClass = 'group flex min-h-11 items-center justify-between gap-3 rounded-xl border border-[var(--studio-border)] bg-white/[0.025] px-3.5 text-[13px] font-medium text-[var(--studio-text-secondary)] transition-[background-color,border-color,color] duration-150 hover:border-[var(--studio-border-strong)] hover:bg-white/[0.065] hover:text-white motion-reduce:transition-none';
 
+function summarizeActivity(items: AdminOverviewData['recentActivity']) {
+  return items.reduce<Array<AdminOverviewData['recentActivity'][number] & { occurrences: number }>>((summary, item) => {
+    const existing = summary.find((candidate) => candidate.kind === item.kind
+      && candidate.label === item.label && candidate.detail === item.detail
+      && candidate.status === item.status && candidate.technicalDetail === item.technicalDetail);
+    if (existing) existing.occurrences += 1;
+    else summary.push({ ...item, occurrences: 1 });
+    return summary;
+  }, []);
+}
+
 export function OverviewView({ result }: { result: AdminDataResult<AdminOverviewData> }) {
   const t = useTranslations('Admin');
   const metrics = [
@@ -94,20 +113,22 @@ export function OverviewView({ result }: { result: AdminDataResult<AdminOverview
     { key: 'failedJobs', value: result.data.failedJobs, href: '/admin/jobs' },
     { key: 'providerIssues', value: result.data.providerIssues, href: '/admin/providers' },
     { key: 'modelsMissingPricing', value: result.data.modelsMissingPricing, href: '/admin/models' },
+    { key: 'modelsUnknownProviderCost', value: result.data.modelsUnknownProviderCost, href: '/admin/models' },
   ].filter((item) => typeof item.value === 'number' && item.value > 0);
   return <><PageHeader title={t('overview.title')} description={t('overview.description')} />{!result.available && <Notice reason={result.reason} />}
-    {attentionItems.length ? <section aria-labelledby="admin-attention-title" className="mb-5 rounded-2xl border border-amber-300/20 bg-amber-300/[0.055] p-4">
-      <div className="flex flex-wrap items-center gap-3 text-start"><AlertTriangle className="h-5 w-5 shrink-0 text-amber-200" aria-hidden="true" /><div className="min-w-0 flex-1"><h2 id="admin-attention-title" className="text-[15px] font-semibold text-amber-50">{t('overview.attentionTitle')}</h2><p className="mt-0.5 text-[12px] text-amber-50/70">{t('overview.attentionDescription')}</p></div></div>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">{attentionItems.map((item) => <Link key={item.key} href={item.href} prefetch={false} className="flex items-center justify-between rounded-xl border border-amber-200/15 bg-black/20 px-3 py-2.5 text-[12px] font-medium text-amber-50/80 hover:bg-black/30 hover:text-white"><span>{t(`overview.${item.key}`)}</span><strong className="tabular-nums text-white">{item.value}</strong></Link>)}</div>
+    {attentionItems.length ? <section aria-labelledby="admin-attention-title" className="mb-4 rounded-xl border border-amber-300/20 bg-amber-300/[0.05] px-3.5 py-3">
+      <div className="flex flex-wrap items-center gap-2.5 text-start"><AlertTriangle className="h-4 w-4 shrink-0 text-amber-200" aria-hidden="true" /><div className="min-w-0 flex-1"><h2 id="admin-attention-title" className="text-[14px] font-semibold text-amber-50">{t('overview.attentionTitle')}</h2><p className="text-[11.5px] text-amber-50/75">{t('overview.attentionDescription')}</p></div></div>
+      <div className="mt-2.5 flex flex-wrap gap-2">{attentionItems.map((item) => <Link key={item.key} href={item.href} prefetch={false} className="inline-flex min-h-8 items-center gap-3 rounded-lg border border-amber-200/15 bg-black/20 px-2.5 py-1.5 text-[11.5px] font-medium text-amber-50/85 hover:bg-black/30 hover:text-white"><span>{t(`overview.${item.key}`)}</span><strong className="tabular-nums text-white">{item.value}</strong></Link>)}</div>
     </section> : null}
     <section aria-label={t('overview.metrics')} className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{metrics.map(([key, value]) => <Metric key={key} label={t(`overview.${key}`)} value={value} />)}</section>
     <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]"><div className="rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-5"><SectionHeading title={t('overview.recentActivity')} />
-      <div className="space-y-1">{result.data.recentActivity.length ? result.data.recentActivity.map((item) => {
+      <div className="space-y-1">{result.data.recentActivity.length ? summarizeActivity(result.data.recentActivity).map((item) => {
         const action = t.has(`status.${item.status}`) ? t(`status.${item.status}`) : item.status;
         const title = item.kind === 'generation'
           ? t('overview.generationActivity', { item: item.label })
           : t('overview.creditActivity', { action });
-        return <div key={item.id} className="flex items-start justify-between gap-4 border-t border-[var(--studio-border-subtle)] py-3.5 text-start first:border-0"><div className="min-w-0"><p className="text-[13px] font-medium text-white">{title}</p><p className="mt-1 break-words text-[12px] text-[var(--studio-text-secondary)]">{item.detail}</p></div><div className="shrink-0 text-end"><Status value={item.status} /><p className="mt-1.5 text-[11px] text-[var(--studio-text-muted)]"><DateValue value={item.createdAt} /></p></div></div>;
+        const detail = item.kind === 'credit' ? t('overview.creditChange', { value: item.detail }) : item.detail;
+        return <div key={item.id} className="flex items-start justify-between gap-4 border-t border-[var(--studio-border-subtle)] py-2.5 text-start first:border-0"><div className="min-w-0"><p className="text-[13px] font-medium text-white">{title}{item.occurrences > 1 ? <span className="ms-2 text-[11px] font-medium text-[var(--studio-text-muted)]">{t('overview.repeatedActivity', { count: item.occurrences })}</span> : null}</p><p className="mt-0.5 break-words text-[12px] text-[var(--studio-text-secondary)]">{detail}</p>{item.technicalDetail ? <TechnicalDetails><p className="break-words text-[11px] text-[var(--studio-text-secondary)]">{item.technicalDetail}</p></TechnicalDetails> : null}</div><div className="shrink-0 text-end"><Status value={item.status} /><p className="mt-1 text-[11px] text-[var(--studio-text-muted)]"><DateValue value={item.createdAt} /></p></div></div>;
       }) : <Empty label={t('overview.noActivity')} />}</div></div>
       <div className="space-y-5"><div className="rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-5 text-start"><SectionHeading title={t('overview.quickActions')} /><div className="grid gap-2">
         <Link href="/admin/payments?view=payments&status=pending" prefetch={false} className={actionLinkClass}><span>{t('overview.reviewPayments')}</span><ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 rtl:rotate-180" aria-hidden="true" /></Link>
@@ -140,22 +161,23 @@ export function ModelsView({ result }: { result: AdminDataResult<AdminModelRow[]
     total: result.data.length,
     enabled: result.data.filter((row) => row.enabled).length,
     primary: result.data.filter((row) => row.priority === 'primary').length,
-    missingPricing: result.data.filter((row) => row.creditPrice == null).length,
+    missingPricing: result.data.filter(isMissingCustomerPricing).length,
+    unknownProviderCost: result.data.filter((row) => row.providerCostState === 'unknown').length,
     preview: result.data.filter((row) => row.availability === 'preview').length,
   };
   const filtered = useMemo(() => result.data.filter((row) => {
     if (filter === 'enabled') return row.enabled;
     if (filter === 'primary') return row.priority === 'primary';
     if (['image', 'chat', 'video'].includes(filter)) return row.modality === filter;
-    if (filter === 'missingPricing') return row.creditPrice == null;
+    if (filter === 'missingPricing') return isMissingCustomerPricing(row);
     if (filter === 'preview') return row.availability === 'preview';
     if (filter === 'notInStudio') return row.availability === 'not_in_studio';
     return true;
   }), [filter, result.data]);
   return <><PageHeader title={t('models.title')} description={t('models.description')} />{!result.available && <Notice reason={result.reason} />}
-    <section aria-label={t('models.summary')} className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">{(['total','enabled','primary','missingPricing','preview'] as const).map((key) => <div key={key} className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] px-3 py-2.5 text-start"><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">{t(`models.summary${key[0].toUpperCase()}${key.slice(1)}`)}</p><p className="mt-1 text-lg font-bold tabular-nums text-white">{counts[key]}</p></div>)}</section>
+    <section aria-label={t('models.summary')} className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">{(['total','enabled','primary','missingPricing','unknownProviderCost','preview'] as const).map((key) => <div key={key} className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] px-3 py-2.5 text-start"><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">{t(`models.summary${key[0].toUpperCase()}${key.slice(1)}`)}</p><p className="mt-1 text-lg font-bold tabular-nums text-white">{counts[key]}</p></div>)}</section>
     <div role="group" aria-label={t('models.filterLabel')} className="mb-4 flex flex-wrap gap-2">{filterOptions.map((value) => <button key={value} type="button" aria-pressed={filter === value} onClick={() => setFilter(value)} className={`min-h-9 rounded-full border px-3 text-[11.5px] font-semibold transition-[background-color,border-color,color] duration-150 motion-reduce:transition-none ${filter === value ? 'border-white bg-white text-black' : 'border-[var(--studio-border)] bg-[var(--studio-surface)] text-[var(--studio-text-secondary)] hover:border-[var(--studio-border-strong)] hover:text-white'}`}>{t(`models.filters.${value}`)}</button>)}</div>
-    {filtered.length ? <TableFrame><table className="w-full min-w-[820px] text-start text-[13px]"><thead className="border-b border-[var(--studio-border)]"><tr>{['displayName','modality','provider','state','priority','pricing'].map((key) => <th key={key} className="px-4 py-3.5">{t(`models.${key}`)}</th>)}</tr></thead><tbody>{filtered.map((row) => <tr key={row.key} className="border-b border-[var(--studio-border-subtle)] last:border-0"><td className="px-4 py-4 align-top"><p className="font-semibold text-white">{row.displayName}</p><TechnicalDetails><TechnicalId label={t('common.modelId')} value={row.modelId} /></TechnicalDetails></td><td className="px-4 py-4 align-top text-[var(--studio-text-secondary)]">{t.has(`modality.${row.modality}`) ? t(`modality.${row.modality}`) : row.modality}</td><td className="px-4 py-4 align-top text-[var(--studio-text-secondary)]">{row.provider}</td><td className="px-4 py-4 align-top"><div className="flex flex-wrap gap-1.5"><Badge tone={row.enabled ? 'success' : 'neutral'}>{t(row.enabled ? 'common.enabled' : 'common.disabled')}</Badge><Status value={row.availability} /></div></td><td className="px-4 py-4 align-top"><Badge>{t(`role.${row.priority}`)}</Badge></td><td className="px-4 py-4 text-end align-top"><p className="font-semibold tabular-nums text-white">{row.creditPrice == null ? t('common.noPrice') : t('common.credits', { value: row.creditPrice })}</p><p className="mt-1 text-[11px] text-[var(--studio-text-muted)]">{t('models.providerCost')}: <Cost value={row.providerCost} /></p></td></tr>)}</tbody></table></TableFrame> : <Empty label={t('models.noMatches')} />}</>;
+    {filtered.length ? <TableFrame><table className="w-full min-w-[820px] text-start text-[13px]"><thead className="border-b border-[var(--studio-border)]"><tr>{['displayName','modality','provider','state','priority','pricing'].map((key) => <th key={key} className="px-4 py-3.5">{t(`models.${key}`)}</th>)}</tr></thead><tbody>{filtered.map((row) => <tr key={row.key} className="border-b border-[var(--studio-border-subtle)] last:border-0"><td className="px-4 py-4 align-top"><p className="font-semibold text-white">{row.displayName}</p><TechnicalDetails><TechnicalId label={t('common.modelId')} value={row.modelId} /></TechnicalDetails></td><td className="px-4 py-4 align-top text-[var(--studio-text-secondary)]">{t.has(`modality.${row.modality}`) ? t(`modality.${row.modality}`) : row.modality}</td><td className="px-4 py-4 align-top text-[var(--studio-text-secondary)]">{row.provider}</td><td className="px-4 py-4 align-top"><div className="flex flex-wrap gap-1.5"><Badge tone={row.enabled ? 'success' : 'neutral'}>{t(row.enabled ? 'common.enabled' : 'common.disabled')}</Badge><Status value={row.availability} /></div></td><td className="px-4 py-4 align-top"><Badge>{t(`role.${row.priority}`)}</Badge></td><td className="px-4 py-4 text-end align-top"><p className="font-semibold tabular-nums text-white">{isMissingCustomerPricing(row) ? t('common.noPrice') : t('common.credits', { value: row.creditPrice })}</p><p className="mt-1 text-[11px] text-[var(--studio-text-muted)]">{t('models.providerCost')}: <ProviderEconomics row={row} /></p></td></tr>)}</tbody></table></TableFrame> : <Empty label={t('models.noMatches')} />}</>;
 }
 
 export function UsersView({ result }: { result: AdminDataResult<AdminUsersData> }) {
@@ -192,7 +214,7 @@ export function JobsView({ result }: { result: AdminDataResult<AdminJobRow[]> })
 export function PlansPricingView({ result }: { result: AdminDataResult<AdminPaymentPlan[]> }) {
   const t = useTranslations('Admin');
   const locale = useLocale();
-  return <><PageHeader title={t('payments.plansPageTitle')} description={t('payments.plansPageDescription')}><Link href={`/${locale}#pricing`} target="_blank" prefetch={false} className="inline-flex h-10 items-center gap-2 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] px-3.5 text-[12px] font-semibold text-[var(--studio-text-secondary)] hover:border-[var(--studio-border-strong)] hover:text-white">{t('payments.previewPricing')}<ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /></Link></PageHeader>
+  return <><PageHeader compact title={t('payments.plansPageTitle')} description={t('payments.plansPageDescription')}><Link href={`/${locale}#pricing`} target="_blank" prefetch={false} className="inline-flex h-10 items-center gap-2 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] px-3.5 text-[12px] font-semibold text-[var(--studio-text-secondary)] hover:border-[var(--studio-border-strong)] hover:text-white">{t('payments.previewPricing')}<ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /></Link></PageHeader>
     {!result.available && <Notice reason={result.reason} />}<AdminPaymentPlans plans={result.data} /></>;
 }
 
@@ -209,25 +231,25 @@ export function PaymentsView({ result, initialStatus = 'pending' }: { result: Ad
     <section aria-labelledby="payment-orders-title"><SectionHeading title={t('payments.ordersTitle')} description={t('payments.ordersDescription')} />
       <div role="tablist" aria-label={t('payments.statusFilter')} className="mb-4 flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{['pending','approved','rejected','all'].map((value) => <button key={value} type="button" role="tab" aria-selected={status === value} onClick={() => setStatus(value)} className={`min-h-9 shrink-0 rounded-lg px-3.5 text-[12px] font-semibold transition-colors duration-150 motion-reduce:transition-none ${status === value ? 'bg-white text-black' : 'text-[var(--studio-text-secondary)] hover:bg-white/[0.06] hover:text-white'}`}>{value === 'all' ? t('payments.allStatuses') : t(`status.${value}`)}</button>)}</div>
       {!result.available && <Notice reason={result.reason} />}
-      {filtered.length ? <div className="space-y-3">{filtered.map((payment) => <details key={payment.id} className="group rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] shadow-[0_18px_50px_-40px_rgba(0,0,0,0.95)]">
-        <summary className="flex min-h-[72px] cursor-pointer list-none items-center gap-3 px-4 py-3.5 text-start [&::-webkit-details-marker]:hidden"><ChevronDown className="h-4 w-4 shrink-0 text-[var(--studio-text-muted)] transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" /><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="break-words text-[13px] font-semibold text-white">{payment.userEmail}</p><Status value={payment.status} /></div><p className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1 text-[11.5px] text-[var(--studio-text-secondary)]"><span>{payment.planName}</span><span aria-hidden="true">·</span><span>{payment.creditsAmount ? t('payments.credits', { value: payment.creditsAmount }) : '—'}</span><span aria-hidden="true">·</span><span>{t.has(`payments.${payment.paymentMethod}`) ? t(`payments.${payment.paymentMethod}`) : payment.paymentMethod}</span><span aria-hidden="true">·</span><span className={payment.proofUrl ? 'font-semibold text-emerald-100' : ''}>{payment.proofUrl ? t('payments.proofAttached') : t('payments.noProof')}</span></p></div><div className="shrink-0 text-end"><p dir="ltr" className="text-[15px] font-bold tabular-nums text-white">{payment.amountDzd.toLocaleString(locale)} DA</p><p className="mt-1 text-[11px] text-[var(--studio-text-muted)]"><DateValue value={payment.submittedAt ?? payment.createdAt} /></p></div></summary>
-        <div className="border-t border-[var(--studio-border)] p-4 sm:p-5"><div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+      {filtered.length ? <div className="space-y-2.5">{filtered.map((payment) => <details key={payment.id} name="admin-payment-order" className="group rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] shadow-[0_18px_50px_-40px_rgba(0,0,0,0.95)]">
+        <summary className="flex min-h-16 cursor-pointer list-none items-center gap-3 px-3.5 py-2.5 text-start [&::-webkit-details-marker]:hidden"><ChevronDown className="h-4 w-4 shrink-0 text-[var(--studio-text-muted)] transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" /><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="break-words text-[13px] font-semibold text-white">{payment.userEmail}</p><Status value={payment.status} /></div><p className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[11.5px] text-[var(--studio-text-secondary)]"><span>{payment.planName}</span><span aria-hidden="true">·</span><span>{payment.creditsAmount ? t('payments.credits', { value: payment.creditsAmount }) : '—'}</span><span aria-hidden="true">·</span><span>{t.has(`payments.${payment.paymentMethod}`) ? t(`payments.${payment.paymentMethod}`) : payment.paymentMethod}</span><span aria-hidden="true">·</span><span className={payment.proofUrl ? 'font-semibold text-emerald-100' : ''}>{payment.proofUrl ? t('payments.proofAttached') : t('payments.noProof')}</span></p></div><div className="shrink-0 text-end"><p dir="ltr" className="text-[15px] font-bold tabular-nums text-white">{payment.amountDzd.toLocaleString(locale)} DA</p><p className="mt-0.5 text-[10.5px] text-[var(--studio-text-muted)]"><DateValue value={payment.submittedAt ?? payment.createdAt} /></p></div></summary>
+        <div className="border-t border-[var(--studio-border)] p-3"><div className="grid gap-2 lg:grid-cols-2 xl:grid-cols-3">
           <PaymentGroup title={t('payments.customerGroup')}><PaymentField label={t('payments.customer')}><p className="font-medium text-white">{payment.userEmail}</p><TechnicalId label={t('common.userId')} value={payment.userId} /></PaymentField></PaymentGroup>
           <PaymentGroup title={t('payments.snapshotTitle')}><div className="grid gap-3 sm:grid-cols-2"><PaymentField label={t('payments.product')}><p className="font-medium text-white">{payment.planName}</p><p className="mt-1 text-[var(--studio-text-muted)]">{t(`payments.${payment.orderKind}`)}</p></PaymentField><PaymentField label={t('payments.amount')}><p dir="ltr" className="font-semibold tabular-nums text-white">{payment.amountDzd.toLocaleString(locale)} DA</p><p className="mt-1">{payment.creditsAmount ? t('payments.credits', { value: payment.creditsAmount }) : '—'}</p></PaymentField></div></PaymentGroup>
           <PaymentGroup title={t('payments.paymentEvidence')}><PaymentField label={t('payments.method')}><p className="font-medium text-white">{t.has(`payments.${payment.paymentMethod}`) ? t(`payments.${payment.paymentMethod}`) : payment.paymentMethod}</p><TechnicalId label={t('payments.reference')} value={payment.paymentReference} /></PaymentField><div className="mt-3"><PaymentField label={t('payments.submission')}><p className="break-words">{payment.customerReference ?? t('common.noneRecorded')}</p>{payment.proofUrl ? <a href={payment.proofUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-lg bg-white px-3 text-[12px] font-semibold text-black transition-colors duration-150 hover:bg-white/90"><ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />{t('payments.viewProof')}</a> : <p className="mt-1 text-[var(--studio-text-muted)]">{t('payments.noProof')}</p>}</PaymentField></div></PaymentGroup>
           <PaymentGroup title={t('payments.reviewInformation')}><PaymentField label={t('payments.reviewInformation')}><p><DateValue value={payment.reviewedAt} /></p><p className="mt-1 break-words text-[var(--studio-text-muted)]">{payment.reviewNote ?? t('payments.noReviewNote')}</p></PaymentField></PaymentGroup>
           <PaymentGroup title={t('payments.creditResult')}><PaymentField label={t('payments.result')}>{payment.resultingCreditTransactionId ? <TechnicalId label={t('payments.ledgerTransaction')} value={payment.resultingCreditTransactionId} /> : payment.resultingEntitlementId ? <TechnicalId label={t('payments.entitlement')} value={payment.resultingEntitlementId} /> : <p>{t('common.noneRecorded')}</p>}</PaymentField></PaymentGroup>
           <PaymentGroup title={t('payments.audit')}><PaymentField label={t('payments.timestamps')}><p>{t('payments.created')}: <DateValue value={payment.createdAt} /></p><p className="mt-1">{t('status.submitted')}: <DateValue value={payment.submittedAt} /></p></PaymentField>{payment.audit.length ? <div className="mt-3 space-y-1.5 border-t border-[var(--studio-border-subtle)] pt-3">{payment.audit.map((event) => <p key={event.id} className="text-[11px] text-[var(--studio-text-secondary)]"><span className="font-semibold text-white">{t.has(`status.${event.action}`) ? t(`status.${event.action}`) : event.action}</span> · <DateValue value={event.createdAt} /></p>)}</div> : <p className="mt-2 text-[11px] text-[var(--studio-text-muted)]">{t('common.noneRecorded')}</p>}</PaymentGroup>
-        </div>{payment.status === 'pending' && payment.submittedAt ? <div className="sticky bottom-3 z-10 mt-5 max-w-xl"><AdminPaymentActions paymentId={payment.id} creditsAmount={payment.creditsAmount} onResolved={(nextStatus) => { setPayments((current) => current.map((item) => item.id === payment.id ? { ...item, status: nextStatus } : item)); setResolved((current) => ({ ...current, [payment.id]: nextStatus })); }} /></div> : null}
-        {resolved[payment.id] && <p role="status" className="mt-4 text-start text-[11px] text-white/70">{t(resolved[payment.id] === 'approved' ? 'payments.approvedSuccess' : 'payments.rejectedSuccess')}</p>}</div>
+        </div>{payment.status === 'pending' && payment.submittedAt ? <div className="sticky bottom-2 z-10 mt-3 max-w-3xl"><AdminPaymentActions paymentId={payment.id} creditsAmount={payment.creditsAmount} onResolved={(nextStatus) => { setPayments((current) => current.map((item) => item.id === payment.id ? { ...item, status: nextStatus } : item)); setResolved((current) => ({ ...current, [payment.id]: nextStatus })); }} /></div> : null}
+        {resolved[payment.id] && <p role="status" className="mt-2 text-start text-[11px] text-white/70">{t(resolved[payment.id] === 'approved' ? 'payments.approvedSuccess' : 'payments.rejectedSuccess')}</p>}</div>
       </details>)}</div> : <Empty label={status === 'all' ? t('payments.noPayments') : t('payments.noPaymentsForStatus')} />}
     </section></>;
 }
 
 function PaymentField({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="min-w-0 text-start text-[12px] leading-relaxed text-[var(--studio-text-secondary)]"><p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--studio-text-muted)]">{label}</p>{children}</div>;
+  return <div className="min-w-0 text-start text-[11.5px] leading-relaxed text-[var(--studio-text-secondary)]"><p className="mb-1 text-[9.5px] font-semibold uppercase tracking-[0.1em] text-[var(--studio-text-muted)]">{label}</p>{children}</div>;
 }
 
 function PaymentGroup({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="rounded-xl border border-[var(--studio-border-subtle)] bg-white/[0.02] p-4"><h3 className="mb-3 text-start text-[13px] font-semibold text-white">{title}</h3>{children}</section>;
+  return <section className="rounded-lg border border-[var(--studio-border-subtle)] bg-white/[0.02] p-3"><h3 className="mb-2 text-start text-[12px] font-semibold text-white">{title}</h3>{children}</section>;
 }

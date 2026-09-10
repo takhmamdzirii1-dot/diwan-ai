@@ -11,6 +11,7 @@ export type AdminActivity = {
   kind: 'generation' | 'credit';
   label: string;
   detail: string;
+  technicalDetail?: string | null;
   status: string;
   createdAt: string;
 };
@@ -22,6 +23,7 @@ export type AdminOverviewData = {
   failedJobs: number | null;
   providerIssues: number | null;
   modelsMissingPricing: number;
+  modelsUnknownProviderCost: number;
   creditsConsumed: string | null;
   pendingPayments: number | null;
   providerCosts: CostAmount[];
@@ -53,6 +55,7 @@ export type AdminModelRow = {
   enabled: boolean;
   availability: string;
   providerCost: CostAmount | null;
+  providerCostState: 'free' | 'known' | 'unknown';
   creditPrice: number | null;
   priority: 'primary' | 'backup' | 'unassigned';
 };
