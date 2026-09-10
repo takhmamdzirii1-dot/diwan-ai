@@ -192,6 +192,28 @@
   }
 }
 
+/* Admin-only hierarchy: denser, clearer and higher contrast than creation surfaces. */
+.admin-root {
+  --studio-bg: #060607;
+  --studio-surface: #0d0d0f;
+  --studio-surface-raised: #131316;
+  --studio-surface-elevated: #18181c;
+  --studio-hover: rgba(255, 255, 255, 0.075);
+  --studio-selected: rgba(255, 255, 255, 0.11);
+  --studio-text-primary: rgba(255, 255, 255, 0.98);
+  --studio-text-secondary: rgba(255, 255, 255, 0.76);
+  --studio-text-muted: rgba(255, 255, 255, 0.56);
+  --studio-text-disabled: rgba(255, 255, 255, 0.34);
+  --studio-border-subtle: rgba(255, 255, 255, 0.09);
+  --studio-border: rgba(255, 255, 255, 0.14);
+  --studio-border-strong: rgba(255, 255, 255, 0.28);
+}
+
+.admin-root :is(button, a, input, select, textarea, summary):focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.86);
+  outline-offset: 2px;
+}
+
 /* Keep the legacy marketing section spacing from leaking into Studio creation panels. */
 @media (max-width: 1023px) {
   .studio-shell .studio-creation-controls,

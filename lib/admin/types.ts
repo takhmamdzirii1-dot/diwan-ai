@@ -20,6 +20,8 @@ export type AdminOverviewData = {
   totalGenerations: number | null;
   successfulJobs: number | null;
   failedJobs: number | null;
+  providerIssues: number | null;
+  modelsMissingPricing: number;
   creditsConsumed: string | null;
   pendingPayments: number | null;
   providerCosts: CostAmount[];

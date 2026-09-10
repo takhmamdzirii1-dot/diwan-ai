@@ -107,13 +107,15 @@ const failed = <T,>(data: T): AdminDataResult<T> => ({ available: false, data, r
 export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewData>> {
   const empty: AdminOverviewData = {
     totalUsers: null, totalGenerations: null, successfulJobs: null, failedJobs: null,
+    providerIssues: null,
+    modelsMissingPricing: STUDIO_MODELS.filter((model) => model.enabled && model.verifiedCreditCost == null).length,
     creditsConsumed: null, pendingPayments: null, providerCosts: [], recentActivity: [],
   };
   const client = await requireAdminDataAccess();
   if (!client) return unavailable(empty);
 
   try {
-    const [auth, generations, usage, costs, transactions, generationCount, completedCount, failedCount, pendingPaymentCount] = await Promise.all([
+    const [auth, generations, usage, costs, transactions, attempts, generationCount, completedCount, failedCount, pendingPaymentCount] = await Promise.all([
       allAuthUsers(client),
       client.from('generations').select('id,type,model_id,status,error_message,created_at')
         .order('created_at', { ascending: false }).limit(8),
@@ -121,13 +123,20 @@ export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewD
       allRows(client, 'provider_cost_records', 'provider,actual_cost_minor,currency,created_at'),
       client.from('credit_transactions').select('id,transaction_type,amount,reason,created_at')
         .order('created_at', { ascending: false }).limit(8),
+      client.from('provider_attempts').select('provider,state,started_at')
+        .order('started_at', { ascending: false }).limit(300),
       client.from('generations').select('id', { count: 'exact', head: true }),
       client.from('generations').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
       client.from('generations').select('id', { count: 'exact', head: true }).eq('status', 'failed'),
       client.from('payment_orders').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     ]);
-    for (const result of [generations, transactions, generationCount, completedCount, failedCount, pendingPaymentCount]) {
+    for (const result of [generations, transactions, attempts, generationCount, completedCount, failedCount, pendingPaymentCount]) {
       if (result.error) throw result.error;
+    }
+    const latestAttemptByProvider = new Map<string, { state: string }>();
+    for (const attempt of attempts.data ?? []) {
+      const provider = String(attempt.provider ?? '').toLowerCase();
+      if (provider && !latestAttemptByProvider.has(provider)) latestAttemptByProvider.set(provider, attempt);
     }
     const generationActivity: AdminActivity[] = (generations.data ?? [])
       .map((row) => ({
@@ -144,6 +153,8 @@ export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewD
       totalGenerations: generationCount.count ?? null,
       successfulJobs: completedCount.count ?? null,
       failedJobs: failedCount.count ?? null,
+      providerIssues: [...latestAttemptByProvider.values()].filter((attempt) => attempt.state === 'failed').length,
+      modelsMissingPricing: empty.modelsMissingPricing,
       creditsConsumed: usage.length >= PAGE_SIZE * MAX_PAGES ? null : sumIntegerValues(usage, 'credits_charged'),
       pendingPayments: pendingPaymentCount.count ?? null,
       providerCosts: totalCosts(costs),
