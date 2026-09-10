@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Check, Loader2, X } from 'lucide-react';
 
-export default function AdminPaymentActions({ paymentId, onResolved }: {
+export default function AdminPaymentActions({ paymentId, creditsAmount, onResolved }: {
   paymentId: string;
+  creditsAmount: string | null;
   onResolved?: (status: 'approved' | 'rejected') => void;
 }) {
   const t = useTranslations('Admin.payments');
@@ -17,7 +18,10 @@ export default function AdminPaymentActions({ paymentId, onResolved }: {
 
   const run = async (action: 'approve' | 'reject') => {
     if (pendingAction) return;
-    if (!window.confirm(t(action === 'approve' ? 'confirmApprove' : 'confirmReject'))) return;
+    const confirmation = action === 'approve' && creditsAmount
+      ? t('confirmApprove', { credits: creditsAmount })
+      : t(action === 'approve' ? 'confirmApproveUnknown' : 'confirmReject');
+    if (!window.confirm(confirmation)) return;
     setPendingAction(action);
     setFeedback(null);
     try {

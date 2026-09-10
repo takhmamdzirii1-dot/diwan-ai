@@ -27,6 +27,10 @@ import type {
 
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 10;
+const MODEL_NAMES = new Map<string, string>(STUDIO_MODELS.map((model) => [model.id, model.displayName]));
+for (const provider of Object.values(PROVIDER_REGISTRY)) {
+  for (const model of provider.models) if (!MODEL_NAMES.has(model.id)) MODEL_NAMES.set(model.id, model.name);
+}
 
 async function requireAdminDataAccess() {
   const access = await getOwnerAccess();
@@ -331,6 +335,7 @@ export async function getAdminJobs(): Promise<AdminDataResult<AdminJobRow[]>> {
         id: row.id, source: 'dispatch', userId: row.user_id, modality: row.modality,
         userEmail: emails.get(row.user_id) ?? null,
         provider: attempt?.provider ?? cost?.provider ?? null, modelId: row.model_id,
+        modelName: MODEL_NAMES.get(row.model_id) ?? null,
         status: attempt?.state ?? row.state,
         providerCost: cost?.actual_cost_minor == null ? null : { currency: cost.currency, minor: numericString(cost.actual_cost_minor) },
         creditsCharged: usageRecord?.credits_charged == null ? null : numericString(usageRecord.credits_charged),
@@ -345,6 +350,7 @@ export async function getAdminJobs(): Promise<AdminDataResult<AdminJobRow[]>> {
         id: row.id, source: 'generation', userId: row.user_id, modality: row.type,
         userEmail: emails.get(row.user_id) ?? null,
         provider: typeof metadata.provider === 'string' ? metadata.provider : null, modelId: row.model_id,
+        modelName: MODEL_NAMES.get(row.model_id) ?? null,
         status: row.status, providerCost: null, creditsCharged: null, latencyMs: null,
         error: row.error_message, prompt: row.prompt,
         createdAt: row.created_at, updatedAt: row.updated_at,

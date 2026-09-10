@@ -12,6 +12,17 @@ const schema = z.object({
   active: z.boolean(), displayOrder: z.number().int().min(-10000).max(10000), featured: z.boolean(),
 });
 
+const reorderSchema = z.object({ orderedIds: z.array(z.string().uuid()).min(1).max(1000) })
+  .refine(({ orderedIds }) => new Set(orderedIds).size === orderedIds.length);
+
+function serializePlan(data: any) {
+  return {
+    id: data.id, slug: data.slug, name: data.name, description: data.description,
+    kind: data.kind, priceDzd: data.price_dzd, unifiedCredits: Number(data.unified_credits),
+    active: data.active, displayOrder: data.display_order, featured: data.featured,
+  };
+}
+
 export async function POST(request: Request) {
   const access = await getOwnerAccess();
   if (!access.user) return NextResponse.json({ error: 'AUTHENTICATION_REQUIRED' }, { status: 401 });
@@ -29,9 +40,23 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error: error.code === '23505' ? 'PAYMENT_PLAN_SLUG_EXISTS' : 'PAYMENT_PLAN_CREATE_FAILED' }, { status: 409 });
   revalidatePath('/admin/payments');
   revalidatePath('/en'); revalidatePath('/fr'); revalidatePath('/ar');
-  return NextResponse.json({ plan: {
-    id: data.id, slug: data.slug, name: data.name, description: data.description,
-    kind: data.kind, priceDzd: data.price_dzd, unifiedCredits: Number(data.unified_credits),
-    active: data.active, displayOrder: data.display_order, featured: data.featured,
-  } }, { status: 201 });
+  return NextResponse.json({ plan: serializePlan(data) }, { status: 201 });
+}
+
+export async function PATCH(request: Request) {
+  const access = await getOwnerAccess();
+  if (!access.user) return NextResponse.json({ error: 'AUTHENTICATION_REQUIRED' }, { status: 401 });
+  if (!access.isOwner) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
+  const parsed = reorderSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: 'INVALID_PLAN_ORDER' }, { status: 400 });
+  const client = getSupabaseAdminClient();
+  if (!client) return NextResponse.json({ error: 'ADMIN_DATA_UNAVAILABLE' }, { status: 503 });
+  const { data, error } = await client.rpc('admin_reorder_payment_plans', { p_ordered_ids: parsed.data.orderedIds });
+  if (error || !data) {
+    console.error('[admin plans] reorder failed', { code: error?.code });
+    return NextResponse.json({ error: 'PLAN_REORDER_FAILED' }, { status: 409 });
+  }
+  revalidatePath('/admin/payments');
+  revalidatePath('/en'); revalidatePath('/fr'); revalidatePath('/ar');
+  return NextResponse.json({ plans: data.map(serializePlan) });
 }

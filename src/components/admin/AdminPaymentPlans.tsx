@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { Check, ChevronDown, CircleAlert, Loader2, Plus, Save, SlidersHorizontal } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, ChevronDown, CircleAlert, Loader2, Plus, Save, SlidersHorizontal } from 'lucide-react';
 import type { AdminPaymentPlan } from '@/lib/admin/types';
 
 type Draft = {
@@ -155,6 +155,38 @@ export default function AdminPaymentPlans({ plans }: { plans: AdminPaymentPlan[]
   }, [plans]);
 
   const slugs = useMemo(() => new Set(catalogPlans.map((plan) => plan.slug)), [catalogPlans]);
+  const hasUnsavedPlans = useMemo(() => catalogPlans.some((plan) => {
+    const draft = drafts[plan.id];
+    return draft ? !planMatchesDraft(plan, draft) : false;
+  }), [catalogPlans, drafts]);
+
+  const move = async (id: string, direction: -1 | 1) => {
+    if (pending || hasUnsavedPlans) return;
+    const currentIndex = catalogPlans.findIndex((plan) => plan.id === id);
+    const nextIndex = currentIndex + direction;
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= catalogPlans.length) return;
+    const previous = catalogPlans;
+    const optimistic = [...catalogPlans];
+    [optimistic[currentIndex], optimistic[nextIndex]] = [optimistic[nextIndex], optimistic[currentIndex]];
+    setCatalogPlans(optimistic);
+    setPending('reorder'); setFeedback(null);
+    try {
+      const response = await fetch('/api/admin/payments/plans', {
+        method: 'PATCH', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ orderedIds: optimistic.map((plan) => plan.id) }),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok || !Array.isArray(body?.plans)) throw new Error(t('errors.PLAN_REORDER_FAILED'));
+      const canonical = body.plans as AdminPaymentPlan[];
+      setCatalogPlans(sortPlans(canonical));
+      setDrafts(Object.fromEntries(canonical.map((plan) => [plan.id, toDraft(plan)])));
+      setFeedback({ scope: 'catalog', tone: 'success', message: t('orderSaved') });
+      router.refresh();
+    } catch (error) {
+      setCatalogPlans(previous);
+      setFeedback({ scope: 'catalog', tone: 'error', message: error instanceof Error ? error.message : t('errors.PLAN_REORDER_FAILED') });
+    } finally { setPending(null); }
+  };
 
   const save = async (id: string | null) => {
     if (pending) return;
@@ -200,7 +232,8 @@ export default function AdminPaymentPlans({ plans }: { plans: AdminPaymentPlan[]
       <span className="rounded-full border border-white/10 bg-white/[0.035] px-2.5 py-1 text-[10.5px] text-white/55">{t('planCount', { count: catalogPlans.length })}</span>
     </div>
 
-    <div className="space-y-3">{catalogPlans.map((plan) => {
+    {feedbackFor('catalog')}
+    <div className="mt-3 space-y-3">{catalogPlans.map((plan, index) => {
       const draft = drafts[plan.id] ?? toDraft(plan);
       const dirty = !planMatchesDraft(plan, draft);
       return <details key={plan.id} className="group rounded-xl border border-white/[0.08] bg-white/[0.018] open:bg-white/[0.024]">
@@ -215,6 +248,7 @@ export default function AdminPaymentPlans({ plans }: { plans: AdminPaymentPlan[]
             <div><p dir="ltr" className="text-[12px] font-medium tabular-nums text-white/75">{plan.priceDzd.toLocaleString(locale)} DA</p><p className="text-[9.5px] text-white/35">{t('priceDzd')}</p></div>
             <div><p className="text-[12px] font-medium tabular-nums text-white/75">{plan.unifiedCredits.toLocaleString(locale)}</p><p className="text-[9.5px] text-white/35">{t('planCredits')}</p></div>
           </div>
+          <div className="flex shrink-0 flex-col gap-1 sm:flex-row"><button type="button" disabled={index === 0 || pending !== null || hasUnsavedPlans} title={t('moveUp', { name: plan.name })} aria-label={t('moveUp', { name: plan.name })} onClick={(event) => { event.preventDefault(); event.stopPropagation(); void move(plan.id, -1); }} className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 text-white/45 hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"><ArrowUp className="h-3.5 w-3.5" aria-hidden="true" /></button><button type="button" disabled={index === catalogPlans.length - 1 || pending !== null || hasUnsavedPlans} title={t('moveDown', { name: plan.name })} aria-label={t('moveDown', { name: plan.name })} onClick={(event) => { event.preventDefault(); event.stopPropagation(); void move(plan.id, 1); }} className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 text-white/45 hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"><ArrowDown className="h-3.5 w-3.5" aria-hidden="true" /></button></div>
         </summary>
         <form onSubmit={(event) => { event.preventDefault(); void save(plan.id); }} className="border-t border-white/[0.07] p-3 sm:p-4">
           <PlanFields idPrefix={`plan-${plan.id}`} existing value={draft} onChange={(value) => setDrafts((current) => ({ ...current, [plan.id]: value }))} />

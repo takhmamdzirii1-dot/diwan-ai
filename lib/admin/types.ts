@@ -83,6 +83,7 @@ export type AdminJobRow = {
   modality: string;
   provider: string | null;
   modelId: string;
+  modelName: string | null;
   status: string;
   providerCost: CostAmount | null;
   creditsCharged: string | null;
