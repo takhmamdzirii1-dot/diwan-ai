@@ -63,7 +63,10 @@ export default function DashboardSidebar({
   onCloseMobile,
 }: DashboardSidebarProps) {
   const t = useTranslations('studio.sidebar');
-  const { user, signOut, balance, balanceStatus } = useUser({ loadBalance: true });
+  const { user, signOut, balance, balanceStatus, planName, planStatus } = useUser({
+    loadBalance: true,
+    loadPlan: true,
+  });
   const { openAuthModal } = useModal();
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -71,6 +74,11 @@ export default function DashboardSidebar({
 
   const displayName =
     user?.user_metadata?.full_name || user?.email?.split('@')[0] || t('guest');
+  const planLabel = planStatus === 'loading'
+    ? '…'
+    : planStatus === 'ready'
+      ? planName ?? t('freePlan')
+      : '—';
   const historyCopy = {
     chat: { label: t('recentChats'), empty: t('noRecentChats') },
     image: { label: t('recentGenerations'), empty: t('noRecentGenerations') },
@@ -321,7 +329,7 @@ export default function DashboardSidebar({
                 </span>
                 <span className="flex-1 min-w-0 text-start">
                   <span className="block text-[12.5px] font-medium text-white truncate">{displayName}</span>
-                  <span className="block text-[10.5px] text-white/40">{t('freePlan')}</span>
+                  <span className="block text-[10.5px] text-white/40" aria-live="polite" aria-busy={planStatus === 'loading'}>{planLabel}</span>
                 </span>
                 <ChevronDown className={cn('h-4 w-4 shrink-0 text-white/40 transition-transform', profileOpen && 'rotate-180')} />
               </button>

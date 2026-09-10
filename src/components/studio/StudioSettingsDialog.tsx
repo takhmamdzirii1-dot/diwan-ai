@@ -384,36 +384,10 @@ function ModelsPanel({ selectedId, onSelect }: { selectedId: string; onSelect: (
 
 function CreditsPanel() {
   const t = useTranslations('studio.settings');
-  const { user, balance, balanceStatus } = useUser({ loadBalance: true });
-  const [planName, setPlanName] = useState<string | null>(null);
-  const [planStatus, setPlanStatus] = useState<'loading' | 'ready' | 'unavailable'>('loading');
-
-  useEffect(() => {
-    let active = true;
-    if (!user) {
-      setPlanName(null);
-      setPlanStatus('ready');
-      return () => { active = false; };
-    }
-
-    setPlanStatus('loading');
-    void supabase
-      .rpc('get_current_user_entitlement')
-      .returns<{ plan_name: string }[]>()
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (!active) return;
-        if (error) {
-          setPlanName(null);
-          setPlanStatus('unavailable');
-          return;
-        }
-        setPlanName(data?.plan_name ?? null);
-        setPlanStatus('ready');
-      });
-
-    return () => { active = false; };
-  }, [user]);
+  const { user, balance, balanceStatus, planName, planStatus } = useUser({
+    loadBalance: true,
+    loadPlan: true,
+  });
 
   const displayedPlan = !user
     ? t('guest')
