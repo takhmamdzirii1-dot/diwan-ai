@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { Check, ChevronDown, CircleAlert, Loader2, Plus, Save } from 'lucide-react';
+import { Check, ChevronDown, CircleAlert, Loader2, Plus, Save, SlidersHorizontal } from 'lucide-react';
 import type { AdminPaymentPlan } from '@/lib/admin/types';
 
 type Draft = {
@@ -83,52 +83,59 @@ function PlanFields({ idPrefix, value, existing, onChange }: {
   const input = 'mt-1.5 h-10 w-full min-w-0 rounded-lg border border-white/10 bg-white/[0.025] px-3 text-[11.5px] text-white outline-none placeholder:text-white/25 focus-visible:border-white/25 focus-visible:ring-2 focus-visible:ring-white/50 disabled:cursor-not-allowed disabled:bg-white/[0.012] disabled:text-white/35';
   const label = 'min-w-0 text-[10.5px] font-medium text-white/60';
 
-  return <div className="grid gap-x-3 gap-y-4 md:grid-cols-2 xl:grid-cols-6">
-    <label htmlFor={`${idPrefix}-slug`} className={label}>{t('planSlug')}
-      <input id={`${idPrefix}-slug`} required disabled={existing} dir="ltr" autoComplete="off" className={input}
-        value={value.slug} onChange={(event) => onChange({ ...value, slug: event.target.value })} />
-      <FieldHelp>{t(existing ? 'slugLockedHelp' : 'slugHelp')}</FieldHelp>
-    </label>
-    <label htmlFor={`${idPrefix}-name`} className={`${label} xl:col-span-2`}>{t('planName')}
-      <input id={`${idPrefix}-name`} required maxLength={120} className={input} value={value.name}
-        onChange={(event) => onChange({ ...value, name: event.target.value })} />
-    </label>
-    <label htmlFor={`${idPrefix}-kind`} className={label}>{t('planType')}
-      <select id={`${idPrefix}-kind`} className={input} value={value.kind}
-        onChange={(event) => onChange({ ...value, kind: event.target.value as Draft['kind'] })}>
-        <option value="credit_pack">{t('credit_pack')}</option><option value="subscription">{t('subscription')}</option>
-      </select><FieldHelp>{t('planTypeHelp')}</FieldHelp>
-    </label>
-    <label htmlFor={`${idPrefix}-price`} className={label}>{t('priceDzd')}
-      <input id={`${idPrefix}-price`} required className={input} type="number" min="1" step="1" inputMode="numeric"
-        value={value.priceDzd} onChange={(event) => onChange({ ...value, priceDzd: event.target.value })} />
-      <FieldHelp>{t('priceHelp')}</FieldHelp>
-    </label>
-    <label htmlFor={`${idPrefix}-credits`} className={label}>{t('planCredits')}
-      <input id={`${idPrefix}-credits`} required className={input} type="number" min="1" step="1" inputMode="numeric"
-        value={value.unifiedCredits} onChange={(event) => onChange({ ...value, unifiedCredits: event.target.value })} />
-      <FieldHelp>{t('creditsHelp')}</FieldHelp>
-    </label>
-    <label htmlFor={`${idPrefix}-order`} className={label}>{t('displayOrder')}
-      <input id={`${idPrefix}-order`} required className={input} type="number" min="-10000" max="10000" step="1" inputMode="numeric"
-        value={value.displayOrder} onChange={(event) => onChange({ ...value, displayOrder: event.target.value })} />
-      <FieldHelp>{t('displayOrderHelp')}</FieldHelp>
-    </label>
-    <label htmlFor={`${idPrefix}-description`} className={`${label} md:col-span-2 xl:col-span-4`}>{t('planDescription')}
-      <textarea id={`${idPrefix}-description`} maxLength={500} rows={2}
-        className="mt-1.5 min-h-16 w-full resize-y rounded-lg border border-white/10 bg-white/[0.025] px-3 py-2 text-[11.5px] leading-relaxed text-white outline-none placeholder:text-white/25 focus-visible:border-white/25 focus-visible:ring-2 focus-visible:ring-white/50"
-        value={value.description} onChange={(event) => onChange({ ...value, description: event.target.value })} />
-    </label>
-    <div className="grid gap-2 md:col-span-2 xl:col-span-2">
+  return <div className="space-y-4">
+    <div className="grid gap-x-3 gap-y-4 md:grid-cols-2 xl:grid-cols-4">
+      <label htmlFor={`${idPrefix}-name`} className={`${label} md:col-span-2`}>{t('planName')}
+        <input id={`${idPrefix}-name`} required maxLength={120} className={input} value={value.name}
+          onChange={(event) => onChange({ ...value, name: event.target.value })} />
+      </label>
+      <label htmlFor={`${idPrefix}-price`} className={label}>{t('priceDzd')}
+        <input id={`${idPrefix}-price`} required className={input} type="number" min="1" step="1" inputMode="numeric"
+          value={value.priceDzd} onChange={(event) => onChange({ ...value, priceDzd: event.target.value })} />
+        <FieldHelp>{t('priceHelp')}</FieldHelp>
+      </label>
+      <label htmlFor={`${idPrefix}-credits`} className={label}>{t('planCredits')}
+        <input id={`${idPrefix}-credits`} required className={input} type="number" min="1" step="1" inputMode="numeric"
+          value={value.unifiedCredits} onChange={(event) => onChange({ ...value, unifiedCredits: event.target.value })} />
+        <FieldHelp>{t('creditsHelp')}</FieldHelp>
+      </label>
+      <label htmlFor={`${idPrefix}-description`} className={`${label} md:col-span-2 xl:col-span-3`}>{t('planDescription')}
+        <textarea id={`${idPrefix}-description`} maxLength={500} rows={2}
+          className="mt-1.5 min-h-16 w-full resize-y rounded-lg border border-white/10 bg-white/[0.025] px-3 py-2 text-[11.5px] leading-relaxed text-white outline-none placeholder:text-white/25 focus-visible:border-white/25 focus-visible:ring-2 focus-visible:ring-white/50"
+          value={value.description} onChange={(event) => onChange({ ...value, description: event.target.value })} />
+      </label>
+      <div className="grid gap-2">
       <label className="flex min-h-10 cursor-pointer items-start gap-2 rounded-lg border border-white/[0.07] bg-white/[0.018] px-3 py-2 text-[11.5px] text-white/70">
         <input type="checkbox" checked={value.active} onChange={(event) => onChange({ ...value, active: event.target.checked })} className="mt-0.5 h-4 w-4 accent-white" />
-        <span><span className="block font-medium text-white/75">{t('active')}</span><FieldHelp>{t('activeHelp')}</FieldHelp></span>
+        <span><span className="block font-medium text-white/75">{t('availableForPurchase')}</span><FieldHelp>{t('activeHelp')}</FieldHelp></span>
       </label>
       <label className="flex min-h-10 cursor-pointer items-start gap-2 rounded-lg border border-white/[0.07] bg-white/[0.018] px-3 py-2 text-[11.5px] text-white/70">
         <input type="checkbox" checked={value.featured} onChange={(event) => onChange({ ...value, featured: event.target.checked })} className="mt-0.5 h-4 w-4 accent-white" />
-        <span><span className="block font-medium text-white/75">{t('featured')}</span><FieldHelp>{t('featuredHelp')}</FieldHelp></span>
+        <span><span className="block font-medium text-white/75">{t('recommended')}</span><FieldHelp>{t('featuredHelp')}</FieldHelp></span>
       </label>
+      </div>
     </div>
+    <details className="group rounded-lg border border-white/[0.07] bg-black/10">
+      <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 px-3 text-[10.5px] font-medium text-white/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/50 [&::-webkit-details-marker]:hidden"><SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />{t('advanced')}<ChevronDown className="ms-auto h-3.5 w-3.5 transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" /></summary>
+      <div className="grid gap-3 border-t border-white/[0.06] p-3 md:grid-cols-3">
+        <label htmlFor={`${idPrefix}-slug`} className={label}>{t('planSlug')}
+          <input id={`${idPrefix}-slug`} required disabled={existing} dir="ltr" autoComplete="off" className={input}
+            value={value.slug} onChange={(event) => onChange({ ...value, slug: event.target.value })} />
+          <FieldHelp>{t(existing ? 'slugLockedHelp' : 'slugHelp')}</FieldHelp>
+        </label>
+        <label htmlFor={`${idPrefix}-kind`} className={label}>{t('planType')}
+          <select id={`${idPrefix}-kind`} className={input} value={value.kind}
+            onChange={(event) => onChange({ ...value, kind: event.target.value as Draft['kind'] })}>
+            <option value="credit_pack">{t('credit_pack')}</option><option value="subscription">{t('subscription')}</option>
+          </select><FieldHelp>{t('planTypeHelp')}</FieldHelp>
+        </label>
+        <label htmlFor={`${idPrefix}-order`} className={label}>{t('displayOrder')}
+          <input id={`${idPrefix}-order`} required className={input} type="number" min="-10000" max="10000" step="1" inputMode="numeric"
+            value={value.displayOrder} onChange={(event) => onChange({ ...value, displayOrder: event.target.value })} />
+          <FieldHelp>{t('displayOrderHelp')}</FieldHelp>
+        </label>
+      </div>
+    </details>
   </div>;
 }
 
@@ -201,13 +208,12 @@ export default function AdminPaymentPlans({ plans }: { plans: AdminPaymentPlan[]
           <ChevronDown className="h-4 w-4 shrink-0 text-white/35 transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
           <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="truncate text-[13px] font-semibold text-white/85">{plan.name}</span>
             <span className={`rounded-full border px-2 py-0.5 text-[9.5px] font-semibold ${plan.active ? 'border-white/20 bg-white text-black' : 'border-white/10 bg-white/[0.03] text-white/45'}`}>{t(plan.active ? 'active' : 'inactive')}</span>
-            {plan.featured && <span className="rounded-full border border-white/15 px-2 py-0.5 text-[9.5px] text-white/65">{t('featured')}</span>}
+            {plan.featured && <span className="rounded-full border border-white/15 px-2 py-0.5 text-[9.5px] text-white/65">{t('recommended')}</span>}
             {dirty && <span className="rounded-full border border-amber-300/20 bg-amber-300/[0.06] px-2 py-0.5 text-[9.5px] text-amber-100">{t('unsaved')}</span>}</div>
-            <p dir="ltr" className="mt-1 truncate text-[10px] text-white/35">{t('internalSlugShort')}: {plan.slug}</p></div>
-          <div className="hidden shrink-0 items-center gap-5 text-end sm:flex">
+          </div>
+          <div className="grid shrink-0 grid-cols-2 items-center gap-3 text-end sm:gap-5">
             <div><p dir="ltr" className="text-[12px] font-medium tabular-nums text-white/75">{plan.priceDzd.toLocaleString(locale)} DA</p><p className="text-[9.5px] text-white/35">{t('priceDzd')}</p></div>
             <div><p className="text-[12px] font-medium tabular-nums text-white/75">{plan.unifiedCredits.toLocaleString(locale)}</p><p className="text-[9.5px] text-white/35">{t('planCredits')}</p></div>
-            <div><p className="text-[12px] font-medium tabular-nums text-white/75">{plan.displayOrder}</p><p className="text-[9.5px] text-white/35">{t('displayOrder')}</p></div>
           </div>
         </summary>
         <form onSubmit={(event) => { event.preventDefault(); void save(plan.id); }} className="border-t border-white/[0.07] p-3 sm:p-4">

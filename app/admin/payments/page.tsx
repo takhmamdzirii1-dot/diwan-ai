@@ -1,7 +1,8 @@
-import { PaymentsView } from '@/src/components/admin/AdminViews';
+import { PaymentsView, PlansPricingView } from '@/src/components/admin/AdminViews';
 import { getAdminPaymentPlans, getAdminPayments } from '@/lib/admin/data';
 
-export default async function AdminPaymentsPage() {
-  const [plans, payments] = await Promise.all([getAdminPaymentPlans(), getAdminPayments()]);
-  return <PaymentsView plans={plans} result={payments} />;
+export default async function AdminPaymentsPage({ searchParams }: { searchParams: Promise<{ view?: string; status?: string }> }) {
+  const params = await searchParams;
+  if (params.view === 'plans') return <PlansPricingView result={await getAdminPaymentPlans()} />;
+  return <PaymentsView result={await getAdminPayments()} initialStatus={params.status} />;
 }

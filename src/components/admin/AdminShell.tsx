@@ -1,23 +1,29 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Activity, Boxes, CreditCard, ExternalLink, LayoutDashboard, Server, Users } from 'lucide-react';
+import { Activity, Boxes, CreditCard, ExternalLink, LayoutDashboard, Server, Tags, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VantraLogo } from '@/src/components/VantraLogo';
 
-const NAV_ITEMS = [
-  { href: '/admin', key: 'overview', icon: LayoutDashboard },
-  { href: '/admin/providers', key: 'providers', icon: Server },
-  { href: '/admin/models', key: 'models', icon: Boxes },
-  { href: '/admin/users', key: 'users', icon: Users },
-  { href: '/admin/jobs', key: 'jobs', icon: Activity },
-  { href: '/admin/payments', key: 'payments', icon: CreditCard },
+const NAV_GROUPS = [
+  { key: null, items: [{ href: '/admin', key: 'overview', icon: LayoutDashboard }] },
+  { key: 'aiOperations', items: [
+    { href: '/admin/providers', key: 'providers', icon: Server },
+    { href: '/admin/models', key: 'models', icon: Boxes },
+    { href: '/admin/jobs', key: 'jobs', icon: Activity },
+  ] },
+  { key: 'business', items: [
+    { href: '/admin/payments?view=plans', key: 'plans', icon: Tags },
+    { href: '/admin/payments?view=payments', key: 'payments', icon: CreditCard },
+    { href: '/admin/users', key: 'users', icon: Users },
+  ] },
 ] as const;
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const t = useTranslations('Admin');
 
   return (
@@ -35,10 +41,15 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </div>
         </div>
 
-        <nav aria-label={t('brand')} className="flex gap-1 overflow-x-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex-col lg:p-3">
-          {NAV_ITEMS.map(({ href, key, icon: Icon }) => {
-            const active = href === '/admin' ? pathname === href : pathname.startsWith(href);
-            return (
+        <nav aria-label={t('brand')} className="flex gap-1 overflow-x-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex-col lg:gap-4 lg:p-3">
+          {NAV_GROUPS.map((group) => <div key={group.key ?? 'overview'} className="flex shrink-0 gap-1 lg:flex-col">
+            {group.key && <p className="hidden px-3 pb-1 text-start text-[9px] font-semibold uppercase tracking-[0.14em] text-white/28 lg:block">{t(`navGroups.${group.key}`)}</p>}
+            {group.items.map(({ href, key, icon: Icon }) => {
+              const [path, query] = href.split('?');
+              const requestedView = new URLSearchParams(query ?? '').get('view');
+              const currentView = searchParams.get('view') ?? 'payments';
+              const active = path === '/admin' ? pathname === path : pathname === path && (!requestedView || requestedView === currentView);
+              return (
               <Link
                 key={href}
                 href={href}
@@ -54,8 +65,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
                 <span>{t(`nav.${key}`)}</span>
               </Link>
-            );
-          })}
+              );
+            })}
+          </div>)}
         </nav>
 
         <div className="hidden p-3 lg:absolute lg:inset-x-0 lg:bottom-0 lg:block">
