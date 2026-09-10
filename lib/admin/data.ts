@@ -103,13 +103,13 @@ const failed = <T,>(data: T): AdminDataResult<T> => ({ available: false, data, r
 export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewData>> {
   const empty: AdminOverviewData = {
     totalUsers: null, totalGenerations: null, successfulJobs: null, failedJobs: null,
-    creditsConsumed: null, providerCosts: [], recentActivity: [],
+    creditsConsumed: null, pendingPayments: null, providerCosts: [], recentActivity: [],
   };
   const client = await requireAdminDataAccess();
   if (!client) return unavailable(empty);
 
   try {
-    const [auth, generations, usage, costs, transactions, generationCount, completedCount, failedCount] = await Promise.all([
+    const [auth, generations, usage, costs, transactions, generationCount, completedCount, failedCount, pendingPaymentCount] = await Promise.all([
       allAuthUsers(client),
       client.from('generations').select('id,type,model_id,status,error_message,created_at')
         .order('created_at', { ascending: false }).limit(8),
@@ -120,8 +120,9 @@ export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewD
       client.from('generations').select('id', { count: 'exact', head: true }),
       client.from('generations').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
       client.from('generations').select('id', { count: 'exact', head: true }).eq('status', 'failed'),
+      client.from('payment_orders').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     ]);
-    for (const result of [generations, transactions, generationCount, completedCount, failedCount]) {
+    for (const result of [generations, transactions, generationCount, completedCount, failedCount, pendingPaymentCount]) {
       if (result.error) throw result.error;
     }
     const generationActivity: AdminActivity[] = (generations.data ?? [])
@@ -140,6 +141,7 @@ export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewD
       successfulJobs: completedCount.count ?? null,
       failedJobs: failedCount.count ?? null,
       creditsConsumed: usage.length >= PAGE_SIZE * MAX_PAGES ? null : sumIntegerValues(usage, 'credits_charged'),
+      pendingPayments: pendingPaymentCount.count ?? null,
       providerCosts: totalCosts(costs),
       recentActivity: [...generationActivity, ...creditActivity]
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 10),
@@ -187,12 +189,24 @@ export async function getAdminProviders(): Promise<AdminDataResult<AdminProvider
         .sort((a, b) => String(b.finished_at ?? b.started_at).localeCompare(String(a.finished_at ?? a.started_at)))[0];
       const status = provider.statusOverride ?? (!provider.configured ? 'unconfigured'
         : lastAttempt?.state === 'failed' ? 'attention' : providerAttempts.length ? 'healthy' : 'idle');
+      const associatedModels = STUDIO_MODELS
+        .filter((model) => model.provider.toLowerCase() === provider.id.toLowerCase()
+          || model.provider.toLowerCase() === provider.name.toLowerCase())
+        .map((model) => model.displayName);
+      if (provider.id !== 'openrouter') {
+        const providerDefinition = PROVIDER_REGISTRY[provider.id as keyof typeof PROVIDER_REGISTRY];
+        for (const model of providerDefinition?.models ?? []) {
+          if (!associatedModels.includes(model.name)) associatedModels.push(model.name);
+        }
+      }
       return {
         id: provider.id, name: provider.name, modalities: provider.modalities,
         enabled: provider.enabled, status, role: provider.role,
         requestCount: providerAttempts.length, failures: failures.length,
         averageLatencyMs: completedDurations.length
           ? Math.round(completedDurations.reduce((sum, value) => sum + value, 0) / completedDurations.length) : null,
+        lastActivityAt: lastAttempt?.finished_at ?? lastAttempt?.started_at ?? null,
+        associatedModels,
         accumulatedCosts: groupedCosts.get(provider.id.toLowerCase()) ?? [],
         lastError: lastFailure?.error_message ?? null,
       } satisfies AdminProviderRow;
@@ -249,9 +263,10 @@ export async function getAdminUsers(query = ''): Promise<AdminDataResult<AdminUs
   const client = await requireAdminDataAccess();
   if (!client) return unavailable(empty);
   try {
-    const [auth, credits, usage, generations] = await Promise.all([
+    const [auth, credits, usage, generations, paymentOrders] = await Promise.all([
       allAuthUsers(client), allRows(client, 'credits', 'user_id,balance'),
       allRows(client, 'usage_records', 'user_id,credits_charged'), allRows(client, 'generations', 'user_id'),
+      allRows(client, 'payment_orders', 'user_id'),
     ]);
     const balances = new Map(credits.map((row) => [row.user_id, numericString(row.balance)]));
     const usageByUser = new Map<string, bigint>();
@@ -259,6 +274,8 @@ export async function getAdminUsers(query = ''): Promise<AdminDataResult<AdminUs
       (usageByUser.get(row.user_id) ?? 0n) + BigInt(numericString(row.credits_charged))));
     const generationsByUser = new Map<string, number>();
     generations.forEach((row) => generationsByUser.set(row.user_id, (generationsByUser.get(row.user_id) ?? 0) + 1));
+    const paymentsByUser = new Map<string, number>();
+    paymentOrders.forEach((row) => paymentsByUser.set(row.user_id, (paymentsByUser.get(row.user_id) ?? 0) + 1));
     const now = Date.now();
     const normalizedQuery = query.trim().toLowerCase();
     const users: AdminUserRow[] = auth.users
@@ -268,6 +285,7 @@ export async function getAdminUsers(query = ''): Promise<AdminDataResult<AdminUs
         return {
           id: user.id, email: user.email ?? '—', plan: 'Free', creditBalance: balances.get(user.id) ?? null,
           creditsUsed: (usageByUser.get(user.id) ?? 0n).toString(), generationCount: generationsByUser.get(user.id) ?? 0,
+          paymentOrderCount: paymentsByUser.get(user.id) ?? 0,
           status: bannedUntil > now ? 'suspended' : user.email_confirmed_at ? 'active' : 'unconfirmed',
           createdAt: user.created_at, lastSignInAt: user.last_sign_in_at ?? null,
         };
@@ -283,7 +301,7 @@ export async function getAdminJobs(): Promise<AdminDataResult<AdminJobRow[]>> {
   const client = await requireAdminDataAccess();
   if (!client) return unavailable([]);
   try {
-    const [generations, outbox, attempts, costs] = await Promise.all([
+    const [generations, outbox, attempts, costs, usage, auth] = await Promise.all([
       client.from('generations').select('id,user_id,type,prompt,model_id,status,metadata,error_message,created_at,updated_at')
         .order('created_at', { ascending: false }).limit(100),
       client.from('provider_dispatch_outbox').select('id,reservation_id,user_id,modality,model_id,state,last_error,created_at,updated_at')
@@ -292,20 +310,31 @@ export async function getAdminJobs(): Promise<AdminDataResult<AdminJobRow[]>> {
         .order('started_at', { ascending: false }).limit(300),
       client.from('provider_cost_records').select('reservation_id,provider,provider_model,actual_cost_minor,currency,created_at')
         .order('created_at', { ascending: false }).limit(300),
+      client.from('usage_records').select('reservation_id,credits_charged').order('created_at', { ascending: false }).limit(300),
+      allAuthUsers(client),
     ]);
-    for (const result of [generations, outbox, attempts, costs]) if (result.error) throw result.error;
+    for (const result of [generations, outbox, attempts, costs, usage]) if (result.error) throw result.error;
     const latestAttempt = new Map<string, any>();
     (attempts.data ?? []).forEach((attempt: any) => { if (!latestAttempt.has(attempt.outbox_id)) latestAttempt.set(attempt.outbox_id, attempt); });
     const costByReservation = new Map<string, any>();
     (costs.data ?? []).forEach((cost: any) => { if (!costByReservation.has(cost.reservation_id)) costByReservation.set(cost.reservation_id, cost); });
+    const usageByReservation = new Map<string, any>();
+    (usage.data ?? []).forEach((record: any) => { if (!usageByReservation.has(record.reservation_id)) usageByReservation.set(record.reservation_id, record); });
+    const emails = new Map(auth.users.map((user) => [user.id, user.email ?? null]));
     const dispatchRows: AdminJobRow[] = (outbox.data ?? []).map((row: any) => {
       const attempt = latestAttempt.get(row.id);
       const cost = costByReservation.get(row.reservation_id);
+      const usageRecord = usageByReservation.get(row.reservation_id);
+      const latencyMs = attempt?.started_at && attempt?.finished_at
+        ? Math.max(0, new Date(attempt.finished_at).getTime() - new Date(attempt.started_at).getTime()) : null;
       return {
         id: row.id, source: 'dispatch', userId: row.user_id, modality: row.modality,
+        userEmail: emails.get(row.user_id) ?? null,
         provider: attempt?.provider ?? cost?.provider ?? null, modelId: row.model_id,
         status: attempt?.state ?? row.state,
         providerCost: cost?.actual_cost_minor == null ? null : { currency: cost.currency, minor: numericString(cost.actual_cost_minor) },
+        creditsCharged: usageRecord?.credits_charged == null ? null : numericString(usageRecord.credits_charged),
+        latencyMs,
         error: attempt?.error_message ?? row.last_error ?? null, prompt: null, createdAt: row.created_at,
         updatedAt: attempt?.finished_at ?? row.updated_at,
       };
@@ -314,8 +343,10 @@ export async function getAdminJobs(): Promise<AdminDataResult<AdminJobRow[]>> {
       const metadata = row.metadata && typeof row.metadata === 'object' ? row.metadata : {};
       return {
         id: row.id, source: 'generation', userId: row.user_id, modality: row.type,
+        userEmail: emails.get(row.user_id) ?? null,
         provider: typeof metadata.provider === 'string' ? metadata.provider : null, modelId: row.model_id,
-        status: row.status, providerCost: null, error: row.error_message, prompt: row.prompt,
+        status: row.status, providerCost: null, creditsCharged: null, latencyMs: null,
+        error: row.error_message, prompt: row.prompt,
         createdAt: row.created_at, updatedAt: row.updated_at,
       };
     });
@@ -333,7 +364,7 @@ export async function getAdminPayments(): Promise<AdminDataResult<AdminPaymentRo
   try {
     const [orders, audits, auth] = await Promise.all([
       client.from('payment_orders')
-        .select('id,user_id,plan_id,plan_name,order_kind,amount_dzd,credits_amount,payment_reference,customer_reference,proof_storage_path,status,submitted_at,reviewed_at,review_note,resulting_credit_transaction_id,resulting_entitlement_id,created_at')
+        .select('id,user_id,plan_id,plan_name,order_kind,payment_method,amount_dzd,credits_amount,payment_reference,customer_reference,proof_storage_path,status,submitted_at,reviewed_at,review_note,resulting_credit_transaction_id,resulting_entitlement_id,created_at')
         .order('created_at', { ascending: false }).limit(200),
       client.from('payment_audit_log').select('id,payment_order_id,actor_user_id,action,created_at')
         .order('created_at', { ascending: false }).limit(1000),
@@ -362,6 +393,7 @@ export async function getAdminPayments(): Promise<AdminDataResult<AdminPaymentRo
         planId: order.plan_id,
         planName: order.plan_name,
         orderKind: order.order_kind,
+        paymentMethod: order.payment_method,
         amountDzd: order.amount_dzd,
         creditsAmount: order.credits_amount == null ? null : numericString(order.credits_amount),
         paymentReference: order.payment_reference,

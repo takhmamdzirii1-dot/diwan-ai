@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
 import { getOwnerAccess } from '@/lib/auth/owner';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
 
@@ -9,6 +11,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const client = getSupabaseAdminClient();
   if (!client) return NextResponse.json({ error: 'ADMIN_DATA_UNAVAILABLE' }, { status: 503 });
   const { id } = await params;
+  if (!z.string().uuid().safeParse(id).success) return NextResponse.json({ error: 'INVALID_PAYMENT_ORDER' }, { status: 400 });
   const body = await request.json().catch(() => ({}));
   const note = typeof body.note === 'string' ? body.note.trim().slice(0, 1000) : null;
   const { data, error } = await client.rpc('approve_manual_payment', {
@@ -18,5 +21,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     console.error('[admin payments] approval failed', { code: error.code, paymentOrderId: id });
     return NextResponse.json({ error: 'PAYMENT_APPROVAL_FAILED' }, { status: 409 });
   }
+  revalidatePath('/admin');
+  revalidatePath('/admin/payments');
   return NextResponse.json({ result: data });
 }

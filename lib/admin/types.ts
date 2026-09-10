@@ -21,6 +21,7 @@ export type AdminOverviewData = {
   successfulJobs: number | null;
   failedJobs: number | null;
   creditsConsumed: string | null;
+  pendingPayments: number | null;
   providerCosts: CostAmount[];
   recentActivity: AdminActivity[];
 };
@@ -35,6 +36,8 @@ export type AdminProviderRow = {
   requestCount: number;
   failures: number;
   averageLatencyMs: number | null;
+  lastActivityAt: string | null;
+  associatedModels: string[];
   accumulatedCosts: CostAmount[];
   lastError: string | null;
 };
@@ -59,6 +62,7 @@ export type AdminUserRow = {
   creditBalance: string | null;
   creditsUsed: string;
   generationCount: number;
+  paymentOrderCount: number;
   status: 'active' | 'unconfirmed' | 'suspended';
   createdAt: string;
   lastSignInAt: string | null;
@@ -75,11 +79,14 @@ export type AdminJobRow = {
   id: string;
   source: 'generation' | 'dispatch';
   userId: string;
+  userEmail: string | null;
   modality: string;
   provider: string | null;
   modelId: string;
   status: string;
   providerCost: CostAmount | null;
+  creditsCharged: string | null;
+  latencyMs: number | null;
   error: string | null;
   prompt: string | null;
   createdAt: string;
@@ -100,6 +107,7 @@ export type AdminPaymentRow = {
   planId: string;
   planName: string;
   orderKind: 'credit_pack' | 'subscription';
+  paymentMethod: 'baridimob' | 'ccp' | 'cib' | 'edahabia';
   amountDzd: number;
   creditsAmount: string | null;
   paymentReference: string;

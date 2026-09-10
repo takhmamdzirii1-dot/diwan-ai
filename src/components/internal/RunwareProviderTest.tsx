@@ -12,6 +12,7 @@ export type ProviderTestCopy = {
   result: string;
   resultAlt: string;
   summary: string;
+  summaryHelp: string;
   emptyTitle: string;
   emptyDescription: string;
   genericError: string;
@@ -133,14 +134,15 @@ export default function RunwareProviderTest({ copy }: { copy: ProviderTestCopy }
                 className="max-h-[58dvh] w-auto max-w-full rounded-xl object-contain"
               />
             </div>
-            <div className="border-t border-[var(--studio-border-subtle)] p-4 text-start">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--studio-text-muted)]">
+            <details className="border-t border-[var(--studio-border-subtle)] p-4 text-start">
+              <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--studio-text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
                 {copy.summary}
-              </p>
-              <pre dir="ltr" className="max-h-40 overflow-auto rounded-xl border border-[var(--studio-border)] bg-black/40 p-3 text-[11px] leading-relaxed text-white/65">
+              </summary>
+              <p className="mt-2 text-[10.5px] leading-relaxed text-white/40">{copy.summaryHelp}</p>
+              <pre dir="ltr" className="mt-3 max-h-40 overflow-auto rounded-xl border border-[var(--studio-border)] bg-black/40 p-3 text-[11px] leading-relaxed text-white/65">
                 {JSON.stringify(result.summary ?? result, null, 2)}
               </pre>
-            </div>
+            </details>
           </div>
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center">

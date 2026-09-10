@@ -1,51 +1,53 @@
 {
   "Admin": {
     "brand": "Administration VANTRA", "internal": "Propriétaire uniquement", "backToStudio": "Retour au Studio",
-    "nav": { "overview": "Vue d’ensemble", "providers": "Fournisseurs", "models": "Modèles", "users": "Utilisateurs", "jobs": "Tâches / Usage", "payments": "Paiements" },
+    "nav": { "overview": "Vue d’ensemble", "providers": "Fournisseurs", "models": "Modèles", "users": "Utilisateurs", "jobs": "Tâches / Usage", "payments": "Formules et paiements" },
     "common": {
       "enabled": "Activé", "disabled": "Désactivé", "available": "Disponible", "unavailable": "Indisponible",
       "notConfigured": "Les données d’administration sont indisponibles car l’accès serveur de reporting n’est pas configuré.",
       "queryFailed": "Impossible de charger les données. Consultez les journaux serveur.",
       "noData": "Aucune donnée enregistrée", "never": "Jamais", "minorUnits": "{value} unités mineures {currency}",
-      "credits": "{value} Crédits VANTRA unifiés", "milliseconds": "{value} ms", "readOnly": "Lecture seule en v1"
+      "credits": "{value} Crédits VANTRA unifiés", "milliseconds": "{value} ms", "readOnly": "Lecture seule en v1", "noneRecorded": "Aucune donnée", "internalId": "ID interne", "userId": "ID utilisateur", "modelId": "ID du modèle", "jobId": "ID de la tâche",
+      "pageErrorTitle": "Impossible de charger cette page d’administration", "pageErrorDescription": "Aucune modification n’a été effectuée. Réessayez ; si le problème persiste, consultez les journaux serveur.", "tryAgain": "Réessayer"
     },
     "overview": {
       "title": "Vue d’ensemble", "description": "Un aperçu factuel des utilisateurs, générations et données financières de VANTRA.",
       "totalUsers": "Utilisateurs", "totalGenerations": "Générations", "successfulJobs": "Tâches réussies",
       "failedJobs": "Tâches échouées", "creditsConsumed": "Crédits consommés", "providerCost": "Coût fournisseurs",
-      "recentActivity": "Activité récente", "noActivity": "Aucune activité enregistrée"
+      "recentActivity": "Activité récente", "noActivity": "Aucune activité enregistrée", "pendingPayments": "Paiements à vérifier", "attentionTitle": "À traiter"
     },
     "providers": {
       "title": "Fournisseurs", "description": "Configuration et télémétrie issues de l’infrastructure partagée.",
       "name": "Fournisseur", "modality": "Modalité", "state": "État", "health": "Santé", "role": "Rôle",
       "requests": "Requêtes", "failures": "Échecs", "latency": "Latence moy.", "cost": "Coût cumulé",
-      "lastError": "Dernière erreur", "testTitle": "Test propriétaire Runware", "testDescription": "Lancer une requête image contrôlée sans exposer les identifiants du fournisseur."
+      "lastError": "Dernière erreur", "models": "Modèles associés", "lastActivity": "Dernière activité enregistrée", "configuredCount": "{count} activés", "attentionCount": "{count} à surveiller", "testTitle": "Test propriétaire Runware", "testDescription": "Lancez une requête image contrôlée sans exposer les identifiants du fournisseur. Il s’agit d’une vraie requête qui peut entraîner un coût fournisseur."
     },
     "models": {
       "title": "Modèles", "description": "Données vérifiées du registre. Les prix manquants restent indisponibles.",
       "provider": "Fournisseur", "modelId": "ID du modèle", "displayName": "Nom affiché", "modality": "Modalité",
-      "state": "État", "providerCost": "Dernier coût réel", "creditPrice": "Prix en crédits VANTRA", "priority": "Priorité"
+      "state": "État", "providerCost": "Dernier coût réel", "creditPrice": "Prix en crédits VANTRA", "priority": "Priorité", "modelCount": "{count} modèles enregistrés"
     },
     "users": {
       "title": "Utilisateurs", "description": "Rechercher les comptes et consulter leurs crédits et usages réels.",
       "search": "Rechercher par e-mail ou ID utilisateur", "searchAction": "Rechercher", "email": "E-mail", "plan": "Formule",
       "balance": "Solde de crédits", "usage": "Crédits utilisés", "generations": "Générations", "status": "État du compte",
       "created": "Créé le", "lastSignIn": "Dernière connexion", "showing": "Jusqu’à 100 résultats parmi {total} utilisateurs.",
-      "truncated": "La source a atteint la limite de sécurité de la v1.", "safeActions": "Aucune modification de solde, facturation ou compte n’est exposée en v1."
+      "truncated": "La source a atteint la limite de sécurité de la v1.", "safeActions": "Aucune modification de solde, facturation ou compte n’est exposée en v1.", "payments": "Demandes de paiement", "noMatches": "Aucun utilisateur ne correspond à cette recherche."
     },
     "jobs": {
       "title": "Tâches / Usage", "description": "Générations et dispatchs fournisseurs issus des tables existantes.",
       "time": "Date", "source": "Source", "user": "Utilisateur", "modality": "Modalité", "providerModel": "Fournisseur / modèle",
-      "status": "État", "cost": "Coût fournisseur réel", "details": "Détails", "generation": "Génération", "dispatch": "Dispatch"
+      "status": "État", "cost": "Coût fournisseur réel", "details": "Détails", "generation": "Génération", "dispatch": "Envoi", "latency": "Latence", "creditsCharged": "Crédits débités", "resultCount": "{count} enregistrements", "search": "Rechercher un utilisateur, fournisseur ou modèle", "statusFilter": "Filtrer par état", "modalityFilter": "Filtrer par modalité", "allStatuses": "Tous les états", "allModalities": "Toutes les modalités", "viewDetails": "Voir les détails", "noMatches": "Aucune tâche ne correspond à ces filtres."
     },
     "payments": {
       "title": "Paiements", "description": "Vérifiez les virements manuels et leur exécution financière côté serveur.",
-      "catalogTitle": "Catalogue des formules", "catalogDescription": "Publiez les formules vérifiées proposées aux clients. Les changements ne modifient jamais les commandes déjà créées.", "planSlug": "Slug", "planName": "Nom de la formule", "planType": "Type", "priceDzd": "Prix en DZD", "planCredits": "Crédits VANTRA unifiés", "displayOrder": "Ordre d’affichage", "planDescription": "Description", "active": "Active", "featured": "Mise en avant", "savePlan": "Enregistrer", "saving": "Enregistrement…", "newPlan": "Nouvelle formule", "createPlan": "Créer la formule", "planCreated": "Formule créée et affichage synchronisé.", "planSaved": "Formule enregistrée et affichage synchronisé.", "validationRequired": "Saisissez un slug valide et un nom de formule.", "validationPositive": "Le prix en DZD et les crédits doivent être des nombres entiers positifs.", "validationOrder": "L’ordre d’affichage doit être compris entre -10 000 et 10 000.", "planActionFailed": "Impossible d’enregistrer la formule. Vos modifications sont conservées ; vérifiez les valeurs et réessayez.",
+      "catalogTitle": "Catalogue des formules", "catalogDescription": "Gérez les offres payantes affichées dans la tarification publique et proposées au paiement manuel. Les anciennes commandes conservent leurs instantanés de prix, crédits et droits.", "planCount": "{count} formules", "planSlug": "Identifiant interne", "internalSlugShort": "Identifiant interne", "planName": "Nom de la formule", "planType": "Type de formule", "priceDzd": "Prix (DZD)", "planCredits": "Crédits VANTRA unifiés", "displayOrder": "Ordre d’affichage", "planDescription": "Description", "active": "Active", "inactive": "Inactive", "featured": "Mise en avant", "unsaved": "Modifications non enregistrées", "saved": "Enregistré", "savePlan": "Enregistrer les modifications", "discardChanges": "Annuler les modifications", "saving": "Enregistrement…", "newPlan": "Créer une formule", "createPlan": "Créer la formule", "noPlans": "Aucune formule payante pour le moment. La tarification publique conserve sa structure et indique les offres indisponibles.", "createHelp": "Créez uniquement des offres payantes vérifiées. Aucun prix n’est prérempli ni publié avant votre saisie et l’activation.", "slugHelp": "Identifiant interne stable : lettres minuscules, chiffres et tirets bas.", "slugLockedHelp": "Verrouillé après création car les commandes et intégrations peuvent en dépendre.", "planTypeHelp": "Choisissez des crédits ponctuels ou un droit d’abonnement.", "priceHelp": "Montant entier en DZD facturé pour cette offre. Minimum 1 pour une offre achetable.", "creditsHelp": "Crédits entiers accordés après validation du paiement. Minimum 1.", "displayOrderHelp": "Les nombres les plus bas apparaissent en premier dans la tarification.", "activeHelp": "Les clients peuvent sélectionner et acheter cette formule.", "featuredHelp": "Recommandation visuelle uniquement ; aucun effet sur le prix ou les droits.", "planCreated": "Formule créée et catalogue synchronisé.", "planSaved": "Enregistré. Les données canoniques du catalogue sont synchronisées.", "validationRequired": "Saisissez le nom de la formule.", "validationSlug": "Utilisez 1 à 80 lettres minuscules, chiffres ou tirets bas pour l’identifiant interne.", "validationDuplicateSlug": "Cet identifiant interne est déjà utilisé par une autre formule.", "validationPositive": "Le prix et les crédits doivent être des nombres entiers positifs pour une offre achetable.", "validationOrder": "L’ordre d’affichage doit être compris entre -10 000 et 10 000.", "planActionFailed": "Impossible d’enregistrer la formule. Vos modifications sont conservées ; vérifiez les valeurs et réessayez.",
       "created": "Créé", "user": "Utilisateur", "amount": "Montant", "product": "Pack / formule", "reference": "Référence VANTRA", "submission": "Justificatif / référence", "status": "État", "result": "Écriture / droit résultant", "audit": "Journal d’audit", "actions": "Actions propriétaire",
-      "credit_pack": "Pack de crédits", "subscription": "Abonnement", "credits": "{value} crédits unifiés", "viewProof": "Voir le justificatif", "noProof": "Aucun fichier", "noPayments": "Aucune demande de paiement", "reviewNote": "Note de vérification (facultative)", "approve": "Approuver", "reject": "Rejeter", "confirmApprove": "Approuver ce paiement ? Le droit vérifié sera accordé une seule fois.", "confirmReject": "Rejeter ce paiement ?", "actionFailed": "L’action n’a pas abouti. Actualisez et vérifiez l’état actuel."
+      "credit_pack": "Pack de crédits", "subscription": "Abonnement", "credits": "{value} crédits unifiés", "orderCount": "{count} demandes", "pendingCount": "{count} en attente", "ordersTitle": "Demandes et vérifications de paiement", "ordersDescription": "Ouvrez une demande pour vérifier le client, le justificatif, l’état de traitement et l’exécution financière immuable.", "statusFilter": "État", "allStatuses": "Tous les états", "customer": "Client", "method": "Mode de paiement", "baridimob": "BaridiMob", "ccp": "CCP", "cib": "CIB", "edahabia": "Edahabia", "reviewInformation": "Informations de vérification", "noReviewNote": "Aucune note de vérification", "ledgerTransaction": "Écriture du registre", "entitlement": "Droit accordé", "viewProof": "Ouvrir le justificatif", "noProof": "Aucun fichier", "noPayments": "Aucune demande de paiement", "noPaymentsForStatus": "Aucune demande ne possède cet état.", "reviewNote": "Note de vérification (facultative)", "reviewNotePlaceholder": "Ajoutez un motif ou une courte note", "reviewHelp": "L’approbation accorde exactement une fois les crédits enregistrés dans la commande. Le rejet n’accorde rien.", "approve": "Approuver", "approving": "Approbation…", "reject": "Rejeter", "rejecting": "Rejet…", "approvedSuccess": "Paiement approuvé et exécution enregistrée.", "rejectedSuccess": "Paiement rejeté et journal d’audit mis à jour.", "confirmApprove": "Approuver ce paiement ? Les crédits ou droits enregistrés dans la commande seront accordés exactement une fois.", "confirmReject": "Rejeter ce paiement ? Aucun crédit ni droit ne sera accordé.", "actionFailed": "L’action n’a pas abouti. Votre note est conservée ; vérifiez l’état actuel avant de réessayer.",
+      "errors": { "PAYMENT_PLAN_SLUG_EXISTS": "Cet identifiant interne existe déjà.", "PAYMENT_PLAN_SLUG_IMMUTABLE": "L’identifiant interne est verrouillé après création.", "INVALID_PAYMENT_PLAN": "Vérifiez les valeurs de la formule puis réessayez.", "PAYMENT_PLAN_NOT_FOUND": "Cette formule n’existe plus. Actualisez la page.", "PAYMENT_PLAN_CREATE_FAILED": "Impossible de créer la formule.", "PAYMENT_PLAN_UPDATE_FAILED": "Impossible de mettre à jour la formule." }
     },
     "status": {
-      "healthy": "Opérationnel", "attention": "À surveiller", "idle": "Aucune requête enregistrée", "unconfigured": "Non configuré",
+      "healthy": "Dernière requête réussie", "attention": "À surveiller", "idle": "Aucune requête enregistrée", "unconfigured": "Non configuré",
       "demo": "Démo", "client_managed": "Géré côté client", "available": "Disponible", "beta": "Bêta", "preview": "Aperçu",
       "unavailable": "Indisponible", "temporarily_unavailable": "Temporairement indisponible", "internal_test": "Test interne",
       "not_in_studio": "Absent du Studio", "active": "Actif", "unconfirmed": "Non confirmé", "suspended": "Suspendu",
@@ -55,10 +57,11 @@
       "grant": "Accordé", "adjustment": "Ajusté"
     },
     "role": { "primary": "Principal", "backup": "Secours", "optional": "Optionnel", "unassigned": "Non attribué" },
+    "modality": { "chat": "Chat", "image": "Image", "video": "Vidéo" },
     "providerTest": {
       "provider": "Fournisseur", "prompt": "Prompt", "promptPlaceholder": "Décrivez une image à générer…",
       "generate": "Générer l’image test", "generating": "Génération…", "result": "Résultat",
-      "resultAlt": "Résultat du test Runware", "summary": "Résumé de la réponse", "emptyTitle": "Aucun résultat pour le moment",
+      "resultAlt": "Résultat du test Runware", "summary": "Détails techniques de la réponse", "summaryHelp": "À ouvrir uniquement pour diagnostiquer une requête. Les identifiants secrets ne sont jamais inclus.", "emptyTitle": "Aucun résultat pour le moment",
       "emptyDescription": "Lancez une requête contrôlée pour examiner la réponse du fournisseur.",
       "genericError": "Le test a échoué. Consultez les journaux serveur pour les détails de la requête."
     }
