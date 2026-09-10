@@ -396,7 +396,7 @@ export async function getAdminPaymentPlans(): Promise<AdminDataResult<AdminPayme
     if (error) throw error;
     return { available: true, data: (data ?? []).map((plan) => ({
       id: plan.id, slug: plan.slug, name: plan.name, description: plan.description,
-      kind: plan.kind, priceDzd: plan.price_dzd, unifiedCredits: numericString(plan.unified_credits),
+      kind: plan.kind, priceDzd: plan.price_dzd, unifiedCredits: Number(plan.unified_credits),
       active: plan.active, displayOrder: plan.display_order, featured: plan.featured,
     })) };
   } catch (error) {

@@ -122,7 +122,7 @@ export type AdminPaymentPlan = {
   description: string | null;
   kind: 'credit_pack' | 'subscription';
   priceDzd: number;
-  unifiedCredits: string;
+  unifiedCredits: number;
   active: boolean;
   displayOrder: number;
   featured: boolean;

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { getOwnerAccess } from '@/lib/auth/owner';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
@@ -7,7 +8,7 @@ const schema = z.object({
   slug: z.string().regex(/^[a-z0-9_]{1,80}$/), name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(500).nullable().optional(),
   kind: z.enum(['credit_pack', 'subscription']).default('credit_pack'),
-  priceDzd: z.number().int().positive(), unifiedCredits: z.number().int().positive(),
+  priceDzd: z.number().int().positive().safe(), unifiedCredits: z.number().int().positive().safe(),
   active: z.boolean(), displayOrder: z.number().int().min(-10000).max(10000), featured: z.boolean(),
 });
 
@@ -24,7 +25,13 @@ export async function POST(request: Request) {
     slug: plan.slug, name: plan.name, description: plan.description || null, kind: plan.kind,
     price_dzd: plan.priceDzd, unified_credits: plan.unifiedCredits, active: plan.active,
     display_order: plan.displayOrder, featured: plan.featured,
-  }).select('id').single();
+  }).select('id,slug,name,description,kind,price_dzd,unified_credits,active,display_order,featured').single();
   if (error) return NextResponse.json({ error: 'PAYMENT_PLAN_CREATE_FAILED' }, { status: 409 });
-  return NextResponse.json({ id: data.id }, { status: 201 });
+  revalidatePath('/admin/payments');
+  revalidatePath('/en'); revalidatePath('/fr'); revalidatePath('/ar');
+  return NextResponse.json({ plan: {
+    id: data.id, slug: data.slug, name: data.name, description: data.description,
+    kind: data.kind, priceDzd: data.price_dzd, unifiedCredits: Number(data.unified_credits),
+    active: data.active, displayOrder: data.display_order, featured: data.featured,
+  } }, { status: 201 });
 }
