@@ -119,10 +119,10 @@ export function OverviewView({ result }: { result: AdminDataResult<AdminOverview
     { key: 'modelsUnknownProviderCost', value: result.data.modelsUnknownProviderCost, href: '/admin/models' },
   ].filter((item) => typeof item.value === 'number' && item.value > 0);
   return <><PageHeader title={t('overview.title')} description={t('overview.description')} />{!result.available && <Notice reason={result.reason} />}
-    {attentionItems.length ? <section aria-labelledby="admin-attention-title" className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[0.05] px-3 py-2">
+    {attentionItems.length ? <div role="region" aria-labelledby="admin-attention-title" className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[0.05] px-3 py-2">
       <AlertTriangle className="h-4 w-4 shrink-0 text-amber-200" aria-hidden="true" /><div className="me-1 min-w-0 text-start"><h2 id="admin-attention-title" className="text-[13px] font-semibold text-amber-50">{t('overview.attentionTitle')}</h2><p className="sr-only">{t('overview.attentionDescription')}</p></div>
       <div className="flex flex-wrap gap-1.5">{attentionItems.map((item) => <Link key={item.key} href={item.href} prefetch={false} className="inline-flex min-h-7 items-center gap-2.5 rounded-lg border border-amber-200/15 bg-black/20 px-2.5 py-1 text-[11px] font-medium text-amber-50/85 hover:bg-black/30 hover:text-white"><span>{t(`overview.${item.key}`)}</span><strong className="tabular-nums text-white">{item.value}</strong></Link>)}</div>
-    </section> : null}
+    </div> : null}
     <section aria-label={t('overview.metrics')} className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{metrics.map(([key, value]) => <Metric key={key} label={t(`overview.${key}`)} value={value} />)}</section>
     <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]"><div className="rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-5"><SectionHeading title={t('overview.recentActivity')} />
       <div className="space-y-1">{result.data.recentActivity.length ? summarizeActivity(result.data.recentActivity).map((item) => {
@@ -305,5 +305,5 @@ function PaymentField({ label, children }: { label: string; children: React.Reac
 }
 
 function PaymentGroup({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="self-start rounded-lg border border-[var(--studio-border-subtle)] bg-white/[0.02] p-2.5"><h3 className="mb-1.5 text-start text-[12px] font-semibold text-white">{title}</h3>{children}</section>;
+  return <div className="h-fit self-start rounded-lg border border-[var(--studio-border-subtle)] bg-white/[0.02] p-2.5"><h3 className="mb-1.5 text-start text-[12px] font-semibold text-white">{title}</h3>{children}</div>;
 }
