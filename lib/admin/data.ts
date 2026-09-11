@@ -5,11 +5,9 @@ import type { User } from '@supabase/supabase-js';
 import { getOwnerAccess, isOwnerUser } from '@/lib/auth/owner';
 import { AUTO_FALLBACK_CHAIN, PROVIDER_REGISTRY } from '@/lib/ai/image-providers/router';
 import {
-  DEFAULT_CHAT_MODEL,
-  DEFAULT_IMAGE_MODEL,
-  DEFAULT_VIDEO_MODEL,
   STUDIO_MODELS,
 } from '@/src/config/studio-registry';
+import { applyModelRuntimeOverrides, getEffectiveRuntimeModels, type EffectiveRuntimeModel } from '@/lib/models/runtime-config';
 import { getSupabaseAdminClient } from './supabase-admin';
 import type {
   AdminActivity,
@@ -123,41 +121,30 @@ function providerCostState(provider: string, actualCost: CostAmount | null): Adm
   return definition && ['free', 'user_associated', 'byop'].includes(definition.pricing) ? 'free' : 'unknown';
 }
 
-function buildAdminModelRows(latestCostByModel: Map<string, CostAmount>): AdminModelRow[] {
-  const defaultIds = new Set([DEFAULT_CHAT_MODEL?.id, DEFAULT_IMAGE_MODEL?.id, DEFAULT_VIDEO_MODEL?.id].filter(Boolean));
-  const registeredIds = new Set(STUDIO_MODELS.map((model) => model.id));
-  const rows: AdminModelRow[] = STUDIO_MODELS.map((model) => {
-    const providerCost = latestCostByModel.get(model.id) ?? null;
+function buildAdminModelRows(models: readonly EffectiveRuntimeModel[], latestCostByModel: Map<string, CostAmount>): AdminModelRow[] {
+  return models.map((model) => {
+    const configuredProviderCost = model.providerCostStatus === 'known'
+      && model.providerCostMinor && model.providerCostCurrency
+      ? { currency: model.providerCostCurrency, minor: model.providerCostMinor }
+      : null;
+    const providerCost = configuredProviderCost ?? latestCostByModel.get(model.modelId) ?? null;
     return {
-      key: `studio:${model.modality}:${model.id}`, provider: model.provider, modelId: model.id,
+      key: model.key, provider: model.provider, modelId: model.modelId,
       displayName: model.displayName, modality: model.modality, enabled: model.enabled,
-      availability: model.availability, providerCost, providerCostState: providerCostState(model.provider, providerCost),
-      creditPrice: model.verifiedCreditCost ?? null,
-      priority: defaultIds.has(model.id) ? 'primary' : model.fallbackAvailable ? 'backup' : 'unassigned',
+      availability: model.availability, providerCost,
+      providerCostState: model.providerCostStatus ?? providerCostState(model.provider, providerCost),
+      creditPrice: model.customerCreditPrice, priority: model.routingRole,
+      activationSupported: model.activationSupported, persisted: model.persisted, updatedAt: model.updatedAt,
     };
   });
-  for (const provider of Object.values(PROVIDER_REGISTRY)) {
-    for (const model of provider.models) {
-      if (registeredIds.has(model.id)) continue;
-      const providerCost = latestCostByModel.get(model.id) ?? null;
-      rows.push({
-        key: `provider:${provider.id}:${model.id}`, provider: provider.name, modelId: model.id,
-        displayName: model.name, modality: 'image', enabled: false,
-        availability: provider.id === 'runware' ? 'internal_test' : 'not_in_studio',
-        providerCost, providerCostState: providerCostState(provider.id, providerCost),
-        creditPrice: null, priority: 'unassigned',
-      });
-    }
-  }
-  return rows;
 }
 
 export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewData>> {
   const empty: AdminOverviewData = {
     totalUsers: null, totalGenerations: null, successfulJobs: null, failedJobs: null,
     providerIssues: null,
-    modelsMissingPricing: buildAdminModelRows(new Map()).filter(isMissingCustomerPricing).length,
-    modelsUnknownProviderCost: buildAdminModelRows(new Map()).filter((model) => model.providerCostState === 'unknown').length,
+    modelsMissingPricing: buildAdminModelRows(applyModelRuntimeOverrides([]), new Map()).filter(isMissingCustomerPricing).length,
+    modelsUnknownProviderCost: buildAdminModelRows(applyModelRuntimeOverrides([]), new Map()).filter((model) => model.providerCostState === 'unknown').length,
     creditsConsumed: null, pendingPayments: null, providerCosts: [], recentActivity: [],
   };
   const client = await requireAdminDataAccess();
@@ -198,7 +185,7 @@ export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewD
       detail: numericString(row.amount), technicalDetail: row.reason,
       status: row.transaction_type, createdAt: row.created_at,
     }));
-    const modelRows = buildAdminModelRows(latestCostsByModel(costs));
+    const modelRows = buildAdminModelRows(await getEffectiveRuntimeModels(client), latestCostsByModel(costs));
 
     return { available: true, data: {
       totalUsers: auth.truncated ? null : auth.users.length,
@@ -292,7 +279,10 @@ export async function getAdminModels(): Promise<AdminDataResult<AdminModelRow[]>
     const costs = client
       ? await allRows(client, 'provider_cost_records', 'provider,provider_model,actual_cost_minor,currency,created_at')
       : [];
-    const rows = buildAdminModelRows(latestCostsByModel(costs));
+    const rows = buildAdminModelRows(
+      client ? await getEffectiveRuntimeModels(client) : applyModelRuntimeOverrides([]),
+      latestCostsByModel(costs),
+    );
     return client ? { available: true, data: rows } : unavailable(rows);
   } catch (error) {
     console.error('[admin] model query failed', { message: error instanceof Error ? error.message : 'Unknown error' });

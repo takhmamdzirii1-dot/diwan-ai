@@ -58,6 +58,9 @@ export type AdminModelRow = {
   providerCostState: 'free' | 'known' | 'unknown';
   creditPrice: number | null;
   priority: 'primary' | 'backup' | 'unassigned';
+  activationSupported: boolean;
+  persisted: boolean;
+  updatedAt: string | null;
 };
 
 export type AdminUserRow = {

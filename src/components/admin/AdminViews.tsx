@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { AlertTriangle, ArrowRight, ChevronDown, Database, ExternalLink, Search, X } from 'lucide-react';
@@ -8,6 +8,7 @@ import RunwareProviderTest, { type ProviderTestCopy } from '@/src/components/int
 import AdminPaymentActions from './AdminPaymentActions';
 import AdminPaymentPlans from './AdminPaymentPlans';
 import AdminUserActions from './AdminUserActions';
+import AdminModelControls from './AdminModelControls';
 import type {
   AdminDataResult, AdminJobRow, AdminModelRow, AdminOverviewData, AdminPaymentRow,
   AdminPaymentPlan, AdminProviderRow, AdminUsersData, CostAmount,
@@ -172,16 +173,19 @@ export function ProvidersView({ result }: { result: AdminDataResult<AdminProvide
 export function ModelsView({ result }: { result: AdminDataResult<AdminModelRow[]> }) {
   const t = useTranslations('Admin');
   const [filter, setFilter] = useState('all');
+  const [models, setModels] = useState(result.data);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  useEffect(() => setModels(result.data), [result.data]);
   const filterOptions = ['all', 'enabled', 'primary', 'image', 'chat', 'video', 'missingPricing', 'preview', 'notInStudio'] as const;
   const counts = {
-    total: result.data.length,
-    enabled: result.data.filter((row) => row.enabled).length,
-    primary: result.data.filter((row) => row.priority === 'primary').length,
-    missingPricing: result.data.filter(isMissingCustomerPricing).length,
-    unknownProviderCost: result.data.filter((row) => row.providerCostState === 'unknown').length,
-    preview: result.data.filter((row) => row.availability === 'preview').length,
+    total: models.length,
+    enabled: models.filter((row) => row.enabled).length,
+    primary: models.filter((row) => row.priority === 'primary').length,
+    missingPricing: models.filter(isMissingCustomerPricing).length,
+    unknownProviderCost: models.filter((row) => row.providerCostState === 'unknown').length,
+    preview: models.filter((row) => row.availability === 'preview').length,
   };
-  const filtered = useMemo(() => result.data.filter((row) => {
+  const filtered = useMemo(() => models.filter((row) => {
     if (filter === 'enabled') return row.enabled;
     if (filter === 'primary') return row.priority === 'primary';
     if (['image', 'chat', 'video'].includes(filter)) return row.modality === filter;
@@ -189,7 +193,7 @@ export function ModelsView({ result }: { result: AdminDataResult<AdminModelRow[]
     if (filter === 'preview') return row.availability === 'preview';
     if (filter === 'notInStudio') return row.availability === 'not_in_studio';
     return true;
-  }), [filter, result.data]);
+  }), [filter, models]);
   return <><PageHeader title={t('models.title')} description={t('models.description')} />{!result.available && <Notice reason={result.reason} />}
     <section aria-label={t('models.summary')} className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">{(['total','enabled','primary','missingPricing','unknownProviderCost','preview'] as const).map((key) => <div key={key} className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] px-3 py-2.5 text-start"><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">{t(`models.summary${key[0].toUpperCase()}${key.slice(1)}`)}</p><p className="mt-1 text-lg font-bold tabular-nums text-white">{counts[key]}</p></div>)}</section>
     <div role="group" aria-label={t('models.filterLabel')} className="mb-4 flex flex-wrap gap-2">{filterOptions.map((value) => <button key={value} type="button" aria-pressed={filter === value} onClick={() => setFilter(value)} className={`min-h-9 rounded-full border px-3 text-[11.5px] font-semibold transition-[background-color,border-color,color] duration-150 motion-reduce:transition-none ${filter === value ? 'border-white bg-white text-black' : 'border-[var(--studio-border)] bg-[var(--studio-surface)] text-[var(--studio-text-secondary)] hover:border-[var(--studio-border-strong)] hover:text-white'}`}>{t(`models.filters.${value}`)}</button>)}</div>
@@ -198,14 +202,14 @@ export function ModelsView({ result }: { result: AdminDataResult<AdminModelRow[]
       <thead className="border-b border-[var(--studio-border)]"><tr>
         <th>{t('models.displayName')}</th><th>{t('models.modality')}</th><th>{t('models.provider')}</th><th>{t('models.state')}</th><th>{t('models.priority')}</th><th className="text-end">{t('models.pricing')}</th>
       </tr></thead>
-      <tbody>{filtered.map((row) => <tr key={row.key} className="border-b border-[var(--studio-border-subtle)] last:border-0">
+      <tbody>{filtered.map((row) => <Fragment key={row.key}><tr className="border-b border-[var(--studio-border-subtle)] last:border-0">
         <td><p className="truncate font-semibold text-white" title={row.displayName}>{row.displayName}</p><TechnicalDetails><TechnicalId label={t('common.modelId')} value={row.modelId} /></TechnicalDetails></td>
         <td className="text-[var(--studio-text-secondary)]">{t.has(`modality.${row.modality}`) ? t(`modality.${row.modality}`) : row.modality}</td>
         <td className="truncate text-[var(--studio-text-secondary)]" title={row.provider}>{row.provider}</td>
         <td><div className="flex flex-wrap gap-1"><Badge tone={row.enabled ? 'success' : 'neutral'}>{t(row.enabled ? 'common.enabled' : 'common.disabled')}</Badge><Status value={row.availability} /></div></td>
         <td><Badge>{t(`role.${row.priority}`)}</Badge></td>
-        <td className="text-end"><p className="font-semibold tabular-nums text-white">{isMissingCustomerPricing(row) ? t('common.noPrice') : t('common.credits', { value: row.creditPrice })}</p><p className="mt-0.5 text-[10.5px] leading-snug text-[var(--studio-text-muted)]">{t('models.providerCost')}: <ProviderEconomics row={row} /></p></td>
-      </tr>)}</tbody>
+        <td className="text-end"><p className="font-semibold tabular-nums text-white">{isMissingCustomerPricing(row) ? t('common.noPrice') : t('common.credits', { value: row.creditPrice })}</p><p className="mt-0.5 text-[10.5px] leading-snug text-[var(--studio-text-muted)]">{t('models.providerCost')}: <ProviderEconomics row={row} /></p><button type="button" aria-expanded={editingKey === row.key} onClick={() => setEditingKey((current) => current === row.key ? null : row.key)} className="mt-1.5 rounded-md border border-[var(--studio-border)] px-2 py-1 text-[10.5px] font-semibold text-[var(--studio-text-secondary)] hover:border-[var(--studio-border-strong)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">{t(editingKey === row.key ? 'models.closeControls' : 'models.manage')}</button></td>
+      </tr>{editingKey === row.key && <tr className="border-b border-[var(--studio-border-subtle)]"><td colSpan={6} className="bg-black/15 p-2.5"><AdminModelControls model={row} onSaved={(config) => setModels((current) => current.map((item) => item.key === config.modelKey ? { ...item, enabled: config.enabled, priority: config.routingRole, creditPrice: config.customerCreditPrice, persisted: true, updatedAt: config.updatedAt } : config.routingRole === 'primary' && item.modality === row.modality && item.priority === 'primary' ? { ...item, priority: 'unassigned' } : item))} /></td></tr>}</Fragment>)}</tbody>
     </table></TableFrame> : <Empty label={t('models.noMatches')} />}</>;
 }
 

@@ -5,7 +5,8 @@ import { createOpenAI } from '@ai-sdk/openai';
 
 
 
-import { getModelCost } from '../../../../src/config/pricing';
+import { DEFAULT_CHAT_MODEL } from '../../../../src/config/studio-registry';
+import { requireEffectiveRuntimeModel } from '../../../../lib/models/runtime-config';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
     // 2. Parse Request Body
     const body = await request.json().catch(() => ({}));
 
-    const { prompt, model = 'nvidia/nemotron-3.5-lightning:free', messages } = body;
+    const { prompt, model = DEFAULT_CHAT_MODEL?.id, messages } = body;
 
     // Generation controls (clamped for safety)
     const clamp = (v: unknown, min: number, max: number, fallback: number) => {
@@ -82,8 +83,20 @@ export async function POST(request: Request) {
        }
     }
 
-    const requestedModel = model.trim();
-    const cost = getModelCost(requestedModel);
+    const requestedModel = typeof model === 'string' ? model.trim() : '';
+    if (!requestedModel) {
+      return NextResponse.json({ error: 'A registered model is required' }, { status: 400 });
+    }
+    let runtimeModel;
+    try {
+      runtimeModel = await requireEffectiveRuntimeModel(requestedModel, 'chat');
+    } catch (cause) {
+      const code = cause instanceof Error ? cause.message : 'MODEL_RUNTIME_CONFIG_UNAVAILABLE';
+      const status = code === 'MODEL_NOT_REGISTERED' ? 400
+        : code === 'MODEL_RUNTIME_CONFIG_UNAVAILABLE' ? 503 : 409;
+      return NextResponse.json({ error: code }, { status });
+    }
+    const cost = runtimeModel.customerCreditPrice;
 
     // Guests are limited to free models — premium engines require an account.
     if (!user && cost > 0) {
