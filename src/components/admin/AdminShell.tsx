@@ -27,7 +27,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const t = useTranslations('Admin');
 
   return (
-    <div className="admin-root studio-overlay-root min-h-screen bg-[var(--studio-bg)] text-[var(--studio-text-primary)] lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
+    <div className="admin-root studio-overlay-root min-h-screen bg-[var(--studio-bg)] text-[var(--studio-text-primary)] lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
       <aside className="border-b border-[var(--studio-border)] bg-[var(--studio-surface)] lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-e">
         <div className="flex h-16 items-center justify-between gap-3 border-b border-[var(--studio-border-subtle)] px-4 lg:px-5">
           <div className="flex min-w-0 items-center gap-3">
@@ -83,7 +83,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       </aside>
 
       <main className="min-w-0">
-        <div className="mx-auto w-full max-w-[1560px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</div>
+        <div className="mx-auto w-full max-w-[1320px] px-4 py-6 sm:px-5 lg:px-6 lg:py-7">{children}</div>
       </main>
     </div>
   );
