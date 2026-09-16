@@ -9,6 +9,8 @@ import AdminPaymentActions from './AdminPaymentActions';
 import AdminPaymentPlans from './AdminPaymentPlans';
 import AdminUserActions from './AdminUserActions';
 import AdminModelControls from './AdminModelControls';
+import AdminProviderControls from './AdminProviderControls';
+import AdminModelRouteControls from './AdminModelRouteControls';
 import type {
   AdminDataResult, AdminJobRow, AdminModelRow, AdminOverviewData, AdminPaymentRow,
   AdminPaymentPlan, AdminProviderRow, AdminUsersData, CostAmount,
@@ -147,25 +149,28 @@ export function OverviewView({ result }: { result: AdminDataResult<AdminOverview
 
 export function ProvidersView({ result }: { result: AdminDataResult<AdminProviderRow[]> }) {
   const t = useTranslations('Admin');
-  const configured = result.data.filter((row) => row.enabled).length;
-  const attention = result.data.filter((row) => row.status === 'attention').length;
+  const [providers, setProviders] = useState(result.data);
+  const [editingProvider, setEditingProvider] = useState<string | null>(null);
+  useEffect(() => setProviders(result.data), [result.data]);
+  const configured = providers.filter((row) => row.enabled).length;
+  const attention = providers.filter((row) => row.status === 'attention').length;
   const providerTestCopy: ProviderTestCopy = {
     provider: t('providerTest.provider'), prompt: t('providerTest.prompt'), promptPlaceholder: t('providerTest.promptPlaceholder'), generate: t('providerTest.generate'), generating: t('providerTest.generating'), result: t('providerTest.result'), resultAlt: t('providerTest.resultAlt'), summary: t('providerTest.summary'), summaryHelp: t('providerTest.summaryHelp'), emptyTitle: t('providerTest.emptyTitle'), emptyDescription: t('providerTest.emptyDescription'), genericError: t('providerTest.genericError'),
   };
   return <><PageHeader title={t('providers.title')} description={t('providers.description')}><div className="flex gap-2"><Badge>{t('providers.configuredCount', { count: configured })}</Badge><Badge tone={attention ? 'danger' : 'neutral'}>{t('providers.attentionCount', { count: attention })}</Badge></div></PageHeader>{!result.available && <Notice reason={result.reason} />}
-    {result.data.length ? <TableFrame><table className={adminTableClass}>
+    {providers.length ? <TableFrame><table className={adminTableClass}>
       <colgroup><col className="w-[24%]" /><col className="w-[11%]" /><col className="w-[14%]" /><col className="w-[12%]" /><col className="w-[19%]" /><col className="w-[20%]" /></colgroup>
       <thead className="border-b border-[var(--studio-border)]"><tr>
         <th>{t('providers.name')}</th><th>{t('providers.modality')}</th><th>{t('providers.health')}</th><th>{t('providers.role')}</th>
         <th>{t('providers.lastActivity')}</th><th className="text-end">{t('providers.failures')} / {t('providers.cost')}</th>
       </tr></thead>
-      <tbody>{result.data.map((row) => <tr key={row.id} className="border-b border-[var(--studio-border-subtle)] last:border-0">
+      <tbody>{providers.map((row) => <Fragment key={row.id}><tr className="border-b border-[var(--studio-border-subtle)] last:border-0">
         <td><div className="flex min-w-0 items-center gap-2"><p className="truncate font-semibold text-white" title={row.name}>{row.name}</p><Badge tone={row.enabled ? 'success' : 'neutral'}>{t(row.enabled ? 'common.enabled' : 'common.disabled')}</Badge></div><TechnicalDetails><p className="text-[11px] text-[var(--studio-text-secondary)]"><strong>{t('providers.models')}:</strong> {row.associatedModels.length ? row.associatedModels.join(' · ') : t('common.noneRecorded')}</p><p className="mt-1 text-[11px] text-[var(--studio-text-secondary)]"><strong>{t('providers.requests')}:</strong> <span className="tabular-nums">{row.requestCount}</span></p><p className="mt-1 text-[11px] text-[var(--studio-text-secondary)]"><strong>{t('providers.latency')}:</strong> {row.averageLatencyMs == null ? '—' : t('common.milliseconds', { value: row.averageLatencyMs })}</p><TechnicalId label={t('common.internalId')} value={row.id} />{row.lastError && <p className="mt-1.5 break-words text-[11px] text-red-100"><strong>{t('providers.lastError')}:</strong> {row.lastError}</p>}</TechnicalDetails></td>
         <td className="text-[var(--studio-text-secondary)]">{row.modalities.map((value) => t.has(`modality.${value}`) ? t(`modality.${value}`) : value).join(' · ')}</td>
         <td><Status value={row.status} /></td><td><Badge>{t(`role.${row.role}`)}</Badge></td>
         <td className="text-[var(--studio-text-secondary)]"><DateValue value={row.lastActivityAt} /></td>
-        <td className="text-end"><p className={`font-semibold tabular-nums ${row.failures ? 'text-red-100' : 'text-[var(--studio-text-secondary)]'}`}>{row.failures}</p><div className="mt-0.5 font-medium text-[var(--studio-text-muted)]">{row.accumulatedCosts.length ? row.accumulatedCosts.map((cost) => <div key={cost.currency}><Cost value={cost} /></div>) : '—'}</div></td>
-      </tr>)}</tbody>
+        <td className="text-end"><p className={`font-semibold tabular-nums ${row.failures ? 'text-red-100' : 'text-[var(--studio-text-secondary)]'}`}>{row.failures}</p><div className="mt-0.5 font-medium text-[var(--studio-text-muted)]">{row.accumulatedCosts.length ? row.accumulatedCosts.map((cost) => <div key={cost.currency}><Cost value={cost} /></div>) : '—'}</div><button type="button" aria-expanded={editingProvider === row.id} onClick={() => setEditingProvider((current) => current === row.id ? null : row.id)} className="mt-1.5 rounded-md border border-[var(--studio-border)] px-2 py-1 text-[10.5px] font-semibold text-[var(--studio-text-secondary)] hover:border-[var(--studio-border-strong)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">{t(editingProvider === row.id ? 'providers.closeControls' : 'providers.manage')}</button></td>
+      </tr>{editingProvider === row.id && <tr className="border-b border-[var(--studio-border-subtle)]"><td colSpan={6} className="bg-black/15 p-2.5"><AdminProviderControls provider={row} onSaved={(config) => setProviders((current) => current.map((item) => item.id === config.providerId ? { ...item, enabled: config.enabled, configured: config.configured, priority: config.priority, emergencyDisabled: config.emergencyDisabled, dailySpendLimitMinor: config.dailySpendLimitMinor, spendCurrency: config.spendCurrency, role: config.enabled && !config.emergencyDisabled ? (config.priority <= 20 ? 'primary' : 'backup') : 'unassigned', status: config.emergencyDisabled ? 'attention' : item.status } : item))} /></td></tr>}</Fragment>)}</tbody>
     </table></TableFrame> : <Empty label={t('providers.noProviders')} />}
     <details className="group mt-6 rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)]"><summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 text-start text-[14px] font-semibold text-white [&::-webkit-details-marker]:hidden sm:px-5"><ChevronDown className="h-4 w-4 text-[var(--studio-text-muted)] transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" /><span>{t('providers.testTitle')}</span><span className="ms-auto text-[11px] font-medium text-[var(--studio-text-muted)]">{t('providers.diagnosticsLabel')}</span></summary><div className="border-t border-[var(--studio-border-subtle)] p-4 sm:p-5"><p className="mb-4 max-w-2xl text-start text-[13px] leading-relaxed text-[var(--studio-text-secondary)]">{t('providers.testDescription')}</p><RunwareProviderTest copy={providerTestCopy} /></div></details></>;
 }
@@ -209,7 +214,7 @@ export function ModelsView({ result }: { result: AdminDataResult<AdminModelRow[]
         <td><div className="flex flex-wrap gap-1"><Badge tone={row.enabled ? 'success' : 'neutral'}>{t(row.enabled ? 'common.enabled' : 'common.disabled')}</Badge><Status value={row.availability} /></div></td>
         <td><Badge>{t(`role.${row.priority}`)}</Badge></td>
         <td className="text-end"><p className="font-semibold tabular-nums text-white">{isMissingCustomerPricing(row) ? t('common.noPrice') : t('common.credits', { value: row.creditPrice })}</p><p className="mt-0.5 text-[10.5px] leading-snug text-[var(--studio-text-muted)]">{t('models.providerCost')}: <ProviderEconomics row={row} /></p><button type="button" aria-expanded={editingKey === row.key} onClick={() => setEditingKey((current) => current === row.key ? null : row.key)} className="mt-1.5 rounded-md border border-[var(--studio-border)] px-2 py-1 text-[10.5px] font-semibold text-[var(--studio-text-secondary)] hover:border-[var(--studio-border-strong)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">{t(editingKey === row.key ? 'models.closeControls' : 'models.manage')}</button></td>
-      </tr>{editingKey === row.key && <tr className="border-b border-[var(--studio-border-subtle)]"><td colSpan={6} className="bg-black/15 p-2.5"><AdminModelControls model={row} onSaved={(config) => setModels((current) => current.map((item) => item.key === config.modelKey ? { ...item, enabled: config.enabled, priority: config.routingRole, creditPrice: config.customerCreditPrice, persisted: true, updatedAt: config.updatedAt } : config.routingRole === 'primary' && item.modality === row.modality && item.priority === 'primary' ? { ...item, priority: 'unassigned' } : item))} /></td></tr>}</Fragment>)}</tbody>
+      </tr>{editingKey === row.key && <tr className="border-b border-[var(--studio-border-subtle)]"><td colSpan={6} className="bg-black/15 p-2.5"><AdminModelControls model={row} onSaved={(config) => setModels((current) => current.map((item) => item.key === config.modelKey ? { ...item, enabled: config.enabled, priority: config.routingRole, creditPrice: config.customerCreditPrice, persisted: true, updatedAt: config.updatedAt } : config.routingRole === 'primary' && item.modality === row.modality && item.priority === 'primary' ? { ...item, priority: 'unassigned' } : item))} /><AdminModelRouteControls routes={row.routes} onSaved={(savedRoute) => setModels((current) => current.map((item) => item.key === row.key ? { ...item, routes: item.routes.map((route) => route.id === savedRoute.id ? { ...route, ...savedRoute } : route) } : item))} /></td></tr>}</Fragment>)}</tbody>
     </table></TableFrame> : <Empty label={t('models.noMatches')} />}</>;
 }
 

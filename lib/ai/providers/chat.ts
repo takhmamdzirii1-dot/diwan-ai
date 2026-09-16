@@ -1,0 +1,49 @@
+import 'server-only';
+
+import { createOpenAI } from '@ai-sdk/openai';
+import { getProviderConnection } from './registry';
+import type { ResolvedProviderRoute } from './routes';
+
+export class ProviderAdapterError extends Error {
+  constructor(
+    public readonly code: string,
+    public readonly retryable: boolean,
+    options?: { cause?: unknown }
+  ) {
+    super(code, options);
+    this.name = 'ProviderAdapterError';
+  }
+}
+
+export function createChatLanguageModel(route: ResolvedProviderRoute) {
+  const connection = getProviderConnection(route.providerId);
+  const supportsOpenAICompatibility = connection?.provider.adapter === 'openai-compatible-chat'
+    || connection?.provider.adapter === 'vercel-gateway';
+  if (!connection?.configured || !supportsOpenAICompatibility
+    || !connection.apiKey || !connection.baseUrl) {
+    throw new ProviderAdapterError('PROVIDER_NOT_CONFIGURED', false);
+  }
+  const provider = createOpenAI({
+    baseURL: connection.baseUrl,
+    apiKey: connection.apiKey,
+    compatibility: 'compatible',
+  });
+  return provider(route.providerModelId);
+}
+
+export function classifyProviderFailure(cause: unknown) {
+  if (cause instanceof ProviderAdapterError) return cause;
+  const message = cause instanceof Error ? cause.message : 'PROVIDER_EXECUTION_FAILED';
+  const status = typeof cause === 'object' && cause
+    && 'statusCode' in cause && typeof cause.statusCode === 'number'
+    ? cause.statusCode
+    : null;
+  const retryable = status === 408 || status === 409 || status === 429
+    || (status != null && status >= 500)
+    || /timeout|network|temporar|rate.?limit|unavailable/i.test(message);
+  return new ProviderAdapterError(
+    retryable ? 'PROVIDER_TRANSIENT_FAILURE' : 'PROVIDER_EXECUTION_FAILED',
+    retryable,
+    { cause }
+  );
+}

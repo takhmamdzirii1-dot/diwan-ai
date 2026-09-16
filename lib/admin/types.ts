@@ -44,6 +44,11 @@ export type AdminProviderRow = {
   associatedModels: string[];
   accumulatedCosts: CostAmount[];
   lastError: string | null;
+  configured: boolean;
+  priority: number;
+  emergencyDisabled: boolean;
+  dailySpendLimitMinor: string | null;
+  spendCurrency: string | null;
 };
 
 export type AdminModelRow = {
@@ -61,6 +66,18 @@ export type AdminModelRow = {
   activationSupported: boolean;
   persisted: boolean;
   updatedAt: string | null;
+  routes: AdminModelRoute[];
+};
+
+export type AdminModelRoute = {
+  id: string;
+  providerId: string;
+  providerModelId: string;
+  enabled: boolean;
+  priority: number;
+  fallback: boolean;
+  configured: boolean;
+  providerEnabled: boolean;
 };
 
 export type AdminUserRow = {

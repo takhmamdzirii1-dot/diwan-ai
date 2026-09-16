@@ -84,7 +84,6 @@ export interface LiveLedgerCardProps {
 
 export default function LiveLedgerCard({ onOpenAuth }: LiveLedgerCardProps) {
   const { user, session, balance: userBalance, refreshBalance } = useUser({ loadBalance: true });
-  const [localBalance, setLocalBalance] = useState<number>(10000);
   const [activeTab, setActiveTab] = useState<CategoryType>('chat');
   const [isDeducting, setIsDeducting] = useState<boolean>(false);
   const [lastDeduction, setLastDeduction] = useState<number | null>(null);
@@ -93,22 +92,21 @@ export default function LiveLedgerCard({ onOpenAuth }: LiveLedgerCardProps) {
   const [error, setError] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState<string>('');
 
-  const [logs, setLogs] = useState<LogItem[]>([
-    {
-      id: 'init-1',
-      opName: 'Initial Credit Balance Added (Edahabia/CIB)',
-      cost: -10000,
-      time: 'Just now',
-    },
-  ]);
+  const [logs, setLogs] = useState<LogItem[]>([]);
 
-  const activeBalance = user ? userBalance : localBalance;
+  const activeBalance = user ? userBalance : null;
   const currentModel = LEDGER_MODELS[activeTab];
   const IconComponent = currentModel.icon;
 
   const handleExecute = async () => {
     setError(null);
     const promptToRun = customPrompt.trim() || currentModel.prompt;
+
+    if (!user || !session?.access_token) {
+      setError('Sign in to use live generation and your verified Unified Credits balance.');
+      onOpenAuth?.('signup');
+      return;
+    }
 
     if (activeBalance === null) {
       setError('Balance unavailable. Please try again.');
@@ -127,9 +125,7 @@ export default function LiveLedgerCard({ onOpenAuth }: LiveLedgerCardProps) {
     setLastDeduction(currentModel.cost);
 
     try {
-      // If user is logged in, call real API route
-      if (user && session?.access_token) {
-        const response = await fetch('/api/generate/chat', {
+      const response = await fetch('/api/generate/chat', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -138,56 +134,34 @@ export default function LiveLedgerCard({ onOpenAuth }: LiveLedgerCardProps) {
           body: JSON.stringify({
             prompt: promptToRun,
             model: currentModel.id,
+            operationId: crypto.randomUUID(),
           }),
-        });
+      });
 
-        const data = await response.json();
+      const data = await response.json();
 
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to generate response');
-        }
-
-        setAiOutput(data.response || 'Success');
-        setShowOutput(true);
-        await refreshBalance();
-
-        setLogs((prev) => [
-          {
-            id: `${Date.now()}`,
-            opName: `${currentModel.name} Live Query`,
-            cost: currentModel.cost,
-            time: new Date().toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-            }),
-            responsePreview: data.response?.slice(0, 80) + '...',
-          },
-          ...prev.slice(0, 4),
-        ]);
-      } else {
-        // Instant simulated response for guest preview
-        await new Promise((r) => setTimeout(r, 600));
-        setLocalBalance((prev) => Math.max(0, prev - currentModel.cost));
-        const simOutput = `[${currentModel.name} Output]\n\nAnalysis for prompt: "${promptToRun}"\n\n✓ Verification: 200 OK\n✓ Context: Processed in 340ms\n✓ Deduction: -${currentModel.cost} PTS\n✓ Languages: English, French & Algerian Darja.`;
-        setAiOutput(simOutput);
-        setShowOutput(true);
-
-        setLogs((prev) => [
-          {
-            id: `${Date.now()}`,
-            opName: `${currentModel.name} Query`,
-            cost: currentModel.cost,
-            time: new Date().toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-            }),
-            responsePreview: simOutput.slice(0, 80) + '...',
-          },
-          ...prev.slice(0, 4),
-        ]);
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate response');
       }
+
+      setAiOutput(data.response || 'Success');
+      setShowOutput(true);
+      await refreshBalance();
+
+      setLogs((prev) => [
+        {
+          id: `${Date.now()}`,
+          opName: `${currentModel.name} Live Query`,
+          cost: currentModel.cost,
+          time: new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          }),
+          responsePreview: data.response?.slice(0, 80) + '...',
+        },
+        ...prev.slice(0, 4),
+      ]);
     } catch (err: any) {
       setError(err?.message || 'Execution error');
     } finally {
@@ -196,22 +170,11 @@ export default function LiveLedgerCard({ onOpenAuth }: LiveLedgerCardProps) {
   };
 
   const handleReset = () => {
-    if (user) {
-      refreshBalance();
-    } else {
-      setLocalBalance(10000);
-    }
+    if (user) refreshBalance();
     setAiOutput(null);
     setShowOutput(false);
     setError(null);
-    setLogs([
-      {
-        id: `reset-${Date.now()}`,
-        opName: 'Demo Balance Reset',
-        cost: -10000,
-        time: 'Just now',
-      },
-    ]);
+    setLogs([]);
   };
 
   return (

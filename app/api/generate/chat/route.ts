@@ -1,12 +1,21 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { streamText } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
-
-
 
 import { DEFAULT_CHAT_MODEL } from '../../../../src/config/studio-registry';
 import { requireEffectiveRuntimeModel } from '../../../../lib/models/runtime-config';
+import { createChatLanguageModel, classifyProviderFailure } from '@/lib/ai/providers/chat';
+import { resolveProviderRoutes } from '@/lib/ai/providers/routes';
+import {
+  beginGenerationExecution,
+  hashGenerationPayload,
+  markGenerationStreaming,
+  recordProviderResult,
+  releaseGeneration,
+  reserveGenerationCredits,
+  resolveOperationKey,
+  settleGeneration,
+} from '@/lib/credits/generation-finance';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -15,7 +24,7 @@ export async function POST(request: Request) {
   try {
     const supabase = await createClient();
 
-    // 1. Authentication (optional — guests can chat on free models)
+    // 1. Authentication. Billing and execution ownership are user-bound.
     let user = null;
     const authHeader = request.headers.get('authorization');
     if (authHeader?.startsWith('Bearer ')) {
@@ -26,9 +35,18 @@ export async function POST(request: Request) {
       const { data } = await supabase.auth.getUser();
       user = data.user;
     }
+    if (!user) {
+      return NextResponse.json({ error: 'AUTHENTICATION_REQUIRED' }, { status: 401 });
+    }
 
     // 2. Parse Request Body
+    if (Number(request.headers.get('content-length') ?? 0) > 500_000) {
+      return NextResponse.json({ error: 'REQUEST_TOO_LARGE' }, { status: 413 });
+    }
     const body = await request.json().catch(() => ({}));
+    if (JSON.stringify(body).length > 500_000) {
+      return NextResponse.json({ error: 'REQUEST_TOO_LARGE' }, { status: 413 });
+    }
 
     const { prompt, model = DEFAULT_CHAT_MODEL?.id, messages } = body;
 
@@ -56,6 +74,12 @@ export async function POST(request: Request) {
     const SYSTEM_PROMPT = `${customSystem || DEFAULT_SYSTEM}\n\n${DATETIME_CONTEXT}`;
 
     let messagesPayload = messages;
+    if (Array.isArray(messagesPayload) && (
+      messagesPayload.length > 64
+      || messagesPayload.some((message) => JSON.stringify(message?.content ?? '').length > 80_000)
+    )) {
+      return NextResponse.json({ error: 'INVALID_MESSAGES' }, { status: 400 });
+    }
     if (!messagesPayload || !Array.isArray(messagesPayload) || messagesPayload.length === 0) {
        if (prompt) {
           messagesPayload = [
@@ -97,111 +121,167 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: code }, { status });
     }
     const cost = runtimeModel.customerCreditPrice;
-
-    // Guests are limited to free models — premium engines require an account.
-    if (!user && cost > 0) {
-      return NextResponse.json(
-        { error: 'Sign in to use premium models. Free models need no account.' },
-        { status: 401 }
-      );
+    if (cost == null) {
+      return NextResponse.json({ error: 'MODEL_CUSTOMER_PRICE_UNCONFIGURED' }, { status: 409 });
     }
-
-    // 3. Atomic Point Deduction (authenticated users only)
-    let deductSuccess = cost === 0;
-    
-    if (cost > 0) {
+    const routes = await resolveProviderRoutes(runtimeModel);
+    let route = routes[0];
+    let languageModel;
+    for (const candidate of routes) {
       try {
-        const { data: rpcResult, error: rpcError } = await supabase.rpc('deduct_user_points', {
-          user_id: user.id,
-          cost: cost,
-          action: 'CHAT_QUERY',
-          model: requestedModel,
-        });
-
-        if (!rpcError && rpcResult) {
-          deductSuccess = true;
-        }
-      } catch {}
-
-      if (!deductSuccess) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('balance, points')
-          .eq('id', user.id)
-          .single();
-
-        const currentBalance = profile?.balance ?? profile?.points ?? 10000;
-        if (currentBalance < cost) {
-          return NextResponse.json(
-            { error: 'Insufficient balance. Please top up your DZD points.' },
-            { status: 402 }
-          );
-        }
-
-        const updated = currentBalance - cost;
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ balance: updated, updated_at: new Date().toISOString() })
-          .eq('id', user.id);
-
-        if (!updateError) {
-          deductSuccess = true;
-          try {
-            await supabase.from('points_ledger').insert({
-              user_id: user.id,
-              amount: -cost,
-              operation: 'CHAT_QUERY',
-              model: requestedModel,
-              created_at: new Date().toISOString(),
-            });
-          } catch {}
-        }
+        languageModel = createChatLanguageModel(candidate);
+        route = candidate;
+        break;
+      } catch {
+        // Adapter construction performs no provider request, so trying the next
+        // same-model route is safe before credits are reserved.
       }
     }
-
-    if (!process.env.OPENROUTER_API_KEY) {
-      return NextResponse.json({ error: 'OpenRouter API key is not set' }, { status: 500 });
+    if (!languageModel) {
+      return NextResponse.json({ error: 'NO_CONFIGURED_PROVIDER_ROUTE' }, { status: 503 });
     }
 
-    // 4. Vercel AI SDK Streaming
+    const operationKey = resolveOperationKey(
+      body.operationId ?? request.headers.get('x-idempotency-key')
+    );
+    const payloadHash = hashGenerationPayload({
+      modelKey: runtimeModel.key,
+      messages: messagesPayload,
+      temperature,
+      maxTokens,
+      topP,
+    });
+    const execution = await beginGenerationExecution({
+      userId: user.id,
+      operationKey,
+      payloadHash,
+      model: runtimeModel,
+      route,
+    });
+    if (execution.idempotent) {
+      return NextResponse.json({ error: 'REQUEST_ALREADY_PROCESSED' }, { status: 409 });
+    }
+    let reservation: Awaited<ReturnType<typeof reserveGenerationCredits>> = null;
     try {
-      const openRouter = createOpenAI({
-        baseURL: 'https://openrouter.ai/api/v1',
-        apiKey: process.env.OPENROUTER_API_KEY,
-        compatibility: 'compatible',
+      reservation = await reserveGenerationCredits({
+        userId: user.id,
+        operationKey,
+        payloadHash,
+        model: runtimeModel,
+        route,
       });
-
+    } catch (reservationError) {
+      const code = reservationError instanceof Error
+        ? reservationError.message
+        : 'CREDIT_RESERVATION_FAILED';
+      try {
+        await releaseGeneration({
+          executionId: execution.executionId,
+          userId: user.id,
+          reservationId: null,
+          operationKey,
+          payloadHash,
+          reason: code,
+        });
+      } catch (recordError) {
+        console.error('[chat-generation] reservation failure record failed', {
+          executionId: execution.executionId,
+          code: recordError instanceof Error ? recordError.message : 'EXECUTION_FAILURE_RECORD_FAILED',
+        });
+      }
+      const status = /INSUFFICIENT_CREDITS/.test(code) ? 402
+        : /IDEMPOTENCY_CONFLICT|INVALID_/.test(code) ? 400 : 503;
+      return NextResponse.json({ error: code }, { status });
+    }
+    try {
       const result = await streamText({
-        model: openRouter(requestedModel),
+        model: languageModel,
         messages: messagesPayload,
         temperature,
         maxTokens,
         topP,
+        onFinish: async ({ finishReason, usage }) => {
+          try {
+            if (finishReason === 'error') {
+              await releaseGeneration({
+                executionId: execution.executionId,
+                userId: user.id,
+                reservationId: reservation?.reservationId ?? null,
+                operationKey,
+                payloadHash,
+                reason: 'PROVIDER_STREAM_FAILED',
+              });
+              await recordProviderResult(route.providerId, false, 'PROVIDER_STREAM_FAILED');
+              return;
+            }
+            await settleGeneration({
+              executionId: execution.executionId,
+              userId: user.id,
+              reservationId: reservation?.reservationId ?? null,
+              operationKey,
+              payloadHash,
+              amount: cost,
+              finishReason,
+              usage: {
+                provider: route.providerId,
+                providerModel: route.providerModelId,
+                promptTokens: usage.promptTokens,
+                completionTokens: usage.completionTokens,
+                totalTokens: usage.totalTokens,
+              },
+            });
+            await recordProviderResult(route.providerId, true);
+          } catch (finalizationError) {
+            console.error('[chat-generation] finalization failed', {
+              executionId: execution.executionId,
+              code: finalizationError instanceof Error
+                ? finalizationError.message
+                : 'FINALIZATION_FAILED',
+            });
+          }
+        },
       });
-
-      
-      return result.toDataStreamResponse();
-    } catch (err: any) {
-      // Refund if error during execution
-      if (cost > 0) {
-        try {
-          await supabase.rpc('refund_user_points', {
-            user_id: user.id,
-            cost: cost,
-            reason: 'PROVIDER_EXECUTION_FAILURE',
-          });
-        } catch {}
-      }
-      return NextResponse.json(
-        { error: `Stream Error: ${err.message}` },
-        { status: 500 }
+      await markGenerationStreaming(
+        execution.executionId,
+        user.id,
+        reservation?.reservationId ?? null
       );
+      return result.toDataStreamResponse({
+        headers: {
+          'x-vantra-operation-id': operationKey,
+          'x-vantra-provider': route.providerId,
+        },
+      });
+    } catch (providerError) {
+      const failure = classifyProviderFailure(providerError);
+      try {
+        await releaseGeneration({
+          executionId: execution.executionId,
+          userId: user.id,
+          reservationId: reservation?.reservationId ?? null,
+          operationKey,
+          payloadHash,
+          reason: failure.code,
+        });
+        await recordProviderResult(route.providerId, false, failure.code);
+      } catch (rollbackError) {
+        console.error('[chat-generation] rollback failed', {
+          executionId: execution.executionId,
+          code: rollbackError instanceof Error ? rollbackError.message : 'ROLLBACK_FAILED',
+        });
+      }
+      return NextResponse.json({ error: failure.code }, { status: failure.retryable ? 503 : 502 });
     }
 
   } catch (error: any) {
+    const code = error?.message || 'INTERNAL_SERVER_ERROR';
+    const status = /INSUFFICIENT_CREDITS/.test(code) ? 402
+      : /RATE_LIMITED|CONCURRENCY_LIMITED/.test(code) ? 429
+        : /INVALID_|IDEMPOTENCY_CONFLICT/.test(code) ? 400
+          : /UNAVAILABLE|NO_CONFIGURED_PROVIDER_ROUTE/.test(code) ? 503 : 500;
     return NextResponse.json(
-      { error: error?.message || 'Internal Server Error' },
-      { status: 500 }
+      { error: code },
+      { status }
     );
   }
 }

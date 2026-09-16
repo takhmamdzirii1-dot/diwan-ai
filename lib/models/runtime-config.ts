@@ -2,6 +2,7 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { PROVIDER_REGISTRY } from '@/lib/ai/image-providers/router';
+import { PROVIDER_CATALOG_MODELS } from '@/lib/models/provider-catalog';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
 import {
   DEFAULT_CHAT_MODEL,
@@ -77,6 +78,21 @@ const registryModels: RegistryModelReference[] = STUDIO_MODELS.map((model) => ({
 }));
 
 const registeredModelIds = new Set(STUDIO_MODELS.map((model) => model.id));
+for (const model of PROVIDER_CATALOG_MODELS) {
+  registryModels.push({
+    key: model.key,
+    modelId: model.modelId,
+    displayName: model.displayName,
+    provider: 'VANTRA',
+    modality: model.modality,
+    availability: 'provider_config_required',
+    activationSupported: model.routeVerified,
+    baseEnabled: false,
+    baseRoutingRole: 'unassigned',
+    baseCustomerCreditPrice: null,
+  });
+  registeredModelIds.add(model.modelId);
+}
 for (const provider of Object.values(PROVIDER_REGISTRY)) {
   for (const model of provider.models) {
     if (registeredModelIds.has(model.id)) continue;

@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import type { User } from '@supabase/supabase-js';
 import { getOwnerAccess, isOwnerUser } from '@/lib/auth/owner';
 import { AUTO_FALLBACK_CHAIN, PROVIDER_REGISTRY } from '@/lib/ai/image-providers/router';
+import { SERVER_PROVIDER_REGISTRY, providerConfigurationSummary } from '@/lib/ai/providers/registry';
 import {
   STUDIO_MODELS,
 } from '@/src/config/studio-registry';
@@ -135,6 +136,7 @@ function buildAdminModelRows(models: readonly EffectiveRuntimeModel[], latestCos
       providerCostState: model.providerCostStatus ?? providerCostState(model.provider, providerCost),
       creditPrice: model.customerCreditPrice, priority: model.routingRole,
       activationSupported: model.activationSupported, persisted: model.persisted, updatedAt: model.updatedAt,
+      routes: [],
     };
   });
 }
@@ -210,26 +212,37 @@ export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewD
 export async function getAdminProviders(): Promise<AdminDataResult<AdminProviderRow[]>> {
   const client = await requireAdminDataAccess();
   try {
-    const [attempts, costs] = client ? await Promise.all([
+    const [attempts, costs, runtimeConfigs, routes] = client ? await Promise.all([
       allRows(client, 'provider_attempts', 'provider,state,error_message,started_at,finished_at'),
       allRows(client, 'provider_cost_records', 'provider,actual_cost_minor,currency,created_at'),
-    ]) : [[], []];
+      allRows(client, 'provider_runtime_configs', 'provider_id,enabled,priority,emergency_disabled,daily_spend_limit_minor,spend_currency,last_error_code,last_checked_at'),
+      allRows(client, 'model_provider_routes', 'model_key,model_id,provider_id'),
+    ]) : [[], [], [], []];
     const groupedCosts = groupCosts(costs);
-    const imageDefinitions = Object.values(PROVIDER_REGISTRY).map((provider) => ({
-      id: provider.id, name: provider.name, modalities: ['image'],
-      enabled: provider.id === 'runware' ? Boolean(process.env.RUNWARE_API_KEY) : true,
-      configured: provider.id === 'runware' ? Boolean(process.env.RUNWARE_API_KEY)
-        : provider.id === 'mock' || provider.id === 'puter' || !provider.requiresApiKey,
-      statusOverride: provider.id === 'mock' ? 'demo' as const : provider.clientSide ? 'client_managed' as const : null,
-      role: AUTO_FALLBACK_CHAIN[0] === provider.id ? 'primary' as const
-        : AUTO_FALLBACK_CHAIN.slice(1).includes(provider.id) ? 'backup' as const
-          : provider.id === 'puter' ? 'optional' as const : 'unassigned' as const,
-    }));
-    const definitions = [{
-      id: 'openrouter', name: 'OpenRouter', modalities: ['chat'],
-      enabled: Boolean(process.env.OPENROUTER_API_KEY), configured: Boolean(process.env.OPENROUTER_API_KEY),
-      statusOverride: null, role: 'primary' as const,
-    }, ...imageDefinitions];
+    const configByProvider = new Map(runtimeConfigs.map((row) => [String(row.provider_id), row]));
+    const definitions = SERVER_PROVIDER_REGISTRY.map((provider) => {
+      const config = configByProvider.get(provider.id);
+      const connection = providerConfigurationSummary(provider.id);
+      const enabled = Boolean(config?.enabled);
+      return {
+        id: provider.id,
+        name: provider.name,
+        modalities: [...provider.modalities],
+        enabled,
+        configured: connection.configured,
+        priority: Number(config?.priority ?? 100),
+        emergencyDisabled: Boolean(config?.emergency_disabled),
+        dailySpendLimitMinor: config?.daily_spend_limit_minor == null
+          ? null : numericString(config.daily_spend_limit_minor),
+        spendCurrency: config?.spend_currency == null ? null : String(config.spend_currency),
+        statusOverride: provider.id === 'puter' ? 'client_managed' as const : null,
+        role: enabled && !config?.emergency_disabled
+          ? (Number(config?.priority ?? 100) <= 20 ? 'primary' as const : 'backup' as const)
+          : 'unassigned' as const,
+        lastRuntimeError: config?.last_error_code == null ? null : String(config.last_error_code),
+        lastRuntimeCheck: config?.last_checked_at == null ? null : String(config.last_checked_at),
+      };
+    });
 
     const rows = definitions.map((provider) => {
       const providerAttempts = attempts.filter((attempt) =>
@@ -242,28 +255,28 @@ export async function getAdminProviders(): Promise<AdminDataResult<AdminProvider
         .sort((a, b) => String(b.started_at).localeCompare(String(a.started_at)))[0];
       const lastFailure = failures.slice()
         .sort((a, b) => String(b.finished_at ?? b.started_at).localeCompare(String(a.finished_at ?? a.started_at)))[0];
+      const runtimeFailure = provider.lastRuntimeError || lastAttempt?.state === 'failed';
       const status = provider.statusOverride ?? (!provider.configured ? 'unconfigured'
-        : lastAttempt?.state === 'failed' ? 'attention' : providerAttempts.length ? 'healthy' : 'idle');
-      const associatedModels = STUDIO_MODELS
-        .filter((model) => model.provider.toLowerCase() === provider.id.toLowerCase()
-          || model.provider.toLowerCase() === provider.name.toLowerCase())
-        .map((model) => model.displayName);
-      if (provider.id !== 'openrouter') {
-        const providerDefinition = PROVIDER_REGISTRY[provider.id as keyof typeof PROVIDER_REGISTRY];
-        for (const model of providerDefinition?.models ?? []) {
-          if (!associatedModels.includes(model.name)) associatedModels.push(model.name);
-        }
-      }
+        : provider.emergencyDisabled || runtimeFailure ? 'attention'
+          : providerAttempts.length || provider.lastRuntimeCheck ? 'healthy' : 'idle');
+      const associatedModels = [...new Set(routes
+        .filter((route) => String(route.provider_id) === provider.id)
+        .map((route) => MODEL_NAMES.get(String(route.model_id)) ?? String(route.model_id)))];
       return {
         id: provider.id, name: provider.name, modalities: provider.modalities,
         enabled: provider.enabled, status, role: provider.role,
         requestCount: providerAttempts.length, failures: failures.length,
         averageLatencyMs: completedDurations.length
           ? Math.round(completedDurations.reduce((sum, value) => sum + value, 0) / completedDurations.length) : null,
-        lastActivityAt: lastAttempt?.finished_at ?? lastAttempt?.started_at ?? null,
+        lastActivityAt: provider.lastRuntimeCheck ?? lastAttempt?.finished_at ?? lastAttempt?.started_at ?? null,
         associatedModels,
         accumulatedCosts: groupedCosts.get(provider.id.toLowerCase()) ?? [],
-        lastError: lastFailure?.error_message ?? null,
+        lastError: provider.lastRuntimeError ?? lastFailure?.error_message ?? null,
+        configured: provider.configured,
+        priority: provider.priority,
+        emergencyDisabled: provider.emergencyDisabled,
+        dailySpendLimitMinor: provider.dailySpendLimitMinor,
+        spendCurrency: provider.spendCurrency,
       } satisfies AdminProviderRow;
     });
     return client ? { available: true, data: rows } : unavailable(rows);
@@ -276,13 +289,28 @@ export async function getAdminProviders(): Promise<AdminDataResult<AdminProvider
 export async function getAdminModels(): Promise<AdminDataResult<AdminModelRow[]>> {
   const client = await requireAdminDataAccess();
   try {
-    const costs = client
-      ? await allRows(client, 'provider_cost_records', 'provider,provider_model,actual_cost_minor,currency,created_at')
-      : [];
+    const [costs, routes, providerConfigs] = client ? await Promise.all([
+      allRows(client, 'provider_cost_records', 'provider,provider_model,actual_cost_minor,currency,created_at'),
+      allRows(client, 'model_provider_routes', 'id,model_key,provider_id,provider_model_id,enabled,priority,fallback'),
+      allRows(client, 'provider_runtime_configs', 'provider_id,enabled'),
+    ]) : [[], [], []];
+    const providerEnabled = new Map(providerConfigs.map((row) => [String(row.provider_id), Boolean(row.enabled)]));
     const rows = buildAdminModelRows(
       client ? await getEffectiveRuntimeModels(client) : applyModelRuntimeOverrides([]),
       latestCostsByModel(costs),
-    );
+    ).map((model) => ({
+      ...model,
+      routes: routes.filter((route) => String(route.model_key) === model.key).map((route) => ({
+        id: String(route.id),
+        providerId: String(route.provider_id),
+        providerModelId: String(route.provider_model_id),
+        enabled: Boolean(route.enabled),
+        priority: Number(route.priority),
+        fallback: Boolean(route.fallback),
+        configured: providerConfigurationSummary(String(route.provider_id)).configured,
+        providerEnabled: providerEnabled.get(String(route.provider_id)) ?? false,
+      })),
+    }));
     return client ? { available: true, data: rows } : unavailable(rows);
   } catch (error) {
     console.error('[admin] model query failed', { message: error instanceof Error ? error.message : 'Unknown error' });

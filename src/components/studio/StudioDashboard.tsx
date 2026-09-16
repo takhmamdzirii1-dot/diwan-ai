@@ -299,6 +299,7 @@ export default function StudioDashboard({
         {
           body: {
             model: selectedModelId,
+            operationId: crypto.randomUUID(),
           },
         }
       );
