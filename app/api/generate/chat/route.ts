@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { streamText } from 'ai';
 
@@ -8,14 +8,19 @@ import { createChatLanguageModel, classifyProviderFailure } from '@/lib/ai/provi
 import { resolveProviderRoutes } from '@/lib/ai/providers/routes';
 import {
   beginGenerationExecution,
+  finalizeGeneration,
   hashGenerationPayload,
   markGenerationStreaming,
   recordProviderResult,
-  releaseGeneration,
   reserveGenerationCredits,
   resolveOperationKey,
-  settleGeneration,
 } from '@/lib/credits/generation-finance';
+import {
+  failureStateForInterruptedStream,
+  resolveTerminalCustomerCharge,
+  type GenerationFailureOwner,
+  type GenerationTerminalState,
+} from '@/lib/credits/generation-policy';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -175,13 +180,18 @@ export async function POST(request: Request) {
         ? reservationError.message
         : 'CREDIT_RESERVATION_FAILED';
       try {
-        await releaseGeneration({
+        await finalizeGeneration({
           executionId: execution.executionId,
           userId: user.id,
           reservationId: null,
           operationKey,
           payloadHash,
-          reason: code,
+          terminalStatus: 'failed',
+          customerCharge: 0,
+          errorCode: code,
+          failureOwner: /INSUFFICIENT_CREDITS|INVALID_/.test(code) ? 'customer' : 'vantra',
+          failureCategory: 'pre_execution',
+          attemptCount: 0,
         });
       } catch (recordError) {
         console.error('[chat-generation] reservation failure record failed', {
@@ -193,44 +203,146 @@ export async function POST(request: Request) {
         : /IDEMPOTENCY_CONFLICT|INVALID_/.test(code) ? 400 : 503;
       return NextResponse.json({ error: code }, { status });
     }
+
+    let outputStarted = false;
+    let providerStarted = false;
+    let finalizationPromise: Promise<void> | null = null;
+    const finalizeOnce = (details: {
+      terminalStatus: GenerationTerminalState;
+      finishReason?: string | null;
+      errorCode?: string | null;
+      failureOwner?: GenerationFailureOwner;
+      failureCategory?: string | null;
+      usage?: Record<string, unknown>;
+      authoritativeConsumedCredits?: number | null;
+    }) => {
+      if (finalizationPromise) return finalizationPromise;
+      const customerCharge = resolveTerminalCustomerCharge({
+        state: details.terminalStatus,
+        configuredCharge: cost,
+        authoritativeConsumedCredits: details.authoritativeConsumedCredits,
+      });
+      finalizationPromise = (async () => {
+        await finalizeGeneration({
+          executionId: execution.executionId,
+          userId: user.id,
+          reservationId: reservation?.reservationId ?? null,
+          operationKey,
+          payloadHash,
+          terminalStatus: details.terminalStatus,
+          customerCharge,
+          usageAuthoritative: details.authoritativeConsumedCredits != null,
+          finishReason: details.finishReason,
+          errorCode: details.errorCode,
+          failureOwner: details.failureOwner,
+          failureCategory: details.failureCategory,
+          actualUsage: {
+            provider: route.providerId,
+            providerModel: route.providerModelId,
+            ...(details.usage ?? {}),
+          },
+          attemptCount: providerStarted ? 1 : 0,
+        });
+        if (details.terminalStatus === 'completed') {
+          await recordProviderResult(route.providerId, true);
+        } else if (details.failureOwner === 'provider') {
+          await recordProviderResult(
+            route.providerId,
+            false,
+            details.errorCode ?? details.terminalStatus
+          );
+        }
+      })();
+      return finalizationPromise;
+    };
+
+    // Next keeps this callback alive after a streamed response closes or is
+    // aborted. It is the refund-first safety net when the SDK never emits a
+    // terminal onFinish callback.
+    after(async () => {
+      try {
+        if (finalizationPromise) {
+          await finalizationPromise;
+          return;
+        }
+        const cancelled = request.signal.aborted;
+        await finalizeOnce({
+          terminalStatus: cancelled
+            ? 'user_cancelled'
+            : failureStateForInterruptedStream(outputStarted),
+          errorCode: cancelled ? 'USER_CANCELLED' : 'STREAM_TERMINATED_WITHOUT_FINISH',
+          failureOwner: cancelled ? 'customer' : 'provider',
+          failureCategory: cancelled ? 'user_cancel' : 'stream_interrupted',
+        });
+      } catch (finalizationError) {
+        console.error('[chat-generation] deferred finalization failed', {
+          executionId: execution.executionId,
+          code: finalizationError instanceof Error
+            ? finalizationError.message
+            : 'FINALIZATION_FAILED',
+        });
+      }
+    });
+
     try {
+      if (request.signal.aborted) {
+        await finalizeOnce({
+          terminalStatus: 'user_cancelled',
+          errorCode: 'USER_CANCELLED_BEFORE_EXECUTION',
+          failureOwner: 'customer',
+          failureCategory: 'pre_execution_cancel',
+        });
+        return NextResponse.json({ error: 'REQUEST_CANCELLED' }, { status: 499 });
+      }
+      await markGenerationStreaming(
+        execution.executionId,
+        user.id,
+        reservation?.reservationId ?? null
+      );
+      providerStarted = true;
       const result = await streamText({
         model: languageModel,
         messages: messagesPayload,
         temperature,
         maxTokens,
         topP,
+        maxRetries: 0,
+        abortSignal: request.signal,
+        onChunk: ({ chunk }) => {
+          if (chunk.type === 'text-delta' && chunk.textDelta.length > 0) outputStarted = true;
+        },
         onFinish: async ({ finishReason, usage }) => {
           try {
-            if (finishReason === 'error') {
-              await releaseGeneration({
-                executionId: execution.executionId,
-                userId: user.id,
-                reservationId: reservation?.reservationId ?? null,
-                operationKey,
-                payloadHash,
-                reason: 'PROVIDER_STREAM_FAILED',
+            if (request.signal.aborted) {
+              await finalizeOnce({
+                terminalStatus: 'user_cancelled',
+                finishReason,
+                errorCode: 'USER_CANCELLED',
+                failureOwner: 'customer',
+                failureCategory: 'user_cancel',
+                usage: {
+                  promptTokens: usage.promptTokens,
+                  completionTokens: usage.completionTokens,
+                  totalTokens: usage.totalTokens,
+                },
               });
-              await recordProviderResult(route.providerId, false, 'PROVIDER_STREAM_FAILED');
               return;
             }
-            await settleGeneration({
-              executionId: execution.executionId,
-              userId: user.id,
-              reservationId: reservation?.reservationId ?? null,
-              operationKey,
-              payloadHash,
-              amount: cost,
+            const failed = finishReason === 'error' || !outputStarted;
+            await finalizeOnce({
+              terminalStatus: failed
+                ? failureStateForInterruptedStream(outputStarted)
+                : 'completed',
               finishReason,
               usage: {
-                provider: route.providerId,
-                providerModel: route.providerModelId,
                 promptTokens: usage.promptTokens,
                 completionTokens: usage.completionTokens,
                 totalTokens: usage.totalTokens,
               },
+              errorCode: failed ? 'PROVIDER_STREAM_FAILED' : null,
+              failureOwner: failed ? 'provider' : null,
+              failureCategory: failed ? 'stream_failure' : null,
             });
-            await recordProviderResult(route.providerId, true);
           } catch (finalizationError) {
             console.error('[chat-generation] finalization failed', {
               executionId: execution.executionId,
@@ -241,11 +353,6 @@ export async function POST(request: Request) {
           }
         },
       });
-      await markGenerationStreaming(
-        execution.executionId,
-        user.id,
-        reservation?.reservationId ?? null
-      );
       return result.toDataStreamResponse({
         headers: {
           'x-vantra-operation-id': operationKey,
@@ -255,15 +362,16 @@ export async function POST(request: Request) {
     } catch (providerError) {
       const failure = classifyProviderFailure(providerError);
       try {
-        await releaseGeneration({
-          executionId: execution.executionId,
-          userId: user.id,
-          reservationId: reservation?.reservationId ?? null,
-          operationKey,
-          payloadHash,
-          reason: failure.code,
+        await finalizeOnce({
+          terminalStatus: request.signal.aborted
+            ? 'user_cancelled'
+            : failureStateForInterruptedStream(outputStarted),
+          errorCode: request.signal.aborted ? 'USER_CANCELLED' : failure.code,
+          failureOwner: request.signal.aborted
+            ? 'customer'
+            : providerStarted ? 'provider' : 'vantra',
+          failureCategory: providerStarted ? 'provider_execution' : 'pre_execution',
         });
-        await recordProviderResult(route.providerId, false, failure.code);
       } catch (rollbackError) {
         console.error('[chat-generation] rollback failed', {
           executionId: execution.executionId,

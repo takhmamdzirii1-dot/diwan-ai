@@ -5,6 +5,10 @@ import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
 import type { EffectiveRuntimeModel } from '@/lib/models/runtime-config';
 import type { ResolvedProviderRoute } from '@/lib/ai/providers/routes';
 import { routeSnapshot } from '@/lib/ai/providers/routes';
+import type {
+  GenerationFailureOwner,
+  GenerationTerminalState,
+} from './generation-policy';
 
 type RpcJson = Record<string, unknown>;
 
@@ -172,6 +176,53 @@ export async function releaseGeneration(args: {
   if (error && !/INVALID_EXECUTION_TRANSITION/i.test(error.message)) {
     throw new Error(error.message || 'EXECUTION_FAILURE_RECORD_FAILED');
   }
+}
+
+/**
+ * Atomic terminal path for all new generation finalization. The database RPC
+ * reuses reserve_credits, settle_credits and release_credits in one transaction.
+ * Legacy helpers above remain temporarily available for migration compatibility.
+ */
+export async function finalizeGeneration(args: {
+  executionId: string;
+  userId: string;
+  reservationId: string | null;
+  operationKey: string;
+  payloadHash: string;
+  terminalStatus: GenerationTerminalState;
+  customerCharge: number;
+  usageAuthoritative?: boolean;
+  finishReason?: string | null;
+  errorCode?: string | null;
+  failureOwner?: GenerationFailureOwner;
+  failureCategory?: string | null;
+  actualUsage?: Record<string, unknown>;
+  providerCostMinor?: number | null;
+  providerCostCurrency?: string | null;
+  providerOperationId?: string | null;
+  attemptCount?: number;
+}) {
+  const { data, error } = await adminClient().rpc('finalize_ai_execution_terminal', {
+    p_execution_id: args.executionId,
+    p_user_id: args.userId,
+    p_reservation_id: args.reservationId,
+    p_operation_key: args.operationKey,
+    p_payload_hash: args.payloadHash,
+    p_terminal_status: args.terminalStatus,
+    p_customer_charge: args.customerCharge,
+    p_usage_authoritative: args.usageAuthoritative ?? false,
+    p_finish_reason: args.finishReason ?? null,
+    p_error_code: args.errorCode ?? null,
+    p_failure_owner: args.failureOwner ?? null,
+    p_failure_category: args.failureCategory ?? null,
+    p_actual_usage: args.actualUsage ?? {},
+    p_provider_cost_minor: args.providerCostMinor ?? null,
+    p_provider_cost_currency: args.providerCostCurrency ?? null,
+    p_provider_operation_id: args.providerOperationId ?? null,
+    p_attempt_count: args.attemptCount ?? 1,
+  });
+  if (error) throw new Error(error.message || 'EXECUTION_FINALIZATION_FAILED');
+  return data as RpcJson;
 }
 
 export async function recordProviderResult(
