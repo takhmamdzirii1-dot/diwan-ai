@@ -32,10 +32,10 @@ export default function AdminShell({ children, realtimeOwner }: { children: Reac
   const t = useTranslations('Admin');
 
   return (
-    <div className="admin-root studio-overlay-root min-h-screen bg-[var(--studio-bg)] text-[var(--studio-text-primary)] lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
+    <div className="admin-root studio-overlay-root min-h-screen bg-[var(--studio-bg)] text-[var(--studio-text-primary)] lg:grid lg:grid-cols-[224px_minmax(0,1fr)]">
       <AdminRealtime canSubscribe={realtimeOwner} />
       <aside className="border-b border-[var(--studio-border)] bg-[var(--studio-surface)] lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-e">
-        <div className="flex h-16 items-center justify-between gap-3 border-b border-[var(--studio-border-subtle)] px-4 lg:px-5">
+        <div className="flex h-14 items-center justify-between gap-3 border-b border-[var(--studio-border-subtle)] px-4">
           <div className="flex min-w-0 items-center gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--studio-border)] bg-white/[0.04]">
               <VantraLogo className="h-5 w-5" />
@@ -47,7 +47,7 @@ export default function AdminShell({ children, realtimeOwner }: { children: Reac
           </div>
         </div>
 
-        <nav aria-label={t('brand')} className="flex gap-1 overflow-x-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex-col lg:gap-4 lg:p-3">
+        <nav aria-label={t('brand')} className="flex gap-1 overflow-x-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex-col lg:gap-2 lg:px-2.5 lg:py-3">
           {NAV_GROUPS.map((group) => <div key={group.key ?? 'overview'} className="flex shrink-0 gap-1 lg:flex-col">
             {group.key && <p className="hidden px-3 pb-1 text-start text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--studio-text-muted)] lg:block">{t(`navGroups.${group.key}`)}</p>}
             {group.items.map(({ href, key, icon: Icon }) => {
@@ -62,7 +62,7 @@ export default function AdminShell({ children, realtimeOwner }: { children: Reac
                 prefetch={false}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'flex h-10 shrink-0 items-center gap-2.5 rounded-xl px-3 text-[13px] font-medium transition-[color,background-color,border-color] duration-150 motion-reduce:transition-none',
+                  'flex h-9 shrink-0 items-center gap-2.5 rounded-lg px-3 text-[12.5px] font-medium transition-[color,background-color,border-color] duration-150 motion-reduce:transition-none',
                   active
                     ? 'border border-white/20 bg-white/[0.11] font-semibold text-white shadow-[inset_3px_0_0_rgba(255,255,255,0.9)] rtl:shadow-[inset_-3px_0_0_rgba(255,255,255,0.9)]'
                     : 'border border-transparent text-[var(--studio-text-secondary)] hover:border-white/10 hover:bg-white/[0.06] hover:text-white'
@@ -76,7 +76,7 @@ export default function AdminShell({ children, realtimeOwner }: { children: Reac
           </div>)}
         </nav>
 
-        <div className="hidden p-3 lg:absolute lg:inset-x-0 lg:bottom-0 lg:block">
+        <div className="hidden p-2.5 lg:absolute lg:inset-x-0 lg:bottom-0 lg:block">
           <Link
             href="/studio/chat"
             prefetch={false}
@@ -89,7 +89,7 @@ export default function AdminShell({ children, realtimeOwner }: { children: Reac
       </aside>
 
       <main className="min-w-0">
-        <div className="mx-auto w-full max-w-[1320px] px-4 py-6 sm:px-5 lg:px-6 lg:py-7">{children}</div>
+        <div className="mx-auto w-full max-w-[1360px] px-4 py-5 sm:px-5 lg:px-5 lg:py-5 xl:px-6">{children}</div>
       </main>
     </div>
   );

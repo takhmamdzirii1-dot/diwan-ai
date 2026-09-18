@@ -47,7 +47,7 @@ export default function AdminPaymentActions({ paymentId, creditsAmount, allowRev
     } finally { setPendingAction(null); }
   };
 
-  return <div className="space-y-2 rounded-xl border border-[var(--studio-border-strong)] bg-[var(--studio-surface-elevated)] p-3 shadow-[0_18px_45px_-24px_rgba(0,0,0,0.95)]">
+  return <div className="space-y-1.5 rounded-lg border border-[var(--studio-border-strong)] bg-[var(--studio-surface-elevated)] p-2.5 shadow-[0_18px_45px_-24px_rgba(0,0,0,0.95)]">
     <label className="block text-start text-[12px] font-semibold text-white">
       {t('reviewNote')}
       <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={1000}

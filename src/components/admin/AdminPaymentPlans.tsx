@@ -226,18 +226,18 @@ export default function AdminPaymentPlans({ plans }: { plans: AdminPaymentPlan[]
     ? <p role={feedback.tone === 'error' ? 'alert' : 'status'} className={`mt-3 flex items-center gap-1.5 text-[11px] ${feedback.tone === 'error' ? 'text-red-200' : 'text-white/70'}`}>
       {feedback.tone === 'success' && <Check className="h-3.5 w-3.5" aria-hidden="true" />}{feedback.message}</p> : null;
 
-  return <section className="mb-8 rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-4 shadow-[0_18px_50px_-40px_rgba(0,0,0,0.95)]">
-    <div className="mb-3 flex flex-wrap items-start justify-between gap-3 text-start">
-      <div><h2 className="text-[20px] font-semibold tracking-[-0.02em] text-white">{t('catalogTitle')}</h2><p className="mt-1 max-w-3xl text-[13px] leading-relaxed text-[var(--studio-text-secondary)]">{t('catalogDescription')}</p></div>
+  return <section className="mb-4 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-3 shadow-[0_18px_50px_-40px_rgba(0,0,0,0.95)]">
+    <div className="mb-2.5 flex flex-wrap items-start justify-between gap-3 text-start">
+      <div className="min-w-0"><h2 className="text-[17px] font-semibold tracking-[-0.02em] text-white">{t('catalogTitle')}</h2><p className="mt-0.5 max-w-3xl text-[12px] leading-snug text-[var(--studio-text-secondary)]">{t('catalogDescription')}</p></div>
       <span className="rounded-full border border-[var(--studio-border)] bg-white/[0.045] px-2.5 py-1 text-[11px] font-semibold text-[var(--studio-text-secondary)]">{t('planCount', { count: catalogPlans.length })}</span>
     </div>
 
     {feedbackFor('catalog')}
-    <div className="space-y-2.5">{catalogPlans.map((plan, index) => {
+    <div className="space-y-2">{catalogPlans.map((plan, index) => {
       const draft = drafts[plan.id] ?? toDraft(plan);
       const dirty = !planMatchesDraft(plan, draft);
       return <details key={plan.id} name="admin-plan-editor" className="group rounded-xl border border-[var(--studio-border)] bg-white/[0.02] open:bg-white/[0.035] open:shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
-        <summary className="flex min-h-16 cursor-pointer list-none items-center gap-3 px-3 py-3 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/50 [&::-webkit-details-marker]:hidden sm:px-4">
+        <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-3 py-2 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/50 [&::-webkit-details-marker]:hidden">
           <ChevronDown className="h-4 w-4 shrink-0 text-[var(--studio-text-muted)] transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
           <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="truncate text-[14px] font-semibold text-white">{plan.name}</span>
             <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${plan.active ? 'border-emerald-300/25 bg-emerald-300/[0.08] text-emerald-100' : 'border-white/15 bg-white/[0.04] text-[var(--studio-text-muted)]'}`}>{t(plan.active ? 'availableForPurchase' : 'inactive')}</span>
