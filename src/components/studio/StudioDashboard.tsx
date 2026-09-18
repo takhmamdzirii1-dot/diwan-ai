@@ -27,6 +27,8 @@ interface ChatSession {
   createdAt: number;
 }
 
+const BOTTOM_THRESHOLD = 100;
+
 const MAGIC_SKILLS = [
   {
     icon: Code2,
@@ -207,11 +209,17 @@ export default function StudioDashboard({
   const composerRef = useRef<HTMLDivElement>(null);
   const followLatestRef = useRef(true);
   const lastScrollTopRef = useRef(0);
-  const touchYRef = useRef<number | null>(null);
   const scrollFrameRef = useRef<number | null>(null);
   const pendingSendRef = useRef(false);
   const [composerPadding, setComposerPadding] = useState(176);
   const [showScrollButton, setShowScrollButton] = useState(false);
+
+  const updateScrollButton = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
+    setShowScrollButton(!followLatestRef.current && distance > BOTTOM_THRESHOLD);
+  }, []);
 
   const scrollToLatest = useCallback(() => {
     const container = scrollContainerRef.current;
@@ -232,26 +240,26 @@ export default function StudioDashboard({
 
   const stopFollowing = useCallback(() => {
     followLatestRef.current = false;
-    setShowScrollButton(true);
+    updateScrollButton();
     if (scrollFrameRef.current !== null) {
       cancelAnimationFrame(scrollFrameRef.current);
       scrollFrameRef.current = null;
     }
-  }, []);
+  }, [updateScrollButton]);
 
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
     const movedUp = container.scrollTop < lastScrollTopRef.current - 1;
-    const movedDown = container.scrollTop > lastScrollTopRef.current + 1;
     const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
-    if (movedUp) stopFollowing();
-    else if (!followLatestRef.current && movedDown && distance <= 24) {
+    if (distance <= BOTTOM_THRESHOLD) {
       followLatestRef.current = true;
-      setShowScrollButton(false);
+    } else if (movedUp) {
+      stopFollowing();
     }
     lastScrollTopRef.current = container.scrollTop;
-  }, [stopFollowing]);
+    updateScrollButton();
+  }, [stopFollowing, updateScrollButton]);
 
   useLayoutEffect(() => {
     const transcript = transcriptRef.current;
@@ -262,6 +270,7 @@ export default function StudioDashboard({
       if (entries.some((entry) => entry.target === composer)) {
         setComposerPadding(Math.ceil(composer.getBoundingClientRect().height) + 24);
       }
+      updateScrollButton();
       scheduleFollow();
     });
     observer.observe(transcript);
@@ -271,7 +280,7 @@ export default function StudioDashboard({
       if (scrollFrameRef.current !== null) cancelAnimationFrame(scrollFrameRef.current);
       scrollFrameRef.current = null;
     };
-  }, [activeWorkspace, scheduleFollow]);
+  }, [activeWorkspace, scheduleFollow, updateScrollButton]);
 
   useLayoutEffect(() => {
     if (pendingSendRef.current && messages[messages.length - 1]?.role === 'user') {
@@ -291,19 +300,6 @@ export default function StudioDashboard({
     setShowScrollButton(false);
     scheduleFollow();
   }, [activeSessionId, scheduleFollow]);
-
-  const handleTouchMove = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
-    const y = event.touches[0]?.clientY;
-    if (y === undefined) return;
-    if (touchYRef.current !== null && y > touchYRef.current + 2) stopFollowing();
-    touchYRef.current = y;
-  }, [stopFollowing]);
-
-  const handleScrollKey = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (['ArrowUp', 'PageUp', 'Home'].includes(event.key) || (event.key === ' ' && event.shiftKey)) {
-      stopFollowing();
-    }
-  }, [stopFollowing]);
 
   const handleSend = useCallback(
     async (data: { message: string; isThinkingEnabled: boolean; files?: Array<{ file: File; preview?: string | null; type: string }> }) => {
@@ -431,11 +427,6 @@ export default function StudioDashboard({
                   <div
                     ref={scrollContainerRef}
                     onScroll={handleScroll}
-                    onWheel={(event) => { if (event.deltaY < 0) stopFollowing(); }}
-                    onTouchStart={(event) => { touchYRef.current = event.touches[0]?.clientY ?? null; }}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={() => { touchYRef.current = null; }}
-                    onKeyDown={handleScrollKey}
                     tabIndex={0}
                     className="chat-scrollbar flex-1 h-full overflow-y-auto focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-white/30"
                     style={{ overflowAnchor: 'none', paddingBottom: composerPadding }}
