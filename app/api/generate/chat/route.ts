@@ -125,6 +125,25 @@ export async function POST(request: Request) {
         : code === 'MODEL_RUNTIME_CONFIG_UNAVAILABLE' ? 503 : 409;
       return NextResponse.json({ error: code }, { status });
     }
+    const chatCapabilities = runtimeModel.capabilities;
+    if (!('streaming' in chatCapabilities) || !chatCapabilities.streaming) {
+      return NextResponse.json({ error: 'MODEL_CAPABILITY_UNSUPPORTED' }, { status: 409 });
+    }
+    const unsupportedAttachment = messagesPayload.some((message) => {
+      const attachments = message?.experimental_attachments;
+      if (attachments == null) return false;
+      if (!Array.isArray(attachments)) return true;
+      return attachments.some((attachment) => {
+        const contentType = attachment?.contentType;
+        if (typeof contentType !== 'string') return true;
+        return contentType.startsWith('image/')
+          ? !chatCapabilities.visionInput
+          : !chatCapabilities.fileInput;
+      });
+    });
+    if (unsupportedAttachment) {
+      return NextResponse.json({ error: 'MODEL_CAPABILITY_UNSUPPORTED' }, { status: 409 });
+    }
     const cost = runtimeModel.customerCreditPrice;
     if (cost == null) {
       return NextResponse.json({ error: 'MODEL_CUSTOMER_PRICE_UNCONFIGURED' }, { status: 409 });

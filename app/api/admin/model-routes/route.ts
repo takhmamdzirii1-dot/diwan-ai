@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
 import { getOwnerAccess } from '@/lib/auth/owner';
 import { getServerProvider, providerConfigurationSummary } from '@/lib/ai/providers/registry';
-import { findRegistryModel } from '@/lib/models/runtime-config';
+import { resolveRuntimeModelReference } from '@/lib/models/runtime-config';
 
 const schema = z.object({
   routeId: z.string().uuid(),
@@ -32,14 +32,15 @@ export async function POST(request: Request) {
   if (!access.isOwner) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
   const parsed = createSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: 'INVALID_PROVIDER_ROUTE_CONFIG' }, { status: 400 });
-  const model = findRegistryModel(parsed.data.modelKey);
-  const provider = getServerProvider(parsed.data.providerId);
-  if (!model) return NextResponse.json({ error: 'MODEL_NOT_REGISTERED' }, { status: 404 });
-  if (!provider || !provider.modalities.some((modality) => modality === model.modality)) {
-    return NextResponse.json({ error: 'PROVIDER_ROUTE_INCOMPATIBLE' }, { status: 409 });
-  }
   const client = getSupabaseAdminClient();
   if (!client) return NextResponse.json({ error: 'ADMIN_DATA_UNAVAILABLE' }, { status: 503 });
+  const model = await resolveRuntimeModelReference(client, parsed.data.modelKey);
+  const provider = getServerProvider(parsed.data.providerId);
+  if (!model) return NextResponse.json({ error: 'MODEL_NOT_REGISTERED' }, { status: 404 });
+  if (!provider) return NextResponse.json({ error: 'PROVIDER_ADAPTER_REQUIRED' }, { status: 409 });
+  if (!provider.modalities.some((modality) => modality === model.modality)) {
+    return NextResponse.json({ error: 'PROVIDER_ROUTE_INCOMPATIBLE' }, { status: 409 });
+  }
   const { data, error } = await client.from('model_provider_routes').insert({
     model_key: model.key,
     model_id: model.modelId,
@@ -89,7 +90,7 @@ export async function PATCH(request: Request) {
     .select('id,model_key,model_id,modality,provider_id,provider_model_id')
     .eq('id', parsed.data.routeId).maybeSingle();
   if (routeError || !route) return NextResponse.json({ error: 'PROVIDER_ROUTE_NOT_FOUND' }, { status: 404 });
-  const model = findRegistryModel(route.model_key);
+  const model = await resolveRuntimeModelReference(client, route.model_key);
   if (!model || model.modelId !== route.model_id || model.modality !== route.modality) {
     return NextResponse.json({ error: 'PROVIDER_ROUTE_NOT_REGISTERED' }, { status: 409 });
   }

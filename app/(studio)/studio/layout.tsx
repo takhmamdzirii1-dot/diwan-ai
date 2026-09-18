@@ -9,6 +9,7 @@ import studioArabic from '../../../messages/studio-ar.json';
 import DocumentLocale from '../../../src/components/DocumentLocale';
 import StudioWorkspace from '../../../src/components/studio/StudioWorkspace';
 import { getStudioRuntimeModels } from '../../../lib/models/runtime-config';
+import { emptyModelCapabilities } from '../../../lib/models/capabilities';
 import { STUDIO_MODELS } from '../../../src/config/studio-registry';
 
 export const metadata: Metadata = {
@@ -30,7 +31,12 @@ export default async function StudioRootLayout({ children }: { children: React.R
   const locale = preference === 'fr' || preference === 'ar' ? preference : 'en';
   const translated = locale === 'fr' ? studioFrench : locale === 'ar' ? studioArabic : {};
   const messages = mergeMessages(studioMessages, translated);
-  const models = await getStudioRuntimeModels().catch(() => [...STUDIO_MODELS]);
+  const models = await getStudioRuntimeModels().catch(() => STUDIO_MODELS.map((model) => ({
+    ...model,
+    enabled: false,
+    availability: 'unavailable' as const,
+    capabilities: emptyModelCapabilities(model.modality),
+  })));
   return (
     <div lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'} className="studio-overlay-root min-h-screen bg-[#070707] text-[#F5F6F8]">
       <DocumentLocale locale={locale} />

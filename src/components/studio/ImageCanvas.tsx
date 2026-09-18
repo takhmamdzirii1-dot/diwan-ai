@@ -9,18 +9,15 @@ import { isModelSelectable, type StudioRuntimeModelDefinition } from '@/src/conf
 import { PrimaryButton, StateBlock } from './AppShell';
 import CreationWorkspace from './CreationWorkspace';
 import { ModelSelector, type ChatModelOption } from '@/components/ui/claude-style-chat-input';
-
-const ASPECT_RATIOS = ['1:1', '4:3', '16:9', '9:16'] as const;
-const OUTPUT_COUNTS = [1, 2, 3, 4] as const;
+import type { ImageModelCapabilities, ModelAspectRatio } from '@/lib/models/capabilities';
 
 export type ImageRequestDraft = {
   prompt: string;
-  referenceFile: File | null;
   modelId: string;
-  aspectRatio: (typeof ASPECT_RATIOS)[number];
-  outputCount: (typeof OUTPUT_COUNTS)[number];
-  negativePrompt: string;
-  seed: string;
+  referenceFile?: File;
+  aspectRatio?: ModelAspectRatio;
+  outputCount?: number;
+  negativePrompt?: string;
 };
 
 function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) {
@@ -34,11 +31,10 @@ export default function ImageCanvas({ models, onGenerate }: { models: StudioRunt
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [prompt, setPrompt] = useState('');
   const [modelId, setModelId] = useState(models.find(isModelSelectable)?.id ?? models[0]?.id ?? '');
-  const [aspectRatio, setAspectRatio] = useState<(typeof ASPECT_RATIOS)[number]>('1:1');
-  const [outputCount, setOutputCount] = useState<(typeof OUTPUT_COUNTS)[number]>(1);
+  const [aspectRatio, setAspectRatio] = useState<ModelAspectRatio | ''>('');
+  const [outputCount, setOutputCount] = useState(1);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [negativePrompt, setNegativePrompt] = useState('');
-  const [seed, setSeed] = useState('');
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [referenceUrl, setReferenceUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +48,9 @@ export default function ImageCanvas({ models, onGenerate }: { models: StudioRunt
     iconUrl: model.iconUrl,
   }));
   const selectedModel = models.find((model) => model.id === modelId);
-  const generationAvailable = Boolean(onGenerate && selectedModel && isModelSelectable(selectedModel));
+  const capabilities = selectedModel?.capabilities as ImageModelCapabilities | undefined;
+  const hasAdvanced = Boolean(capabilities && (capabilities.maxOutputs > 1 || capabilities.negativePrompt));
+  const generationAvailable = Boolean(onGenerate && selectedModel && isModelSelectable(selectedModel) && capabilities?.textToImage);
 
   useEffect(() => () => {
     if (referenceUrl) URL.revokeObjectURL(referenceUrl);
@@ -76,6 +74,14 @@ export default function ImageCanvas({ models, onGenerate }: { models: StudioRunt
     setReferenceUrl(null);
   };
 
+  useEffect(() => {
+    if (!capabilities) return;
+    setAspectRatio((current) => capabilities.aspectRatios.includes(current as ModelAspectRatio) ? current : (capabilities.aspectRatios[0] ?? ''));
+    setOutputCount((current) => Math.min(Math.max(current, 1), capabilities.maxOutputs));
+    if (!capabilities.referenceImage) clearReference();
+    if (!capabilities.negativePrompt) setNegativePrompt('');
+  }, [modelId]);
+
   const submitDraft = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!prompt.trim()) {
@@ -87,10 +93,12 @@ export default function ImageCanvas({ models, onGenerate }: { models: StudioRunt
       setError(t('errors.model'));
       return;
     }
-    const draft: ImageRequestDraft = {
-      prompt: prompt.trim(), referenceFile, modelId, aspectRatio, outputCount,
-      negativePrompt: negativePrompt.trim(), seed: seed.trim(),
-    };
+    if (!capabilities?.textToImage) { setError(t('errors.model')); return; }
+    const draft: ImageRequestDraft = { prompt: prompt.trim(), modelId };
+    if (capabilities.referenceImage && referenceFile) draft.referenceFile = referenceFile;
+    if (aspectRatio && capabilities.aspectRatios.includes(aspectRatio)) draft.aspectRatio = aspectRatio;
+    if (capabilities.maxOutputs > 1) draft.outputCount = outputCount;
+    if (capabilities.negativePrompt && negativePrompt.trim()) draft.negativePrompt = negativePrompt.trim();
     setError(null);
     if (!onGenerate) return;
     setIsSubmitting(true);
@@ -119,33 +127,32 @@ export default function ImageCanvas({ models, onGenerate }: { models: StudioRunt
               <textarea id="image-prompt" value={prompt} onChange={(event) => { setPrompt(event.target.value); setError(null); }} rows={5} placeholder={t('promptPlaceholder')} className="studio-creation-prompt w-full resize-y rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3.5 py-3 text-[14px] leading-relaxed text-white outline-none transition-[border-color,background-color] duration-150 placeholder:text-white/40 hover:bg-[var(--studio-hover)] focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none" />
             </div>
 
-            <div className="space-y-2">
+            {capabilities?.referenceImage && <div className="space-y-2">
               <FieldLabel>{t('reference')}</FieldLabel>
               <input ref={fileInputRef} type="file" accept="image/*" aria-label={t('chooseReference')} className="sr-only" onChange={(event) => { chooseReference(event.target.files?.[0]); event.target.value = ''; }} />
               {referenceUrl ? (
                 <div className="flex items-center gap-3 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] p-2.5">
                   <img src={referenceUrl} alt={t('selectedReference')} className="h-14 w-14 rounded-lg object-cover" />
-                  <div className="min-w-0 flex-1"><p className="truncate text-[12.5px] font-medium text-white/85">{referenceFile?.name}</p><p className="mt-0.5 text-[11px] text-white/55">{t('localPreview')}</p></div>
+                  <div className="min-w-0 flex-1"><button type="button" onClick={() => fileInputRef.current?.click()} className="text-[12.5px] font-medium text-white/85 hover:text-white">{t('replaceReference')}</button></div>
                   <button type="button" onClick={clearReference} aria-label={t('removeReference')} className="flex h-9 w-9 items-center justify-center rounded-lg text-white/45 transition-[color,background-color] duration-150 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><X className="h-4 w-4" /></button>
                 </div>
               ) : (
                 <button type="button" onClick={() => fileInputRef.current?.click()} className="studio-creation-reference flex min-h-20 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/[0.02] text-[12.5px] font-medium text-white/55 transition-[color,background-color,border-color] duration-150 hover:border-white/25 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><Paperclip className="h-4 w-4" />{t('addReference')}</button>
               )}
-            </div>
+            </div>}
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
                 <FieldLabel>{t('model')}</FieldLabel>
                 <ModelSelector models={modelOptions} selectedModel={modelId} onSelect={setModelId} dropdownPosition="bottom" menuLabel={modelsT('imageMenuLabel')} emptyLabel={modelsT('noModels')} />
               </div>
-              <div className="space-y-2"><FieldLabel htmlFor="image-ratio">{t('aspectRatio')}</FieldLabel><select id="image-ratio" value={aspectRatio} onChange={(event) => setAspectRatio(event.target.value as typeof aspectRatio)} className="h-11 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[13px] text-white outline-none focus-visible:ring-2 focus-visible:ring-white/40">{ASPECT_RATIOS.map((ratio) => <option key={ratio}>{ratio}</option>)}</select></div>
-              <div className="space-y-2"><FieldLabel htmlFor="image-count">{t('outputs')}</FieldLabel><select id="image-count" value={outputCount} onChange={(event) => setOutputCount(Number(event.target.value) as typeof outputCount)} className="h-11 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[13px] text-white outline-none focus-visible:ring-2 focus-visible:ring-white/40">{OUTPUT_COUNTS.map((count) => <option key={count} value={count}>{count}</option>)}</select></div>
+              {capabilities && capabilities.aspectRatios.length > 0 && <div className="space-y-2 sm:col-span-2"><FieldLabel>{t('aspectRatio')}</FieldLabel><div className="flex flex-wrap gap-2">{capabilities.aspectRatios.map((ratio) => <button key={ratio} type="button" aria-pressed={aspectRatio === ratio} onClick={() => setAspectRatio(ratio)} className={cn('min-h-9 rounded-lg border px-3 text-[12px] font-semibold transition-colors duration-150 motion-reduce:transition-none', aspectRatio === ratio ? 'border-white bg-white text-black' : 'border-[var(--studio-border)] text-white/65 hover:text-white')}>{ratio}</button>)}</div></div>}
             </div>
 
-            <div className="rounded-xl border border-[var(--studio-border-subtle)] bg-white/[0.015]">
+            {hasAdvanced && <div className="rounded-xl border border-[var(--studio-border-subtle)] bg-white/[0.015]">
               <button type="button" onClick={() => setAdvancedOpen((open) => !open)} aria-expanded={advancedOpen} aria-controls="image-advanced" className="flex h-11 w-full items-center justify-between px-3.5 text-[12.5px] font-medium text-white/65 transition-[color,background-color] duration-150 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><span className="flex items-center gap-2"><SlidersHorizontal className="h-4 w-4" />{t('advanced')}</span><ChevronDown className={cn('h-4 w-4 transition-transform duration-150 motion-reduce:transition-none', advancedOpen && 'rotate-180')} /></button>
-              <AnimatePresence initial={false}>{advancedOpen && <motion.div id="image-advanced" initial={reduceMotion ? false : { height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.18 }} className="overflow-hidden"><div className="grid grid-cols-1 gap-3 border-t border-[var(--studio-border-subtle)] p-3 sm:grid-cols-2"><div className="space-y-1.5 sm:col-span-2"><FieldLabel htmlFor="negative-prompt">{t('negativePrompt')}</FieldLabel><input id="negative-prompt" value={negativePrompt} onChange={(event) => setNegativePrompt(event.target.value)} placeholder={t('negativePlaceholder')} className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white outline-none placeholder:text-white/40 focus-visible:ring-2 focus-visible:ring-white/40" /></div><div className="space-y-1.5"><FieldLabel htmlFor="image-seed">{t('seed')}</FieldLabel><input id="image-seed" inputMode="numeric" value={seed} onChange={(event) => setSeed(event.target.value.replace(/\D/g, ''))} placeholder={t('random')} className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white outline-none placeholder:text-white/40 focus-visible:ring-2 focus-visible:ring-white/40" /></div><p className="self-end pb-1 text-[11px] leading-relaxed text-white/50">{t('advancedNote')}</p></div></motion.div>}</AnimatePresence>
-            </div>
+              <AnimatePresence initial={false}>{advancedOpen && <motion.div id="image-advanced" initial={reduceMotion ? false : { height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.18 }} className="overflow-hidden"><div className="grid grid-cols-1 gap-3 border-t border-[var(--studio-border-subtle)] p-3 sm:grid-cols-2">{capabilities && capabilities.maxOutputs > 1 && <div className="space-y-1.5"><FieldLabel htmlFor="image-count">{t('outputs')}</FieldLabel><select id="image-count" value={outputCount} onChange={(event) => setOutputCount(Number(event.target.value))} className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white">{Array.from({ length: capabilities.maxOutputs }, (_, index) => index + 1).map((count) => <option key={count}>{count}</option>)}</select></div>}{capabilities?.negativePrompt && <div className="space-y-1.5 sm:col-span-2"><FieldLabel htmlFor="negative-prompt">{t('negativePrompt')}</FieldLabel><input id="negative-prompt" value={negativePrompt} onChange={(event) => setNegativePrompt(event.target.value)} placeholder={t('negativePlaceholder')} className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white outline-none placeholder:text-white/40 focus-visible:ring-2 focus-visible:ring-white/40" /></div>}</div></motion.div>}</AnimatePresence>
+            </div>}
 
             {error && <p role="alert" className="text-[12px] text-red-300">{error}</p>}
             <div className="studio-creation-action space-y-2"><PrimaryButton type="submit" disabled={!generationAvailable || isSubmitting} className="w-full">{isSubmitting ? t('generating') : t('generate')}</PrimaryButton>{!generationAvailable && <p className="text-center text-[11.5px] font-medium text-white/60">{t('unavailableNote')}</p>}</div>

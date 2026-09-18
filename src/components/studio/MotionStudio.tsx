@@ -2,28 +2,27 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Check, ChevronDown, Clapperboard, ImagePlus, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronDown, Clapperboard, ImagePlus, SlidersHorizontal, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isModelSelectable, type StudioRuntimeModelDefinition } from '@/src/config/studio-registry';
 import { PrimaryButton, Segmented, StateBlock } from './AppShell';
 import CreationWorkspace from './CreationWorkspace';
 import { useTranslations } from 'next-intl';
 import { ModelSelector, type ChatModelOption } from '@/components/ui/claude-style-chat-input';
+import type { ModelAspectRatio, ModelCameraMotion, ModelVideoDuration, VideoModelCapabilities } from '@/lib/models/capabilities';
 
-const DURATIONS = ['5 seconds', '10 seconds'] as const;
-const ASPECT_RATIOS = ['16:9', '9:16', '1:1'] as const;
-const CAMERA_PRESETS = ['Static', 'Push in', 'Pull out', 'Pan left', 'Pan right', 'Orbit'] as const;
 type VideoMode = 'text' | 'image';
 
 export type VideoRequestDraft = {
   mode: VideoMode;
   prompt: string;
-  referenceFile: File | null;
   modelId: string;
-  duration: (typeof DURATIONS)[number];
-  aspectRatio: (typeof ASPECT_RATIOS)[number];
-  cameraMotion: (typeof CAMERA_PRESETS)[number];
-  negativePrompt: string;
+  referenceFile?: File;
+  duration?: number;
+  aspectRatio?: ModelAspectRatio;
+  cameraMotion?: ModelCameraMotion;
+  generatedAudio?: boolean;
+  negativePrompt?: string;
 };
 
 function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) {
@@ -39,9 +38,10 @@ export default function MotionStudio({ models, onGenerate }: { models: StudioRun
   const [mode, setMode] = useState<VideoMode>('text');
   const [prompt, setPrompt] = useState('');
   const [modelId, setModelId] = useState(models.find((model) => model.enabled)?.id ?? models[0]?.id ?? '');
-  const [duration, setDuration] = useState<(typeof DURATIONS)[number]>('5 seconds');
-  const [aspectRatio, setAspectRatio] = useState<(typeof ASPECT_RATIOS)[number]>('16:9');
-  const [cameraMotion, setCameraMotion] = useState<(typeof CAMERA_PRESETS)[number]>('Static');
+  const [duration, setDuration] = useState<ModelVideoDuration | ''>('');
+  const [aspectRatio, setAspectRatio] = useState<ModelAspectRatio | ''>('');
+  const [cameraMotion, setCameraMotion] = useState<ModelCameraMotion | ''>('');
+  const [generatedAudio, setGeneratedAudio] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [negativePrompt, setNegativePrompt] = useState('');
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
@@ -57,7 +57,11 @@ export default function MotionStudio({ models, onGenerate }: { models: StudioRun
     iconUrl: model.iconUrl,
   }));
   const selectedModel = models.find((model) => model.id === modelId);
-  const generationAvailable = Boolean(onGenerate && selectedModel && isModelSelectable(selectedModel));
+  const capabilities = selectedModel?.capabilities as VideoModelCapabilities | undefined;
+  const supportedModes: VideoMode[] = capabilities ? [capabilities.textToVideo ? 'text' : null, capabilities.imageToVideo ? 'image' : null].filter((value): value is VideoMode => Boolean(value)) : [];
+  const modeSupported = mode === 'text' ? capabilities?.textToVideo : capabilities?.imageToVideo;
+  const hasAdvanced = Boolean(capabilities && (capabilities.cameraMotions.length || capabilities.generatedAudio || capabilities.negativePrompt));
+  const generationAvailable = Boolean(onGenerate && selectedModel && isModelSelectable(selectedModel) && modeSupported && (mode !== 'image' || referenceFile));
 
   useEffect(() => () => {
     if (referenceUrl) URL.revokeObjectURL(referenceUrl);
@@ -81,12 +85,24 @@ export default function MotionStudio({ models, onGenerate }: { models: StudioRun
     setReferenceUrl(null);
   };
 
+  useEffect(() => {
+    if (!capabilities) return;
+    setMode((current) => supportedModes.includes(current) ? current : (supportedModes[0] ?? 'text'));
+    setDuration((current) => capabilities.durations.includes(current as ModelVideoDuration) ? current : (capabilities.durations[0] ?? ''));
+    setAspectRatio((current) => capabilities.aspectRatios.includes(current as ModelAspectRatio) ? current : (capabilities.aspectRatios[0] ?? ''));
+    setCameraMotion((current) => capabilities.cameraMotions.includes(current as ModelCameraMotion) ? current : (capabilities.cameraMotions.includes('auto') ? 'auto' : (capabilities.cameraMotions[0] ?? '')));
+    if (!capabilities.imageToVideo) clearReference();
+    if (!capabilities.generatedAudio) setGeneratedAudio(false);
+    if (!capabilities.negativePrompt) setNegativePrompt('');
+  }, [modelId]);
+
   const submitDraft = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!prompt.trim()) {
       setError(t('errors.prompt'));
       return;
     }
+    if (!modeSupported) { setError(t('errors.model')); return; }
     if (mode === 'image' && !referenceFile) {
       setError(t('errors.referenceRequired'));
       return;
@@ -98,7 +114,14 @@ export default function MotionStudio({ models, onGenerate }: { models: StudioRun
     if (!onGenerate) return;
     setError(null); setIsSubmitting(true);
     try {
-      await onGenerate({ mode, prompt: prompt.trim(), referenceFile, modelId, duration, aspectRatio, cameraMotion, negativePrompt: negativePrompt.trim() });
+      const draft: VideoRequestDraft = { mode, prompt: prompt.trim(), modelId };
+      if (mode === 'image' && capabilities?.imageToVideo && referenceFile) draft.referenceFile = referenceFile;
+      if (duration && capabilities?.durations.includes(duration)) draft.duration = duration;
+      if (aspectRatio && capabilities?.aspectRatios.includes(aspectRatio)) draft.aspectRatio = aspectRatio;
+      if (cameraMotion && capabilities?.cameraMotions.includes(cameraMotion)) draft.cameraMotion = cameraMotion;
+      if (capabilities?.generatedAudio) draft.generatedAudio = generatedAudio;
+      if (capabilities?.negativePrompt && negativePrompt.trim()) draft.negativePrompt = negativePrompt.trim();
+      await onGenerate(draft);
     } catch { setError(t('errors.generation')); }
     finally { setIsSubmitting(false); }
   };
@@ -114,18 +137,18 @@ export default function MotionStudio({ models, onGenerate }: { models: StudioRun
           </div>
 
           <form className="studio-creation-form space-y-5" onSubmit={submitDraft} noValidate>
-            <Segmented value={mode} onChange={(value) => { setMode(value); setError(null); }} layoutId="video-mode" label={t('modeLabel')} options={[{ value: 'text', label: t('textToVideo') }, { value: 'image', label: t('imageToVideo') }]} className="w-full [&>button]:flex-1" />
+            {supportedModes.length > 1 && <Segmented value={mode} onChange={(value) => { setMode(value); setError(null); }} layoutId="video-mode" label={t('modeLabel')} options={supportedModes.map((value) => ({ value, label: t(value === 'text' ? 'textToVideo' : 'imageToVideo') }))} className="w-full [&>button]:flex-1" />}
 
             <div className="space-y-2"><FieldLabel htmlFor="video-prompt">{t('prompt')}</FieldLabel><textarea id="video-prompt" value={prompt} onChange={(event) => { setPrompt(event.target.value); setError(null); }} rows={5} placeholder={t('promptPlaceholder')} className="studio-creation-prompt w-full resize-y rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3.5 py-3 text-[14px] leading-relaxed text-white outline-none transition-[border-color,background-color] duration-150 placeholder:text-white/40 hover:bg-[var(--studio-hover)] focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none" /></div>
 
             <div className="studio-video-reference-model contents">
-              <div className="min-w-0 space-y-2"><FieldLabel>{mode === 'image' ? t('referenceRequired') : t('referenceOptional')}</FieldLabel><input ref={fileInputRef} type="file" accept="image/*" aria-label={t('chooseReference')} className="sr-only" onChange={(event) => { chooseReference(event.target.files?.[0]); event.target.value = ''; }} />{referenceUrl ? <div className="flex items-center gap-3 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] p-2.5"><img src={referenceUrl} alt={t('selectedReference')} className="h-14 w-14 rounded-lg object-cover" /><div className="min-w-0 flex-1"><p className="truncate text-[12.5px] font-medium text-white/85">{referenceFile?.name}</p><p className="mt-0.5 text-[11px] text-white/55">{t('localPreview')}</p></div><button type="button" onClick={clearReference} aria-label={t('removeReference')} className="flex h-9 w-9 items-center justify-center rounded-lg text-white/55 transition-[color,background-color] duration-150 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><X className="h-4 w-4" /></button></div> : <button type="button" onClick={() => fileInputRef.current?.click()} className="studio-creation-reference flex min-h-20 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/[0.02] text-[12.5px] font-medium text-white/65 transition-[color,background-color,border-color] duration-150 hover:border-white/25 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><ImagePlus className="h-4 w-4" />{t('addReference')}</button>}</div>
+              {mode === 'image' && capabilities?.imageToVideo && <div className="min-w-0 space-y-2"><FieldLabel>{t('sourceImage')}</FieldLabel><input ref={fileInputRef} type="file" accept="image/*" aria-label={t('chooseReference')} className="sr-only" onChange={(event) => { chooseReference(event.target.files?.[0]); event.target.value = ''; }} />{referenceUrl ? <div className="flex items-center gap-3 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] p-2.5"><img src={referenceUrl} alt={t('selectedReference')} className="h-14 w-14 rounded-lg object-cover" /><div className="min-w-0 flex-1"><button type="button" onClick={() => fileInputRef.current?.click()} className="text-[12.5px] font-medium text-white/85 hover:text-white">{t('replaceReference')}</button></div><button type="button" onClick={clearReference} aria-label={t('removeReference')} className="flex h-9 w-9 items-center justify-center rounded-lg text-white/55 transition-[color,background-color] duration-150 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><X className="h-4 w-4" /></button></div> : <button type="button" onClick={() => fileInputRef.current?.click()} className="studio-creation-reference flex min-h-20 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/[0.02] text-[12.5px] font-medium text-white/65 transition-[color,background-color,border-color] duration-150 hover:border-white/25 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><ImagePlus className="h-4 w-4" />{t('addSourceImage')}</button>}</div>}
               <div className="min-w-0 space-y-2"><FieldLabel>{t('model')}</FieldLabel><ModelSelector models={modelOptions} selectedModel={modelId} onSelect={setModelId} dropdownPosition="bottom" menuLabel={modelsT('videoMenuLabel')} emptyLabel={modelsT('noModels')} /></div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2"><div className="space-y-2"><FieldLabel htmlFor="video-duration">{t('duration')}</FieldLabel><select id="video-duration" value={duration} onChange={(event) => setDuration(event.target.value as typeof duration)} className="h-11 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[13px] text-white outline-none focus-visible:ring-2 focus-visible:ring-white/40">{DURATIONS.map((value) => <option key={value} value={value}>{t(`durations.${value === '5 seconds' ? 'five' : 'ten'}`)}</option>)}</select></div><div className="space-y-2"><FieldLabel htmlFor="video-ratio">{t('aspectRatio')}</FieldLabel><select id="video-ratio" value={aspectRatio} onChange={(event) => setAspectRatio(event.target.value as typeof aspectRatio)} className="h-11 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[13px] text-white outline-none focus-visible:ring-2 focus-visible:ring-white/40">{ASPECT_RATIOS.map((value) => <option key={value}>{value}</option>)}</select></div></div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{capabilities && capabilities.durations.length > 0 && <div className="space-y-2"><FieldLabel>{t('duration')}</FieldLabel><div className="flex flex-wrap gap-2">{capabilities.durations.map((value) => <button key={value} type="button" aria-pressed={duration === value} onClick={() => setDuration(value)} className={cn('min-h-9 rounded-lg border px-3 text-[12px] font-semibold', duration === value ? 'border-white bg-white text-black' : 'border-[var(--studio-border)] text-white/65 hover:text-white')}>{t('durationSeconds', { value })}</button>)}</div></div>}{capabilities && capabilities.aspectRatios.length > 0 && <div className="space-y-2"><FieldLabel>{t('aspectRatio')}</FieldLabel><div className="flex flex-wrap gap-2">{capabilities.aspectRatios.map((value) => <button key={value} type="button" aria-pressed={aspectRatio === value} onClick={() => setAspectRatio(value)} className={cn('min-h-9 rounded-lg border px-3 text-[12px] font-semibold', aspectRatio === value ? 'border-white bg-white text-black' : 'border-[var(--studio-border)] text-white/65 hover:text-white')}>{value}</button>)}</div></div>}</div>
 
-            <div className="rounded-xl border border-[var(--studio-border-subtle)] bg-white/[0.015]"><button type="button" onClick={() => setAdvancedOpen((open) => !open)} aria-expanded={advancedOpen} aria-controls="video-advanced" className="flex h-11 w-full items-center justify-between px-3.5 text-[12.5px] font-medium text-white/70 transition-[color,background-color] duration-150 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><span className="flex items-center gap-2"><SlidersHorizontal className="h-4 w-4" />{controlsT('advanced')}</span><ChevronDown className={cn('h-4 w-4 transition-transform duration-150 motion-reduce:transition-none', advancedOpen && 'rotate-180')} /></button><AnimatePresence initial={false}>{advancedOpen && <motion.div id="video-advanced" initial={reduceMotion ? false : { height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.18 }} className="overflow-hidden"><div className="space-y-3 border-t border-[var(--studio-border-subtle)] p-3"><div className="space-y-2"><FieldLabel>{controlsT('cameraMotion')}</FieldLabel><div className="studio-camera-grid grid grid-cols-2 gap-2 sm:grid-cols-3">{CAMERA_PRESETS.map((preset) => { const selected = cameraMotion === preset; const key = preset.toLowerCase().replaceAll(' ', ''); return <button key={preset} type="button" aria-pressed={selected} onClick={() => setCameraMotion(preset)} className={cn('flex min-h-10 items-center justify-center gap-1.5 rounded-xl border px-2 text-[11.5px] font-medium transition-[color,background-color,border-color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none', selected ? 'border-white/30 bg-white text-black' : 'border-white/10 bg-white/[0.025] text-white/65 hover:border-white/20 hover:bg-[var(--studio-hover)] hover:text-white')}>{selected && <Check aria-hidden="true" className="h-3 w-3" />}{controlsT(`camera.${key}`)}</button>; })}</div></div><div className="space-y-1.5"><FieldLabel htmlFor="video-negative">{controlsT('negativePrompt')}</FieldLabel><input id="video-negative" value={negativePrompt} onChange={(event) => setNegativePrompt(event.target.value)} placeholder={controlsT('negativePlaceholder')} className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white outline-none placeholder:text-white/40 focus-visible:ring-2 focus-visible:ring-white/40" /></div></div></motion.div>}</AnimatePresence></div>
+            {hasAdvanced && <div className="rounded-xl border border-[var(--studio-border-subtle)] bg-white/[0.015]"><button type="button" onClick={() => setAdvancedOpen((open) => !open)} aria-expanded={advancedOpen} aria-controls="video-advanced" className="flex h-11 w-full items-center justify-between px-3.5 text-[12.5px] font-medium text-white/70 transition-[color,background-color] duration-150 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><span className="flex items-center gap-2"><SlidersHorizontal className="h-4 w-4" />{controlsT('advanced')}</span><ChevronDown className={cn('h-4 w-4 transition-transform duration-150 motion-reduce:transition-none', advancedOpen && 'rotate-180')} /></button><AnimatePresence initial={false}>{advancedOpen && <motion.div id="video-advanced" initial={reduceMotion ? false : { height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.18 }} className="overflow-hidden"><div className="space-y-3 border-t border-[var(--studio-border-subtle)] p-3">{capabilities && capabilities.cameraMotions.length > 0 && <label className="grid gap-1.5"><FieldLabel htmlFor="camera-motion">{controlsT('cameraMotion')}</FieldLabel><select id="camera-motion" value={cameraMotion} onChange={(event) => setCameraMotion(event.target.value as ModelCameraMotion)} className="h-10 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white">{capabilities.cameraMotions.map((value) => <option key={value} value={value}>{controlsT(`camera.${value.replaceAll('-', '')}`)}</option>)}</select></label>}{capabilities?.generatedAudio && <label className="flex min-h-10 items-center gap-2 rounded-xl border border-[var(--studio-border)] px-3 text-[12px] font-medium text-white"><input type="checkbox" checked={generatedAudio} onChange={(event) => setGeneratedAudio(event.target.checked)} className="h-4 w-4 accent-white" />{controlsT('generatedAudio')}</label>}{capabilities?.negativePrompt && <div className="space-y-1.5"><FieldLabel htmlFor="video-negative">{controlsT('negativePrompt')}</FieldLabel><input id="video-negative" value={negativePrompt} onChange={(event) => setNegativePrompt(event.target.value)} placeholder={controlsT('negativePlaceholder')} className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white outline-none placeholder:text-white/40 focus-visible:ring-2 focus-visible:ring-white/40" /></div>}</div></motion.div>}</AnimatePresence></div>}
 
             {error && <p role="status" className="text-[12px] leading-relaxed text-white/55">{error}</p>}
             <div className="studio-creation-action space-y-2"><PrimaryButton type="submit" disabled={!generationAvailable || isSubmitting} aria-describedby="video-generate-help" className="w-full">{isSubmitting ? t('generating') : t('generate')}</PrimaryButton>{!generationAvailable && <p id="video-generate-help" className="text-center text-[11.5px] font-medium leading-relaxed text-white/60">{t('unavailableNote')}</p>}</div>

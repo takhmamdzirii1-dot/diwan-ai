@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
 import { getOwnerAccess } from '@/lib/auth/owner';
-import { findRegistryModel } from '@/lib/models/runtime-config';
+import { emptyModelCapabilities } from '@/lib/models/capabilities';
+import { resolveRuntimeModelReference } from '@/lib/models/runtime-config';
 import { providerConfigurationSummary } from '@/lib/ai/providers/registry';
 
 const schema = z.object({
@@ -13,9 +14,55 @@ const schema = z.object({
   customerCreditPrice: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).nullable(),
 }).strict();
 
-export async function PATCH(request: Request) {
+const createSchema = z.object({
+  stableId: z.string().trim().min(3).max(80).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  displayName: z.string().trim().min(1).max(80),
+  modality: z.enum(['chat', 'image', 'video']),
+}).strict();
+
+function sameOrigin(request: Request) {
   const origin = request.headers.get('origin');
-  if (origin && origin !== new URL(request.url).origin) {
+  return !origin || origin === new URL(request.url).origin;
+}
+
+export async function POST(request: Request) {
+  if (!sameOrigin(request)) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
+  const access = await getOwnerAccess();
+  if (!access.user) return NextResponse.json({ error: 'AUTHENTICATION_REQUIRED' }, { status: 401 });
+  if (!access.isOwner) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
+  const parsed = createSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: 'INVALID_MODEL_IDENTITY' }, { status: 400 });
+  const client = getSupabaseAdminClient();
+  if (!client) return NextResponse.json({ error: 'ADMIN_DATA_UNAVAILABLE' }, { status: 503 });
+  const modelKey = `custom:${parsed.data.modality}:${parsed.data.stableId}`;
+  const modelId = `vantra-${parsed.data.stableId}`;
+  const { data, error } = await client.from('model_runtime_configs').insert({
+    model_key: modelKey,
+    model_id: modelId,
+    modality: parsed.data.modality,
+    enabled: false,
+    routing_role: 'unassigned',
+    customer_credit_price: null,
+    customer_display_name: parsed.data.displayName,
+    customer_sort_order: 100,
+    studio_visible: false,
+    capabilities: emptyModelCapabilities(parsed.data.modality),
+    updated_by: access.user.id,
+  }).select('model_key,model_id,modality,customer_display_name,capabilities,updated_at').single();
+  if (error) {
+    return NextResponse.json({ error: error.code === '23505' ? 'MODEL_IDENTITY_EXISTS' : 'MODEL_CREATE_FAILED' }, { status: 409 });
+  }
+  revalidatePath('/admin/models');
+  revalidatePath('/admin/audit');
+  return NextResponse.json({ model: {
+    key: String(data.model_key), modelId: String(data.model_id), modality: data.modality,
+    displayName: String(data.customer_display_name), capabilities: data.capabilities,
+    updatedAt: String(data.updated_at),
+  } }, { status: 201 });
+}
+
+export async function PATCH(request: Request) {
+  if (!sameOrigin(request)) {
     return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
   }
 
@@ -26,7 +73,9 @@ export async function PATCH(request: Request) {
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: 'INVALID_MODEL_CONFIG' }, { status: 400 });
 
-  const registryModel = findRegistryModel(parsed.data.modelKey);
+  const client = getSupabaseAdminClient();
+  if (!client) return NextResponse.json({ error: 'ADMIN_DATA_UNAVAILABLE' }, { status: 503 });
+  const registryModel = await resolveRuntimeModelReference(client, parsed.data.modelKey);
   if (!registryModel) return NextResponse.json({ error: 'MODEL_NOT_REGISTERED' }, { status: 404 });
   if (parsed.data.enabled && !registryModel.activationSupported) {
     return NextResponse.json({ error: 'MODEL_ACTIVATION_UNSUPPORTED' }, { status: 409 });
@@ -38,8 +87,6 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'MODEL_ROUTING_UNSUPPORTED' }, { status: 409 });
   }
 
-  const client = getSupabaseAdminClient();
-  if (!client) return NextResponse.json({ error: 'ADMIN_DATA_UNAVAILABLE' }, { status: 503 });
   if (parsed.data.enabled) {
     const { data: routes, error: routeError } = await client.from('model_provider_routes')
       .select('provider_id').eq('model_key', registryModel.key).eq('enabled', true);

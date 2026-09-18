@@ -78,6 +78,7 @@ export type AdminModelRow = {
   sortOrder: number;
   visibleInStudio: boolean;
   availabilityLabel: string | null;
+  capabilities: import('@/lib/models/capabilities').ModelCapabilities;
   routes: AdminModelRoute[];
   providerOptions: AdminModelProviderOption[];
 };

@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
 import { getOwnerAccess } from '@/lib/auth/owner';
-import { findRegistryModel } from '@/lib/models/runtime-config';
+import { resolveRuntimeModelReference } from '@/lib/models/runtime-config';
 
 const optionalText = (max: number) => z.string().trim().max(max).transform((value) => value || null);
 const mediaUrl = z.string().trim().max(500).refine((value) => {
@@ -33,11 +33,10 @@ export async function PATCH(request: Request) {
   if (!access.isOwner) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: 'INVALID_MODEL_PRESENTATION' }, { status: 400 });
-  const registryModel = findRegistryModel(parsed.data.modelKey);
-  if (!registryModel) return NextResponse.json({ error: 'MODEL_NOT_REGISTERED' }, { status: 404 });
-
   const client = getSupabaseAdminClient();
   if (!client) return NextResponse.json({ error: 'ADMIN_DATA_UNAVAILABLE' }, { status: 503 });
+  const registryModel = await resolveRuntimeModelReference(client, parsed.data.modelKey);
+  if (!registryModel) return NextResponse.json({ error: 'MODEL_NOT_REGISTERED' }, { status: 404 });
   const { data, error } = await client.rpc('admin_update_model_presentation', {
     p_model_key: registryModel.key,
     p_model_id: registryModel.modelId,

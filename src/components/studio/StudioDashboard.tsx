@@ -268,7 +268,10 @@ export default function StudioDashboard({
       }
 
       // Convert attachments for experimental_attachments
-      const attachments = (data.files || []).map((f) => ({
+      const capabilities = activeModel.capabilities;
+      const attachments = (data.files || []).filter((f) => f.type.startsWith('image/')
+        ? ('visionInput' in capabilities && capabilities.visionInput)
+        : ('fileInput' in capabilities && capabilities.fileInput)).map((f) => ({
         name: f.file?.name || 'attachment',
         contentType: f.type,
         url: f.preview || '',
@@ -539,6 +542,8 @@ export default function StudioDashboard({
                         enabled: model.enabled,
                         requiresAuth: (model.verifiedCreditCost ?? 0) > 0,
                         iconUrl: model.iconUrl,
+                        visionInput: 'visionInput' in model.capabilities && model.capabilities.visionInput,
+                        fileInput: 'fileInput' in model.capabilities && model.capabilities.fileInput,
                       }))}
                       selectedModelId={selectedModelId}
                       onSelectModel={setSelectedModelId}

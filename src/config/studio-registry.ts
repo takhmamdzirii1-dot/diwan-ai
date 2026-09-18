@@ -28,6 +28,7 @@ export interface StudioRuntimeModelDefinition extends StudioModelDefinition {
   iconUrl?: string;
   category?: string;
   availabilityLabel?: string;
+  capabilities: import('@/lib/models/capabilities').ModelCapabilities;
 }
 
 /**

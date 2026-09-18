@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Plus, ChevronDown, Square, X, FileText, Loader2, Check, Archive, Sparkles, Image as ImageIcon, Layers, ArrowUp } from "lucide-react";
+import { Plus, ChevronDown, Square, X, FileText, Loader2, Check, Archive, Sparkles, Image as ImageIcon, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslations } from 'next-intl';
 import type { StudioAvailability } from '@/src/config/studio-registry';
@@ -25,6 +25,8 @@ export interface ChatModelOption {
     enabled: boolean;
     requiresAuth?: boolean;
     iconUrl?: string;
+    visionInput?: boolean;
+    fileInput?: boolean;
 }
 
 export interface ClaudeSendPayload {
@@ -335,6 +337,15 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
     };
 
     const [multimodalMenuOpen, setMultimodalMenuOpen] = useState(false);
+    const selectedModel = models.find((model) => model.id === selectedModelId) ?? models[0];
+    const supportsVision = selectedModel?.visionInput === true;
+    const supportsFiles = selectedModel?.fileInput === true;
+    const supportsAttachments = supportsVision || supportsFiles;
+
+    useEffect(() => {
+        setFiles((current) => current.filter((item) => item.type.startsWith('image/') ? supportsVision : supportsFiles));
+        if (!supportsAttachments) setMultimodalMenuOpen(false);
+    }, [selectedModel?.id, supportsVision, supportsFiles, supportsAttachments]);
     const menuRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -386,7 +397,10 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
     }, [files]);
 
     const handleFiles = useCallback((newFilesList: FileList | File[]) => {
-        const newFiles: AttachedFile[] = Array.from(newFilesList).map(file => {
+        const newFiles: AttachedFile[] = Array.from(newFilesList).filter((file) => {
+            const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(file.name);
+            return isImage ? supportsVision : supportsFiles;
+        }).map(file => {
             const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(file.name);
             return {
                 id: Math.random().toString(36).slice(2, 11),
@@ -398,14 +412,14 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
         });
 
         setFiles(prev => [...prev, ...newFiles.map((file) => ({ ...file, uploadStatus: 'complete' as const }))]);
-    }, []);
+    }, [supportsVision, supportsFiles]);
 
     const onDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
     const onDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
     const onDrop = (e: React.DragEvent) => {
         e.preventDefault();
         setIsDragging(false);
-        if (e.dataTransfer.files?.length) handleFiles(e.dataTransfer.files);
+        if (supportsAttachments && e.dataTransfer.files?.length) handleFiles(e.dataTransfer.files);
     };
 
     const handlePaste = (e: React.ClipboardEvent) => {
@@ -439,7 +453,8 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
             onStop?.();
             return;
         }
-        if (!message.trim() && files.length === 0 && pastedContent.length === 0) return;
+        const supportedFiles = files.filter((file) => file.type.startsWith('image/') ? supportsVision : supportsFiles);
+        if (!message.trim() && supportedFiles.length === 0 && pastedContent.length === 0) return;
 
         // Don't include [Attachment: filename] in the prompt — text-only models
         // would try to "read" the filename and produce confusing errors like
@@ -451,7 +466,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
 
         onSendMessage({
             message: textWithAttachments,
-            files,
+            files: supportedFiles,
             pastedContent,
             model: selectedModelId || models[0]?.id || "",
             isThinkingEnabled
@@ -524,7 +539,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                     {/* Left side: action icons */}
                     <div className="flex items-center shrink-0 gap-1 ps-1">
                         {/* Multimodal Dropdown Menu */}
-                        <div className="relative" ref={menuRef}>
+                        {supportsAttachments && <div className="relative" ref={menuRef}>
                             <button
                                 type="button"
                                 onClick={() => setMultimodalMenuOpen(!multimodalMenuOpen)}
@@ -544,7 +559,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                 <div
                                     className="absolute bottom-full left-0 mb-2 w-52 bg-[#0F1012] border border-white/[0.08] shadow-2xl rounded-lg p-1 text-sm text-white/80 z-50 flex flex-col gap-0.5"
                                 >
-                                    <button
+                                    {supportsVision && <button
                                         type="button"
                                         onClick={() => {
                                             setMultimodalMenuOpen(false);
@@ -554,9 +569,9 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                     >
                                         <ImageIcon className="w-4 h-4 text-white/60 shrink-0" />
                                         <span>Upload Image</span>
-                                    </button>
+                                    </button>}
 
-                                    <button
+                                    {supportsFiles && <button
                                         type="button"
                                         onClick={() => {
                                             setMultimodalMenuOpen(false);
@@ -566,23 +581,11 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                     >
                                         <FileText className="w-4 h-4 text-white/60 shrink-0" />
                                         <span>Upload Document</span>
-                                    </button>
+                                    </button>}
 
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setMultimodalMenuOpen(false);
-                                            setMessage((prev) => (prev ? prev + ' ' : '') + '@integration: ');
-                                            textareaRef.current?.focus();
-                                        }}
-                                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md hover:bg-white/[0.06] text-white transition-colors text-start cursor-pointer"
-                                    >
-                                        <Layers className="w-4 h-4 text-white/60 shrink-0" />
-                                        <span>Connect Integration</span>
-                                    </button>
                                 </div>
                             )}
-                        </div>
+                        </div>}
 
                         <div className="flex shrink-0">
                             <button
@@ -676,7 +679,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
             </div>
 
             {/* Drag overlay */}
-            {isDragging && (
+            {supportsAttachments && isDragging && (
                 <div className="absolute inset-0 bg-[#1A1C1F]/90 border-2 border-dashed border-[#FFFFFF]/60 rounded-2xl z-50 flex flex-col items-center justify-center backdrop-blur-sm pointer-events-none">
                     <Archive className="w-10 h-10 text-[#FFFFFF] mb-2 animate-bounce" />
                     <p className="text-[#FFFFFF] font-medium text-sm">Drop files to upload</p>
@@ -684,7 +687,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
             )}
 
             {/* Hidden file inputs */}
-            <input
+            {supportsAttachments && <input
                 ref={fileInputRef}
                 type="file"
                 multiple
@@ -693,8 +696,8 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                     if (e.target.files) handleFiles(e.target.files);
                     e.target.value = '';
                 }}
-            />
-            <input
+            />}
+            {supportsVision && <input
                 ref={imageInputRef}
                 type="file"
                 accept="image/*"
@@ -704,8 +707,8 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                     if (e.target.files) handleFiles(e.target.files);
                     e.target.value = '';
                 }}
-            />
-            <input
+            />}
+            {supportsFiles && <input
                 ref={docInputRef}
                 type="file"
                 accept=".pdf,.doc,.docx,.txt,.md,.json,.csv,.py,.ts,.tsx,.js,.jsx,.yaml,.yml"
@@ -715,7 +718,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                     if (e.target.files) handleFiles(e.target.files);
                     e.target.value = '';
                 }}
-            />
+            />}
         </div>
     );
 };

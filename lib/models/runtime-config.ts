@@ -4,6 +4,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { PROVIDER_REGISTRY } from '@/lib/ai/image-providers/router';
 import { PROVIDER_CATALOG_MODELS } from '@/lib/models/provider-catalog';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
+import { providerConfigurationSummary } from '@/lib/ai/providers/registry';
+import { emptyModelCapabilities, type ModelCapabilities } from '@/lib/models/capabilities';
+import { normalizeModelCapabilities } from '@/lib/models/capability-validation';
 import {
   DEFAULT_CHAT_MODEL,
   DEFAULT_IMAGE_MODEL,
@@ -29,6 +32,7 @@ export type RegistryModelReference = {
   baseCustomerCreditPrice: number | null;
   baseVisibleInStudio: boolean;
   baseSortOrder: number;
+  baseCapabilities: ModelCapabilities;
 };
 
 export type ModelRuntimeOverride = {
@@ -48,6 +52,7 @@ export type ModelRuntimeOverride = {
   customerSortOrder: number | null;
   studioVisible: boolean | null;
   customerAvailabilityLabel: string | null;
+  capabilities: ModelCapabilities;
   updatedAt: string;
 };
 
@@ -64,6 +69,7 @@ export type EffectiveRuntimeModel = RegistryModelReference & {
   sortOrder: number;
   visibleInStudio: boolean;
   availabilityLabel: string | null;
+  capabilities: ModelCapabilities;
   persisted: boolean;
   updatedAt: string | null;
 };
@@ -93,6 +99,7 @@ const registryModels: RegistryModelReference[] = STUDIO_MODELS.map((model) => ({
     : null,
   baseVisibleInStudio: true,
   baseSortOrder: model.displayOrder,
+  baseCapabilities: emptyModelCapabilities(model.modality),
 }));
 
 const registeredModelIds = new Set(STUDIO_MODELS.map((model) => model.id));
@@ -110,6 +117,7 @@ for (const model of PROVIDER_CATALOG_MODELS) {
     baseCustomerCreditPrice: null,
     baseVisibleInStudio: false,
     baseSortOrder: 100,
+    baseCapabilities: emptyModelCapabilities(model.modality),
   });
   registeredModelIds.add(model.modelId);
 }
@@ -129,6 +137,7 @@ for (const provider of Object.values(PROVIDER_REGISTRY)) {
       baseCustomerCreditPrice: null,
       baseVisibleInStudio: false,
       baseSortOrder: 100,
+      baseCapabilities: emptyModelCapabilities('image'),
     });
   }
 }
@@ -167,13 +176,14 @@ function mapOverride(row: any): ModelRuntimeOverride {
     customerSortOrder: row.customer_sort_order == null ? null : Number(row.customer_sort_order),
     studioVisible: row.studio_visible == null ? null : Boolean(row.studio_visible),
     customerAvailabilityLabel: row.customer_availability_label == null ? null : String(row.customer_availability_label),
+    capabilities: normalizeModelCapabilities(row.modality, row.capabilities),
     updatedAt: String(row.updated_at),
   };
 }
 
 export async function loadModelRuntimeOverrides(client: SupabaseClient, modelKey?: string) {
   let query = client.from('model_runtime_configs').select(
-    'model_key,model_id,modality,enabled,routing_role,customer_credit_price,provider_cost_status,provider_cost_minor,provider_cost_currency,customer_display_name,customer_short_description,customer_media_url,customer_category,customer_sort_order,studio_visible,customer_availability_label,updated_at'
+    'model_key,model_id,modality,enabled,routing_role,customer_credit_price,provider_cost_status,provider_cost_minor,provider_cost_currency,customer_display_name,customer_short_description,customer_media_url,customer_category,customer_sort_order,studio_visible,customer_availability_label,capabilities,updated_at'
   );
   if (modelKey) query = query.eq('model_key', modelKey);
   const { data, error } = await query;
@@ -189,7 +199,25 @@ export function applyModelRuntimeOverrides(overrides: readonly ModelRuntimeOverr
       .map((override) => override.modality)
   );
 
-  return MODEL_REGISTRY_REFERENCES.map((model): EffectiveRuntimeModel => {
+  const dynamicModels: RegistryModelReference[] = overrides
+    .filter((override) => !MODEL_REGISTRY_REFERENCES.some((model) => model.key === override.modelKey))
+    .map((override) => ({
+      key: override.modelKey,
+      modelId: override.modelId,
+      displayName: override.customerDisplayName ?? override.modelId,
+      provider: 'VANTRA',
+      modality: override.modality,
+      availability: 'admin_configured',
+      activationSupported: true,
+      baseEnabled: false,
+      baseRoutingRole: 'unassigned',
+      baseCustomerCreditPrice: null,
+      baseVisibleInStudio: false,
+      baseSortOrder: 100,
+      baseCapabilities: emptyModelCapabilities(override.modality),
+    }));
+
+  return [...MODEL_REGISTRY_REFERENCES, ...dynamicModels].map((model): EffectiveRuntimeModel => {
     const override = overrideByKey.get(model.key);
     const enabled = model.activationSupported && (override ? override.enabled : model.baseEnabled);
     let routingRole = override?.routingRole ?? model.baseRoutingRole;
@@ -213,6 +241,7 @@ export function applyModelRuntimeOverrides(overrides: readonly ModelRuntimeOverr
       sortOrder: override?.customerSortOrder ?? model.baseSortOrder,
       visibleInStudio: override?.studioVisible ?? model.baseVisibleInStudio,
       availabilityLabel: override?.customerAvailabilityLabel ?? null,
+      capabilities: override?.capabilities ?? model.baseCapabilities,
       persisted: Boolean(override),
       updatedAt: override?.updatedAt ?? null,
     };
@@ -226,13 +255,29 @@ export async function getEffectiveRuntimeModels(client?: SupabaseClient) {
 }
 
 export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<StudioRuntimeModelDefinition[]> {
-  const models = await getEffectiveRuntimeModels(client);
+  const serverClient = client ?? getSupabaseAdminClient();
+  if (!serverClient) throw new Error('MODEL_RUNTIME_CONFIG_UNAVAILABLE');
+  const [models, routesResult, providersResult] = await Promise.all([
+    getEffectiveRuntimeModels(serverClient),
+    serverClient.from('model_provider_routes').select('model_key,provider_id,enabled'),
+    serverClient.from('provider_runtime_configs').select('provider_id,enabled,emergency_disabled'),
+  ]);
+  if (routesResult.error) throw routesResult.error;
+  if (providersResult.error) throw providersResult.error;
+  const providerReady = new Map((providersResult.data ?? []).map((row) => [
+    String(row.provider_id),
+    Boolean(row.enabled) && !Boolean(row.emergency_disabled) && providerConfigurationSummary(String(row.provider_id)).configured,
+  ]));
+  const routeReady = new Set((routesResult.data ?? [])
+    .filter((row) => row.enabled && providerReady.get(String(row.provider_id)))
+    .map((row) => String(row.model_key)));
   return models
     .filter((model) => model.visibleInStudio)
     .sort((a, b) => a.modality.localeCompare(b.modality) || a.sortOrder - b.sortOrder)
     .map((model) => {
       const billableReady = model.customerCreditPrice != null;
-      const selectable = model.enabled && billableReady;
+      const modeSupported = model.modality !== 'chat' || ('streaming' in model.capabilities && model.capabilities.streaming);
+      const selectable = model.enabled && billableReady && routeReady.has(model.key) && modeSupported;
       const knownAvailability = ['available', 'beta', 'preview', 'unavailable', 'temporarily_unavailable']
         .includes(model.availability)
         ? model.availability
@@ -246,7 +291,7 @@ export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<S
         availability: selectable
           ? (knownAvailability === 'beta' ? 'beta' : 'available')
           : (knownAvailability === 'preview' ? 'preview' : 'unavailable'),
-        verifiedCapabilities: [],
+        verifiedCapabilities: Object.entries(model.capabilities).filter(([, value]) => value === true).map(([key]) => key),
         verifiedCreditCost: model.customerCreditPrice ?? undefined,
         supportedControls: [],
         fallbackAvailable: false,
@@ -255,19 +300,40 @@ export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<S
         iconUrl: model.mediaUrl ?? undefined,
         category: model.category ?? undefined,
         availabilityLabel: model.availabilityLabel ?? undefined,
+        capabilities: model.capabilities,
       } satisfies StudioRuntimeModelDefinition;
     });
 }
 
 export async function requireEffectiveRuntimeModel(modelId: string, modality: StudioModality) {
-  const registryModel = findRegistryModelById(modelId, modality);
-  if (!registryModel) throw new Error('MODEL_NOT_REGISTERED');
   const serverClient = getSupabaseAdminClient();
   if (!serverClient) throw new Error('MODEL_RUNTIME_CONFIG_UNAVAILABLE');
-  const overrides = await loadModelRuntimeOverrides(serverClient, registryModel.key);
-  const model = applyModelRuntimeOverrides(overrides).find((candidate) => candidate.key === registryModel.key);
+  const models = await getEffectiveRuntimeModels(serverClient);
+  const model = models.find((candidate) => candidate.modelId === modelId && candidate.modality === modality);
   if (!model) throw new Error('MODEL_NOT_REGISTERED');
   if (!model.enabled || !model.activationSupported) throw new Error('MODEL_NOT_AVAILABLE');
   if (model.customerCreditPrice == null) throw new Error('MODEL_CUSTOMER_PRICE_UNCONFIGURED');
   return model;
+}
+
+export async function resolveRuntimeModelReference(client: SupabaseClient, modelKey: string) {
+  const registryModel = findRegistryModel(modelKey);
+  if (registryModel) return registryModel;
+  const overrides = await loadModelRuntimeOverrides(client, modelKey);
+  const model = applyModelRuntimeOverrides(overrides).find((candidate) => candidate.key === modelKey);
+  return model ? {
+    key: model.key,
+    modelId: model.modelId,
+    displayName: model.displayName,
+    provider: model.provider,
+    modality: model.modality,
+    availability: model.availability,
+    activationSupported: model.activationSupported,
+    baseEnabled: false,
+    baseRoutingRole: 'unassigned' as const,
+    baseCustomerCreditPrice: null,
+    baseVisibleInStudio: false,
+    baseSortOrder: model.sortOrder,
+    baseCapabilities: model.capabilities,
+  } : null;
 }
