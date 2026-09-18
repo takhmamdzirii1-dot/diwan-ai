@@ -40,4 +40,23 @@ begin
 end;
 $$;
 
+-- These exact production model IDs have completed Chat executions through
+-- /api/generate/chat's streamText path. Keep every other capability intact.
+update public.model_runtime_configs
+set capabilities = jsonb_set(
+  '{"streaming":false,"visionInput":false,"fileInput":false,"tools":false}'::jsonb || capabilities,
+  '{streaming}', 'true'::jsonb, true
+)
+where (model_key, model_id) in (
+  ('studio:chat:nvidia/nemotron-3-ultra-550b-a55b:free', 'nvidia/nemotron-3-ultra-550b-a55b:free'),
+  ('vantra:chat:agnes-3.0-flash', 'vantra-agnes-3.0-flash'),
+  ('vantra:chat:deepseek-v4-flash', 'vantra-deepseek-v4-flash'),
+  ('vantra:chat:hy3', 'vantra-hy3')
+)
+  and modality = 'chat'
+  and enabled
+  and studio_visible
+  and customer_credit_price is not null
+  and capabilities->>'streaming' is distinct from 'true';
+
 commit;
