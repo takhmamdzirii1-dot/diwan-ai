@@ -8,6 +8,7 @@ import RunwareProviderTest, { type ProviderTestCopy } from '@/src/components/int
 import AdminPaymentActions from './AdminPaymentActions';
 import AdminPaymentPlans from './AdminPaymentPlans';
 import AdminUserActions from './AdminUserActions';
+import AdminCreditAdjustment from './AdminCreditAdjustment';
 import AdminModelControls from './AdminModelControls';
 import AdminProviderControls from './AdminProviderControls';
 import AdminModelRouteControls from './AdminModelRouteControls';
@@ -247,7 +248,7 @@ export function UsersView({ result }: { result: AdminDataResult<AdminUsersData> 
         <td className="text-end"><button type="button" onClick={() => setSelectedId(user.id)} className="text-[11px] font-semibold text-white underline">{t('users.view')}</button></td>
       </tr>)}</tbody>
     </table></TableFrame> : <Empty label={result.data.query ? t('users.noMatches') : t('users.noUsers')} />}
-    {selected && <AdminUserDetail key={selected.id} user={selected} onClose={() => setSelectedId(null)} onStatusChanged={(nextStatus) => setUsers((current) => current.map((item) => item.id === selected.id ? { ...item, status: nextStatus } : item))} />}</>;
+    {selected && <AdminUserDetail key={selected.id} user={selected} onClose={() => setSelectedId(null)} onStatusChanged={(nextStatus) => setUsers((current) => current.map((item) => item.id === selected.id ? { ...item, status: nextStatus } : item))} onCreditChanged={(creditBalance) => setUsers((current) => current.map((item) => item.id === selected.id ? { ...item, creditBalance } : item))} />}</>;
 }
 
 type UserDetailData = {
@@ -258,13 +259,15 @@ type UserDetailData = {
   audit: { id: string; payment_order_id: string; action: string; created_at: string }[];
 };
 
-function AdminUserDetail({ user, onClose, onStatusChanged }: {
+function AdminUserDetail({ user, onClose, onStatusChanged, onCreditChanged }: {
   user: AdminUserRow; onClose: () => void;
   onStatusChanged: (status: AdminUserRow['status']) => void;
+  onCreditChanged: (balance: string) => void;
 }) {
   const t = useTranslations('Admin');
   const [tab, setTab] = useState<'overview' | 'subscription' | 'credits' | 'payments' | 'jobs' | 'security' | 'audit'>('overview');
   const [data, setData] = useState<UserDetailData | null>(null);
+  const [balance, setBalance] = useState(user.creditBalance);
   const [error, setError] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
@@ -276,11 +279,11 @@ function AdminUserDetail({ user, onClose, onStatusChanged }: {
   }, [user.id]);
   const tabs = ['overview', 'subscription', 'credits', 'payments', 'jobs', 'security', 'audit'] as const;
   return <DetailDrawer title={user.email} onClose={onClose}><div className="mb-4 flex flex-wrap gap-1.5">{tabs.map((value) => <button key={value} type="button" aria-pressed={tab === value} onClick={() => setTab(value)} className={`rounded-lg border px-2.5 py-2 text-[11px] ${tab === value ? 'border-white bg-white text-black' : 'border-[var(--studio-border)] text-[var(--studio-text-secondary)]'}`}>{t(`users.tabs.${value}`)}</button>)}</div>
-    {tab === 'overview' && <div className="space-y-2 text-[13px]"><p>{user.email}</p><p><strong>{t('users.plan')}:</strong> {user.plan}</p><p><strong>{t('users.balance')}:</strong> {user.creditBalance ?? '—'}</p><p><strong>{t('users.status')}:</strong> <Status value={user.status} /></p><p><strong>{t('users.created')}:</strong> <DateValue value={user.createdAt} /></p><p><strong>{t('users.lastSignIn')}:</strong> <DateValue value={user.lastSignInAt} /></p><TechnicalDetails><TechnicalId label={t('common.userId')} value={user.id} /></TechnicalDetails></div>}
+    {tab === 'overview' && <div className="space-y-2 text-[13px]"><p>{user.email}</p><p><strong>{t('users.plan')}:</strong> {user.plan}</p><p><strong>{t('users.balance')}:</strong> {balance ?? '—'}</p><p><strong>{t('users.status')}:</strong> <Status value={user.status} /></p><p><strong>{t('users.created')}:</strong> <DateValue value={user.createdAt} /></p><p><strong>{t('users.lastSignIn')}:</strong> <DateValue value={user.lastSignInAt} /></p><TechnicalDetails><TechnicalId label={t('common.userId')} value={user.id} /></TechnicalDetails></div>}
     {tab === 'security' && <div className="space-y-3"><p className="text-[12px] text-[var(--studio-text-secondary)]">{t('users.securityHelp')}</p><AdminUserActions userId={user.id} status={user.status} isOwner={user.isOwner} onChanged={onStatusChanged} /></div>}
     {tab !== 'overview' && tab !== 'security' && (error ? <Notice reason="query_failed" /> : !data ? <p role="status" className="text-[12px] text-[var(--studio-text-muted)]">{t('users.loading')}</p> : <div className="space-y-2 text-[12px]">
       {tab === 'subscription' && (data.entitlements.length ? data.entitlements.map((item) => <div key={item.id} className="rounded-lg border border-[var(--studio-border)] p-3"><p className="font-semibold text-white">{item.plan_name} · {item.status}</p><p className="mt-1 text-[var(--studio-text-muted)]"><DateValue value={item.starts_at} /> – <DateValue value={item.ends_at} /></p></div>) : <Empty />)}
-      {tab === 'credits' && <><p className="mb-2 font-semibold text-white">{t('users.balance')}: {user.creditBalance ?? '—'}</p>{data.ledger.length ? data.ledger.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><div><strong>{item.transaction_type}</strong><p className="text-[var(--studio-text-muted)]">{item.reason}</p></div><div className="shrink-0 text-end tabular-nums">{item.amount}<p className="text-[var(--studio-text-muted)]"><DateValue value={item.created_at} /></p></div></div>) : <Empty />}</>}
+      {tab === 'credits' && <><p className="mb-3 font-semibold text-white">{t('users.balance')}: <span className="tabular-nums">{balance ?? '—'}</span></p><AdminCreditAdjustment userId={user.id} onAdjusted={(result) => { setBalance(result.balance); onCreditChanged(result.balance); setData((current) => current ? { ...current, ledger: [result.transaction, ...current.ledger.filter((item) => item.id !== result.transaction.id)] } : current); }} />{data.ledger.length ? data.ledger.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><div><strong>{t.has(`status.${item.transaction_type}`) ? t(`status.${item.transaction_type}`) : item.transaction_type}</strong><p className="text-[var(--studio-text-muted)]">{item.reason}</p></div><div className="shrink-0 text-end tabular-nums">{item.amount}<p className="text-[var(--studio-text-muted)]"><DateValue value={item.created_at} /></p></div></div>) : <Empty />}</>}
       {tab === 'payments' && (data.payments.length ? data.payments.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><div><strong>{item.plan_name}</strong><p className="text-[var(--studio-text-muted)]">{item.status}</p></div><div className="shrink-0 text-end tabular-nums">{item.amount_dzd} DZD<p className="text-[var(--studio-text-muted)]"><DateValue value={item.created_at} /></p></div></div>) : <Empty />)}
       {tab === 'jobs' && (data.jobs.length ? data.jobs.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><div><strong>{item.model_id}</strong><p className="text-[var(--studio-text-muted)]">{item.modality} · {item.state}</p></div><div className="shrink-0 text-end tabular-nums">{item.credits_charged ?? '—'}<p className="text-[var(--studio-text-muted)]"><DateValue value={item.created_at} /></p></div></div>) : <Empty />)}
       {tab === 'audit' && (data.audit.length ? data.audit.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><strong>{item.action}</strong><DateValue value={item.created_at} /></div>) : <Empty />)}
@@ -330,7 +333,7 @@ export function RuntimeLimitsView({ result }: { result: AdminDataResult<AdminPro
 export function AuditView({ result }: { result: AdminDataResult<AdminAuditRow[]> }) {
   const t = useTranslations('Admin');
   return <><PageHeader title={t('audit.title')} description={t('audit.description')} compact />{!result.available && <Notice reason={result.reason} />}
-    {result.data.length ? <TableFrame><table className={adminTableClass}><thead><tr><th className="w-[20%]">{t('audit.time')}</th><th className="w-[25%]">{t('audit.admin')}</th><th className="w-[25%]">{t('audit.action')}</th><th className="w-[30%]">{t('audit.resource')}</th></tr></thead><tbody>{result.data.map((row) => <tr key={row.id} className="border-t border-[var(--studio-border-subtle)]"><td><DateValue value={row.createdAt} /></td><td className="truncate">{row.actor ?? '—'}</td><td>{row.action}<p className="text-[11px] text-[var(--studio-text-muted)]">{row.detail}</p></td><td><span className="font-medium text-white">{row.resource}</span><TechnicalDetails><TechnicalId label={t('common.internalId')} value={row.resourceId} /></TechnicalDetails></td></tr>)}</tbody></table></TableFrame> : <Empty label={t('audit.empty')} />}
+    {result.data.length ? <TableFrame><table className={adminTableClass}><thead><tr><th className="w-[20%]">{t('audit.time')}</th><th className="w-[25%]">{t('audit.admin')}</th><th className="w-[25%]">{t('audit.action')}</th><th className="w-[30%]">{t('audit.resource')}</th></tr></thead><tbody>{result.data.map((row) => <tr key={`${row.resourceType}:${row.id}`} className="border-t border-[var(--studio-border-subtle)]"><td><DateValue value={row.createdAt} /></td><td className="truncate">{row.actor ?? '—'}</td><td><span className="font-medium text-white">{t.has(`audit.actions.${row.action}`) ? t(`audit.actions.${row.action}`) : row.action.replaceAll('_', ' ')}</span><p className="text-[11px] text-[var(--studio-text-muted)]">{row.detail}</p></td><td><span className="font-medium capitalize text-white">{t.has(`audit.resources.${row.resourceType}`) ? t(`audit.resources.${row.resourceType}`) : row.resource}</span><TechnicalDetails><TechnicalId label={t('common.internalId')} value={row.resourceId} />{(row.previousState || row.newState) && <div className="mt-2 grid gap-2 text-[10.5px]"><div><p className="font-semibold text-[var(--studio-text-secondary)]">{t('audit.previousState')}</p><pre className="mt-1 whitespace-pre-wrap break-all">{JSON.stringify(row.previousState, null, 2) ?? '—'}</pre></div><div><p className="font-semibold text-[var(--studio-text-secondary)]">{t('audit.newState')}</p><pre className="mt-1 whitespace-pre-wrap break-all">{JSON.stringify(row.newState, null, 2) ?? '—'}</pre></div></div>}</TechnicalDetails></td></tr>)}</tbody></table></TableFrame> : <Empty label={t('audit.empty')} />}
     <p className="mt-3 text-[11px] text-[var(--studio-text-muted)]">{t('audit.scope')}</p>
   </>;
 }

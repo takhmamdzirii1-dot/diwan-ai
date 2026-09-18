@@ -35,10 +35,11 @@ export async function POST(request: Request) {
   const { data, error } = await client.from('payment_plans').insert({
     slug: plan.slug, name: plan.name, description: plan.description || null, kind: plan.kind,
     price_dzd: plan.priceDzd, unified_credits: plan.unifiedCredits, active: plan.active,
-    display_order: plan.displayOrder, featured: plan.featured,
+    display_order: plan.displayOrder, featured: plan.featured, updated_by: access.user.id,
   }).select('id,slug,name,description,kind,price_dzd,unified_credits,active,display_order,featured').single();
   if (error) return NextResponse.json({ error: error.code === '23505' ? 'PAYMENT_PLAN_SLUG_EXISTS' : 'PAYMENT_PLAN_CREATE_FAILED' }, { status: 409 });
   revalidatePath('/admin/payments');
+  revalidatePath('/admin/audit');
   revalidatePath('/en'); revalidatePath('/fr'); revalidatePath('/ar');
   return NextResponse.json({ plan: serializePlan(data) }, { status: 201 });
 }
@@ -51,12 +52,16 @@ export async function PATCH(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: 'INVALID_PLAN_ORDER' }, { status: 400 });
   const client = getSupabaseAdminClient();
   if (!client) return NextResponse.json({ error: 'ADMIN_DATA_UNAVAILABLE' }, { status: 503 });
-  const { data, error } = await client.rpc('admin_reorder_payment_plans', { p_ordered_ids: parsed.data.orderedIds });
+  const { data, error } = await client.rpc('admin_reorder_payment_plans', {
+    p_ordered_ids: parsed.data.orderedIds,
+    p_actor_user_id: access.user.id,
+  });
   if (error || !data) {
     console.error('[admin plans] reorder failed', { code: error?.code });
     return NextResponse.json({ error: 'PLAN_REORDER_FAILED' }, { status: 409 });
   }
   revalidatePath('/admin/payments');
+  revalidatePath('/admin/audit');
   revalidatePath('/en'); revalidatePath('/fr'); revalidatePath('/ar');
   return NextResponse.json({ plans: data.map(serializePlan) });
 }

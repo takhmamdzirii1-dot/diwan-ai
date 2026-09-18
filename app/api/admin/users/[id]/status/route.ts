@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getOwnerAccess, isOwnerUser } from '@/lib/auth/owner';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
+import { recordAdminAudit } from '@/lib/admin/audit';
 
 const schema = z.object({ status: z.enum(['active', 'suspended']) });
 
@@ -47,6 +48,26 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const resultingStatus = parsed.data.status === 'suspended'
     ? 'suspended'
     : target.user.email_confirmed_at ? 'active' : 'unconfirmed';
+  try {
+    await recordAdminAudit(client, {
+      actorUserId: access.user.id,
+      action: resultingStatus === 'suspended' ? 'user_suspended' : 'user_restored',
+      resourceType: 'user',
+      resourceId: id,
+      previousState: {
+        status: target.user.banned_until && Date.parse(target.user.banned_until) > Date.now()
+          ? 'suspended'
+          : target.user.email_confirmed_at ? 'active' : 'unconfirmed',
+      },
+      newState: { status: resultingStatus },
+    });
+  } catch (auditError) {
+    console.error('[admin users] status audit failed', {
+      code: auditError instanceof Error ? auditError.message : 'ADMIN_AUDIT_WRITE_FAILED',
+      userId: id,
+    });
+  }
   revalidatePath('/admin/users');
+  revalidatePath('/admin/audit');
   return NextResponse.json({ status: resultingStatus });
 }

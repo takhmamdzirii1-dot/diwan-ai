@@ -56,6 +56,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: duplicate ? 'PROVIDER_ROUTE_EXISTS' : 'PROVIDER_ROUTE_CREATE_FAILED' }, { status: 409 });
   }
   revalidatePath('/admin/models');
+  revalidatePath('/admin/audit');
   const configuration = providerConfigurationSummary(provider.id);
   const { data: providerConfig } = await client.from('provider_runtime_configs')
     .select('enabled').eq('provider_id', provider.id).maybeSingle();
@@ -120,6 +121,7 @@ export async function PATCH(request: Request) {
   if (!row) return NextResponse.json({ error: 'PROVIDER_ROUTE_UPDATE_FAILED' }, { status: 409 });
   revalidatePath('/admin');
   revalidatePath('/admin/models');
+  revalidatePath('/admin/audit');
   return NextResponse.json({ route: {
     id: String(row.id),
     providerModelId: String(row.provider_model_id),

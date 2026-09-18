@@ -30,11 +30,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { data, error } = await client.from('payment_plans').update({
     name: plan.name, description: plan.description || null, kind: plan.kind,
     price_dzd: plan.priceDzd, unified_credits: plan.unifiedCredits, active: plan.active,
-    display_order: plan.displayOrder, featured: plan.featured,
+    display_order: plan.displayOrder, featured: plan.featured, updated_by: access.user.id,
   }).eq('id', id).select('id,slug,name,description,kind,price_dzd,unified_credits,active,display_order,featured').maybeSingle();
   if (error) return NextResponse.json({ error: error.code === '23505' ? 'PAYMENT_PLAN_SLUG_EXISTS' : 'PAYMENT_PLAN_UPDATE_FAILED' }, { status: 409 });
   if (!data) return NextResponse.json({ error: 'PAYMENT_PLAN_NOT_FOUND' }, { status: 404 });
   revalidatePath('/admin/payments');
+  revalidatePath('/admin/audit');
   revalidatePath('/en'); revalidatePath('/fr'); revalidatePath('/ar');
   return NextResponse.json({ plan: {
     id: data.id, slug: data.slug, name: data.name, description: data.description,

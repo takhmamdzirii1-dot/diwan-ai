@@ -58,6 +58,7 @@ export async function PATCH(request: Request) {
   const row = Array.isArray(data) ? data[0] : data;
   if (!row) return NextResponse.json({ error: 'MODEL_PRESENTATION_UPDATE_FAILED' }, { status: 409 });
   revalidatePath('/admin/models');
+  revalidatePath('/admin/audit');
   revalidatePath('/studio', 'layout');
   return NextResponse.json({ presentation: {
     modelKey: registryModel.key,

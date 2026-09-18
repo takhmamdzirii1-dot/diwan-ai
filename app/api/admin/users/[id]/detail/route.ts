@@ -29,9 +29,17 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const audit = orderIds.length ? await client.from('payment_audit_log')
     .select('id,payment_order_id,action,created_at').in('payment_order_id', orderIds)
     .order('created_at', { ascending: false }).limit(30) : { data: [], error: null };
-  if (audit.error) return NextResponse.json({ error: 'USER_DETAIL_QUERY_FAILED' }, { status: 503 });
+  const generalAudit = await client.from('admin_audit_log')
+    .select('id,resource_id,action,created_at').eq('resource_type', 'user').eq('resource_id', id)
+    .order('created_at', { ascending: false }).limit(30);
+  if (audit.error || generalAudit.error) {
+    return NextResponse.json({ error: 'USER_DETAIL_QUERY_FAILED' }, { status: 503 });
+  }
   return NextResponse.json({
     entitlements: entitlements.data ?? [], ledger: ledger.data ?? [],
-    payments: payments.data ?? [], jobs: jobs.data ?? [], audit: audit.data ?? [],
+    payments: payments.data ?? [], jobs: jobs.data ?? [],
+    audit: [...(generalAudit.data ?? []), ...(audit.data ?? [])]
+      .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at))
+      .slice(0, 30),
   }, { headers: { 'Cache-Control': 'private, no-store' } });
 }

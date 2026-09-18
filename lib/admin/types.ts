@@ -151,8 +151,11 @@ export type AdminAuditRow = {
   action: string;
   actor: string | null;
   resource: string;
+  resourceType: string;
   resourceId: string;
   detail: string;
+  previousState: Record<string, unknown> | null;
+  newState: Record<string, unknown> | null;
   createdAt: string;
 };
 

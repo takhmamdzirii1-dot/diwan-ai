@@ -77,6 +77,7 @@ export async function PATCH(request: Request) {
   if (!row) return NextResponse.json({ error: 'MODEL_CONFIG_UPDATE_FAILED' }, { status: 409 });
   revalidatePath('/admin');
   revalidatePath('/admin/models');
+  revalidatePath('/admin/audit');
 
   return NextResponse.json({
     config: {
