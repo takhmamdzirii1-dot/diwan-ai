@@ -68,14 +68,14 @@ export default function AdminModelPresentationControls({ model, onSaved }: {
   const labelClass = 'grid gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]';
   return <section className="mt-3 rounded-lg border border-[var(--studio-border-subtle)] bg-black/20 p-3 text-start">
     <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.09em] text-[var(--studio-text-muted)]">{t('customerPresentation')}</p>
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid gap-3 sm:grid-cols-2">
       <label className={labelClass}>{t('displayName')}<input value={displayName} maxLength={80} onChange={(event) => { setDisplayName(event.target.value); setFeedback(null); }} className={inputClass} /></label>
       <label className={labelClass}>{t('category')}<input value={category} maxLength={60} onChange={(event) => { setCategory(event.target.value); setFeedback(null); }} placeholder={t('categoryPlaceholder')} className={inputClass} /></label>
       <label className={labelClass}>{t('sortOrder')}<input value={sortOrder} inputMode="numeric" onChange={(event) => { setSortOrder(event.target.value); setFeedback(null); }} className={inputClass} /></label>
       <label className={`${labelClass} md:col-span-2`}>{t('shortDescription')}<input value={description} maxLength={240} onChange={(event) => { setDescription(event.target.value); setFeedback(null); }} className={inputClass} /></label>
       <label className={labelClass}>{t('availabilityLabel')}<input value={availabilityLabel} maxLength={60} onChange={(event) => { setAvailabilityLabel(event.target.value); setFeedback(null); }} className={inputClass} /></label>
       <label className={`${labelClass} md:col-span-2`}>{t('mediaUrl')}<input value={mediaUrl} maxLength={500} onChange={(event) => { setMediaUrl(event.target.value); setFeedback(null); }} placeholder="/brand/model.svg or https://…" className={inputClass} /></label>
-      <label className="flex h-9 items-center gap-2.5 self-end rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-semibold text-white"><input type="checkbox" checked={visible} onChange={(event) => { setVisible(event.target.checked); setFeedback(null); }} className="h-4 w-4 accent-white" />{t('visibleInStudio')}</label>
+      <label title={t('studioHelp')} className="flex h-9 items-center gap-2.5 self-end rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-semibold text-white"><input type="checkbox" checked={visible} onChange={(event) => { setVisible(event.target.checked); setFeedback(null); }} className="h-4 w-4 accent-white" />{t('visibleInStudio')}</label>
     </div>
     <div className="mt-3 flex flex-wrap items-center justify-end gap-3">
       {feedback && <p role={feedback.tone === 'error' ? 'alert' : 'status'} className={`me-auto text-[10.5px] ${feedback.tone === 'error' ? 'text-red-200' : 'text-emerald-200'}`}>{feedback.text}</p>}

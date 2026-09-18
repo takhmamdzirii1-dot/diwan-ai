@@ -28,6 +28,8 @@ export type AdminOverviewData = {
   pendingPayments: number | null;
   providerCosts: CostAmount[];
   recentActivity: AdminActivity[];
+  activeProviders: number | null;
+  activeModels: number | null;
 };
 
 export type AdminProviderRow = {
@@ -117,7 +119,7 @@ export type AdminUsersData = {
 
 export type AdminJobRow = {
   id: string;
-  source: 'generation' | 'dispatch';
+  source: 'generation' | 'execution';
   userId: string;
   userEmail: string | null;
   modality: string;
@@ -132,6 +134,26 @@ export type AdminJobRow = {
   prompt: string | null;
   createdAt: string;
   updatedAt: string;
+  providerModelId: string | null;
+  reservationState: string | null;
+  attempts: { provider: string; state: string; error: string | null; startedAt: string; finishedAt: string | null }[];
+  usageMetadata: Record<string, unknown> | null;
+};
+
+export type AdminJobsData = {
+  jobs: AdminJobRow[];
+  nextCursor: string | null;
+  total: number;
+};
+
+export type AdminAuditRow = {
+  id: string;
+  action: string;
+  actor: string | null;
+  resource: string;
+  resourceId: string;
+  detail: string;
+  createdAt: string;
 };
 
 export type AdminPaymentAudit = {

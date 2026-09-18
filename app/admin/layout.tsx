@@ -29,7 +29,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <DocumentLocale locale={locale} />
       <NextIntlClientProvider locale={locale} messages={messages}>
-        <AdminShell>{children}</AdminShell>
+        <AdminShell realtimeOwner={access.user.app_metadata?.role === 'owner'}>{children}</AdminShell>
       </NextIntlClientProvider>
     </div>
   );

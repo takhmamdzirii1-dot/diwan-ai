@@ -78,8 +78,8 @@ export default function AdminModelControls({ model, onSaved }: {
 
   const controlClass = 'h-9 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] text-white outline-none focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/40 disabled:cursor-not-allowed disabled:opacity-45';
 
-  return <div className="grid gap-3 rounded-lg border border-[var(--studio-border-subtle)] bg-black/20 p-3 text-start md:grid-cols-[minmax(150px,0.8fr)_minmax(170px,1fr)_minmax(200px,1fr)_auto] md:items-end">
-    <label className="flex min-h-9 items-center gap-2.5 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-semibold text-white">
+  return <div className="grid gap-3 rounded-lg border border-[var(--studio-border-subtle)] bg-black/20 p-3 text-start sm:grid-cols-2 sm:items-end">
+    <label title={t('runtimeHelp')} className="flex min-h-9 items-center gap-2.5 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-semibold text-white">
       <input
         type="checkbox"
         checked={enabled}
@@ -94,7 +94,7 @@ export default function AdminModelControls({ model, onSaved }: {
       />
       {t('enabledLabel')}
     </label>
-    <label className="grid gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">
+    <label title={t('roleHelp')} className="grid gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">
       {t('routingRoleLabel')}
       <select
         value={routingRole}
@@ -107,7 +107,7 @@ export default function AdminModelControls({ model, onSaved }: {
         <option value="unassigned">{t('roleUnassigned')}</option>
       </select>
     </label>
-    <label className="grid gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">
+    <label title={t('priceHelper')} className="grid gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">
       {t('customerPriceLabel')}
       <input
         value={price}
@@ -129,7 +129,7 @@ export default function AdminModelControls({ model, onSaved }: {
       </button>
       {feedback && <p role={feedback.tone === 'error' ? 'alert' : 'status'} className={`text-[10.5px] ${feedback.tone === 'error' ? 'text-red-200' : 'text-emerald-200'}`}>{feedback.message}</p>}
     </div>
-    {!model.activationSupported && <p className="md:col-span-4 text-[11px] text-amber-100/80">{t('activationUnavailable')}</p>}
-    <p className="md:col-span-4 text-[11px] text-[var(--studio-text-muted)]">{t('priceHelper')}</p>
+    {!model.activationSupported && <p className="sm:col-span-2 text-[11px] text-amber-100/80">{t('activationUnavailable')}</p>}
+    <p className="sm:col-span-2 text-[11px] text-[var(--studio-text-muted)]">{t('priceHelper')}</p>
   </div>;
 }

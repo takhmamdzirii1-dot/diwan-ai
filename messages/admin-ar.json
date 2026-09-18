@@ -1,9 +1,12 @@
 {
   "Admin": {
     "brand": "إدارة VANTRA", "internal": "للمالك فقط", "backToStudio": "العودة إلى الاستوديو",
-    "nav": { "overview": "نظرة عامة", "providers": "المزوّدون", "models": "النماذج", "users": "المستخدمون", "jobs": "المهام / الاستخدام", "plans": "الخطط والأسعار", "payments": "المدفوعات" },
-    "navGroups": { "aiOperations": "عمليات الذكاء الاصطناعي", "business": "الأعمال" },
+    "nav": { "overview": "نظرة عامة", "providers": "المزوّدون", "models": "النماذج", "users": "المستخدمون", "jobs": "المهام / الاستخدام", "plans": "الخطط والأسعار", "payments": "المدفوعات", "runtime": "التشغيل والحدود", "audit": "سجل التدقيق" },
+    "navGroups": { "aiOperations": "عمليات الذكاء الاصطناعي", "business": "الأعمال", "system": "النظام" },
+    "runtime": { "title": "التشغيل والحدود", "description": "ضوابط المزوّد والتوجيه المحفوظة." },
+    "audit": { "title": "سجل التدقيق", "description": "إجراءات الدفع المسجلة للمالك.", "time": "الوقت", "admin": "المشرف", "action": "الإجراء", "resource": "المورد", "empty": "لا توجد أحداث تدقيق للمدفوعات.", "scope": "تغييرات النماذج والمزوّدين والمستخدمين لا تملك بعد سجل تدقيق موحدًا." },
     "common": {
+      "close": "إغلاق",
       "enabled": "مفعّل", "disabled": "معطّل", "available": "متاح", "unavailable": "غير متاح",
       "notConfigured": "بيانات الإدارة غير متاحة لأن صلاحية تقارير الخادم غير مهيأة.",
       "queryFailed": "تعذّر تحميل بيانات الإدارة. راجع سجلات الخادم.",
@@ -12,12 +15,15 @@
       "pageErrorTitle": "تعذّر تحميل صفحة الإدارة", "pageErrorDescription": "لم تُجرَ أي تعديلات. حاول تحميل الصفحة مجدداً، وراجع سجلات الخادم إذا استمرت المشكلة.", "tryAgain": "حاول مجدداً"
     },
     "overview": {
+      "activeProviders": "المزوّدون النشطون", "activeModels": "النماذج النشطة",
       "title": "نظرة عامة", "description": "ملخص واقعي لمستخدمي VANTRA وعمليات الإنشاء والسجلات المالية.",
       "totalUsers": "إجمالي المستخدمين", "totalGenerations": "إجمالي عمليات الإنشاء", "successfulJobs": "المهام الناجحة",
       "failedJobs": "المهام الفاشلة", "creditsConsumed": "الأرصدة المستهلكة", "providerCost": "تكلفة المزوّدين",
       "recentActivity": "النشاط الأخير", "noActivity": "لا يوجد نشاط مسجّل", "pendingPayments": "مدفوعات بانتظار المراجعة", "providerIssues": "مشكلات المزوّدين", "modelsMissingPricing": "نماذج بلا سعر للعملاء", "modelsUnknownProviderCost": "نماذج بتكلفة مزوّد غير معروفة", "attentionTitle": "يتطلب المتابعة", "attentionDescription": "قد تحتاج هذه السجلات التشغيلية الحقيقية إلى قرار من المالك.", "metrics": "المؤشرات التشغيلية", "quickActions": "إجراءات سريعة", "reviewPayments": "مراجعة المدفوعات المعلّقة", "managePlans": "إدارة الخطط والأسعار", "viewJobs": "عرض المهام الأخيرة", "reviewProviders": "مراجعة مزوّدي الذكاء الاصطناعي", "findUser": "البحث عن مستخدم", "providerCostDescription": "يعرض الإنفاق المسجّل فقط ولا يقدّر القيم غير المتاحة.", "generationActivity": "نشاط إنشاء · {item}", "creditActivity": "نشاط الأرصدة · {action}", "creditChange": "{value} من أرصدة VANTRA الموحّدة", "repeatedActivity": "×{count}"
     },
     "providers": {
+      "routingHelp": "يسمح للمسارات الموثّقة باستخدام هذا المزوّد عند ضبط بيانات الاتصال.", "emergencyHelp": "يوقف الطلبات الجديدة فورًا مع الاحتفاظ بالسجل.", "limitHelp": "يوقف الطلبات عند بلوغ الإنفاق اليومي المسجّل هذا الحد.",
+      "routing": "التوجيه", "configured": "بيانات الاتصال مضبوطة", "noDiagnostics": "لا يتوفر اختبار آمن لهذا المزوّد.", "tabs": { "overview": "نظرة عامة", "models": "النماذج والمسارات", "runtime": "التشغيل والحدود", "diagnostics": "التشخيص" },
       "title": "المزوّدون", "description": "الإعدادات والقياسات من بنية المزوّدين والنظام المالي المشتركة.",
       "name": "المزوّد", "modality": "النوع", "state": "الحالة", "health": "الصحة", "role": "الدور",
       "requests": "الطلبات", "failures": "الإخفاقات", "latency": "متوسط الاستجابة", "cost": "التكلفة المتراكمة",
@@ -25,6 +31,8 @@
       "manage": "إدارة التشغيل", "closeControls": "إغلاق", "enabledControl": "مفعّل للتوجيه", "killSwitch": "إيقاف طارئ", "priority": "الأولوية", "spendLimit": "الحد اليومي (وحدات صغرى)", "currency": "العملة", "noLimit": "بلا حد", "save": "حفظ", "saving": "جارٍ الحفظ…", "saved": "تم الحفظ", "credentialsMissing": "بيانات اعتماد الخادم غير موجودة، لذلك لا يمكن تفعيل هذا المزوّد.", "spendHelp": "يوقف زر الطوارئ الإرسال فوراً. يعتمد حد الإنفاق على سجلات التكلفة ويبقى معطلاً عند تركه فارغاً.", "invalidConfig": "أدخل أولوية صحيحة مع حد الإنفاق وعملة ISO معاً، أو اترك الحقلين فارغين.", "errors": { "INVALID_PROVIDER_CONFIG": "إعداد المزوّد غير صالح.", "PROVIDER_NOT_REGISTERED": "هذا المزوّد غير موجود في سجل الخادم.", "PROVIDER_CREDENTIALS_MISSING": "أضف بيانات اعتماد الخادم المطلوبة قبل تفعيل المزوّد.", "PROVIDER_CONFIG_UPDATE_FAILED": "تعذّر حفظ إعداد المزوّد." }
     },
     "models": {
+      "runtimeHelp": "يسمح بتشغيل النموذج عند وجود مسار موثّق وسعر للعميل.", "studioHelp": "يحدد ظهور النموذج للعملاء في الاستوديو.", "roleHelp": "النموذج الأساسي مفضّل، ويُستخدم الاحتياطي إذا سمح التوجيه.", "routeHelp": "يربط المسار النشط النموذج بمزوّد مضبوط ومعرّف النموذج الحقيقي.",
+      "studio": "في الاستوديو", "routeStatus": "مسار المزوّد", "health": "التوفر", "noActiveRoute": "لا مسار نشط", "tabs": { "overview": "نظرة عامة", "presentation": "العرض", "pricing": "السعر والوصول", "routes": "مسارات المزوّدين" },
       "title": "النماذج", "description": "يُتابَع سعر العميل وتكلفة المزوّد على VANTRA بشكل مستقل. تبقى القيمة المفقودة غير مهيّأة ولا تتحول إلى صفر.",
       "addRoute": "إضافة مسار", "creatingRoute": "جارٍ الإضافة…", "routeCreated": "تمت إضافة المسار", "routeCreateFailed": "تعذّرت إضافة مسار المزوّد.", "newRouteDisabled": "تُنشأ المسارات الجديدة معطّلة. هيّئ المزوّد وتحقق من الربط قبل التفعيل.",
       "provider": "المزوّد", "modelId": "معرّف النموذج", "displayName": "الاسم الظاهر", "modality": "النوع",
@@ -32,6 +40,7 @@
       "state": "الحالة", "providerCost": "تكلفة المزوّد", "creditPrice": "سعر العميل", "priority": "دور التوجيه", "pricing": "سعر العميل", "modelCount": "{count} نماذج مسجّلة", "summary": "ملخص النماذج", "summaryTotal": "الإجمالي", "summaryEnabled": "المفعّلة", "summaryPrimary": "الأساسية", "summaryMissingPricing": "سعر العميل غير مهيّأ", "summaryUnknownProviderCost": "تكلفة المزوّد غير معروفة", "summaryPreview": "معاينة", "filterLabel": "تصفية النماذج", "noMatches": "لا توجد نماذج تطابق هذا المرشّح.", "manage": "إدارة", "closeControls": "إغلاق", "enabledLabel": "مفعّل أثناء التشغيل", "routingRoleLabel": "دور التوجيه", "rolePrimary": "أساسي", "roleFallback": "احتياطي", "roleUnassigned": "غير معيّن", "customerPriceLabel": "سعر العميل (أرصدة VANTRA الموحّدة)", "customerPricePlaceholder": "غير مهيّأ", "priceHelper": "سعر العميل مستقل عن تكلفة المزوّد. اترك الحقل فارغاً لمنع أي توليد مدفوع من العمل بلا سعر مهيّأ.", "activationUnavailable": "هذا النموذج غير متصل بتشغيل الاستوديو. يمكن إعداد سعره، لكن تفعيله وتوجيهه يظلان غير متاحين.", "save": "حفظ", "saving": "جارٍ الحفظ…", "saved": "تم الحفظ", "providerRoutes": "مسارات المزوّد الموثّقة", "noProviderRoutes": "لا يوجد مسار مزوّد موثّق مسجّل.", "routeReady": "جاهز للإعداد", "routeUnavailable": "بيانات الاعتماد/المزوّد غير متاح", "routeEnabled": "المسار مفعّل", "routeFallback": "مسار احتياطي", "routePriority": "الأولوية", "routeSaved": "تم حفظ المسار", "errors": { "invalidPrice": "أدخل عدداً صحيحاً من الأرصدة الموحّدة أو اترك الحقل فارغاً.", "INVALID_MODEL_CONFIG": "إعداد النموذج غير صالح.", "MODEL_NOT_REGISTERED": "هذا النموذج غير موجود في السجل الموثّق.", "MODEL_ACTIVATION_UNSUPPORTED": "هذا النموذج غير متصل ولا يمكن تفعيله.", "MODEL_ROLE_REQUIRES_ENABLED": "فعّل النموذج قبل تعيين دور التوجيه.", "MODEL_ROUTING_UNSUPPORTED": "التوجيه غير متاح لهذا النموذج.", "MODEL_PRIMARY_CONFLICT": "يجري تعيين نموذج آخر كأساسي. حدّث الصفحة ثم حاول مجدداً.", "MODEL_CONFIG_UPDATE_FAILED": "تعذّر حفظ إعداد النموذج. تم الاحتفاظ بتعديلاتك.", "PROVIDER_ROUTE_UPDATE_FAILED": "تعذّر حفظ مسار المزوّد.", "PROVIDER_CREDENTIALS_MISSING": "بيانات اعتماد المزوّد غير موجودة.", "PROVIDER_NOT_ACTIVE": "فعّل المزوّد وألغِ إيقاف الطوارئ أولاً.", "PRIMARY_PROVIDER_ROUTE_EXISTS": "عطّل المسار الأساسي الحالي قبل تفعيل مسار آخر.", "FALLBACK_REQUIRES_PRIMARY_ROUTE": "فعّل مساراً أساسياً قبل تفعيل المسار الاحتياطي." }, "filters": { "all": "الكل", "enabled": "مفعّلة", "primary": "أساسية", "image": "صور", "chat": "محادثة", "video": "فيديو", "missingPricing": "سعر العميل غير مهيّأ", "preview": "معاينة", "notInStudio": "غير موجودة في الاستوديو" }
     },
     "users": {
+      "view": "عرض", "loading": "جارٍ تحميل السجلات…", "securityHelp": "ضوابط الوصول إلى الحساب. يبقى السجل المالي محفوظًا.", "tabs": { "overview": "نظرة عامة", "subscription": "الاشتراك", "credits": "الأرصدة والسجل", "payments": "المدفوعات", "jobs": "المهام", "security": "الأمان", "audit": "التدقيق" },
       "title": "المستخدمون", "description": "ابحث في الحسابات وراجع أرصدتها واستخدامها الحقيقي.",
       "search": "البحث بالبريد أو معرّف المستخدم", "searchAction": "بحث", "email": "البريد الإلكتروني", "plan": "الخطة",
       "balance": "رصيد الأرصدة", "usage": "الأرصدة المستخدمة", "generations": "عمليات الإنشاء", "status": "حالة الحساب",
@@ -39,6 +48,7 @@
       "truncated": "بلغ مصدر النتائج حد الأمان في الإصدار الأول.", "safeActions": "يمكن تعليق الحساب؛ وتبقى تغييرات الرصيد والفوترة خاضعة للسجل المالي.", "payments": "طلبات الدفع", "recentUsage": "الاستخدام الأخير", "usageCredits": "{value} رصيد مستخدم", "usageGenerations": "{value} عمليات إنشاء", "actions": "الإجراءات", "suspend": "تعليق", "reactivate": "إعادة التفعيل", "ownerProtected": "حساب مالك محمي", "confirmSuspend": "تعليق هذا الحساب؟ سيبقى السجل المالي محفوظاً.", "confirmReactivate": "إعادة تفعيل هذا الحساب؟", "errors": { "OWNER_ACCOUNT_PROTECTED": "لا يمكن تعليق حسابات المالك هنا.", "USER_NOT_FOUND": "لم يعد هذا المستخدم موجوداً. حدّث الصفحة.", "USER_STATUS_UPDATE_FAILED": "تعذّر تغيير حالة الحساب." }, "noMatches": "لا يوجد مستخدم يطابق هذا البحث.", "noUsers": "لا يوجد مستخدمون بعد. ستظهر الحسابات المسجّلة هنا."
     },
     "jobs": {
+      "searchAction": "بحث", "nextPage": "الصفحة التالية", "reservation": "الحجز", "attempts": "محاولات المزوّد", "execution": "التنفيذ",
       "title": "المهام / الاستخدام", "description": "سجل الإنشاء وإرسال المزوّدين من الجداول الحالية.",
       "time": "الوقت", "source": "المصدر", "user": "المستخدم", "modality": "النوع", "providerModel": "المزوّد / النموذج",
       "status": "الحالة", "cost": "تكلفة المزوّد", "details": "التفاصيل", "generation": "إنشاء", "dispatch": "إرسال", "latency": "زمن الاستجابة", "creditsCharged": "الأرصدة", "resultCount": "{count} سجلات", "search": "ابحث عن مستخدم أو مزوّد أو نموذج", "statusFilter": "تصفية حسب الحالة", "modalityFilter": "تصفية حسب النوع", "providerFilter": "تصفية حسب المزوّد", "modelFilter": "تصفية حسب النموذج", "allStatuses": "كل الحالات", "allModalities": "كل الأنواع", "allProviders": "كل المزوّدين", "allModels": "كل النماذج", "clearFilters": "مسح المرشّحات", "viewDetails": "عرض التفاصيل", "noJobs": "لا توجد مهام بعد. سيظهر نشاط الإنشاء هنا بعد استخدام المحادثة أو الصور أو الفيديو.", "noMatches": "لا توجد مهام تطابق عوامل التصفية."
@@ -51,6 +61,7 @@
       "errors": { "PAYMENT_PLAN_SLUG_EXISTS": "هذا المعرّف الداخلي موجود مسبقاً.", "PAYMENT_PLAN_SLUG_IMMUTABLE": "المعرّف الداخلي مقفل بعد الإنشاء.", "INVALID_PAYMENT_PLAN": "راجع قيم الخطة وحاول مجدداً.", "PAYMENT_PLAN_NOT_FOUND": "لم تعد هذه الخطة موجودة. حدّث الصفحة.", "PAYMENT_PLAN_CREATE_FAILED": "تعذّر إنشاء الخطة.", "PAYMENT_PLAN_UPDATE_FAILED": "تعذّر تحديث الخطة.", "PLAN_REORDER_FAILED": "تعذّر حفظ ترتيب الخطط. لم يتم الاحتفاظ بأي ترتيب جزئي." }
     },
     "status": {
+      "reserved": "محجوز", "streaming": "جارٍ البث",
       "healthy": "يعمل", "attention": "يحتاج متابعة", "idle": "لا يوجد نشاط بعد", "unconfigured": "غير متاح",
       "demo": "تجريبي", "client_managed": "يُدار من العميل", "available": "متاح", "beta": "بيتا", "preview": "معاينة",
       "unavailable": "غير متاح", "temporarily_unavailable": "غير متاح مؤقتاً", "internal_test": "اختبار داخلي",

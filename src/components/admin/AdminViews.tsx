@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { AlertTriangle, ArrowRight, ChevronDown, Database, ExternalLink, Search, X } from 'lucide-react';
@@ -13,8 +13,8 @@ import AdminProviderControls from './AdminProviderControls';
 import AdminModelRouteControls from './AdminModelRouteControls';
 import AdminModelPresentationControls from './AdminModelPresentationControls';
 import type {
-  AdminDataResult, AdminJobRow, AdminModelRow, AdminOverviewData, AdminPaymentRow,
-  AdminPaymentPlan, AdminProviderRow, AdminUsersData, CostAmount,
+  AdminAuditRow, AdminDataResult, AdminJobRow, AdminJobsData, AdminModelRow, AdminOverviewData, AdminPaymentRow,
+  AdminPaymentPlan, AdminProviderRow, AdminUserRow, AdminUsersData, CostAmount,
 } from '@/lib/admin/types';
 import { isMissingCustomerPricing } from '@/lib/admin/model-economics';
 
@@ -62,11 +62,11 @@ function ProviderEconomics({ row }: { row: Pick<AdminModelRow, 'providerCost' | 
   return <span>{t('providerCostUnknown')}</span>;
 }
 
-function DateValue({ value }: { value: string | null }) {
+function DateValue({ value, compact = false }: { value: string | null; compact?: boolean }) {
   const locale = useLocale();
   const t = useTranslations('Admin.common');
   if (!value) return <span>{t('never')}</span>;
-  return <time dateTime={value}>{new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))}</time>;
+  return <time dateTime={value}>{new Intl.DateTimeFormat(locale, { dateStyle: compact ? 'short' : 'medium', timeStyle: 'short' }).format(new Date(value))}</time>;
 }
 
 function Status({ value }: { value: string }) {
@@ -85,6 +85,20 @@ function TechnicalId({ label, value }: { label: string; value: string }) {
 function TechnicalDetails({ children }: { children: React.ReactNode }) {
   const t = useTranslations('Admin.common');
   return <details className="mt-1.5"><summary className="w-fit cursor-pointer rounded text-[10.5px] font-medium text-[var(--studio-text-muted)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">{t('technicalDetails')}</summary><div className="mt-1.5 rounded-lg border border-[var(--studio-border-subtle)] bg-black/20 p-2">{children}</div></details>;
+}
+
+function DetailDrawer({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const t = useTranslations('Admin.common');
+  useEffect(() => {
+    const dialog = ref.current;
+    dialog?.showModal();
+    return () => { if (dialog?.open) dialog.close(); };
+  }, []);
+  return <dialog ref={ref} onClose={onClose} onClick={(event) => { if (event.target === ref.current) ref.current?.close(); }} aria-label={title} className="fixed inset-y-0 end-0 m-0 ms-auto h-dvh max-h-dvh w-full max-w-[640px] overflow-y-auto border-s border-[var(--studio-border)] bg-[var(--studio-surface)] p-0 text-white shadow-2xl backdrop:bg-black/70">
+    <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-[var(--studio-border)] bg-[var(--studio-surface)] px-5 py-4"><h2 className="truncate text-[18px] font-semibold">{title}</h2><button type="button" onClick={() => ref.current?.close()} aria-label={t('close')} className="rounded-lg p-2 text-[var(--studio-text-secondary)] hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/50"><X className="h-4 w-4" /></button></div>
+    <div className="p-5">{children}</div>
+  </dialog>;
 }
 
 function Metric({ label, value }: { label: string; value: React.ReactNode }) {
@@ -113,21 +127,20 @@ export function OverviewView({ result }: { result: AdminDataResult<AdminOverview
   const metrics = [
     ['totalUsers', result.data.totalUsers], ['totalGenerations', result.data.totalGenerations],
     ['successfulJobs', result.data.successfulJobs], ['failedJobs', result.data.failedJobs],
-    ['creditsConsumed', result.data.creditsConsumed], ['pendingPayments', result.data.pendingPayments],
+    ['pendingPayments', result.data.pendingPayments], ['activeProviders', result.data.activeProviders],
+    ['activeModels', result.data.activeModels],
   ] as const;
   const attentionItems = [
     { key: 'pendingPayments', value: result.data.pendingPayments, href: '/admin/payments?view=payments&status=pending' },
-    { key: 'failedJobs', value: result.data.failedJobs, href: '/admin/jobs' },
     { key: 'providerIssues', value: result.data.providerIssues, href: '/admin/providers' },
     { key: 'modelsMissingPricing', value: result.data.modelsMissingPricing, href: '/admin/models' },
-    { key: 'modelsUnknownProviderCost', value: result.data.modelsUnknownProviderCost, href: '/admin/models' },
   ].filter((item) => typeof item.value === 'number' && item.value > 0);
   return <><PageHeader title={t('overview.title')} description={t('overview.description')} />{!result.available && <Notice reason={result.reason} />}
     {attentionItems.length ? <div role="region" aria-labelledby="admin-attention-title" className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[0.05] px-3 py-2">
       <AlertTriangle className="h-4 w-4 shrink-0 text-amber-200" aria-hidden="true" /><div className="me-1 min-w-0 text-start"><h2 id="admin-attention-title" className="text-[13px] font-semibold text-amber-50">{t('overview.attentionTitle')}</h2><p className="sr-only">{t('overview.attentionDescription')}</p></div>
       <div className="flex flex-wrap gap-1.5">{attentionItems.map((item) => <Link key={item.key} href={item.href} prefetch={false} className="inline-flex min-h-7 items-center gap-2.5 rounded-lg border border-amber-200/15 bg-black/20 px-2.5 py-1 text-[11px] font-medium text-amber-50/85 hover:bg-black/30 hover:text-white"><span>{t(`overview.${item.key}`)}</span><strong className="tabular-nums text-white">{item.value}</strong></Link>)}</div>
     </div> : null}
-    <section aria-label={t('overview.metrics')} className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{metrics.map(([key, value]) => <Metric key={key} label={t(`overview.${key}`)} value={value} />)}</section>
+    <section aria-label={t('overview.metrics')} className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{metrics.map(([key, value]) => <Metric key={key} label={t(`overview.${key}`)} value={value} />)}</section>
     <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]"><div className="rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-5"><SectionHeading title={t('overview.recentActivity')} />
       <div className="space-y-1">{result.data.recentActivity.length ? summarizeActivity(result.data.recentActivity).map((item) => {
         const action = t.has(`status.${item.status}`) ? t(`status.${item.status}`) : item.status;
@@ -152,28 +165,25 @@ export function ProvidersView({ result }: { result: AdminDataResult<AdminProvide
   const t = useTranslations('Admin');
   const [providers, setProviders] = useState(result.data);
   const [editingProvider, setEditingProvider] = useState<string | null>(null);
+  const [tab, setTab] = useState<'overview' | 'models' | 'runtime' | 'diagnostics'>('overview');
   useEffect(() => setProviders(result.data), [result.data]);
   const configured = providers.filter((row) => row.enabled).length;
   const attention = providers.filter((row) => row.status === 'attention').length;
+  const selected = providers.find((row) => row.id === editingProvider);
   const providerTestCopy: ProviderTestCopy = {
     provider: t('providerTest.provider'), prompt: t('providerTest.prompt'), promptPlaceholder: t('providerTest.promptPlaceholder'), generate: t('providerTest.generate'), generating: t('providerTest.generating'), result: t('providerTest.result'), resultAlt: t('providerTest.resultAlt'), summary: t('providerTest.summary'), summaryHelp: t('providerTest.summaryHelp'), emptyTitle: t('providerTest.emptyTitle'), emptyDescription: t('providerTest.emptyDescription'), genericError: t('providerTest.genericError'),
   };
-  return <><PageHeader title={t('providers.title')} description={t('providers.description')}><div className="flex gap-2"><Badge>{t('providers.configuredCount', { count: configured })}</Badge><Badge tone={attention ? 'danger' : 'neutral'}>{t('providers.attentionCount', { count: attention })}</Badge></div></PageHeader>{!result.available && <Notice reason={result.reason} />}
+  return <><PageHeader title={t('providers.title')} description={t('providers.description')} compact><div className="flex gap-2"><Badge>{t('providers.configuredCount', { count: configured })}</Badge>{attention > 0 && <Badge tone="danger">{t('providers.attentionCount', { count: attention })}</Badge>}</div></PageHeader>{!result.available && <Notice reason={result.reason} />}
     {providers.length ? <TableFrame><table className={adminTableClass}>
-      <colgroup><col className="w-[24%]" /><col className="w-[11%]" /><col className="w-[14%]" /><col className="w-[12%]" /><col className="w-[19%]" /><col className="w-[20%]" /></colgroup>
-      <thead className="border-b border-[var(--studio-border)]"><tr>
-        <th>{t('providers.name')}</th><th>{t('providers.modality')}</th><th>{t('providers.health')}</th><th>{t('providers.role')}</th>
-        <th>{t('providers.lastActivity')}</th><th className="text-end">{t('providers.failures')} / {t('providers.cost')}</th>
-      </tr></thead>
-      <tbody>{providers.map((row) => <Fragment key={row.id}><tr className="border-b border-[var(--studio-border-subtle)] last:border-0">
-        <td><div className="flex min-w-0 items-center gap-2"><p className="truncate font-semibold text-white" title={row.name}>{row.name}</p><Badge tone={row.enabled ? 'success' : 'neutral'}>{t(row.enabled ? 'common.enabled' : 'common.disabled')}</Badge></div><TechnicalDetails><p className="text-[11px] text-[var(--studio-text-secondary)]"><strong>{t('providers.models')}:</strong> {row.associatedModels.length ? row.associatedModels.join(' · ') : t('common.noneRecorded')}</p><p className="mt-1 text-[11px] text-[var(--studio-text-secondary)]"><strong>{t('providers.requests')}:</strong> <span className="tabular-nums">{row.requestCount}</span></p><p className="mt-1 text-[11px] text-[var(--studio-text-secondary)]"><strong>{t('providers.latency')}:</strong> {row.averageLatencyMs == null ? '—' : t('common.milliseconds', { value: row.averageLatencyMs })}</p><TechnicalId label={t('common.internalId')} value={row.id} />{row.lastError && <p className="mt-1.5 break-words text-[11px] text-red-100"><strong>{t('providers.lastError')}:</strong> {row.lastError}</p>}</TechnicalDetails></td>
-        <td className="text-[var(--studio-text-secondary)]">{row.modalities.map((value) => t.has(`modality.${value}`) ? t(`modality.${value}`) : value).join(' · ')}</td>
-        <td><Status value={row.status} /></td><td><Badge>{t(`role.${row.role}`)}</Badge></td>
-        <td className="text-[var(--studio-text-secondary)]"><DateValue value={row.lastActivityAt} /></td>
-        <td className="text-end"><p className={`font-semibold tabular-nums ${row.failures ? 'text-red-100' : 'text-[var(--studio-text-secondary)]'}`}>{row.failures}</p><div className="mt-0.5 font-medium text-[var(--studio-text-muted)]">{row.accumulatedCosts.length ? row.accumulatedCosts.map((cost) => <div key={cost.currency}><Cost value={cost} /></div>) : '—'}</div><button type="button" aria-expanded={editingProvider === row.id} onClick={() => setEditingProvider((current) => current === row.id ? null : row.id)} className="mt-1.5 rounded-md border border-[var(--studio-border)] px-2 py-1 text-[10.5px] font-semibold text-[var(--studio-text-secondary)] hover:border-[var(--studio-border-strong)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">{t(editingProvider === row.id ? 'providers.closeControls' : 'providers.manage')}</button></td>
-      </tr>{editingProvider === row.id && <tr className="border-b border-[var(--studio-border-subtle)]"><td colSpan={6} className="bg-black/15 p-2.5"><AdminProviderControls provider={row} onSaved={(config) => setProviders((current) => current.map((item) => item.id === config.providerId ? { ...item, enabled: config.enabled, configured: config.configured, priority: config.priority, emergencyDisabled: config.emergencyDisabled, dailySpendLimitMinor: config.dailySpendLimitMinor, spendCurrency: config.spendCurrency, role: config.enabled && !config.emergencyDisabled ? (config.priority <= 20 ? 'primary' : 'backup') : 'unassigned', status: config.emergencyDisabled ? 'attention' : item.status } : item))} /></td></tr>}</Fragment>)}</tbody>
+      <thead className="border-b border-[var(--studio-border)]"><tr><th className="w-[17%]">{t('providers.name')}</th><th className="w-[13%]">{t('providers.modality')}</th><th className="w-[11%]">{t('providers.health')}</th><th className="w-[11%]">{t('providers.routing')}</th><th className="w-[8%] text-end">{t('providers.models')}</th><th className="w-[13%] text-end">{t('providers.cost')}</th><th className="w-[8%] text-end">{t('providers.failures')}</th><th className="w-[12%]">{t('providers.lastActivity')}</th><th className="w-[7%]">{t('users.actions')}</th></tr></thead>
+      <tbody>{providers.map((row) => <tr key={row.id} className="border-b border-[var(--studio-border-subtle)] last:border-0"><td><button type="button" onClick={() => { setEditingProvider(row.id); setTab('overview'); }} className="max-w-full truncate text-start font-semibold text-white hover:underline focus-visible:ring-2 focus-visible:ring-white/50">{row.name}</button></td><td className="truncate text-[var(--studio-text-secondary)]" title={row.modalities.join(', ')}>{row.modalities.map((value) => t.has(`modality.${value}`) ? t(`modality.${value}`) : value).join(' · ')}</td><td><Status value={row.status} /></td><td><Badge tone={row.enabled && !row.emergencyDisabled ? 'success' : 'neutral'}>{t(row.enabled && !row.emergencyDisabled ? 'common.enabled' : 'common.disabled')}</Badge></td><td className="text-end tabular-nums">{row.associatedModels.length}</td><td className="text-end tabular-nums text-[var(--studio-text-secondary)]">{row.accumulatedCosts.length ? row.accumulatedCosts.map((cost) => <div key={cost.currency}><Cost value={cost} /></div>) : '—'}</td><td className={`text-end tabular-nums ${row.failures ? 'text-red-100' : 'text-[var(--studio-text-secondary)]'}`}>{row.failures}</td><td className="text-[var(--studio-text-secondary)]"><DateValue value={row.lastActivityAt} compact /></td><td><button type="button" onClick={() => { setEditingProvider(row.id); setTab('overview'); }} className="text-[11px] font-semibold text-white underline">{t('users.view')}</button></td></tr>)}</tbody>
     </table></TableFrame> : <Empty label={t('providers.noProviders')} />}
-    <details className="group mt-6 rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)]"><summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 text-start text-[14px] font-semibold text-white [&::-webkit-details-marker]:hidden sm:px-5"><ChevronDown className="h-4 w-4 text-[var(--studio-text-muted)] transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" /><span>{t('providers.testTitle')}</span><span className="ms-auto text-[11px] font-medium text-[var(--studio-text-muted)]">{t('providers.diagnosticsLabel')}</span></summary><div className="border-t border-[var(--studio-border-subtle)] p-4 sm:p-5"><p className="mb-4 max-w-2xl text-start text-[13px] leading-relaxed text-[var(--studio-text-secondary)]">{t('providers.testDescription')}</p><RunwareProviderTest copy={providerTestCopy} /></div></details></>;
+    {selected && <DetailDrawer title={selected.name} onClose={() => setEditingProvider(null)}><div className="mb-4 flex flex-wrap gap-2">{(['overview', 'models', 'runtime', 'diagnostics'] as const).map((value) => <button key={value} type="button" aria-pressed={tab === value} onClick={() => setTab(value)} className={`rounded-lg border px-3 py-2 text-[12px] ${tab === value ? 'border-white bg-white text-black' : 'border-[var(--studio-border)] text-[var(--studio-text-secondary)]'}`}>{t(`providers.tabs.${value}`)}</button>)}</div>
+      {tab === 'overview' && <div className="space-y-3 text-[13px]"><p><strong>{t('providers.health')}:</strong> <Status value={selected.status} /></p><p><strong>{t('providers.routing')}:</strong> {t(selected.enabled && !selected.emergencyDisabled ? 'common.enabled' : 'common.disabled')}</p><p><strong>{t('providers.configured')}:</strong> {t(selected.configured ? 'common.enabled' : 'common.disabled')}</p><p><strong>{t('providers.requests')}:</strong> {selected.requestCount}</p><p><strong>{t('providers.failures')}:</strong> {selected.failures}</p><p><strong>{t('providers.cost')}:</strong> {selected.accumulatedCosts.length ? selected.accumulatedCosts.map((cost) => <span key={cost.currency} className="ms-2"><Cost value={cost} /></span>) : '—'}</p><p><strong>{t('providers.lastActivity')}:</strong> <DateValue value={selected.lastActivityAt} /></p>{selected.lastError && <p className="text-red-100">{selected.lastError}</p>}<TechnicalDetails><TechnicalId label={t('common.internalId')} value={selected.id} /></TechnicalDetails></div>}
+      {tab === 'models' && <div className="space-y-2">{selected.associatedModels.length ? selected.associatedModels.map((name) => <p key={name} className="rounded-lg border border-[var(--studio-border)] px-3 py-2 text-[13px]">{name}</p>) : <Empty label={t('common.noneRecorded')} />}<Link href="/admin/models" prefetch={false} className="inline-block pt-2 text-[12px] underline">{t('nav.models')}</Link></div>}
+      {tab === 'runtime' && <AdminProviderControls provider={selected} onSaved={(config) => setProviders((current) => current.map((item) => item.id === config.providerId ? { ...item, enabled: config.enabled, configured: config.configured, priority: config.priority, emergencyDisabled: config.emergencyDisabled, dailySpendLimitMinor: config.dailySpendLimitMinor, spendCurrency: config.spendCurrency, role: config.enabled && !config.emergencyDisabled ? (config.priority <= 20 ? 'primary' : 'backup') : 'unassigned', status: config.emergencyDisabled ? 'attention' : item.status } : item))} />}
+      {tab === 'diagnostics' && (selected.id === 'runware' ? <><p className="mb-4 text-[12px] text-[var(--studio-text-secondary)]">{t('providers.testDescription')}</p><RunwareProviderTest copy={providerTestCopy} /></> : <p className="text-[12px] text-[var(--studio-text-secondary)]">{t('providers.noDiagnostics')}</p>)}
+    </DetailDrawer>}</>;
 }
 
 export function ModelsView({ result }: { result: AdminDataResult<AdminModelRow[]> }) {
@@ -181,6 +191,7 @@ export function ModelsView({ result }: { result: AdminDataResult<AdminModelRow[]
   const [filter, setFilter] = useState('all');
   const [models, setModels] = useState(result.data);
   const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [tab, setTab] = useState<'overview' | 'presentation' | 'pricing' | 'routes'>('overview');
   useEffect(() => setModels(result.data), [result.data]);
   const filterOptions = ['all', 'enabled', 'primary', 'image', 'chat', 'video', 'missingPricing', 'preview', 'notInStudio'] as const;
   const counts = {
@@ -200,29 +211,28 @@ export function ModelsView({ result }: { result: AdminDataResult<AdminModelRow[]
     if (filter === 'notInStudio') return row.availability === 'not_in_studio';
     return true;
   }), [filter, models]);
+  const selected = models.find((row) => row.key === editingKey);
   return <><PageHeader title={t('models.title')} description={t('models.description')} />{!result.available && <Notice reason={result.reason} />}
     <section aria-label={t('models.summary')} className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">{(['total','enabled','primary','missingPricing','unknownProviderCost','preview'] as const).map((key) => <div key={key} className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] px-3 py-2.5 text-start"><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">{t(`models.summary${key[0].toUpperCase()}${key.slice(1)}`)}</p><p className="mt-1 text-lg font-bold tabular-nums text-white">{counts[key]}</p></div>)}</section>
     <div role="group" aria-label={t('models.filterLabel')} className="mb-4 flex flex-wrap gap-2">{filterOptions.map((value) => <button key={value} type="button" aria-pressed={filter === value} onClick={() => setFilter(value)} className={`min-h-9 rounded-full border px-3 text-[11.5px] font-semibold transition-[background-color,border-color,color] duration-150 motion-reduce:transition-none ${filter === value ? 'border-white bg-white text-black' : 'border-[var(--studio-border)] bg-[var(--studio-surface)] text-[var(--studio-text-secondary)] hover:border-[var(--studio-border-strong)] hover:text-white'}`}>{t(`models.filters.${value}`)}</button>)}</div>
     {filtered.length ? <TableFrame><table className={adminTableClass}>
-      <colgroup><col className="w-[26%]" /><col className="w-[11%]" /><col className="w-[14%]" /><col className="w-[20%]" /><col className="w-[13%]" /><col className="w-[16%]" /></colgroup>
-      <thead className="border-b border-[var(--studio-border)]"><tr>
-        <th>{t('models.displayName')}</th><th>{t('models.modality')}</th><th>{t('models.provider')}</th><th>{t('models.state')}</th><th>{t('models.priority')}</th><th className="text-end">{t('models.pricing')}</th>
-      </tr></thead>
-      <tbody>{filtered.map((row) => <Fragment key={row.key}><tr className="border-b border-[var(--studio-border-subtle)] last:border-0">
-        <td><p className="truncate font-semibold text-white" title={row.displayName}>{row.displayName}</p><TechnicalDetails><TechnicalId label={t('common.modelId')} value={row.modelId} /></TechnicalDetails></td>
-        <td className="text-[var(--studio-text-secondary)]">{t.has(`modality.${row.modality}`) ? t(`modality.${row.modality}`) : row.modality}</td>
-        <td className="truncate text-[var(--studio-text-secondary)]" title={row.provider}>{row.provider}</td>
-        <td><div className="flex flex-wrap gap-1"><Badge tone={row.enabled ? 'success' : 'neutral'}>{t(row.enabled ? 'common.enabled' : 'common.disabled')}</Badge><Status value={row.availability} /></div></td>
-        <td><Badge>{t(`role.${row.priority}`)}</Badge></td>
-        <td className="text-end"><p className="font-semibold tabular-nums text-white">{isMissingCustomerPricing(row) ? t('common.noPrice') : t('common.credits', { value: row.creditPrice })}</p><p className="mt-0.5 text-[10.5px] leading-snug text-[var(--studio-text-muted)]">{t('models.providerCost')}: <ProviderEconomics row={row} /></p><button type="button" aria-expanded={editingKey === row.key} onClick={() => setEditingKey((current) => current === row.key ? null : row.key)} className="mt-1.5 rounded-md border border-[var(--studio-border)] px-2 py-1 text-[10.5px] font-semibold text-[var(--studio-text-secondary)] hover:border-[var(--studio-border-strong)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">{t(editingKey === row.key ? 'models.closeControls' : 'models.manage')}</button></td>
-      </tr>{editingKey === row.key && <tr className="border-b border-[var(--studio-border-subtle)]"><td colSpan={6} className="bg-black/15 p-2.5"><AdminModelControls model={row} onSaved={(config) => setModels((current) => current.map((item) => item.key === config.modelKey ? { ...item, enabled: config.enabled, priority: config.routingRole, creditPrice: config.customerCreditPrice, persisted: true, updatedAt: config.updatedAt } : config.routingRole === 'primary' && item.modality === row.modality && item.priority === 'primary' ? { ...item, priority: 'unassigned' } : item))} /><AdminModelPresentationControls model={row} onSaved={(presentation) => setModels((current) => current.map((item) => item.key === row.key ? { ...item, displayName: presentation.displayName, shortDescription: presentation.shortDescription, mediaUrl: presentation.mediaUrl, category: presentation.category, sortOrder: presentation.sortOrder, visibleInStudio: presentation.visibleInStudio, availabilityLabel: presentation.availabilityLabel, updatedAt: presentation.updatedAt, persisted: true } : item))} /><AdminModelRouteControls modelKey={row.key} routes={row.routes} providerOptions={row.providerOptions} onCreated={(createdRoute) => setModels((current) => current.map((item) => item.key === row.key ? { ...item, routes: [...item.routes, createdRoute] } : item))} onSaved={(savedRoute) => setModels((current) => current.map((item) => item.key === row.key ? { ...item, routes: item.routes.map((route) => route.id === savedRoute.id ? { ...route, ...savedRoute } : route) } : item))} /></td></tr>}</Fragment>)}</tbody>
-    </table></TableFrame> : <Empty label={t('models.noMatches')} />}</>;
+      <thead className="border-b border-[var(--studio-border)]"><tr><th className="w-[18%]">{t('models.displayName')}</th><th className="w-[9%]">{t('models.modality')}</th><th className="w-[11%]">{t('models.studio')}</th><th className="w-[11%]">{t('models.state')}</th><th className="w-[15%] text-end">{t('models.pricing')}</th><th className="w-[16%]">{t('models.routeStatus')}</th><th className="w-[12%]">{t('models.health')}</th><th className="w-[8%]">{t('users.actions')}</th></tr></thead>
+      <tbody>{filtered.map((row) => <tr key={row.key} className="border-b border-[var(--studio-border-subtle)] last:border-0"><td><button type="button" onClick={() => { setEditingKey(row.key); setTab('overview'); }} className="max-w-full truncate text-start font-semibold text-white hover:underline focus-visible:ring-2 focus-visible:ring-white/50">{row.displayName}</button></td><td className="text-[var(--studio-text-secondary)]">{t.has(`modality.${row.modality}`) ? t(`modality.${row.modality}`) : row.modality}</td><td><Badge tone={row.visibleInStudio ? 'success' : 'neutral'}>{t(row.visibleInStudio ? 'common.enabled' : 'common.disabled')}</Badge></td><td><Badge tone={row.enabled ? 'success' : 'neutral'}>{t(row.enabled ? 'common.enabled' : 'common.disabled')}</Badge></td><td className="text-end font-semibold tabular-nums text-white">{isMissingCustomerPricing(row) ? t('common.noPrice') : t('common.credits', { value: row.creditPrice })}</td><td className="truncate text-[var(--studio-text-secondary)]">{row.routes.filter((route) => route.enabled && route.configured && route.providerEnabled).length ? row.routes.filter((route) => route.enabled && route.configured && route.providerEnabled).map((route) => route.providerId).join(', ') : t('models.noActiveRoute')}</td><td><Status value={row.availability} /></td><td><button type="button" onClick={() => { setEditingKey(row.key); setTab('overview'); }} className="text-[11px] font-semibold text-white underline">{t('models.manage')}</button></td></tr>)}</tbody>
+    </table></TableFrame> : <Empty label={t('models.noMatches')} />}
+    {selected && <DetailDrawer title={selected.displayName} onClose={() => setEditingKey(null)}><div className="mb-4 flex flex-wrap gap-2">{(['overview', 'presentation', 'pricing', 'routes'] as const).map((value) => <button key={value} type="button" aria-pressed={tab === value} onClick={() => setTab(value)} className={`rounded-lg border px-3 py-2 text-[12px] ${tab === value ? 'border-white bg-white text-black' : 'border-[var(--studio-border)] text-[var(--studio-text-secondary)]'}`}>{t(`models.tabs.${value}`)}</button>)}</div>
+      {tab === 'overview' && <div className="space-y-3 text-[13px]"><p>{selected.shortDescription}</p><p><strong>{t('models.modality')}:</strong> {selected.modality}</p><p><strong>{t('models.studio')}:</strong> {t(selected.visibleInStudio ? 'common.enabled' : 'common.disabled')}</p><p><strong>{t('models.state')}:</strong> {t(selected.enabled ? 'common.enabled' : 'common.disabled')}</p><p><strong>{t('models.pricing')}:</strong> {isMissingCustomerPricing(selected) ? t('common.noPrice') : t('common.credits', { value: selected.creditPrice })}</p><p><strong>{t('models.providerCost')}:</strong> <ProviderEconomics row={selected} /></p><TechnicalDetails><TechnicalId label={t('common.modelId')} value={selected.modelId} /><TechnicalId label={t('common.internalId')} value={selected.key} /></TechnicalDetails></div>}
+      {tab === 'presentation' && <AdminModelPresentationControls model={selected} onSaved={(presentation) => setModels((current) => current.map((item) => item.key === selected.key ? { ...item, displayName: presentation.displayName, shortDescription: presentation.shortDescription, mediaUrl: presentation.mediaUrl, category: presentation.category, sortOrder: presentation.sortOrder, visibleInStudio: presentation.visibleInStudio, availabilityLabel: presentation.availabilityLabel, updatedAt: presentation.updatedAt, persisted: true } : item))} />}
+      {tab === 'pricing' && <AdminModelControls model={selected} onSaved={(config) => setModels((current) => current.map((item) => item.key === config.modelKey ? { ...item, enabled: config.enabled, priority: config.routingRole, creditPrice: config.customerCreditPrice, persisted: true, updatedAt: config.updatedAt } : config.routingRole === 'primary' && item.modality === selected.modality && item.priority === 'primary' ? { ...item, priority: 'unassigned' } : item))} />}
+      {tab === 'routes' && <AdminModelRouteControls modelKey={selected.key} routes={selected.routes} providerOptions={selected.providerOptions} onCreated={(createdRoute) => setModels((current) => current.map((item) => item.key === selected.key ? { ...item, routes: [...item.routes, createdRoute] } : item))} onSaved={(savedRoute) => setModels((current) => current.map((item) => item.key === selected.key ? { ...item, routes: item.routes.map((route) => route.id === savedRoute.id ? { ...route, ...savedRoute } : route) } : item))} />}
+    </DetailDrawer>}</>;
 }
 
 export function UsersView({ result }: { result: AdminDataResult<AdminUsersData> }) {
   const t = useTranslations('Admin');
   const [users, setUsers] = useState(result.data.users);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   useEffect(() => setUsers(result.data.users), [result.data.users]);
+  const selected = users.find((user) => user.id === selectedId);
   return <><PageHeader title={t('users.title')} description={t('users.description')} />{!result.available && <Notice reason={result.reason} />}
     <form action="/admin/users" method="get" className="mb-4 flex gap-2"><label className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--studio-text-muted)]" aria-hidden="true" /><span className="sr-only">{t('users.search')}</span><input name="q" defaultValue={result.data.query} placeholder={t('users.search')} className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] ps-10 pe-4 text-[12.5px] text-white outline-none placeholder:text-[var(--studio-text-muted)] focus-visible:border-[var(--studio-border-strong)]" /></label><button className="h-10 rounded-xl bg-white px-4 text-[12.5px] font-semibold text-black transition-[background-color] duration-150 hover:bg-white/90 motion-reduce:transition-none">{t('users.searchAction')}</button></form>
     <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-[12px] text-[var(--studio-text-muted)]"><span>{t('users.showing', { total: result.data.total })}</span><span>{t('users.safeActions')}</span></div>{result.data.truncated && <p className="mb-3 text-[12px] text-[var(--studio-text-muted)]">{t('users.truncated')}</p>}
@@ -230,45 +240,99 @@ export function UsersView({ result }: { result: AdminDataResult<AdminUsersData> 
       <colgroup><col className="w-[29%]" /><col className="w-[11%]" /><col className="w-[13%]" /><col className="w-[16%]" /><col className="w-[17%]" /><col className="w-[14%]" /></colgroup>
       <thead className="border-b border-[var(--studio-border)]"><tr>{['email','balance','status','created','recentUsage','actions'].map((key) => <th key={key} className={key === 'balance' || key === 'actions' ? 'text-end' : ''}>{t(`users.${key}`)}</th>)}</tr></thead>
       <tbody>{users.map((user) => <tr key={user.id} className="border-b border-[var(--studio-border-subtle)] last:border-0">
-        <td><p className="truncate font-semibold text-white" title={user.email}>{user.email}</p><p className="mt-0.5 truncate text-[11px] text-[var(--studio-text-secondary)]">{user.plan}</p><TechnicalDetails><TechnicalId label={t('common.userId')} value={user.id} /><p className="mt-1 text-[11px] text-[var(--studio-text-secondary)]"><strong>{t('users.lastSignIn')}:</strong> <DateValue value={user.lastSignInAt} /></p><p className="mt-1 text-[11px] text-[var(--studio-text-secondary)]"><strong>{t('users.payments')}:</strong> <span className="tabular-nums">{user.paymentOrderCount}</span></p></TechnicalDetails></td>
+        <td><button type="button" onClick={() => setSelectedId(user.id)} className="max-w-full truncate text-start font-semibold text-white hover:underline focus-visible:ring-2 focus-visible:ring-white/50">{user.email}</button><p className="mt-0.5 truncate text-[11px] text-[var(--studio-text-secondary)]">{user.plan}</p></td>
         <td className="text-end font-semibold tabular-nums text-white">{user.creditBalance ?? '—'}</td><td><Status value={user.status} /></td>
         <td className="text-[var(--studio-text-secondary)]"><DateValue value={user.createdAt} /></td>
         <td><p className="font-medium tabular-nums text-white">{t('users.usageCredits', { value: user.creditsUsed })}</p><p className="mt-0.5 text-[10.5px] tabular-nums text-[var(--studio-text-muted)]">{t('users.usageGenerations', { value: user.generationCount })}</p></td>
-        <td className="text-end"><AdminUserActions userId={user.id} status={user.status} isOwner={user.isOwner} onChanged={(nextStatus) => setUsers((current) => current.map((item) => item.id === user.id ? { ...item, status: nextStatus } : item))} /></td>
+        <td className="text-end"><button type="button" onClick={() => setSelectedId(user.id)} className="text-[11px] font-semibold text-white underline">{t('users.view')}</button></td>
       </tr>)}</tbody>
-    </table></TableFrame> : <Empty label={result.data.query ? t('users.noMatches') : t('users.noUsers')} />}</>;
+    </table></TableFrame> : <Empty label={result.data.query ? t('users.noMatches') : t('users.noUsers')} />}
+    {selected && <AdminUserDetail key={selected.id} user={selected} onClose={() => setSelectedId(null)} onStatusChanged={(nextStatus) => setUsers((current) => current.map((item) => item.id === selected.id ? { ...item, status: nextStatus } : item))} />}</>;
 }
 
-export function JobsView({ result }: { result: AdminDataResult<AdminJobRow[]> }) {
+type UserDetailData = {
+  entitlements: { id: string; plan_name: string; status: string; starts_at: string; ends_at: string | null }[];
+  ledger: { id: string; transaction_type: string; amount: string; reason: string; created_at: string }[];
+  payments: { id: string; plan_name: string; status: string; amount_dzd: number; created_at: string }[];
+  jobs: { id: string; model_id: string; modality: string; state: string; credits_charged: string | null; created_at: string }[];
+  audit: { id: string; payment_order_id: string; action: string; created_at: string }[];
+};
+
+function AdminUserDetail({ user, onClose, onStatusChanged }: {
+  user: AdminUserRow; onClose: () => void;
+  onStatusChanged: (status: AdminUserRow['status']) => void;
+}) {
   const t = useTranslations('Admin');
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState('all');
-  const [modality, setModality] = useState('all');
-  const [provider, setProvider] = useState('all');
-  const [model, setModel] = useState('all');
-  const statusOptions = useMemo(() => [...new Set(result.data.map((job) => job.status))].sort(), [result.data]);
-  const modalityOptions = useMemo(() => [...new Set(result.data.map((job) => job.modality))].sort(), [result.data]);
-  const providerOptions = useMemo(() => [...new Set(result.data.map((job) => job.provider).filter((value): value is string => Boolean(value)))].sort(), [result.data]);
-  const modelOptions = useMemo(() => [...new Map(result.data.map((job) => [job.modelId, job.modelName ?? job.modelId])).entries()], [result.data]);
-  const filtered = useMemo(() => result.data.filter((job) => {
-    const haystack = `${job.userEmail ?? ''} ${job.userId} ${job.provider ?? ''} ${job.modelId}`.toLowerCase();
-    return (!query.trim() || haystack.includes(query.trim().toLowerCase())) && (status === 'all' || job.status === status) && (modality === 'all' || job.modality === modality) && (provider === 'all' || job.provider === provider) && (model === 'all' || job.modelId === model);
-  }), [result.data, query, status, modality, provider, model]);
-  const hasFilters = Boolean(query.trim()) || status !== 'all' || modality !== 'all' || provider !== 'all' || model !== 'all';
-  const clearFilters = () => { setQuery(''); setStatus('all'); setModality('all'); setProvider('all'); setModel('all'); };
+  const [tab, setTab] = useState<'overview' | 'subscription' | 'credits' | 'payments' | 'jobs' | 'security' | 'audit'>('overview');
+  const [data, setData] = useState<UserDetailData | null>(null);
+  const [error, setError] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`/api/admin/users/${user.id}/detail`, { signal: controller.signal })
+      .then(async (response) => { if (!response.ok) throw new Error('USER_DETAIL_QUERY_FAILED'); return response.json(); })
+      .then((body: UserDetailData) => setData(body))
+      .catch(() => { if (!controller.signal.aborted) setError(true); });
+    return () => controller.abort();
+  }, [user.id]);
+  const tabs = ['overview', 'subscription', 'credits', 'payments', 'jobs', 'security', 'audit'] as const;
+  return <DetailDrawer title={user.email} onClose={onClose}><div className="mb-4 flex flex-wrap gap-1.5">{tabs.map((value) => <button key={value} type="button" aria-pressed={tab === value} onClick={() => setTab(value)} className={`rounded-lg border px-2.5 py-2 text-[11px] ${tab === value ? 'border-white bg-white text-black' : 'border-[var(--studio-border)] text-[var(--studio-text-secondary)]'}`}>{t(`users.tabs.${value}`)}</button>)}</div>
+    {tab === 'overview' && <div className="space-y-2 text-[13px]"><p>{user.email}</p><p><strong>{t('users.plan')}:</strong> {user.plan}</p><p><strong>{t('users.balance')}:</strong> {user.creditBalance ?? '—'}</p><p><strong>{t('users.status')}:</strong> <Status value={user.status} /></p><p><strong>{t('users.created')}:</strong> <DateValue value={user.createdAt} /></p><p><strong>{t('users.lastSignIn')}:</strong> <DateValue value={user.lastSignInAt} /></p><TechnicalDetails><TechnicalId label={t('common.userId')} value={user.id} /></TechnicalDetails></div>}
+    {tab === 'security' && <div className="space-y-3"><p className="text-[12px] text-[var(--studio-text-secondary)]">{t('users.securityHelp')}</p><AdminUserActions userId={user.id} status={user.status} isOwner={user.isOwner} onChanged={onStatusChanged} /></div>}
+    {tab !== 'overview' && tab !== 'security' && (error ? <Notice reason="query_failed" /> : !data ? <p role="status" className="text-[12px] text-[var(--studio-text-muted)]">{t('users.loading')}</p> : <div className="space-y-2 text-[12px]">
+      {tab === 'subscription' && (data.entitlements.length ? data.entitlements.map((item) => <div key={item.id} className="rounded-lg border border-[var(--studio-border)] p-3"><p className="font-semibold text-white">{item.plan_name} · {item.status}</p><p className="mt-1 text-[var(--studio-text-muted)]"><DateValue value={item.starts_at} /> – <DateValue value={item.ends_at} /></p></div>) : <Empty />)}
+      {tab === 'credits' && <><p className="mb-2 font-semibold text-white">{t('users.balance')}: {user.creditBalance ?? '—'}</p>{data.ledger.length ? data.ledger.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><div><strong>{item.transaction_type}</strong><p className="text-[var(--studio-text-muted)]">{item.reason}</p></div><div className="shrink-0 text-end tabular-nums">{item.amount}<p className="text-[var(--studio-text-muted)]"><DateValue value={item.created_at} /></p></div></div>) : <Empty />}</>}
+      {tab === 'payments' && (data.payments.length ? data.payments.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><div><strong>{item.plan_name}</strong><p className="text-[var(--studio-text-muted)]">{item.status}</p></div><div className="shrink-0 text-end tabular-nums">{item.amount_dzd} DZD<p className="text-[var(--studio-text-muted)]"><DateValue value={item.created_at} /></p></div></div>) : <Empty />)}
+      {tab === 'jobs' && (data.jobs.length ? data.jobs.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><div><strong>{item.model_id}</strong><p className="text-[var(--studio-text-muted)]">{item.modality} · {item.state}</p></div><div className="shrink-0 text-end tabular-nums">{item.credits_charged ?? '—'}<p className="text-[var(--studio-text-muted)]"><DateValue value={item.created_at} /></p></div></div>) : <Empty />)}
+      {tab === 'audit' && (data.audit.length ? data.audit.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><strong>{item.action}</strong><DateValue value={item.created_at} /></div>) : <Empty />)}
+    </div>)}
+  </DetailDrawer>;
+}
+
+export function JobsView({ result, filters }: { result: AdminDataResult<AdminJobsData>; filters: { q?: string; status?: string; modality?: string; provider?: string; model?: string; cursor?: string; seen?: string } }) {
+  const t = useTranslations('Admin');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = result.data.jobs.find((job) => job.id === selectedId);
   const input = 'h-9 min-w-0 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] text-white outline-none focus-visible:border-[var(--studio-border-strong)]';
-  return <><PageHeader title={t('jobs.title')} description={t('jobs.description')}><Badge>{t('jobs.resultCount', { count: filtered.length })}</Badge></PageHeader>{!result.available && <Notice reason={result.reason} />}
-    <div className="mb-4 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-2.5"><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-[minmax(220px,1fr)_145px_145px_170px_190px_auto]"><label className="relative sm:col-span-2 lg:col-span-1"><Search className="pointer-events-none absolute start-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--studio-text-muted)]" aria-hidden="true" /><span className="sr-only">{t('jobs.search')}</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('jobs.search')} className={`${input} w-full ps-9`} /></label><label><span className="sr-only">{t('jobs.statusFilter')}</span><select value={status} onChange={(event) => setStatus(event.target.value)} className={`${input} w-full`}><option value="all">{t('jobs.allStatuses')}</option>{statusOptions.map((value) => <option key={value} value={value}>{t.has(`status.${value}`) ? t(`status.${value}`) : value}</option>)}</select></label><label><span className="sr-only">{t('jobs.modalityFilter')}</span><select value={modality} onChange={(event) => setModality(event.target.value)} className={`${input} w-full`}><option value="all">{t('jobs.allModalities')}</option>{modalityOptions.map((value) => <option key={value} value={value}>{t.has(`modality.${value}`) ? t(`modality.${value}`) : value}</option>)}</select></label><label><span className="sr-only">{t('jobs.providerFilter')}</span><select value={provider} onChange={(event) => setProvider(event.target.value)} className={`${input} w-full`}><option value="all">{t('jobs.allProviders')}</option>{providerOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></label><label><span className="sr-only">{t('jobs.modelFilter')}</span><select value={model} onChange={(event) => setModel(event.target.value)} className={`${input} w-full`}><option value="all">{t('jobs.allModels')}</option>{modelOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>{hasFilters && <button type="button" onClick={clearFilters} className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-semibold text-[var(--studio-text-secondary)] hover:border-[var(--studio-border-strong)] hover:text-white"><X className="h-3.5 w-3.5" aria-hidden="true" />{t('jobs.clearFilters')}</button>}</div></div>
-    {filtered.length ? <TableFrame><table className={adminTableClass}>
-      <colgroup><col className="w-[16%]" /><col className="w-[20%]" /><col className="w-[22%]" /><col className="w-[12%]" /><col className="w-[10%]" /><col className="w-[10%]" /><col className="w-[10%]" /></colgroup>
-      <thead className="border-b border-[var(--studio-border)]"><tr><th>{t('jobs.time')}</th><th>{t('jobs.user')}</th><th>{t('jobs.providerModel')}</th><th>{t('jobs.status')}</th><th className="text-end">{t('jobs.creditsCharged')}</th><th className="text-end">{t('jobs.cost')}</th><th>{t('jobs.details')}</th></tr></thead>
-      <tbody>{filtered.map((job) => <tr key={`${job.source}:${job.id}`} className="border-b border-[var(--studio-border-subtle)] last:border-0">
-        <td className="text-[var(--studio-text-secondary)]"><DateValue value={job.createdAt} /></td><td><p className="truncate font-medium text-white" title={job.userEmail ?? undefined}>{job.userEmail ?? t('common.unavailable')}</p></td>
-        <td><p className="truncate font-medium text-white" title={job.modelName ?? undefined}>{job.modelName ?? t('common.unavailable')}</p><p className="mt-0.5 truncate text-[10.5px] text-[var(--studio-text-muted)]">{t.has(`modality.${job.modality}`) ? t(`modality.${job.modality}`) : job.modality} · {job.provider ?? '—'}</p></td>
-        <td><Status value={job.status} /></td><td className="text-end font-medium tabular-nums text-white">{job.creditsCharged == null ? '—' : t('common.credits', { value: job.creditsCharged })}</td><td className="text-end text-[var(--studio-text-secondary)]"><Cost value={job.providerCost} /></td>
-        <td><details><summary className="cursor-pointer rounded text-[11px] font-medium text-[var(--studio-text-secondary)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">{t('jobs.viewDetails')}</summary><div className="mt-1.5 rounded-lg border border-[var(--studio-border-subtle)] bg-black/20 p-2"><p className={`whitespace-pre-wrap break-words text-[11px] leading-relaxed ${job.error ? 'text-red-100' : 'text-[var(--studio-text-secondary)]'}`}>{job.error ?? job.prompt ?? t('common.noneRecorded')}</p><p className="mt-1.5 text-[11px] text-[var(--studio-text-secondary)]"><strong>{t('jobs.source')}:</strong> {t(`jobs.${job.source}`)}</p><p className="mt-1 text-[11px] text-[var(--studio-text-secondary)]"><strong>{t('jobs.latency')}:</strong> {job.latencyMs == null ? '—' : t('common.milliseconds', { value: job.latencyMs })}</p><TechnicalId label={t('common.userId')} value={job.userId} /><TechnicalId label={t('common.modelId')} value={job.modelId} /><TechnicalId label={t('common.jobId')} value={job.id} /></div></details></td>
-      </tr>)}</tbody>
-    </table></TableFrame> : <Empty label={result.data.length ? t('jobs.noMatches') : t('jobs.noJobs')} action={hasFilters ? <button type="button" onClick={clearFilters} className="h-9 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-semibold text-white hover:bg-white/[0.06]">{t('jobs.clearFilters')}</button> : null} />}</>;
+  const nextParams = new URLSearchParams(Object.entries(filters).filter(([key, value]) => key !== 'cursor' && Boolean(value)) as [string, string][]);
+  if (result.data.nextCursor) nextParams.set('cursor', result.data.nextCursor);
+  if (result.data.nextCursor) nextParams.set('seen', String((Number(filters.seen) || 0) + result.data.jobs.length));
+  return <><PageHeader title={t('jobs.title')} description={t('jobs.description')} compact><Badge>{t('jobs.resultCount', { count: result.data.total })}</Badge></PageHeader>{!result.available && <Notice reason={result.reason} />}
+    <form action="/admin/jobs" method="get" className="mb-4 grid gap-2 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-2.5 sm:grid-cols-2 lg:grid-cols-[minmax(170px,1fr)_130px_130px_135px_135px_auto]"><label><span className="sr-only">{t('jobs.search')}</span><input name="q" defaultValue={filters.q ?? ''} placeholder={t('jobs.search')} className={`${input} w-full`} /></label><label><span className="sr-only">{t('jobs.statusFilter')}</span><select name="status" defaultValue={filters.status ?? 'all'} className={`${input} w-full`}>{['all','reserved','streaming','completed','failed','cancelled','pending','processing'].map((value) => <option key={value} value={value}>{value === 'all' ? t('jobs.allStatuses') : t.has(`status.${value}`) ? t(`status.${value}`) : value}</option>)}</select></label><label><span className="sr-only">{t('jobs.modalityFilter')}</span><select name="modality" defaultValue={filters.modality ?? 'all'} className={`${input} w-full`}>{['all','chat','image','video'].map((value) => <option key={value} value={value}>{value === 'all' ? t('jobs.allModalities') : t(`modality.${value}`)}</option>)}</select></label><label><span className="sr-only">{t('jobs.providerFilter')}</span><input name="provider" defaultValue={filters.provider === 'all' ? '' : filters.provider ?? ''} placeholder={t('jobs.allProviders')} className={`${input} w-full`} /></label><label><span className="sr-only">{t('jobs.modelFilter')}</span><input name="model" defaultValue={filters.model === 'all' ? '' : filters.model ?? ''} placeholder={t('jobs.allModels')} className={`${input} w-full`} /></label><button type="submit" className="h-9 rounded-lg bg-white px-3 text-[12px] font-semibold text-black">{t('jobs.searchAction')}</button></form>
+    {result.data.jobs.length ? <TableFrame><table className={adminTableClass}><thead className="border-b border-[var(--studio-border)]"><tr><th className="w-[16%]">{t('jobs.time')}</th><th className="w-[20%]">{t('jobs.user')}</th><th className="w-[22%]">{t('jobs.providerModel')}</th><th className="w-[13%]">{t('jobs.status')}</th><th className="w-[11%] text-end">{t('jobs.creditsCharged')}</th><th className="w-[11%] text-end">{t('jobs.cost')}</th><th className="w-[7%]">{t('jobs.details')}</th></tr></thead><tbody>{result.data.jobs.map((job) => <tr key={`${job.source}:${job.id}`} className="border-b border-[var(--studio-border-subtle)] last:border-0"><td className="text-[var(--studio-text-secondary)]"><DateValue value={job.createdAt} /></td><td className="truncate font-medium text-white" title={job.userEmail ?? undefined}>{job.userEmail ?? t('common.unavailable')}</td><td><p className="truncate font-medium text-white">{job.modelName ?? job.modelId}</p><p className="truncate text-[10px] text-[var(--studio-text-muted)]">{job.modality} · {job.provider ?? '—'}</p></td><td><Status value={job.status} /></td><td className="text-end tabular-nums">{job.creditsCharged ?? '—'}</td><td className="text-end"><Cost value={job.providerCost} /></td><td><button type="button" onClick={() => setSelectedId(job.id)} className="text-[11px] font-semibold text-white underline focus-visible:ring-2 focus-visible:ring-white/50">{t('jobs.viewDetails')}</button></td></tr>)}</tbody></table></TableFrame> : <Empty label={filters.q || filters.status && filters.status !== 'all' || filters.modality && filters.modality !== 'all' || filters.provider || filters.model ? t('jobs.noMatches') : t('jobs.noJobs')} action={<Link href="/admin/models" className="text-[12px] text-white underline">{t('nav.models')}</Link>} />}
+    <div className="mt-3 flex items-center justify-between text-[12px] text-[var(--studio-text-muted)]"><span>{(Number(filters.seen) || 0) + result.data.jobs.length} / {result.data.total}</span>{result.data.nextCursor && <Link href={`/admin/jobs?${nextParams}`} prefetch={false} className="rounded-lg border border-[var(--studio-border)] px-3 py-2 text-white">{t('jobs.nextPage')}</Link>}</div>
+    {selected && <DetailDrawer title={`${selected.modelName ?? selected.modelId} · ${selected.userEmail ?? selected.userId}`} onClose={() => setSelectedId(null)}>
+      <div className="space-y-3 text-[13px]">
+        <p><strong>{t('jobs.status')}:</strong> <Status value={selected.status} /></p>
+        <p><strong>{t('jobs.providerModel')}:</strong> {selected.provider ?? '—'} / {selected.providerModelId ?? '—'}</p>
+        <p><strong>{t('jobs.creditsCharged')}:</strong> {selected.creditsCharged ?? '—'}</p>
+        <p><strong>{t('jobs.cost')}:</strong> <Cost value={selected.providerCost} /></p>
+        <p><strong>{t('jobs.latency')}:</strong> {selected.latencyMs == null ? '—' : t('common.milliseconds', { value: selected.latencyMs })}</p>
+        <p><strong>{t('jobs.reservation')}:</strong> {selected.reservationState ?? '—'}</p>
+        {selected.error && <p className="break-words text-red-100">{selected.error}</p>}
+        {selected.attempts.length > 0 && <section><h3 className="mb-2 font-semibold">{t('jobs.attempts')}</h3><div className="space-y-2">{selected.attempts.map((attempt, index) => <div key={`${attempt.startedAt}:${index}`} className="rounded-lg border border-[var(--studio-border)] p-3"><p>{index + 1}. {attempt.provider} · {attempt.state}</p><p className="text-[11px] text-[var(--studio-text-muted)]"><DateValue value={attempt.startedAt} /></p>{attempt.error && <p className="break-words text-red-100">{attempt.error}</p>}</div>)}</div></section>}
+        <TechnicalDetails><TechnicalId label={t('common.jobId')} value={selected.id} /><TechnicalId label={t('common.userId')} value={selected.userId} /><TechnicalId label={t('common.modelId')} value={selected.modelId} />{selected.usageMetadata && <pre className="mt-2 whitespace-pre-wrap break-all text-[11px]">{JSON.stringify(selected.usageMetadata, null, 2)}</pre>}</TechnicalDetails>
+      </div>
+    </DetailDrawer>}</>;
+}
+
+export function RuntimeLimitsView({ result }: { result: AdminDataResult<AdminProviderRow[]> }) {
+  const t = useTranslations('Admin');
+  const [providers, setProviders] = useState(result.data);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  useEffect(() => setProviders(result.data), [result.data]);
+  const selected = providers.find((row) => row.id === selectedId);
+  return <><PageHeader title={t('runtime.title')} description={t('runtime.description')} compact />{!result.available && <Notice reason={result.reason} />}
+    <TableFrame><table className={adminTableClass}><thead><tr><th>{t('providers.name')}</th><th>{t('providers.routing')}</th><th>{t('providers.killSwitch')}</th><th className="text-end">{t('providers.priority')}</th><th>{t('providers.spendLimit')}</th><th>{t('users.actions')}</th></tr></thead><tbody>{providers.map((row) => <tr key={row.id} className="border-t border-[var(--studio-border-subtle)]"><td className="font-semibold text-white">{row.name}</td><td><Badge tone={row.enabled ? 'success' : 'neutral'}>{t(row.enabled ? 'common.enabled' : 'common.disabled')}</Badge></td><td><Badge tone={row.emergencyDisabled ? 'danger' : 'neutral'}>{t(row.emergencyDisabled ? 'common.enabled' : 'common.disabled')}</Badge></td><td className="text-end tabular-nums">{row.priority}</td><td className="tabular-nums">{row.dailySpendLimitMinor == null ? t('providers.noLimit') : `${row.dailySpendLimitMinor} ${row.spendCurrency ?? ''}`}</td><td><button type="button" onClick={() => setSelectedId(row.id)} className="text-[12px] font-semibold text-white underline">{t('providers.manage')}</button></td></tr>)}</tbody></table></TableFrame>
+    {selected && <DetailDrawer title={selected.name} onClose={() => setSelectedId(null)}><AdminProviderControls provider={selected} onSaved={(config) => setProviders((current) => current.map((item) => item.id === config.providerId ? { ...item, ...config } : item))} /></DetailDrawer>}
+  </>;
+}
+
+export function AuditView({ result }: { result: AdminDataResult<AdminAuditRow[]> }) {
+  const t = useTranslations('Admin');
+  return <><PageHeader title={t('audit.title')} description={t('audit.description')} compact />{!result.available && <Notice reason={result.reason} />}
+    {result.data.length ? <TableFrame><table className={adminTableClass}><thead><tr><th className="w-[20%]">{t('audit.time')}</th><th className="w-[25%]">{t('audit.admin')}</th><th className="w-[25%]">{t('audit.action')}</th><th className="w-[30%]">{t('audit.resource')}</th></tr></thead><tbody>{result.data.map((row) => <tr key={row.id} className="border-t border-[var(--studio-border-subtle)]"><td><DateValue value={row.createdAt} /></td><td className="truncate">{row.actor ?? '—'}</td><td>{row.action}<p className="text-[11px] text-[var(--studio-text-muted)]">{row.detail}</p></td><td><span className="font-medium text-white">{row.resource}</span><TechnicalDetails><TechnicalId label={t('common.internalId')} value={row.resourceId} /></TechnicalDetails></td></tr>)}</tbody></table></TableFrame> : <Empty label={t('audit.empty')} />}
+    <p className="mt-3 text-[11px] text-[var(--studio-text-muted)]">{t('audit.scope')}</p>
+  </>;
 }
 
 export function PlansPricingView({ result }: { result: AdminDataResult<AdminPaymentPlan[]> }) {

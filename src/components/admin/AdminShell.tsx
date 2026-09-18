@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Activity, Boxes, CreditCard, ExternalLink, LayoutDashboard, Server, Tags, Users } from 'lucide-react';
+import { Activity, Boxes, CreditCard, ExternalLink, LayoutDashboard, ScrollText, Server, Settings2, Tags, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VantraLogo } from '@/src/components/VantraLogo';
+import AdminRealtime from './AdminRealtime';
 
 const NAV_GROUPS = [
   { key: null, items: [{ href: '/admin', key: 'overview', icon: LayoutDashboard }] },
@@ -15,19 +16,24 @@ const NAV_GROUPS = [
     { href: '/admin/users', key: 'users', icon: Users },
   ] },
   { key: 'aiOperations', items: [
-    { href: '/admin/jobs', key: 'jobs', icon: Activity },
-    { href: '/admin/providers', key: 'providers', icon: Server },
     { href: '/admin/models', key: 'models', icon: Boxes },
+    { href: '/admin/providers', key: 'providers', icon: Server },
+    { href: '/admin/jobs', key: 'jobs', icon: Activity },
+  ] },
+  { key: 'system', items: [
+    { href: '/admin/runtime', key: 'runtime', icon: Settings2 },
+    { href: '/admin/audit', key: 'audit', icon: ScrollText },
   ] },
 ] as const;
 
-export default function AdminShell({ children }: { children: React.ReactNode }) {
+export default function AdminShell({ children, realtimeOwner }: { children: React.ReactNode; realtimeOwner: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const t = useTranslations('Admin');
 
   return (
     <div className="admin-root studio-overlay-root min-h-screen bg-[var(--studio-bg)] text-[var(--studio-text-primary)] lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
+      <AdminRealtime canSubscribe={realtimeOwner} />
       <aside className="border-b border-[var(--studio-border)] bg-[var(--studio-surface)] lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-e">
         <div className="flex h-16 items-center justify-between gap-3 border-b border-[var(--studio-border-subtle)] px-4 lg:px-5">
           <div className="flex min-w-0 items-center gap-3">

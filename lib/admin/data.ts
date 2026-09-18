@@ -12,8 +12,10 @@ import { applyModelRuntimeOverrides, getEffectiveRuntimeModels, type EffectiveRu
 import { getSupabaseAdminClient } from './supabase-admin';
 import type {
   AdminActivity,
+  AdminAuditRow,
   AdminDataResult,
   AdminJobRow,
+  AdminJobsData,
   AdminModelRow,
   AdminOverviewData,
   AdminPaymentRow,
@@ -151,35 +153,39 @@ export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewD
     modelsMissingPricing: buildAdminModelRows(applyModelRuntimeOverrides([]), new Map()).filter(isMissingCustomerPricing).length,
     modelsUnknownProviderCost: buildAdminModelRows(applyModelRuntimeOverrides([]), new Map()).filter((model) => model.providerCostState === 'unknown').length,
     creditsConsumed: null, pendingPayments: null, providerCosts: [], recentActivity: [],
+    activeProviders: null, activeModels: null,
   };
   const client = await requireAdminDataAccess();
   if (!client) return unavailable(empty);
 
   try {
-    const [auth, generations, usage, costs, transactions, attempts, generationCount, completedCount, failedCount, pendingPaymentCount] = await Promise.all([
+    const [auth, executions, generations, usage, costs, transactions, providerConfigs, executionCount, completedCount, failedCount, mediaCount, mediaCompleted, mediaFailed, pendingPaymentCount] = await Promise.all([
       allAuthUsers(client),
+      client.from('ai_executions').select('id,modality,model_id,state,error_code,created_at')
+        .order('created_at', { ascending: false }).limit(8),
       client.from('generations').select('id,type,model_id,status,error_message,created_at')
         .order('created_at', { ascending: false }).limit(8),
       allRows(client, 'usage_records', 'credits_charged,created_at'),
       allRows(client, 'provider_cost_records', 'provider,provider_model,actual_cost_minor,currency,created_at'),
       client.from('credit_transactions').select('id,transaction_type,amount,reason,created_at')
         .order('created_at', { ascending: false }).limit(8),
-      client.from('provider_attempts').select('provider,state,started_at')
-        .order('started_at', { ascending: false }).limit(300),
+      client.from('provider_runtime_configs').select('provider_id,enabled,emergency_disabled,last_error_code'),
+      client.from('ai_executions').select('id', { count: 'exact', head: true }),
+      client.from('ai_executions').select('id', { count: 'exact', head: true }).eq('state', 'completed'),
+      client.from('ai_executions').select('id', { count: 'exact', head: true }).eq('state', 'failed'),
       client.from('generations').select('id', { count: 'exact', head: true }),
       client.from('generations').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
       client.from('generations').select('id', { count: 'exact', head: true }).eq('status', 'failed'),
       client.from('payment_orders').select('id', { count: 'exact', head: true })
         .eq('status', 'pending').not('submitted_at', 'is', null),
     ]);
-    for (const result of [generations, transactions, attempts, generationCount, completedCount, failedCount, pendingPaymentCount]) {
+    for (const result of [executions, generations, transactions, providerConfigs, executionCount, completedCount, failedCount, mediaCount, mediaCompleted, mediaFailed, pendingPaymentCount]) {
       if (result.error) throw result.error;
     }
-    const latestAttemptByProvider = new Map<string, { state: string }>();
-    for (const attempt of attempts.data ?? []) {
-      const provider = String(attempt.provider ?? '').toLowerCase();
-      if (provider && !latestAttemptByProvider.has(provider)) latestAttemptByProvider.set(provider, attempt);
-    }
+    const executionActivity: AdminActivity[] = (executions.data ?? []).map((row) => ({
+      id: `execution:${row.id}`, kind: 'generation', label: `${row.modality} · ${MODEL_NAMES.get(row.model_id) ?? row.model_id}`,
+      detail: row.error_code ?? row.state, status: row.state, createdAt: row.created_at,
+    }));
     const generationActivity: AdminActivity[] = (generations.data ?? [])
       .map((row) => ({
         id: `generation:${row.id}`, kind: 'generation', label: `${row.type} · ${row.model_id}`,
@@ -191,19 +197,22 @@ export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewD
       status: row.transaction_type, createdAt: row.created_at,
     }));
     const modelRows = buildAdminModelRows(await getEffectiveRuntimeModels(client), latestCostsByModel(costs));
+    const activeProviders = (providerConfigs.data ?? []).filter((row) => row.enabled && !row.emergency_disabled && providerConfigurationSummary(row.provider_id).configured).length;
 
     return { available: true, data: {
       totalUsers: auth.truncated ? null : auth.users.length,
-      totalGenerations: generationCount.count ?? null,
-      successfulJobs: completedCount.count ?? null,
-      failedJobs: failedCount.count ?? null,
-      providerIssues: [...latestAttemptByProvider.values()].filter((attempt) => attempt.state === 'failed').length,
-      modelsMissingPricing: modelRows.filter(isMissingCustomerPricing).length,
+      totalGenerations: executionCount.count == null || mediaCount.count == null ? null : executionCount.count + mediaCount.count,
+      successfulJobs: completedCount.count == null || mediaCompleted.count == null ? null : completedCount.count + mediaCompleted.count,
+      failedJobs: failedCount.count == null || mediaFailed.count == null ? null : failedCount.count + mediaFailed.count,
+      providerIssues: (providerConfigs.data ?? []).filter((row) => row.emergency_disabled || row.last_error_code).length,
+      modelsMissingPricing: modelRows.filter((model) => model.enabled && isMissingCustomerPricing(model)).length,
       modelsUnknownProviderCost: modelRows.filter((model) => model.providerCostState === 'unknown').length,
       creditsConsumed: usage.length >= PAGE_SIZE * MAX_PAGES ? null : sumIntegerValues(usage, 'credits_charged'),
       pendingPayments: pendingPaymentCount.count ?? null,
-      providerCosts: totalCosts(costs),
-      recentActivity: [...generationActivity, ...creditActivity]
+      providerCosts: costs.length >= PAGE_SIZE * MAX_PAGES ? [] : totalCosts(costs),
+      activeProviders,
+      activeModels: modelRows.filter((row) => row.enabled).length,
+      recentActivity: [...executionActivity, ...generationActivity, ...creditActivity]
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 10),
     } };
   } catch (error) {
@@ -221,7 +230,7 @@ export async function getAdminProviders(): Promise<AdminDataResult<AdminProvider
       allRows(client, 'provider_runtime_configs', 'provider_id,enabled,priority,emergency_disabled,daily_spend_limit_minor,spend_currency,last_error_code,last_checked_at'),
       allRows(client, 'model_provider_routes', 'model_key,model_id,provider_id'),
     ]) : [[], [], [], []];
-    const groupedCosts = groupCosts(costs);
+    const groupedCosts = costs.length >= PAGE_SIZE * MAX_PAGES ? new Map<string, CostAmount[]>() : groupCosts(costs);
     const configByProvider = new Map(runtimeConfigs.map((row) => [String(row.provider_id), row]));
     const definitions = SERVER_PROVIDER_REGISTRY.map((provider) => {
       const config = configByProvider.get(provider.id);
@@ -295,9 +304,9 @@ export async function getAdminModels(): Promise<AdminDataResult<AdminModelRow[]>
     const [costs, routes, providerConfigs] = client ? await Promise.all([
       allRows(client, 'provider_cost_records', 'provider,provider_model,actual_cost_minor,currency,created_at'),
       allRows(client, 'model_provider_routes', 'id,model_key,provider_id,provider_model_id,enabled,priority,fallback'),
-      allRows(client, 'provider_runtime_configs', 'provider_id,enabled'),
+      allRows(client, 'provider_runtime_configs', 'provider_id,enabled,emergency_disabled'),
     ]) : [[], [], []];
-    const providerEnabled = new Map(providerConfigs.map((row) => [String(row.provider_id), Boolean(row.enabled)]));
+    const providerEnabled = new Map(providerConfigs.map((row) => [String(row.provider_id), Boolean(row.enabled) && !Boolean(row.emergency_disabled)]));
     const rows = buildAdminModelRows(
       client ? await getEffectiveRuntimeModels(client) : applyModelRuntimeOverrides([]),
       latestCostsByModel(costs),
@@ -334,9 +343,10 @@ export async function getAdminUsers(query = ''): Promise<AdminDataResult<AdminUs
   const client = await requireAdminDataAccess();
   if (!client) return unavailable(empty);
   try {
-    const [auth, credits, usage, generations, paymentOrders, entitlements] = await Promise.all([
+    const [auth, credits, usage, generations, executions, paymentOrders, entitlements] = await Promise.all([
       allAuthUsers(client), allRows(client, 'credits', 'user_id,balance'),
       allRows(client, 'usage_records', 'user_id,credits_charged'), allRows(client, 'generations', 'user_id'),
+      allRows(client, 'ai_executions', 'user_id'),
       allRows(client, 'payment_orders', 'user_id'),
       allRows(client, 'user_entitlements', 'user_id,plan_name,status,starts_at,ends_at'),
     ]);
@@ -346,6 +356,7 @@ export async function getAdminUsers(query = ''): Promise<AdminDataResult<AdminUs
       (usageByUser.get(row.user_id) ?? 0n) + BigInt(numericString(row.credits_charged))));
     const generationsByUser = new Map<string, number>();
     generations.forEach((row) => generationsByUser.set(row.user_id, (generationsByUser.get(row.user_id) ?? 0) + 1));
+    executions.forEach((row) => generationsByUser.set(row.user_id, (generationsByUser.get(row.user_id) ?? 0) + 1));
     const paymentsByUser = new Map<string, number>();
     paymentOrders.forEach((row) => paymentsByUser.set(row.user_id, (paymentsByUser.get(row.user_id) ?? 0) + 1));
     const now = Date.now();
@@ -380,47 +391,93 @@ export async function getAdminUsers(query = ''): Promise<AdminDataResult<AdminUs
   }
 }
 
-export async function getAdminJobs(): Promise<AdminDataResult<AdminJobRow[]>> {
+export async function getAdminJobs(filters: {
+  q?: string; status?: string; modality?: string; provider?: string; model?: string; cursor?: string; seen?: string;
+} = {}): Promise<AdminDataResult<AdminJobsData>> {
+  const empty: AdminJobsData = { jobs: [], nextCursor: null, total: 0 };
   const client = await requireAdminDataAccess();
-  if (!client) return unavailable([]);
+  if (!client) return unavailable(empty);
   try {
-    const [generations, outbox, attempts, costs, usage, auth] = await Promise.all([
-      client.from('generations').select('id,user_id,type,prompt,model_id,status,metadata,error_message,created_at,updated_at')
-        .order('created_at', { ascending: false }).limit(100),
-      client.from('provider_dispatch_outbox').select('id,reservation_id,user_id,modality,model_id,state,last_error,created_at,updated_at')
-        .order('created_at', { ascending: false }).limit(100),
-      client.from('provider_attempts').select('outbox_id,provider,state,error_message,started_at,finished_at')
-        .order('started_at', { ascending: false }).limit(300),
-      client.from('provider_cost_records').select('reservation_id,provider,provider_model,actual_cost_minor,currency,created_at')
-        .order('created_at', { ascending: false }).limit(300),
-      client.from('usage_records').select('reservation_id,credits_charged').order('created_at', { ascending: false }).limit(300),
-      allAuthUsers(client),
-    ]);
-    for (const result of [generations, outbox, attempts, costs, usage]) if (result.error) throw result.error;
-    const latestAttempt = new Map<string, any>();
-    (attempts.data ?? []).forEach((attempt: any) => { if (!latestAttempt.has(attempt.outbox_id)) latestAttempt.set(attempt.outbox_id, attempt); });
-    const costByReservation = new Map<string, any>();
-    (costs.data ?? []).forEach((cost: any) => { if (!costByReservation.has(cost.reservation_id)) costByReservation.set(cost.reservation_id, cost); });
-    const usageByReservation = new Map<string, any>();
-    (usage.data ?? []).forEach((record: any) => { if (!usageByReservation.has(record.reservation_id)) usageByReservation.set(record.reservation_id, record); });
+    const auth = await allAuthUsers(client);
     const emails = new Map(auth.users.map((user) => [user.id, user.email ?? null]));
-    const dispatchRows: AdminJobRow[] = (outbox.data ?? []).map((row: any) => {
-      const attempt = latestAttempt.get(row.id);
-      const cost = costByReservation.get(row.reservation_id);
-      const usageRecord = usageByReservation.get(row.reservation_id);
-      const latencyMs = attempt?.started_at && attempt?.finished_at
-        ? Math.max(0, new Date(attempt.finished_at).getTime() - new Date(attempt.started_at).getTime()) : null;
+    const q = (filters.q ?? '').trim().slice(0, 80).replace(/[^\w@.:/\-]/g, '');
+    const seen = filters.cursor && /^\d{1,6}$/.test(filters.seen ?? '') ? Number(filters.seen) : 0;
+    const matchingUsers = q ? auth.users.filter((user) => user.email?.toLowerCase().includes(q.toLowerCase()) || user.id === q).slice(0, 30).map((user) => user.id) : [];
+    const cursor = filters.cursor && !Number.isNaN(Date.parse(filters.cursor)) ? filters.cursor : null;
+    let executionsQuery = client.from('ai_executions')
+      .select('id,user_id,operation_key,modality,model_id,provider_id,provider_model_id,reservation_id,state,credits_charged,error_code,execution_metadata,created_at,updated_at,completed_at', { count: 'exact' })
+      .order('created_at', { ascending: false }).limit(51);
+    if (cursor) executionsQuery = executionsQuery.lt('created_at', cursor);
+    if (filters.status && filters.status !== 'all') executionsQuery = executionsQuery.eq('state', filters.status);
+    if (filters.modality && filters.modality !== 'all') executionsQuery = executionsQuery.eq('modality', filters.modality);
+    if (filters.provider && filters.provider !== 'all') executionsQuery = executionsQuery.eq('provider_id', filters.provider);
+    if (filters.model && filters.model !== 'all') executionsQuery = executionsQuery.eq('model_id', filters.model);
+    if (q) {
+      const clauses = [`model_id.ilike.%${q}%`, `provider_id.ilike.%${q}%`, `operation_key.ilike.%${q}%`];
+      if (/^[0-9a-f-]{36}$/i.test(q)) clauses.push(`id.eq.${q}`);
+      if (matchingUsers.length) clauses.push(`user_id.in.(${matchingUsers.join(',')})`);
+      executionsQuery = executionsQuery.or(clauses.join(','));
+    }
+    let generationsQuery = client.from('generations')
+      .select('id,user_id,type,prompt,model_id,status,metadata,error_message,created_at,updated_at', { count: 'exact' })
+      .order('created_at', { ascending: false }).limit(51);
+    if (cursor) generationsQuery = generationsQuery.lt('created_at', cursor);
+    if (filters.status && filters.status !== 'all') generationsQuery = generationsQuery.eq('status', filters.status);
+    if (filters.modality && filters.modality !== 'all') generationsQuery = generationsQuery.eq('type', filters.modality);
+    if (filters.model && filters.model !== 'all') generationsQuery = generationsQuery.eq('model_id', filters.model);
+    if (filters.provider && filters.provider !== 'all') generationsQuery = generationsQuery.eq('metadata->>provider', filters.provider);
+    if (q) {
+      const clauses = [`model_id.ilike.%${q}%`];
+      if (/^[0-9a-f-]{36}$/i.test(q)) clauses.push(`id.eq.${q}`);
+      if (matchingUsers.length) clauses.push(`user_id.in.(${matchingUsers.join(',')})`);
+      generationsQuery = generationsQuery.or(clauses.join(','));
+    }
+    const [executions, generations] = await Promise.all([executionsQuery, generationsQuery]);
+    if (executions.error) throw executions.error;
+    if (generations.error) throw generations.error;
+    const reservationIds = (executions.data ?? []).map((row: any) => row.reservation_id).filter(Boolean);
+    const [reservations, costs, usage, outbox] = reservationIds.length ? await Promise.all([
+      client.from('credit_reservations').select('id,state').in('id', reservationIds),
+      client.from('provider_cost_records').select('reservation_id,provider,provider_model,actual_cost_minor,currency').in('reservation_id', reservationIds),
+      client.from('usage_records').select('reservation_id,credits_charged').in('reservation_id', reservationIds),
+      client.from('provider_dispatch_outbox').select('id,reservation_id').in('reservation_id', reservationIds),
+    ]) : [{ data: [], error: null }, { data: [], error: null }, { data: [], error: null }, { data: [], error: null }];
+    for (const result of [reservations, costs, usage, outbox]) if (result.error) throw result.error;
+    const outboxIds = (outbox.data ?? []).map((row: any) => row.id);
+    const attempts = outboxIds.length ? await client.from('provider_attempts')
+      .select('outbox_id,provider,state,error_message,started_at,finished_at')
+      .in('outbox_id', outboxIds).order('started_at') : { data: [], error: null };
+    if (attempts.error) throw attempts.error;
+    const byReservation = <T extends { reservation_id: string }>(rows: T[]) => new Map(rows.map((row) => [row.reservation_id, row]));
+    const reservationById = new Map((reservations.data ?? []).map((row: any) => [row.id, row]));
+    const costByReservation = byReservation(costs.data ?? []);
+    const usageByReservation = byReservation(usage.data ?? []);
+    const outboxByReservation = byReservation(outbox.data ?? []);
+    const attemptByOutbox = new Map<string, any[]>();
+    for (const attempt of attempts.data ?? []) {
+      const list = attemptByOutbox.get(attempt.outbox_id) ?? [];
+      list.push(attempt);
+      attemptByOutbox.set(attempt.outbox_id, list);
+    }
+    const executionRows: AdminJobRow[] = (executions.data ?? []).map((row: any) => {
+      const cost = costByReservation.get(row.reservation_id) as any;
+      const usageRecord = usageByReservation.get(row.reservation_id) as any;
+      const dispatch = outboxByReservation.get(row.reservation_id) as any;
+      const providerAttempts = (dispatch ? attemptByOutbox.get(dispatch.id) : []) ?? [];
       return {
-        id: row.id, source: 'dispatch', userId: row.user_id, modality: row.modality,
+        id: row.id, source: 'execution', userId: row.user_id, modality: row.modality,
         userEmail: emails.get(row.user_id) ?? null,
-        provider: attempt?.provider ?? cost?.provider ?? null, modelId: row.model_id,
+        provider: row.provider_id, modelId: row.model_id,
         modelName: MODEL_NAMES.get(row.model_id) ?? null,
-        status: attempt?.state ?? row.state,
+        status: row.state,
         providerCost: cost?.actual_cost_minor == null ? null : { currency: cost.currency, minor: numericString(cost.actual_cost_minor) },
-        creditsCharged: usageRecord?.credits_charged == null ? null : numericString(usageRecord.credits_charged),
-        latencyMs,
-        error: attempt?.error_message ?? row.last_error ?? null, prompt: null, createdAt: row.created_at,
-        updatedAt: attempt?.finished_at ?? row.updated_at,
+        creditsCharged: row.credits_charged == null && usageRecord?.credits_charged == null ? null : numericString(row.credits_charged ?? usageRecord.credits_charged),
+        latencyMs: row.completed_at ? Math.max(0, new Date(row.completed_at).getTime() - new Date(row.created_at).getTime()) : null,
+        error: row.error_code, prompt: null, createdAt: row.created_at, updatedAt: row.updated_at,
+        providerModelId: row.provider_model_id,
+        reservationState: (reservationById.get(row.reservation_id) as any)?.state ?? null,
+        attempts: providerAttempts.map((attempt) => ({ provider: attempt.provider, state: attempt.state, error: attempt.error_message, startedAt: attempt.started_at, finishedAt: attempt.finished_at })),
+        usageMetadata: row.execution_metadata && typeof row.execution_metadata === 'object' ? row.execution_metadata : null,
       };
     });
     const generationRows: AdminJobRow[] = (generations.data ?? []).map((row: any) => {
@@ -433,13 +490,21 @@ export async function getAdminJobs(): Promise<AdminDataResult<AdminJobRow[]>> {
         status: row.status, providerCost: null, creditsCharged: null, latencyMs: null,
         error: row.error_message, prompt: row.prompt,
         createdAt: row.created_at, updatedAt: row.updated_at,
+        providerModelId: typeof metadata.providerModel === 'string' ? metadata.providerModel : null,
+        reservationState: null, attempts: [],
+        usageMetadata: null,
       };
     });
-    return { available: true, data: [...dispatchRows, ...generationRows]
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 150) };
+    const combined = [...executionRows, ...generationRows].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const jobs = combined.slice(0, 50);
+    return { available: true, data: {
+      jobs,
+      nextCursor: combined.length > 50 ? jobs.at(-1)?.createdAt ?? null : null,
+      total: seen + (executions.count ?? 0) + (generations.count ?? 0),
+    } };
   } catch (error) {
     console.error('[admin] jobs query failed', { message: error instanceof Error ? error.message : 'Unknown error' });
-    return failed([]);
+    return failed(empty);
   }
 }
 
@@ -519,6 +584,32 @@ export async function getAdminPaymentPlans(): Promise<AdminDataResult<AdminPayme
     })) };
   } catch (error) {
     console.error('[admin] payment plan query failed', { message: error instanceof Error ? error.message : 'Unknown error' });
+    return failed([]);
+  }
+}
+
+export async function getAdminAudit(): Promise<AdminDataResult<AdminAuditRow[]>> {
+  const client = await requireAdminDataAccess();
+  if (!client) return unavailable([]);
+  try {
+    const [audits, orders, auth] = await Promise.all([
+      client.from('payment_audit_log').select('id,payment_order_id,actor_user_id,action,previous_status,new_status,created_at')
+        .order('created_at', { ascending: false }).limit(100),
+      client.from('payment_orders').select('id,plan_name').order('created_at', { ascending: false }).limit(500),
+      allAuthUsers(client),
+    ]);
+    if (audits.error) throw audits.error;
+    if (orders.error) throw orders.error;
+    const plans = new Map((orders.data ?? []).map((row) => [row.id, row.plan_name]));
+    const emails = new Map(auth.users.map((user) => [user.id, user.email ?? null]));
+    return { available: true, data: (audits.data ?? []).map((row) => ({
+      id: row.id, action: row.action, actor: emails.get(row.actor_user_id) ?? null,
+      resource: plans.get(row.payment_order_id) ?? 'Payment',
+      resourceId: row.payment_order_id, detail: row.previous_status ? `${row.previous_status} → ${row.new_status}` : row.new_status,
+      createdAt: row.created_at,
+    })) };
+  } catch (error) {
+    console.error('[admin] audit query failed', { message: error instanceof Error ? error.message : 'Unknown error' });
     return failed([]);
   }
 }
