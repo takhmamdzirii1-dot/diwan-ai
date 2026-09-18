@@ -188,7 +188,7 @@ export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewD
     }));
     const generationActivity: AdminActivity[] = (generations.data ?? [])
       .map((row) => ({
-        id: `generation:${row.id}`, kind: 'generation', label: `${row.type} · ${row.model_id}`,
+        id: `generation:${row.id}`, kind: 'generation', label: `${row.type} · ${MODEL_NAMES.get(row.model_id) ?? row.model_id}`,
         detail: row.error_message ?? row.status, status: row.status, createdAt: row.created_at,
       }));
     const creditActivity: AdminActivity[] = (transactions.data ?? []).map((row: any) => ({
@@ -271,9 +271,15 @@ export async function getAdminProviders(): Promise<AdminDataResult<AdminProvider
       const status = provider.statusOverride ?? (!provider.configured ? 'unconfigured'
         : provider.emergencyDisabled || runtimeFailure ? 'attention'
           : providerAttempts.length || provider.lastRuntimeCheck ? 'healthy' : 'idle');
-      const associatedModels = [...new Set(routes
+      const associatedModels = routes
         .filter((route) => String(route.provider_id) === provider.id)
-        .map((route) => MODEL_NAMES.get(String(route.model_id)) ?? String(route.model_id)))];
+        .map((route) => {
+          const key = String(route.model_key);
+          const providerModelId = String(route.model_id);
+          return { key, name: MODEL_NAMES.get(key) ?? MODEL_NAMES.get(providerModelId) ?? key, providerModelId };
+        })
+        .filter((route, index, all) => all.findIndex((candidate) => candidate.key === route.key
+          && candidate.providerModelId === route.providerModelId) === index);
       return {
         id: provider.id, name: provider.name, modalities: provider.modalities,
         enabled: provider.enabled, status, role: provider.role,

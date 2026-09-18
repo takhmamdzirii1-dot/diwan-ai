@@ -43,7 +43,11 @@ export type AdminProviderRow = {
   failures: number;
   averageLatencyMs: number | null;
   lastActivityAt: string | null;
-  associatedModels: string[];
+  associatedModels: {
+    key: string;
+    name: string;
+    providerModelId: string;
+  }[];
   accumulatedCosts: CostAmount[];
   lastError: string | null;
   configured: boolean;

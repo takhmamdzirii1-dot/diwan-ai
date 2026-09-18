@@ -8,8 +8,9 @@ import type { AdminModelRow } from '@/lib/admin/types';
 type EditableModel = Pick<AdminModelRow,
   'key' | 'enabled' | 'priority' | 'creditPrice' | 'activationSupported'>;
 
-export default function AdminModelControls({ model, onSaved }: {
+export default function AdminModelControls({ model, mode = 'pricing', onSaved }: {
   model: EditableModel;
+  mode?: 'pricing' | 'routing';
   onSaved: (config: {
     modelKey: string;
     enabled: boolean;
@@ -39,9 +40,9 @@ export default function AdminModelControls({ model, onSaved }: {
     const value = Number(trimmed);
     return Number.isSafeInteger(value) ? value : undefined;
   }, [price]);
-  const dirty = enabled !== model.enabled
-    || routingRole !== model.priority
-    || normalizedPrice !== model.creditPrice;
+  const dirty = mode === 'pricing'
+    ? enabled !== model.enabled || normalizedPrice !== model.creditPrice
+    : routingRole !== model.priority;
 
   const save = async () => {
     if (normalizedPrice === undefined) {
@@ -79,7 +80,7 @@ export default function AdminModelControls({ model, onSaved }: {
   const controlClass = 'h-9 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] text-white outline-none focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/40 disabled:cursor-not-allowed disabled:opacity-45';
 
   return <div className="grid gap-3 rounded-lg border border-[var(--studio-border-subtle)] bg-black/20 p-3 text-start sm:grid-cols-2 sm:items-end">
-    <label title={t('runtimeHelp')} className="flex min-h-9 items-center gap-2.5 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-semibold text-white">
+    {mode === 'pricing' && <label title={t('runtimeHelp')} className="flex min-h-9 items-center gap-2.5 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-semibold text-white">
       <input
         type="checkbox"
         checked={enabled}
@@ -93,8 +94,8 @@ export default function AdminModelControls({ model, onSaved }: {
         className="h-4 w-4 accent-white"
       />
       {t('enabledLabel')}
-    </label>
-    <label title={t('roleHelp')} className="grid gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">
+    </label>}
+    {mode === 'routing' && <label title={t('roleHelp')} className="grid gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">
       {t('routingRoleLabel')}
       <select
         value={routingRole}
@@ -106,8 +107,8 @@ export default function AdminModelControls({ model, onSaved }: {
         <option value="backup">{t('roleFallback')}</option>
         <option value="unassigned">{t('roleUnassigned')}</option>
       </select>
-    </label>
-    <label title={t('priceHelper')} className="grid gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">
+    </label>}
+    {mode === 'pricing' && <label title={t('priceHelper')} className="grid gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">
       {t('customerPriceLabel')}
       <input
         value={price}
@@ -116,7 +117,7 @@ export default function AdminModelControls({ model, onSaved }: {
         onChange={(event) => { setPrice(event.target.value); setFeedback(null); }}
         className={controlClass}
       />
-    </label>
+    </label>}
     <div className="flex min-w-32 flex-col items-stretch gap-1.5">
       <button
         type="button"
@@ -129,7 +130,8 @@ export default function AdminModelControls({ model, onSaved }: {
       </button>
       {feedback && <p role={feedback.tone === 'error' ? 'alert' : 'status'} className={`text-[10.5px] ${feedback.tone === 'error' ? 'text-red-200' : 'text-emerald-200'}`}>{feedback.message}</p>}
     </div>
-    {!model.activationSupported && <p className="sm:col-span-2 text-[11px] text-amber-100/80">{t('activationUnavailable')}</p>}
-    <p className="sm:col-span-2 text-[11px] text-[var(--studio-text-muted)]">{t('priceHelper')}</p>
+    {mode === 'pricing' && !model.activationSupported && <p className="sm:col-span-2 text-[11px] text-amber-100/80">{t('activationUnavailable')}</p>}
+    {mode === 'pricing' && <p className="sm:col-span-2 text-[11px] text-[var(--studio-text-muted)]">{t('priceSemantics')}</p>}
+    {mode === 'routing' && !model.enabled && <p className="sm:col-span-2 text-[11px] text-amber-100/80">{t('routingRequiresEnabled')}</p>}
   </div>;
 }

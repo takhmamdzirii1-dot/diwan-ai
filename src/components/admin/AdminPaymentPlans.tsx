@@ -83,8 +83,8 @@ function PlanFields({ idPrefix, value, existing, onChange }: {
   const input = 'mt-1.5 h-10 w-full min-w-0 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[13px] text-white outline-none placeholder:text-[var(--studio-text-muted)] focus-visible:border-[var(--studio-border-strong)] disabled:cursor-not-allowed disabled:bg-black/20 disabled:text-[var(--studio-text-disabled)]';
   const label = 'min-w-0 text-[12px] font-semibold text-[var(--studio-text-secondary)]';
 
-  return <div className="space-y-4">
-    <div className="grid gap-x-3 gap-y-4 md:grid-cols-2 xl:grid-cols-4">
+  return <div className="space-y-3">
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
       <label htmlFor={`${idPrefix}-name`} className={`${label} md:col-span-2`}>{t('planName')}
         <input id={`${idPrefix}-name`} required maxLength={120} className={input} value={value.name}
           onChange={(event) => onChange({ ...value, name: event.target.value })} />
@@ -250,9 +250,9 @@ export default function AdminPaymentPlans({ plans }: { plans: AdminPaymentPlan[]
           </div>
           <div className="flex shrink-0 flex-col gap-1 sm:flex-row"><button type="button" disabled={index === 0 || pending !== null || hasUnsavedPlans} title={t('moveUp', { name: plan.name })} aria-label={t('moveUp', { name: plan.name })} onClick={(event) => { event.preventDefault(); event.stopPropagation(); void move(plan.id, -1); }} className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 text-white/45 hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"><ArrowUp className="h-3.5 w-3.5" aria-hidden="true" /></button><button type="button" disabled={index === catalogPlans.length - 1 || pending !== null || hasUnsavedPlans} title={t('moveDown', { name: plan.name })} aria-label={t('moveDown', { name: plan.name })} onClick={(event) => { event.preventDefault(); event.stopPropagation(); void move(plan.id, 1); }} className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 text-white/45 hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"><ArrowDown className="h-3.5 w-3.5" aria-hidden="true" /></button></div>
         </summary>
-        <form onSubmit={(event) => { event.preventDefault(); void save(plan.id); }} className="border-t border-white/[0.07] p-3 sm:p-4">
+        <form onSubmit={(event) => { event.preventDefault(); void save(plan.id); }} className="border-t border-white/[0.07] p-3">
           <PlanFields idPrefix={`plan-${plan.id}`} existing value={draft} onChange={(value) => setDrafts((current) => ({ ...current, [plan.id]: value }))} />
-          <div className="mt-4 flex flex-wrap items-center gap-3"><button type="submit" disabled={pending !== null || !dirty}
+          <div className="mt-3 flex flex-wrap items-center gap-3"><button type="submit" disabled={pending !== null || !dirty}
             className="flex h-9 items-center gap-2 rounded-lg bg-white px-3 text-[11px] font-semibold text-black transition-colors duration-150 hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35 motion-reduce:transition-none">
             {pending === plan.id ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Save className="h-3.5 w-3.5" aria-hidden="true" />}{pending === plan.id ? t('saving') : dirty ? t('savePlan') : t('saved')}</button>
             {dirty && <button type="button" disabled={pending !== null} onClick={() => setDrafts((current) => ({ ...current, [plan.id]: toDraft(plan) }))}

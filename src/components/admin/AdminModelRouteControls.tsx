@@ -5,8 +5,9 @@ import { Loader2, Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { AdminModelProviderOption, AdminModelRoute } from '@/lib/admin/types';
 
-function RouteControl({ route, onSaved }: {
+function RouteControl({ route, providerName, onSaved }: {
   route: AdminModelRoute;
+  providerName: string;
   onSaved: (route: Pick<AdminModelRoute, 'id' | 'providerModelId' | 'enabled' | 'priority' | 'fallback'>) => void;
 }) {
   const t = useTranslations('Admin.models');
@@ -41,8 +42,14 @@ function RouteControl({ route, onSaved }: {
     } finally { setSaving(false); }
   };
   const canEnable = route.configured && route.providerEnabled;
+  const routeState = !route.configured ? 'misconfigured'
+    : !route.providerEnabled ? 'unavailable'
+      : !route.enabled ? 'disabled' : 'ready';
+  const routeTone = routeState === 'ready'
+    ? 'border-emerald-300/20 text-emerald-100'
+    : routeState === 'disabled' ? 'border-white/15 text-white/70' : 'border-amber-300/20 text-amber-100';
   return <div className="rounded-lg border border-[var(--studio-border-subtle)] bg-black/20 p-3">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="text-[12px] font-semibold text-white">{route.providerId}</p><p className="mt-0.5 break-all text-[10.5px] text-[var(--studio-text-muted)]">{route.providerModelId}</p></div><span className={`rounded-full border px-2 py-1 text-[10px] font-semibold ${canEnable ? 'border-emerald-300/20 text-emerald-100' : 'border-amber-300/20 text-amber-100'}`}>{canEnable ? t('routeReady') : t('routeUnavailable')}</span></div>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="text-[12px] font-semibold text-white">{providerName}</p><details className="mt-1"><summary className="w-fit cursor-pointer text-[10.5px] text-[var(--studio-text-muted)] hover:text-white">{t('technicalDetails')}</summary><div className="mt-1 rounded border border-[var(--studio-border-subtle)] p-2 text-[10.5px] text-[var(--studio-text-muted)]"><p><span className="font-semibold">{t('provider')}:</span> <code>{route.providerId}</code></p><p className="mt-1 break-all"><span className="font-semibold">{t('providerModelId')}:</span> <code>{route.providerModelId}</code></p></div></details></div><span className={`rounded-full border px-2 py-1 text-[10px] font-semibold ${routeTone}`}>{t(`routeState.${routeState}`)}</span></div>
     <div className="mt-3 grid gap-2 sm:grid-cols-2 sm:items-end"><label className="grid gap-1 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">{t('providerModelId')}<input value={providerModelId} disabled={route.enabled} onChange={(event) => setProviderModelId(event.target.value)} className="h-9 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] text-white outline-none focus-visible:ring-2 focus-visible:ring-white/40 disabled:cursor-not-allowed disabled:opacity-50" /></label><label className="flex h-9 items-center gap-2 self-end rounded-lg border border-[var(--studio-border)] px-3 text-[11px] font-semibold text-white"><input type="checkbox" checked={enabled} disabled={!canEnable && !route.enabled} onChange={(event) => setEnabled(event.target.checked)} className="h-4 w-4 accent-white" />{t('routeEnabled')}</label><label className="flex h-9 items-center gap-2 self-end rounded-lg border border-[var(--studio-border)] px-3 text-[11px] font-semibold text-white"><input type="checkbox" checked={fallback} onChange={(event) => setFallback(event.target.checked)} className="h-4 w-4 accent-white" />{t('routeFallback')}</label><label className="grid gap-1 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">{t('routePriority')}<input value={priority} inputMode="numeric" onChange={(event) => setPriority(event.target.value)} className="h-9 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] text-white outline-none focus-visible:ring-2 focus-visible:ring-white/40" /></label><button type="button" disabled={saving || !dirty} onClick={save} className="inline-flex h-9 items-center justify-center gap-2 self-end rounded-lg bg-white px-3 text-[11.5px] font-semibold text-black disabled:cursor-not-allowed disabled:opacity-45">{saving && <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />}{saving ? t('saving') : t('save')}</button></div>
     {feedback && <p role={feedback.tone === 'error' ? 'alert' : 'status'} className={`mt-2 text-[10.5px] ${feedback.tone === 'error' ? 'text-red-200' : 'text-emerald-200'}`}>{feedback.text}</p>}
   </div>;
@@ -100,5 +107,5 @@ export default function AdminModelRouteControls({ modelKey, routes, providerOpti
   onSaved: (route: Pick<AdminModelRoute, 'id' | 'providerModelId' | 'enabled' | 'priority' | 'fallback'>) => void;
 }) {
   const t = useTranslations('Admin.models');
-  return <section className="mt-3 text-start"><p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.09em] text-[var(--studio-text-muted)]">{t('providerRoutes')}</p>{routes.length ? <div className="grid gap-2">{routes.map((route) => <RouteControl key={route.id} route={route} onSaved={onSaved} />)}</div> : <p className="text-[11px] text-[var(--studio-text-muted)]">{t('noProviderRoutes')}</p>}<AddRouteControl modelKey={modelKey} providers={providerOptions} onCreated={onCreated} /></section>;
+  return <section className="mt-3 text-start"><p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.09em] text-[var(--studio-text-muted)]">{t('providerRoutes')}</p>{routes.length ? <div className="grid gap-2">{routes.map((route) => <RouteControl key={route.id} route={route} providerName={providerOptions.find((provider) => provider.id === route.providerId)?.name ?? route.providerId} onSaved={onSaved} />)}</div> : <p className="text-[11px] text-[var(--studio-text-muted)]">{t('noProviderRoutes')}</p>}<AddRouteControl modelKey={modelKey} providers={providerOptions} onCreated={onCreated} /></section>;
 }
