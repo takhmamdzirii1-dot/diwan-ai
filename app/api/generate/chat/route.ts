@@ -378,7 +378,15 @@ export async function POST(request: Request) {
           code: rollbackError instanceof Error ? rollbackError.message : 'ROLLBACK_FAILED',
         });
       }
-      return NextResponse.json({ error: failure.code }, { status: failure.retryable ? 503 : 502 });
+      return NextResponse.json(
+        { error: failure.code },
+        {
+          status: failure.retryable ? 503 : 502,
+          headers: failure.retryAfterSeconds == null
+            ? undefined
+            : { 'Retry-After': String(failure.retryAfterSeconds) },
+        }
+      );
     }
 
   } catch (error: any) {

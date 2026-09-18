@@ -24,7 +24,7 @@ export const PROVIDER_CATALOG_MODELS: readonly ProviderCatalogModel[] = [
   { key: 'vantra:video:h3-max-turbo', modelId: 'vantra-h3-max-turbo', displayName: 'H3 Max Turbo', modality: 'video', routeVerified: true },
   { key: 'vantra:video:p-video', modelId: 'vantra-p-video', displayName: 'P-Video', modality: 'video', routeVerified: true },
   { key: 'vantra:video:p-video-2', modelId: 'vantra-p-video-2', displayName: 'P-Video-2', modality: 'video', routeVerified: true },
-  { key: 'vantra:video:p-video-2-pro', modelId: 'vantra-p-video-2-pro', displayName: 'P-Video-2 Pro', modality: 'video', routeVerified: false },
+  { key: 'vantra:video:p-video-2-pro', modelId: 'vantra-p-video-2-pro', displayName: 'P-Video-2 Pro', modality: 'video', routeVerified: true },
   { key: 'vantra:image:z-image', modelId: 'vantra-z-image', displayName: 'Z-Image', modality: 'image', routeVerified: true },
   { key: 'vantra:image:flux-klein', modelId: 'vantra-flux-klein', displayName: 'FLUX Klein', modality: 'image', routeVerified: false },
   { key: 'vantra:chat:agnes-3.0-flash', modelId: 'vantra-agnes-3.0-flash', displayName: 'Agnes 3.0 Flash', modality: 'chat', routeVerified: true },

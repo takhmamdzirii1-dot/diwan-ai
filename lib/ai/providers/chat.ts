@@ -8,6 +8,7 @@ export class ProviderAdapterError extends Error {
   constructor(
     public readonly code: string,
     public readonly retryable: boolean,
+    public readonly retryAfterSeconds: number | null = null,
     options?: { cause?: unknown }
   ) {
     super(code, options);
@@ -38,12 +39,22 @@ export function classifyProviderFailure(cause: unknown) {
     && 'statusCode' in cause && typeof cause.statusCode === 'number'
     ? cause.statusCode
     : null;
+  const responseHeaders = typeof cause === 'object' && cause
+    && 'responseHeaders' in cause && cause.responseHeaders
+    && typeof cause.responseHeaders === 'object'
+    ? cause.responseHeaders as Record<string, string>
+    : null;
+  const retryAfterValue = responseHeaders?.['retry-after'] ?? responseHeaders?.['Retry-After'];
+  const retryAfterSeconds = retryAfterValue && /^\d+$/.test(retryAfterValue)
+    ? Math.min(300, Number(retryAfterValue))
+    : null;
   const retryable = status === 408 || status === 409 || status === 429
     || (status != null && status >= 500)
     || /timeout|network|temporar|rate.?limit|unavailable/i.test(message);
   return new ProviderAdapterError(
     retryable ? 'PROVIDER_TRANSIENT_FAILURE' : 'PROVIDER_EXECUTION_FAILED',
     retryable,
+    retryAfterSeconds,
     { cause }
   );
 }
