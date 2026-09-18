@@ -66,7 +66,7 @@
       "reserved": "Reserved", "streaming": "Streaming",
       "healthy": "Operational", "attention": "Attention", "idle": "No activity yet", "unconfigured": "Unavailable",
       "demo": "Demo", "client_managed": "Client-managed", "available": "Available", "beta": "Beta", "preview": "Preview",
-      "unavailable": "Unavailable", "temporarily_unavailable": "Temporarily unavailable", "internal_test": "Internal test",
+      "unavailable": "Unavailable", "temporarily_unavailable": "Temporarily unavailable", "provider_config_required": "Provider setup required", "internal_test": "Internal test",
       "not_in_studio": "Not in Studio", "active": "Active", "unconfirmed": "Unconfirmed", "suspended": "Suspended",
       "queued": "Queued", "processing": "Processing", "completed": "Completed", "failed": "Failed", "cancelled": "Cancelled",
       "draft": "Draft", "incomplete": "Incomplete", "pending": "Pending", "leased": "Leased", "dispatched": "Dispatched", "started": "Started", "submitted": "Submitted",

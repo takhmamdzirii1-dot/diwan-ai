@@ -64,7 +64,7 @@
       "reserved": "Réservé", "streaming": "En cours",
       "healthy": "Opérationnel", "attention": "À surveiller", "idle": "Aucune activité", "unconfigured": "Indisponible",
       "demo": "Démo", "client_managed": "Géré côté client", "available": "Disponible", "beta": "Bêta", "preview": "Aperçu",
-      "unavailable": "Indisponible", "temporarily_unavailable": "Temporairement indisponible", "internal_test": "Test interne",
+      "unavailable": "Indisponible", "temporarily_unavailable": "Temporairement indisponible", "provider_config_required": "Configuration fournisseur requise", "internal_test": "Test interne",
       "not_in_studio": "Absent du Studio", "active": "Actif", "unconfirmed": "Non confirmé", "suspended": "Suspendu",
       "queued": "En attente", "processing": "En cours", "completed": "Terminé", "failed": "Échoué", "cancelled": "Annulé",
       "draft": "Brouillon", "incomplete": "Incomplet", "pending": "En attente", "leased": "Réservé", "dispatched": "Envoyé", "started": "Démarré", "submitted": "Soumis",

@@ -64,7 +64,7 @@
       "reserved": "محجوز", "streaming": "جارٍ البث",
       "healthy": "يعمل", "attention": "يحتاج متابعة", "idle": "لا يوجد نشاط بعد", "unconfigured": "غير متاح",
       "demo": "تجريبي", "client_managed": "يُدار من العميل", "available": "متاح", "beta": "بيتا", "preview": "معاينة",
-      "unavailable": "غير متاح", "temporarily_unavailable": "غير متاح مؤقتاً", "internal_test": "اختبار داخلي",
+      "unavailable": "غير متاح", "temporarily_unavailable": "غير متاح مؤقتاً", "provider_config_required": "يلزم إعداد المزوّد", "internal_test": "اختبار داخلي",
       "not_in_studio": "غير موجود في الاستوديو", "active": "نشط", "unconfirmed": "غير مؤكد", "suspended": "موقوف",
       "queued": "في الصف", "processing": "قيد المعالجة", "completed": "مكتمل", "failed": "فشل", "cancelled": "ملغى",
       "draft": "مسودة", "incomplete": "غير مكتمل", "pending": "معلّق", "leased": "محجوز", "dispatched": "أُرسل", "started": "بدأ", "submitted": "تم الإرسال",
