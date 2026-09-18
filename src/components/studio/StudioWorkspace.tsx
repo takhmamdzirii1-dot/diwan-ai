@@ -5,11 +5,12 @@ import { useLocale } from 'next-intl';
 import { usePathname, useRouter } from 'next/navigation';
 import useUser from '../../hooks/useUser';
 import StudioDashboard from './StudioDashboard';
+import type { StudioRuntimeModelDefinition } from '@/src/config/studio-registry';
 
 const WORKSPACES = ['chat', 'image', 'video', 'library'] as const;
 type StudioWorkspaceRoute = (typeof WORKSPACES)[number];
 
-export default function StudioWorkspace() {
+export default function StudioWorkspace({ models }: { models: StudioRuntimeModelDefinition[] }) {
   const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
@@ -40,5 +41,5 @@ export default function StudioWorkspace() {
     );
   }
 
-  return <StudioDashboard activeWorkspace={workspace} onWorkspaceChange={navigateWorkspace} />;
+  return <StudioDashboard activeWorkspace={workspace} onWorkspaceChange={navigateWorkspace} models={models} />;
 }

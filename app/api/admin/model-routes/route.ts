@@ -3,15 +3,73 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
 import { getOwnerAccess } from '@/lib/auth/owner';
-import { providerConfigurationSummary } from '@/lib/ai/providers/registry';
+import { getServerProvider, providerConfigurationSummary } from '@/lib/ai/providers/registry';
 import { findRegistryModel } from '@/lib/models/runtime-config';
 
 const schema = z.object({
   routeId: z.string().uuid(),
+  providerModelId: z.string().trim().min(1).max(300),
   enabled: z.boolean(),
   priority: z.number().int().min(0).max(10_000),
   fallback: z.boolean(),
 }).strict();
+
+const createSchema = z.object({
+  modelKey: z.string().trim().min(1).max(300),
+  providerId: z.string().trim().min(2).max(64),
+  providerModelId: z.string().trim().min(1).max(300),
+  priority: z.number().int().min(0).max(10_000),
+  fallback: z.boolean(),
+}).strict();
+
+export async function POST(request: Request) {
+  const origin = request.headers.get('origin');
+  if (origin && origin !== new URL(request.url).origin) {
+    return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
+  }
+  const access = await getOwnerAccess();
+  if (!access.user) return NextResponse.json({ error: 'AUTHENTICATION_REQUIRED' }, { status: 401 });
+  if (!access.isOwner) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
+  const parsed = createSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: 'INVALID_PROVIDER_ROUTE_CONFIG' }, { status: 400 });
+  const model = findRegistryModel(parsed.data.modelKey);
+  const provider = getServerProvider(parsed.data.providerId);
+  if (!model) return NextResponse.json({ error: 'MODEL_NOT_REGISTERED' }, { status: 404 });
+  if (!provider || !provider.modalities.some((modality) => modality === model.modality)) {
+    return NextResponse.json({ error: 'PROVIDER_ROUTE_INCOMPATIBLE' }, { status: 409 });
+  }
+  const client = getSupabaseAdminClient();
+  if (!client) return NextResponse.json({ error: 'ADMIN_DATA_UNAVAILABLE' }, { status: 503 });
+  const { data, error } = await client.from('model_provider_routes').insert({
+    model_key: model.key,
+    model_id: model.modelId,
+    modality: model.modality,
+    provider_id: provider.id,
+    provider_model_id: parsed.data.providerModelId,
+    enabled: false,
+    priority: parsed.data.priority,
+    fallback: parsed.data.fallback,
+    updated_by: access.user.id,
+  }).select('id,provider_id,provider_model_id,enabled,priority,fallback').single();
+  if (error) {
+    const duplicate = error.code === '23505';
+    return NextResponse.json({ error: duplicate ? 'PROVIDER_ROUTE_EXISTS' : 'PROVIDER_ROUTE_CREATE_FAILED' }, { status: 409 });
+  }
+  revalidatePath('/admin/models');
+  const configuration = providerConfigurationSummary(provider.id);
+  const { data: providerConfig } = await client.from('provider_runtime_configs')
+    .select('enabled').eq('provider_id', provider.id).maybeSingle();
+  return NextResponse.json({ route: {
+    id: String(data.id),
+    providerId: String(data.provider_id),
+    providerModelId: String(data.provider_model_id),
+    enabled: Boolean(data.enabled),
+    priority: Number(data.priority),
+    fallback: Boolean(data.fallback),
+    configured: configuration.configured,
+    providerEnabled: Boolean(providerConfig?.enabled),
+  } }, { status: 201 });
+}
 
 export async function PATCH(request: Request) {
   const origin = request.headers.get('origin');
@@ -46,15 +104,16 @@ export async function PATCH(request: Request) {
     }
   }
 
-  const { data, error } = await client.rpc('admin_update_model_provider_route', {
+  const { data, error } = await client.rpc('admin_update_model_provider_route_v2', {
     p_route_id: route.id,
+    p_provider_model_id: parsed.data.providerModelId,
     p_enabled: parsed.data.enabled,
     p_priority: parsed.data.priority,
     p_fallback: parsed.data.fallback,
     p_updated_by: access.user.id,
   });
   if (error) {
-    const known = /PRIMARY_PROVIDER_ROUTE_EXISTS|FALLBACK_REQUIRES_PRIMARY_ROUTE/.test(error.message);
+    const known = /PRIMARY_PROVIDER_ROUTE_EXISTS|FALLBACK_REQUIRES_PRIMARY_ROUTE|DISABLE_ROUTE_BEFORE_REMAP/.test(error.message);
     return NextResponse.json({ error: known ? error.message : 'PROVIDER_ROUTE_UPDATE_FAILED' }, { status: 409 });
   }
   const row = Array.isArray(data) ? data[0] : data;
@@ -63,6 +122,7 @@ export async function PATCH(request: Request) {
   revalidatePath('/admin/models');
   return NextResponse.json({ route: {
     id: String(row.id),
+    providerModelId: String(row.provider_model_id),
     enabled: Boolean(row.enabled),
     priority: Number(row.priority),
     fallback: Boolean(row.fallback),

@@ -22,9 +22,8 @@ import PaymentStatusList from '../payments/PaymentStatusList';
 import { supabase } from '../../lib/supabase/client';
 import { updateUserLanguageIfNeeded } from '../../lib/auth/user-language';
 import {
-  CHAT_MODELS,
-  DEFAULT_IMAGE_MODEL,
   isModelSelectable,
+  type StudioRuntimeModelDefinition,
 } from '@/src/config/studio-registry';
 
 type TabId = 'general' | 'models' | 'credits';
@@ -316,11 +315,13 @@ function GeneralPanel() {
   );
 }
 
-function ModelsPanel({ selectedId, onSelect }: { selectedId: string; onSelect: (id: string) => void }) {
+function ModelsPanel({ selectedId, onSelect, models }: { selectedId: string; onSelect: (id: string) => void; models: StudioRuntimeModelDefinition[] }) {
   const t = useTranslations('studio.settings');
   const modelT = useTranslations('studio.models');
   const [open, setOpen] = useState(false);
-  const current = CHAT_MODELS.find((model) => model.id === selectedId) ?? CHAT_MODELS[0];
+  const chatModels = models.filter((model) => model.modality === 'chat');
+  const imageModels = models.filter((model) => model.modality === 'image');
+  const current = chatModels.find((model) => model.id === selectedId) ?? chatModels[0];
   return (
     <div className="space-y-6">
       <SectionHeader title={t('aiPreferences')} description={t('modelDescription')} />
@@ -334,12 +335,12 @@ function ModelsPanel({ selectedId, onSelect }: { selectedId: string; onSelect: (
             onClick={() => setOpen((value) => !value)}
             className="flex h-11 w-full items-center justify-between rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3.5 text-[13px] text-white transition-[background-color,border-color] duration-150 hover:border-[var(--studio-border-strong)] hover:bg-[var(--studio-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
           >
-            <span>{current.displayName}</span>
+            <span>{current?.displayName ?? modelT('unavailable')}</span>
             <ChevronDown className={cn('h-4 w-4 text-white/45 transition-transform duration-150', open && 'rotate-180')} />
           </button>
           {open && (
             <div role="listbox" className="studio-menu-enter absolute start-0 end-0 top-full z-20 mt-2 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-elevated)] p-1.5 shadow-[var(--studio-shadow)]">
-              {CHAT_MODELS.map((model) => {
+              {chatModels.map((model) => {
                 const selectable = isModelSelectable(model);
                 return (
                   <button
@@ -374,7 +375,7 @@ function ModelsPanel({ selectedId, onSelect }: { selectedId: string; onSelect: (
       <div className="rounded-2xl border border-[var(--studio-border-subtle)] bg-[var(--studio-surface-raised)] px-5">
         <StaticRow
           label={t('defaultImageModel')}
-          value={`${DEFAULT_IMAGE_MODEL.displayName} · ${modelT(DEFAULT_IMAGE_MODEL.availability)}`}
+          value={imageModels[0] ? `${imageModels[0].displayName} · ${imageModels[0].availabilityLabel ?? modelT(imageModels[0].availability)}` : modelT('unavailable')}
         />
       </div>
       <p className="text-[11.5px] leading-relaxed text-[var(--studio-text-muted)]">{t('modelPickerNote')}</p>
@@ -417,11 +418,13 @@ export default function StudioSettingsDialog({
   onClose,
   selectedChatModelId,
   onSelectChatModel,
+  models,
 }: {
   open: boolean;
   onClose: () => void;
   selectedChatModelId: string;
   onSelectChatModel: (id: string) => void;
+  models: StudioRuntimeModelDefinition[];
 }) {
   const t = useTranslations('studio.settings');
   const reduceMotion = useReducedMotion();
@@ -519,7 +522,7 @@ export default function StudioSettingsDialog({
           </button>
           <div className="flex-1 overflow-y-auto p-5 sm:p-7">
             {tab === 'general' && <GeneralPanel />}
-            {tab === 'models' && <ModelsPanel selectedId={selectedChatModelId} onSelect={onSelectChatModel} />}
+            {tab === 'models' && <ModelsPanel selectedId={selectedChatModelId} onSelect={onSelectChatModel} models={models} />}
             {tab === 'credits' && <CreditsPanel />}
           </div>
         </div>

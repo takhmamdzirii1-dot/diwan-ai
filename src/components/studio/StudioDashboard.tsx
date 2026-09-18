@@ -16,7 +16,7 @@ import MediaLibrary from './MediaLibrary';
 import { VantraLogo } from '../VantraLogo';
 import { cn } from '@/lib/utils';
 import { GhostButton } from './AppShell';
-import { CHAT_MODELS, DEFAULT_CHAT_MODEL } from '@/src/config/studio-registry';
+import type { StudioRuntimeModelDefinition } from '@/src/config/studio-registry';
 import { useTranslations } from 'next-intl';
 
 type CenterMode = 'chat' | 'image' | 'video' | 'library';
@@ -49,9 +49,11 @@ const MAGIC_SKILLS = [
 export default function StudioDashboard({
   activeWorkspace,
   onWorkspaceChange,
+  models,
 }: {
   activeWorkspace: CenterMode;
   onWorkspaceChange: (workspace: CenterMode) => void;
+  models: StudioRuntimeModelDefinition[];
 }) {
   const reduceMotion = useReducedMotion();
   const t = useTranslations('studio.chat');
@@ -62,14 +64,18 @@ export default function StudioDashboard({
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const [selectedModelId, setSelectedModelId] = useState(DEFAULT_CHAT_MODEL.id);
+  const chatModels = useMemo(() => models.filter((model) => model.modality === 'chat'), [models]);
+  const imageModels = useMemo(() => models.filter((model) => model.modality === 'image'), [models]);
+  const videoModels = useMemo(() => models.filter((model) => model.modality === 'video'), [models]);
+  const defaultChatModel = chatModels.find((model) => model.enabled) ?? chatModels[0] ?? null;
+  const [selectedModelId, setSelectedModelId] = useState(defaultChatModel?.id ?? '');
   const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null);
   const sendStartRef = useRef<number>(0);
 
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
-  const activeModel = CHAT_MODELS.find((model) => model.id === selectedModelId) || DEFAULT_CHAT_MODEL;
+  const activeModel = chatModels.find((model) => model.id === selectedModelId) ?? defaultChatModel;
 
   useEffect(() => {
     try {
@@ -251,6 +257,7 @@ export default function StudioDashboard({
 
   const handleSend = useCallback(
     async (data: { message: string; isThinkingEnabled: boolean; files?: Array<{ file: File; preview?: string | null; type: string }> }) => {
+      if (!activeModel) return;
       if (!user && (activeModel.verifiedCreditCost ?? 0) > 0) {
         openAuthModal('signin');
         return;
@@ -304,7 +311,7 @@ export default function StudioDashboard({
         }
       );
     },
-    [append, selectedModelId, activeSessionId, sessions, activeModel.verifiedCreditCost, user, openAuthModal]
+    [append, selectedModelId, activeSessionId, sessions, activeModel, user, openAuthModal]
   );
 
   const handleStarter = useCallback((text: string) => {
@@ -525,7 +532,7 @@ export default function StudioDashboard({
                   <div className="pointer-events-auto mx-auto w-full max-w-4xl px-6">
                     <ClaudeChatInput
                       onSendMessage={handleSend}
-                      models={CHAT_MODELS.map((model) => ({
+                      models={chatModels.map((model) => ({
                         id: model.id,
                         name: model.displayName,
                         provider: model.provider,
@@ -533,6 +540,9 @@ export default function StudioDashboard({
                         enabled: model.enabled,
                         verifiedCreditCost: model.verifiedCreditCost,
                         requiresAuth: (model.verifiedCreditCost ?? 0) > 0,
+                        description: model.shortDescription,
+                        iconUrl: model.iconUrl,
+                        availabilityLabel: model.availabilityLabel,
                       }))}
                       selectedModelId={selectedModelId}
                       onSelectModel={setSelectedModelId}
@@ -550,14 +560,14 @@ export default function StudioDashboard({
           {/* ── Image Canvas ── */}
           {activeWorkspace === 'image' && (
             <motion.div key="image" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }} className="absolute inset-0">
-              <ImageCanvas />
+              <ImageCanvas models={imageModels} />
             </motion.div>
           )}
 
             {/* ── Motion Studio ── */}
             {activeWorkspace === 'video' && (
               <motion.div key="video" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }} className="absolute inset-0">
-                <MotionStudio />
+                <MotionStudio models={videoModels} />
               </motion.div>
             )}
 
@@ -576,6 +586,7 @@ export default function StudioDashboard({
         onClose={() => setSettingsOpen(false)}
         selectedChatModelId={selectedModelId}
         onSelectChatModel={setSelectedModelId}
+        models={models}
       />
     </div>
   );

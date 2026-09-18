@@ -23,6 +23,8 @@ const definitions = [
   { id: 'vercel_ai_gateway', name: 'Vercel AI Gateway', modalities: ['chat', 'image'], adapter: 'vercel-gateway', apiKeyEnv: ['AI_GATEWAY_API_KEY', 'VERCEL_AI_GATEWAY_API_KEY'], fixedBaseUrl: 'https://ai-gateway.vercel.sh/v1' },
   { id: 'runware', name: 'Runware', modalities: ['image', 'video'], adapter: 'runware-media', apiKeyEnv: ['RUNWARE_API_KEY'], fixedBaseUrl: 'https://api.runware.ai/v1' },
   { id: 'agnes', name: 'Agnes Direct', modalities: ['chat'], adapter: 'openai-compatible-chat', apiKeyEnv: ['AGNES_API_KEY'], fixedBaseUrl: 'https://apihub.agnes-ai.com/v1' },
+  { id: 'orca_router', name: 'Orca Router', modalities: ['chat'], adapter: 'openai-compatible-chat', apiKeyEnv: ['ORCAROUTER_API_KEY', 'ORCA_ROUTER_API_KEY'], fixedBaseUrl: 'https://api.orcarouter.ai/v1' },
+  { id: 'pruna_ai', name: 'Pruna AI', modalities: ['video'], adapter: 'not-connected', apiKeyEnv: ['PRUNA_AI_API_KEY', 'PRUNA_API_KEY'], baseUrlEnv: 'PRUNA_AI_BASE_URL' },
   { id: 'microsoft_foundry', name: 'Microsoft Foundry', modalities: ['image'], adapter: 'microsoft-foundry-image', apiKeyEnv: ['MICROSOFT_FOUNDRY_API_KEY', 'AZURE_API_KEY'], baseUrlEnv: 'MICROSOFT_FOUNDRY_ENDPOINT' },
   { id: 'pollinations', name: 'Pollinations', modalities: ['image'], adapter: 'not-connected', apiKeyEnv: [] },
   { id: 'puter', name: 'Puter', modalities: ['image'], adapter: 'not-connected', apiKeyEnv: [] },

@@ -5,7 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ChevronDown, ImageIcon, Paperclip, SlidersHorizontal, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
-import { IMAGE_MODELS, isModelSelectable } from '@/src/config/studio-registry';
+import { isModelSelectable, type StudioRuntimeModelDefinition } from '@/src/config/studio-registry';
 import { PrimaryButton, StateBlock } from './AppShell';
 import CreationWorkspace from './CreationWorkspace';
 import { demoMediaRepository, runDemoGeneration, type DemoMediaItem } from './media-repository';
@@ -27,12 +27,12 @@ function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.R
   return <label htmlFor={htmlFor} className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/55">{children}</label>;
 }
 
-export default function ImageCanvas({ onGenerate }: { onGenerate?: (draft: ImageRequestDraft) => void | Promise<void> }) {
+export default function ImageCanvas({ models, onGenerate }: { models: StudioRuntimeModelDefinition[]; onGenerate?: (draft: ImageRequestDraft) => void | Promise<void> }) {
   const t = useTranslations('studio.image');
   const reduceMotion = useReducedMotion();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [prompt, setPrompt] = useState('');
-  const [modelId, setModelId] = useState(IMAGE_MODELS[0]?.id ?? '');
+  const [modelId, setModelId] = useState(models[0]?.id ?? '');
   const [aspectRatio, setAspectRatio] = useState<(typeof ASPECT_RATIOS)[number]>('1:1');
   const [outputCount, setOutputCount] = useState<(typeof OUTPUT_COUNTS)[number]>(1);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -75,7 +75,7 @@ export default function ImageCanvas({ onGenerate }: { onGenerate?: (draft: Image
       setDemoStatus('error');
       return;
     }
-    const selectedModel = IMAGE_MODELS.find((model) => model.id === modelId);
+    const selectedModel = models.find((model) => model.id === modelId);
     if (!selectedModel || !isModelSelectable(selectedModel)) {
       setError(t('errors.model'));
       setDemoStatus('error');
@@ -136,7 +136,7 @@ export default function ImageCanvas({ onGenerate }: { onGenerate?: (draft: Image
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
                 <FieldLabel htmlFor="image-model">{t('model')}</FieldLabel>
-                <div className="relative"><select id="image-model" value={modelId} onChange={(event) => setModelId(event.target.value)} className="h-11 w-full appearance-none rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] ps-3.5 pe-10 text-[13px] text-white outline-none transition-[border-color,background-color] duration-150 hover:bg-[var(--studio-hover)] focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none">{IMAGE_MODELS.map((model) => <option key={model.id} value={model.id} disabled={!isModelSelectable(model)}>{model.displayName} · {model.provider} · {model.availability === 'beta' ? 'Beta' : model.availability}</option>)}</select><ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" /></div>
+                <div className="relative"><select id="image-model" disabled={!models.length} value={modelId || 'unavailable'} onChange={(event) => setModelId(event.target.value)} className="h-11 w-full appearance-none rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] ps-3.5 pe-10 text-[13px] text-white outline-none transition-[border-color,background-color] duration-150 hover:bg-[var(--studio-hover)] focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none">{models.length ? models.map((model) => <option key={model.id} value={model.id} disabled={!isModelSelectable(model)}>{model.displayName} · {model.category ?? model.provider} · {model.availabilityLabel ?? (model.availability === 'beta' ? 'Beta' : model.availability)}</option>) : <option value="unavailable">{t('errors.model')}</option>}</select><ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" /></div>
               </div>
               <div className="space-y-2"><FieldLabel htmlFor="image-ratio">{t('aspectRatio')}</FieldLabel><select id="image-ratio" value={aspectRatio} onChange={(event) => setAspectRatio(event.target.value as typeof aspectRatio)} className="h-11 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[13px] text-white outline-none focus-visible:ring-2 focus-visible:ring-white/40">{ASPECT_RATIOS.map((ratio) => <option key={ratio}>{ratio}</option>)}</select></div>
               <div className="space-y-2"><FieldLabel htmlFor="image-count">{t('outputs')}</FieldLabel><select id="image-count" value={outputCount} onChange={(event) => setOutputCount(Number(event.target.value) as typeof outputCount)} className="h-11 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[13px] text-white outline-none focus-visible:ring-2 focus-visible:ring-white/40">{OUTPUT_COUNTS.map((count) => <option key={count} value={count}>{count}</option>)}</select></div>

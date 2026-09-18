@@ -26,6 +26,9 @@ export interface ChatModelOption {
     enabled: boolean;
     verifiedCreditCost?: number;
     requiresAuth?: boolean;
+    description?: string;
+    iconUrl?: string;
+    availabilityLabel?: string;
 }
 
 export interface ClaudeSendPayload {
@@ -177,8 +180,8 @@ export const ModelSelector: React.FC<{
         setIsOpen(false);
     };
 
-    const statusLabel = (availability: StudioAvailability) =>
-        availability === 'temporarily_unavailable' ? t('temporarilyUnavailable') : t(availability);
+    const statusLabel = (model: ChatModelOption) => model.availabilityLabel
+        ?? (model.availability === 'temporarily_unavailable' ? t('temporarilyUnavailable') : t(model.availability));
 
     const renderItem = (model: ChatModelOption) => {
       const selectable = model.enabled && ['available', 'beta'].includes(model.availability);
@@ -198,15 +201,17 @@ export const ModelSelector: React.FC<{
                     : "border-transparent"
             )}
         >
-            <div className="flex min-w-0 flex-col gap-1">
+            <div className="flex min-w-0 items-start gap-2.5">
+              {model.iconUrl && <img src={model.iconUrl} alt="" referrerPolicy="no-referrer" className="mt-0.5 h-7 w-7 shrink-0 rounded-md border border-white/10 object-cover" />}
+              <div className="flex min-w-0 flex-col gap-1">
                 <div className="flex items-center gap-2">
                     <span className="truncate text-[13px] font-semibold text-white/95">{model.name}</span>
                     <span className="shrink-0 rounded-full border border-white/15 bg-white/[0.04] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white/65">
-                        {statusLabel(model.availability)}
+                        {statusLabel(model)}
                     </span>
                 </div>
                 <span className="truncate text-[11px] text-[var(--studio-text-secondary)]">
-                    {model.provider}{model.enabled ? ` · ${t('connectedChat')}` : ''}
+                    {model.description ?? model.provider}{model.enabled ? ` · ${t('connectedChat')}` : ''}
                 </span>
                 <span className="text-[10.5px] text-[var(--studio-text-muted)]">
                     {model.verifiedCreditCost === 0
@@ -215,6 +220,7 @@ export const ModelSelector: React.FC<{
                           ? t('creditCost', { count: model.verifiedCreditCost })
                           : t('notSelectable')}
                 </span>
+              </div>
             </div>
             {selectedModel === model.id ? (
                 <Check className="mt-1 h-4 w-4 shrink-0 text-white" />

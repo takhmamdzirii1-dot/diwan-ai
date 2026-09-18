@@ -23,6 +23,13 @@ export interface StudioModelDefinition {
   displayOrder: number;
 }
 
+export interface StudioRuntimeModelDefinition extends StudioModelDefinition {
+  shortDescription?: string;
+  iconUrl?: string;
+  category?: string;
+  availabilityLabel?: string;
+}
+
 /**
  * Frontend availability registry. This intentionally lists only model facts that
  * are evidenced by the current application configuration. Models can remain

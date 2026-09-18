@@ -66,7 +66,21 @@ export type AdminModelRow = {
   activationSupported: boolean;
   persisted: boolean;
   updatedAt: string | null;
+  shortDescription: string | null;
+  mediaUrl: string | null;
+  category: string | null;
+  sortOrder: number;
+  visibleInStudio: boolean;
+  availabilityLabel: string | null;
   routes: AdminModelRoute[];
+  providerOptions: AdminModelProviderOption[];
+};
+
+export type AdminModelProviderOption = {
+  id: string;
+  name: string;
+  configured: boolean;
+  enabled: boolean;
 };
 
 export type AdminModelRoute = {

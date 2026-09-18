@@ -136,7 +136,10 @@ function buildAdminModelRows(models: readonly EffectiveRuntimeModel[], latestCos
       providerCostState: model.providerCostStatus ?? providerCostState(model.provider, providerCost),
       creditPrice: model.customerCreditPrice, priority: model.routingRole,
       activationSupported: model.activationSupported, persisted: model.persisted, updatedAt: model.updatedAt,
-      routes: [],
+      shortDescription: model.shortDescription, mediaUrl: model.mediaUrl, category: model.category,
+      sortOrder: model.sortOrder, visibleInStudio: model.visibleInStudio,
+      availabilityLabel: model.availabilityLabel,
+      routes: [], providerOptions: [],
     };
   });
 }
@@ -300,6 +303,14 @@ export async function getAdminModels(): Promise<AdminDataResult<AdminModelRow[]>
       latestCostsByModel(costs),
     ).map((model) => ({
       ...model,
+      providerOptions: SERVER_PROVIDER_REGISTRY
+        .filter((provider) => provider.modalities.some((modality) => modality === model.modality))
+        .map((provider) => ({
+          id: provider.id,
+          name: provider.name,
+          configured: providerConfigurationSummary(provider.id).configured,
+          enabled: providerEnabled.get(provider.id) ?? false,
+        })),
       routes: routes.filter((route) => String(route.model_key) === model.key).map((route) => ({
         id: String(route.id),
         providerId: String(route.provider_id),

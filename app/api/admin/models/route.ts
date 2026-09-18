@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
 import { getOwnerAccess } from '@/lib/auth/owner';
 import { findRegistryModel } from '@/lib/models/runtime-config';
+import { providerConfigurationSummary } from '@/lib/ai/providers/registry';
 
 const schema = z.object({
   modelKey: z.string().trim().min(1).max(300),
@@ -39,6 +40,22 @@ export async function PATCH(request: Request) {
 
   const client = getSupabaseAdminClient();
   if (!client) return NextResponse.json({ error: 'ADMIN_DATA_UNAVAILABLE' }, { status: 503 });
+  if (parsed.data.enabled) {
+    const { data: routes, error: routeError } = await client.from('model_provider_routes')
+      .select('provider_id').eq('model_key', registryModel.key).eq('enabled', true);
+    if (routeError) return NextResponse.json({ error: 'MODEL_ROUTE_CHECK_FAILED' }, { status: 503 });
+    const providerIds = [...new Set((routes ?? []).map((route) => String(route.provider_id)))];
+    const { data: providers, error: providerError } = providerIds.length
+      ? await client.from('provider_runtime_configs').select('provider_id,enabled,emergency_disabled').in('provider_id', providerIds)
+      : { data: [], error: null };
+    if (providerError) return NextResponse.json({ error: 'MODEL_ROUTE_CHECK_FAILED' }, { status: 503 });
+    const activeProviders = new Set((providers ?? [])
+      .filter((provider) => provider.enabled && !provider.emergency_disabled)
+      .map((provider) => String(provider.provider_id)));
+    const readyRoute = providerIds.some((providerId) =>
+      activeProviders.has(providerId) && providerConfigurationSummary(providerId).configured);
+    if (!readyRoute) return NextResponse.json({ error: 'MODEL_REQUIRES_CONFIGURED_ROUTE' }, { status: 409 });
+  }
   const { data, error } = await client.rpc('admin_upsert_model_runtime_config', {
     p_model_key: registryModel.key,
     p_model_id: registryModel.modelId,
