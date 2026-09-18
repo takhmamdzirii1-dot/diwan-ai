@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Menu, ArrowDown, Plus, Zap, Swords, Database, Settings, Sparkles, LayoutGrid, MessageSquare, Image as ImageIcon, Video, PenLine, Code2, Lightbulb, BarChart3, RefreshCw, FileText } from 'lucide-react';
 import { useChat } from '@ai-sdk/react';
@@ -203,57 +203,107 @@ export default function StudioDashboard({
   }, [messages, activeSessionId]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const isAtBottomRef = useRef(true);
+  const transcriptRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
+  const followLatestRef = useRef(true);
+  const lastScrollTopRef = useRef(0);
+  const touchYRef = useRef<number | null>(null);
+  const scrollFrameRef = useRef<number | null>(null);
+  const pendingSendRef = useRef(false);
+  const [composerPadding, setComposerPadding] = useState(176);
   const [showScrollButton, setShowScrollButton] = useState(false);
 
-  /* ---- Smart auto-scroll management (No scroll hijacking) ---- */
+  const scrollToLatest = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    followLatestRef.current = true;
+    setShowScrollButton(false);
+    container.scrollTop = container.scrollHeight - container.clientHeight;
+    lastScrollTopRef.current = container.scrollTop;
+  }, []);
 
-  // Track whether the user is near bottom with ~100px threshold
+  const scheduleFollow = useCallback(() => {
+    if (!followLatestRef.current || scrollFrameRef.current !== null) return;
+    scrollFrameRef.current = requestAnimationFrame(() => {
+      scrollFrameRef.current = null;
+      if (followLatestRef.current) scrollToLatest();
+    });
+  }, [scrollToLatest]);
+
+  const stopFollowing = useCallback(() => {
+    followLatestRef.current = false;
+    setShowScrollButton(true);
+    if (scrollFrameRef.current !== null) {
+      cancelAnimationFrame(scrollFrameRef.current);
+      scrollFrameRef.current = null;
+    }
+  }, []);
+
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
+    const movedUp = container.scrollTop < lastScrollTopRef.current - 1;
+    const movedDown = container.scrollTop > lastScrollTopRef.current + 1;
     const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
-    const atBottom = distance <= 100;
-
-    isAtBottomRef.current = atBottom;
-    setShowScrollButton(distance > 100);
-  }, []);
-
-  const scrollToBottom = useCallback(() => {
-    isAtBottomRef.current = true;
-    setShowScrollButton(false);
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
-
-  const jumpToBottom = useCallback(() => {
-    isAtBottomRef.current = true;
-    setShowScrollButton(false);
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-  }, []);
-
-  // Force bottom the moment a new send exchange starts
-  useEffect(() => {
-    if (isLoading) {
-      jumpToBottom();
+    if (movedUp) stopFollowing();
+    else if (!followLatestRef.current && movedDown && distance <= 24) {
+      followLatestRef.current = true;
+      setShowScrollButton(false);
     }
-  }, [isLoading, jumpToBottom]);
+    lastScrollTopRef.current = container.scrollTop;
+  }, [stopFollowing]);
 
-  // When messages or streaming tokens update:
-  // ONLY auto-scroll if the user is already near the bottom.
-  // If the user scrolled up, NEVER hijack or reset their scroll position!
-  useEffect(() => {
-    if (!isAtBottomRef.current) return;
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    container.scrollTop = container.scrollHeight;
-  }, [messages]);
+  useLayoutEffect(() => {
+    const transcript = transcriptRef.current;
+    const composer = composerRef.current;
+    if (!transcript || !composer) return;
+    setComposerPadding(Math.ceil(composer.getBoundingClientRect().height) + 24);
+    const observer = new ResizeObserver((entries) => {
+      if (entries.some((entry) => entry.target === composer)) {
+        setComposerPadding(Math.ceil(composer.getBoundingClientRect().height) + 24);
+      }
+      scheduleFollow();
+    });
+    observer.observe(transcript);
+    observer.observe(composer);
+    return () => {
+      observer.disconnect();
+      if (scrollFrameRef.current !== null) cancelAnimationFrame(scrollFrameRef.current);
+      scrollFrameRef.current = null;
+    };
+  }, [activeWorkspace, scheduleFollow]);
 
-  // Jump to bottom when switching sessions
+  useLayoutEffect(() => {
+    if (pendingSendRef.current && messages[messages.length - 1]?.role === 'user') {
+      pendingSendRef.current = false;
+      scrollToLatest();
+    } else {
+      scheduleFollow();
+    }
+  }, [messages, scrollToLatest, scheduleFollow]);
+
+  useLayoutEffect(() => {
+    scheduleFollow();
+  }, [composerPadding, scheduleFollow]);
+
   useEffect(() => {
-    const t = setTimeout(jumpToBottom, 80);
-    return () => clearTimeout(t);
-  }, [activeSessionId, jumpToBottom]);
+    followLatestRef.current = true;
+    setShowScrollButton(false);
+    scheduleFollow();
+  }, [activeSessionId, scheduleFollow]);
+
+  const handleTouchMove = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
+    const y = event.touches[0]?.clientY;
+    if (y === undefined) return;
+    if (touchYRef.current !== null && y > touchYRef.current + 2) stopFollowing();
+    touchYRef.current = y;
+  }, [stopFollowing]);
+
+  const handleScrollKey = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (['ArrowUp', 'PageUp', 'Home'].includes(event.key) || (event.key === ' ' && event.shiftKey)) {
+      stopFollowing();
+    }
+  }, [stopFollowing]);
 
   const handleSend = useCallback(
     async (data: { message: string; isThinkingEnabled: boolean; files?: Array<{ file: File; preview?: string | null; type: string }> }) => {
@@ -300,6 +350,7 @@ export default function StudioDashboard({
         }
       }
       sendStartRef.current = performance.now();
+      pendingSendRef.current = true;
       await append(
         {
           role: 'user',
@@ -380,14 +431,20 @@ export default function StudioDashboard({
                   <div
                     ref={scrollContainerRef}
                     onScroll={handleScroll}
-                    className="chat-scrollbar flex-1 h-full overflow-y-auto pb-40 [-webkit-mask-image:linear-gradient(to_bottom,black_75%,transparent_100%)] [mask-image:linear-gradient(to_bottom,black_75%,transparent_100%)]"
-                    style={{ overflowAnchor: 'none' }}
+                    onWheel={(event) => { if (event.deltaY < 0) stopFollowing(); }}
+                    onTouchStart={(event) => { touchYRef.current = event.touches[0]?.clientY ?? null; }}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={() => { touchYRef.current = null; }}
+                    onKeyDown={handleScrollKey}
+                    tabIndex={0}
+                    className="chat-scrollbar flex-1 h-full overflow-y-auto focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-white/30"
+                    style={{ overflowAnchor: 'none', paddingBottom: composerPadding }}
                   >
-                    <div className={cn(
+                    <div ref={transcriptRef} className={cn(
                       'w-full flex justify-center transition-[min-height,padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none',
                       isEmpty ? 'min-h-full items-center py-6' : 'pt-6'
                     )}>
-                      <div className="mx-auto flex w-full max-w-4xl flex-col gap-y-7 px-4 sm:px-6">
+                      <div className="mx-auto flex w-full max-w-4xl flex-col gap-y-5 px-4 sm:px-6">
                         {/* Empty State: Headline & Magic Skills Cards (Animated Exit) */}
                         <AnimatePresence>
                           {isEmpty && (
@@ -452,7 +509,7 @@ export default function StudioDashboard({
                             initial={{ opacity: 0, y: 12 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }}
-                            className="flex flex-col gap-y-8 w-full"
+                            className="flex flex-col gap-y-5 w-full"
                           >
                             {messages.map((msg, idx) => (
                               <MessageBubble
@@ -501,29 +558,29 @@ export default function StudioDashboard({
                           </div>
                         )}
 
-                        {/* Spacer to push text above the floating composer */}
-                        <div ref={messagesEndRef} className="h-32 w-full flex-shrink-0" />
                       </div>
                     </div>
                   </div>
 
                   {/* Floating "Scroll to Bottom" Action Button */}
                   <AnimatePresence>
-                    {showScrollButton && (
+                    {showScrollButton && !isEmpty && (
                       <motion.div
                         initial={{ opacity: 0, y: 8, scale: 0.9 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 8, scale: 0.9 }}
                         transition={{ duration: 0.18, ease: 'easeOut' }}
-                        className="absolute bottom-28 left-1/2 z-50 -translate-x-1/2 pointer-events-auto"
+                        className="absolute left-1/2 z-50 -translate-x-1/2 pointer-events-auto"
+                        style={{ bottom: composerPadding + 8 }}
                       >
                         <button
                           type="button"
-                          onClick={scrollToBottom}
-                          aria-label="Scroll to bottom"
-                          className="flex items-center justify-center rounded-full border border-white/10 bg-[#0A0A0B]/80 p-2 text-white/50 shadow-xl backdrop-blur-md transition-[color,background-color,transform] duration-300 hover:bg-white/10 hover:text-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                          onClick={scrollToLatest}
+                          aria-label={t('jumpToLatest')}
+                          className="flex items-center justify-center gap-1.5 rounded-full border border-white/10 bg-[#0A0A0B]/85 px-3 py-2 text-xs font-medium text-white/75 shadow-xl backdrop-blur-md transition-[color,background-color,transform] duration-150 hover:bg-white/10 hover:text-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
                         >
                           <ArrowDown className="h-4 w-4" />
+                          <span>{t('jumpToLatest')}</span>
                         </button>
                       </motion.div>
                     )}
@@ -531,7 +588,7 @@ export default function StudioDashboard({
                 </div>
 
                 {/* 3rd (Bottom): Floating composer over the fading message timeline */}
-                <div className="absolute bottom-0 left-0 flex w-full justify-center bg-transparent p-4 pb-6 pointer-events-none">
+                <div ref={composerRef} className="absolute bottom-0 left-0 flex w-full justify-center bg-transparent p-4 pb-6 pointer-events-none">
                   <div className="pointer-events-auto mx-auto w-full max-w-4xl px-6">
                     <ClaudeChatInput
                       onSendMessage={handleSend}

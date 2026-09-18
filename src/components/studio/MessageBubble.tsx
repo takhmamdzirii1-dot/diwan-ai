@@ -116,8 +116,8 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   // Fluid typewriter reveal while the assistant is streaming
   const smoothActive = !isUser && isStreaming && isLatest;
   const smoothContent = useSmoothText(message.content, smoothActive);
-  const displayContent = smoothActive ? smoothContent : message.content;
-  const showStreamingCursor = smoothActive && displayContent.length > 0;
+  const displayContent = smoothContent;
+  const showStreamingCursor = !isUser && isLatest && displayContent.length > 0 && (smoothActive || displayContent.length < message.content.length);
 
   const handleCopyCode = (code: string, id: string) => {
     navigator.clipboard.writeText(code);

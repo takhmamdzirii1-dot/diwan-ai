@@ -95,6 +95,7 @@
       "reauthInvalid": "That verification code is invalid or has expired."
     },
     "chat": {
+      "jumpToLatest": "Jump to latest",
       "emptyTitle": "What will you create today?",
       "emptyPlaceholder": "Ask anything or choose a starting point…",
       "placeholder": "Message VANTRA…",
