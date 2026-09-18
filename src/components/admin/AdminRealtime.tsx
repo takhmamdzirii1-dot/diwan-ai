@@ -48,16 +48,25 @@ export default function AdminRealtime({ canSubscribe }: { canSubscribe: boolean 
       }
     };
     document.addEventListener('visibilitychange', onVisible);
-    const channel = supabase.channel('vantra-admin-operations')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ai_executions' }, () => schedule('ai_executions'))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'generations' }, () => schedule('generations'))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'model_runtime_configs' }, () => schedule('model_runtime_configs'))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'provider_runtime_configs' }, () => schedule('provider_runtime_configs'))
-      .subscribe();
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    // Auth app_metadata changes require a fresh JWT before Realtime checks owner RLS.
+    void supabase.auth.refreshSession().then(async ({ data, error }) => {
+      if (cancelled || error || data.session?.user.app_metadata?.role !== 'owner') return;
+      await supabase.realtime.setAuth(data.session.access_token);
+      if (cancelled) return;
+      channel = supabase.channel('vantra-admin-operations')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'ai_executions' }, () => schedule('ai_executions'))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'generations' }, () => schedule('generations'))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'model_runtime_configs' }, () => schedule('model_runtime_configs'))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'provider_runtime_configs' }, () => schedule('provider_runtime_configs'))
+        .subscribe();
+    }).catch(() => { /* No subscription without a verified fresh owner JWT. */ });
     return () => {
+      cancelled = true;
       document.removeEventListener('visibilitychange', onVisible);
       if (pending) clearTimeout(pending);
-      void supabase.removeChannel(channel);
+      if (channel) void supabase.removeChannel(channel);
     };
   }, [router, canSubscribe]);
   return null;
