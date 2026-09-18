@@ -8,7 +8,7 @@ import { isModelSelectable, type StudioRuntimeModelDefinition } from '@/src/conf
 import { PrimaryButton, Segmented, StateBlock } from './AppShell';
 import CreationWorkspace from './CreationWorkspace';
 import { useTranslations } from 'next-intl';
-import { demoMediaRepository, runDemoGeneration, type DemoMediaItem } from './media-repository';
+import { ModelSelector, type ChatModelOption } from '@/components/ui/claude-style-chat-input';
 
 const DURATIONS = ['5 seconds', '10 seconds'] as const;
 const ASPECT_RATIOS = ['16:9', '9:16', '1:1'] as const;
@@ -34,6 +34,7 @@ export default function MotionStudio({ models, onGenerate }: { models: StudioRun
   const reduceMotion = useReducedMotion();
   const t = useTranslations('studio.video');
   const controlsT = useTranslations('studio.videoControls');
+  const modelsT = useTranslations('studio.models');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<VideoMode>('text');
   const [prompt, setPrompt] = useState('');
@@ -46,9 +47,17 @@ export default function MotionStudio({ models, onGenerate }: { models: StudioRun
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [referenceUrl, setReferenceUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [demoResult, setDemoResult] = useState<DemoMediaItem | null>(null);
-  const [demoStatus, setDemoStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [progress, setProgress] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const modelOptions: ChatModelOption[] = models.map((model) => ({
+    id: model.id,
+    name: model.displayName,
+    availability: model.availability,
+    enabled: model.enabled,
+    iconUrl: model.iconUrl,
+  }));
+  const selectedModel = models.find((model) => model.id === modelId);
+  const generationAvailable = Boolean(onGenerate && selectedModel && isModelSelectable(selectedModel));
 
   useEffect(() => () => {
     if (referenceUrl) URL.revokeObjectURL(referenceUrl);
@@ -76,20 +85,22 @@ export default function MotionStudio({ models, onGenerate }: { models: StudioRun
     event.preventDefault();
     if (!prompt.trim()) {
       setError(t('errors.prompt'));
-      setDemoStatus('error');
       return;
     }
     if (mode === 'image' && !referenceFile) {
       setError(t('errors.referenceRequired'));
-      setDemoStatus('error');
       return;
     }
-    setError(null); setProgress(0); setDemoStatus('loading');
+    if (!selectedModel || !isModelSelectable(selectedModel)) {
+      setError(t('errors.model'));
+      return;
+    }
+    if (!onGenerate) return;
+    setError(null); setIsSubmitting(true);
     try {
-      await runDemoGeneration(setProgress, prompt.trim() === 'demo:error');
-      const result = await demoMediaRepository.create({ kind: 'video', prompt: prompt.trim(), model: t('demoModel'), aspectRatio });
-      setDemoResult(result); setDemoStatus('success');
-    } catch { setError(t('errors.demo')); setDemoStatus('error'); }
+      await onGenerate({ mode, prompt: prompt.trim(), referenceFile, modelId, duration, aspectRatio, cameraMotion, negativePrompt: negativePrompt.trim() });
+    } catch { setError(t('errors.generation')); }
+    finally { setIsSubmitting(false); }
   };
 
   return (
@@ -97,7 +108,7 @@ export default function MotionStudio({ models, onGenerate }: { models: StudioRun
       previewLabel={t('previewLabel')}
       controls={<>
           <div className="studio-creation-header mb-6">
-            <div className="flex items-center justify-between gap-3"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">{t('eyebrow')}</p><span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-white/55">{t('demoMode')}</span></div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">{t('eyebrow')}</p>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white">{t('title')}</h1>
             <p className="mt-2 max-w-sm text-[13px] leading-relaxed text-[var(--studio-text-secondary)]">{t('description')}</p>
           </div>
@@ -109,20 +120,18 @@ export default function MotionStudio({ models, onGenerate }: { models: StudioRun
 
             <div className="studio-video-reference-model contents">
               <div className="min-w-0 space-y-2"><FieldLabel>{mode === 'image' ? t('referenceRequired') : t('referenceOptional')}</FieldLabel><input ref={fileInputRef} type="file" accept="image/*" aria-label={t('chooseReference')} className="sr-only" onChange={(event) => { chooseReference(event.target.files?.[0]); event.target.value = ''; }} />{referenceUrl ? <div className="flex items-center gap-3 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] p-2.5"><img src={referenceUrl} alt={t('selectedReference')} className="h-14 w-14 rounded-lg object-cover" /><div className="min-w-0 flex-1"><p className="truncate text-[12.5px] font-medium text-white/85">{referenceFile?.name}</p><p className="mt-0.5 text-[11px] text-white/55">{t('localPreview')}</p></div><button type="button" onClick={clearReference} aria-label={t('removeReference')} className="flex h-9 w-9 items-center justify-center rounded-lg text-white/55 transition-[color,background-color] duration-150 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><X className="h-4 w-4" /></button></div> : <button type="button" onClick={() => fileInputRef.current?.click()} className="studio-creation-reference flex min-h-20 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/[0.02] text-[12.5px] font-medium text-white/65 transition-[color,background-color,border-color] duration-150 hover:border-white/25 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><ImagePlus className="h-4 w-4" />{t('addReference')}</button>}</div>
-              <div className="min-w-0 space-y-2"><FieldLabel htmlFor="video-model">{t('model')}</FieldLabel><div className="relative" title={models.find((model) => model.id === modelId)?.displayName ?? t('noModels')}><select id="video-model" disabled={models.length === 0} value={modelId || 'unavailable'} onChange={(event) => setModelId(event.target.value)} className="h-11 w-full min-w-0 appearance-none truncate rounded-xl border border-white/10 bg-white/[0.025] ps-3.5 pe-10 text-[13px] text-[var(--studio-text-disabled)] outline-none focus-visible:ring-2 focus-visible:ring-white/40 disabled:cursor-not-allowed">{models.length === 0 ? <option value="unavailable">{t('noModels')}</option> : models.map((model) => <option key={model.id} value={model.id} disabled={!isModelSelectable(model)}>{model.displayName} · {model.category ?? model.provider}</option>)}</select><ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/25" /></div></div>
+              <div className="min-w-0 space-y-2"><FieldLabel>{t('model')}</FieldLabel><ModelSelector models={modelOptions} selectedModel={modelId} onSelect={setModelId} dropdownPosition="bottom" menuLabel={modelsT('videoMenuLabel')} emptyLabel={modelsT('noModels')} /></div>
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2"><div className="space-y-2"><FieldLabel htmlFor="video-duration">{t('duration')}</FieldLabel><select id="video-duration" value={duration} onChange={(event) => setDuration(event.target.value as typeof duration)} className="h-11 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[13px] text-white outline-none focus-visible:ring-2 focus-visible:ring-white/40">{DURATIONS.map((value) => <option key={value} value={value}>{t(`durations.${value === '5 seconds' ? 'five' : 'ten'}`)}</option>)}</select></div><div className="space-y-2"><FieldLabel htmlFor="video-ratio">{t('aspectRatio')}</FieldLabel><select id="video-ratio" value={aspectRatio} onChange={(event) => setAspectRatio(event.target.value as typeof aspectRatio)} className="h-11 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[13px] text-white outline-none focus-visible:ring-2 focus-visible:ring-white/40">{ASPECT_RATIOS.map((value) => <option key={value}>{value}</option>)}</select></div></div>
 
-            <div className="space-y-2"><FieldLabel>{controlsT('cameraMotion')}</FieldLabel><div className="studio-camera-grid grid grid-cols-2 gap-2 sm:grid-cols-3">{CAMERA_PRESETS.map((preset) => { const selected = cameraMotion === preset; const key = preset.toLowerCase().replaceAll(' ', ''); return <button key={preset} type="button" aria-pressed={selected} onClick={() => setCameraMotion(preset)} className={cn('flex min-h-10 items-center justify-center gap-1.5 rounded-xl border px-2 text-[11.5px] font-medium transition-[color,background-color,border-color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none', selected ? 'border-white/30 bg-white text-black' : 'border-white/10 bg-white/[0.025] text-white/65 hover:border-white/20 hover:bg-[var(--studio-hover)] hover:text-white')}>{selected && <Check aria-hidden="true" className="h-3 w-3" />}{controlsT(`camera.${key}`)}</button>; })}</div></div>
-
-            <div className="rounded-xl border border-[var(--studio-border-subtle)] bg-white/[0.015]"><button type="button" onClick={() => setAdvancedOpen((open) => !open)} aria-expanded={advancedOpen} aria-controls="video-advanced" className="flex h-11 w-full items-center justify-between px-3.5 text-[12.5px] font-medium text-white/70 transition-[color,background-color] duration-150 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><span className="flex items-center gap-2"><SlidersHorizontal className="h-4 w-4" />{controlsT('advanced')}</span><ChevronDown className={cn('h-4 w-4 transition-transform duration-150 motion-reduce:transition-none', advancedOpen && 'rotate-180')} /></button><AnimatePresence initial={false}>{advancedOpen && <motion.div id="video-advanced" initial={reduceMotion ? false : { height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.18 }} className="overflow-hidden"><div className="space-y-1.5 border-t border-[var(--studio-border-subtle)] p-3"><FieldLabel htmlFor="video-negative">{controlsT('negativePrompt')}</FieldLabel><input id="video-negative" value={negativePrompt} onChange={(event) => setNegativePrompt(event.target.value)} placeholder={controlsT('negativePlaceholder')} className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white outline-none placeholder:text-white/40 focus-visible:ring-2 focus-visible:ring-white/40" /></div></motion.div>}</AnimatePresence></div>
+            <div className="rounded-xl border border-[var(--studio-border-subtle)] bg-white/[0.015]"><button type="button" onClick={() => setAdvancedOpen((open) => !open)} aria-expanded={advancedOpen} aria-controls="video-advanced" className="flex h-11 w-full items-center justify-between px-3.5 text-[12.5px] font-medium text-white/70 transition-[color,background-color] duration-150 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><span className="flex items-center gap-2"><SlidersHorizontal className="h-4 w-4" />{controlsT('advanced')}</span><ChevronDown className={cn('h-4 w-4 transition-transform duration-150 motion-reduce:transition-none', advancedOpen && 'rotate-180')} /></button><AnimatePresence initial={false}>{advancedOpen && <motion.div id="video-advanced" initial={reduceMotion ? false : { height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.18 }} className="overflow-hidden"><div className="space-y-3 border-t border-[var(--studio-border-subtle)] p-3"><div className="space-y-2"><FieldLabel>{controlsT('cameraMotion')}</FieldLabel><div className="studio-camera-grid grid grid-cols-2 gap-2 sm:grid-cols-3">{CAMERA_PRESETS.map((preset) => { const selected = cameraMotion === preset; const key = preset.toLowerCase().replaceAll(' ', ''); return <button key={preset} type="button" aria-pressed={selected} onClick={() => setCameraMotion(preset)} className={cn('flex min-h-10 items-center justify-center gap-1.5 rounded-xl border px-2 text-[11.5px] font-medium transition-[color,background-color,border-color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none', selected ? 'border-white/30 bg-white text-black' : 'border-white/10 bg-white/[0.025] text-white/65 hover:border-white/20 hover:bg-[var(--studio-hover)] hover:text-white')}>{selected && <Check aria-hidden="true" className="h-3 w-3" />}{controlsT(`camera.${key}`)}</button>; })}</div></div><div className="space-y-1.5"><FieldLabel htmlFor="video-negative">{controlsT('negativePrompt')}</FieldLabel><input id="video-negative" value={negativePrompt} onChange={(event) => setNegativePrompt(event.target.value)} placeholder={controlsT('negativePlaceholder')} className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white outline-none placeholder:text-white/40 focus-visible:ring-2 focus-visible:ring-white/40" /></div></div></motion.div>}</AnimatePresence></div>
 
             {error && <p role="status" className="text-[12px] leading-relaxed text-white/55">{error}</p>}
-            <div className="studio-creation-action space-y-2"><PrimaryButton type="submit" disabled={demoStatus === 'loading'} aria-describedby="video-generate-help" className="w-full">{demoStatus === 'loading' ? t('generating', { progress }) : t('generateDemo')}</PrimaryButton><p id="video-generate-help" className="text-center text-[11.5px] font-medium leading-relaxed text-white/60">{t('demoNote')}</p></div>
+            <div className="studio-creation-action space-y-2"><PrimaryButton type="submit" disabled={!generationAvailable || isSubmitting} aria-describedby="video-generate-help" className="w-full">{isSubmitting ? t('generating') : t('generate')}</PrimaryButton>{!generationAvailable && <p id="video-generate-help" className="text-center text-[11.5px] font-medium leading-relaxed text-white/60">{t('unavailableNote')}</p>}</div>
           </form>
         </>}
-      preview={<div className="mx-auto aspect-video w-full max-w-4xl overflow-hidden rounded-2xl border border-white/10 bg-white/[0.015] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]"><div className="flex h-full min-h-0 items-center justify-center p-4 sm:p-8">{demoStatus === 'loading' ? <StateBlock icon={<Clapperboard className="h-6 w-6 animate-pulse motion-reduce:animate-none" />} title={t('preparing')} description={t('progress', { progress })} /> : demoResult ? <div className="w-full"><img src={demoResult.assetUrl} alt={t('demoAssetAlt')} className="h-full w-full rounded-xl object-contain" /><p className="mt-2 text-center text-xs text-white/55">{t('demoAssetDisclosure')}</p></div> : <StateBlock icon={<Clapperboard className="h-6 w-6" />} title={t('emptyTitle')} description={t('emptyDescription')} />}</div></div>}
+      preview={<div className="mx-auto aspect-video w-full max-w-4xl overflow-hidden rounded-2xl border border-white/10 bg-white/[0.015] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]"><div className="flex h-full min-h-0 items-center justify-center p-4 sm:p-8"><StateBlock icon={<Clapperboard className="h-6 w-6" />} title={t('emptyTitle')} description={t('emptyDescription')} /></div></div>}
     />
   );
 }

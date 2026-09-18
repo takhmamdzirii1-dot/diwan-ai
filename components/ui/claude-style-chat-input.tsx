@@ -21,14 +21,10 @@ export interface AttachedFile {
 export interface ChatModelOption {
     id: string;
     name: string;
-    provider: string;
     availability: StudioAvailability;
     enabled: boolean;
-    verifiedCreditCost?: number;
     requiresAuth?: boolean;
-    description?: string;
     iconUrl?: string;
-    availabilityLabel?: string;
 }
 
 export interface ClaudeSendPayload {
@@ -143,7 +139,9 @@ export const ModelSelector: React.FC<{
     onSelect: (id: string) => void;
     onSignInClick?: () => void;
     dropdownPosition?: 'top' | 'bottom';
-}> = ({ models, selectedModel, onSelect, onSignInClick, dropdownPosition = 'top' }) => {
+    menuLabel?: string;
+    emptyLabel?: string;
+}> = ({ models, selectedModel, onSelect, onSignInClick, dropdownPosition = 'top', menuLabel, emptyLabel }) => {
     const t = useTranslations('studio.models');
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -180,9 +178,6 @@ export const ModelSelector: React.FC<{
         setIsOpen(false);
     };
 
-    const statusLabel = (model: ChatModelOption) => model.availabilityLabel
-        ?? (model.availability === 'temporarily_unavailable' ? t('temporarilyUnavailable') : t(model.availability));
-
     const renderItem = (model: ChatModelOption) => {
       const selectable = model.enabled && ['available', 'beta'].includes(model.availability);
       return (
@@ -194,36 +189,19 @@ export const ModelSelector: React.FC<{
             disabled={!selectable}
             onClick={() => handlePick(model)}
             className={cn(
-                "w-full text-start px-3 py-2.5 rounded-xl flex items-start justify-between gap-3 border transition-[color,background-color,border-color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-reduce:transition-none",
+                "flex h-10 w-full items-center justify-between gap-3 rounded-lg border px-2.5 text-start transition-[color,background-color,border-color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-reduce:transition-none",
                 selectable ? "cursor-pointer hover:bg-[var(--studio-hover)]" : "cursor-not-allowed opacity-45",
                 selectedModel === model.id
                     ? "border-[var(--studio-border-strong)] bg-[var(--studio-selected)]"
                     : "border-transparent"
             )}
         >
-            <div className="flex min-w-0 items-start gap-2.5">
-              {model.iconUrl && <img src={model.iconUrl} alt="" referrerPolicy="no-referrer" className="mt-0.5 h-7 w-7 shrink-0 rounded-md border border-white/10 object-cover" />}
-              <div className="flex min-w-0 flex-col gap-1">
-                <div className="flex items-center gap-2">
-                    <span className="truncate text-[13px] font-semibold text-white/95">{model.name}</span>
-                    <span className="shrink-0 rounded-full border border-white/15 bg-white/[0.04] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white/65">
-                        {statusLabel(model)}
-                    </span>
-                </div>
-                <span className="truncate text-[11px] text-[var(--studio-text-secondary)]">
-                    {model.description ?? model.provider}{model.enabled ? ` · ${t('connectedChat')}` : ''}
-                </span>
-                <span className="text-[10.5px] text-[var(--studio-text-muted)]">
-                    {model.verifiedCreditCost === 0
-                        ? t('noCreditCost')
-                        : typeof model.verifiedCreditCost === 'number'
-                          ? t('creditCost', { count: model.verifiedCreditCost })
-                          : t('notSelectable')}
-                </span>
-              </div>
+            <div className="flex min-w-0 items-center gap-2.5">
+              {model.iconUrl ? <img src={model.iconUrl} alt="" referrerPolicy="no-referrer" className="h-5 w-5 shrink-0 rounded-md border border-white/10 object-cover" /> : <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/[0.035]"><Sparkles className="h-3 w-3 text-white/65" /></span>}
+              <span className="truncate text-[12.5px] font-medium text-white/90">{model.name}</span>
             </div>
             {selectedModel === model.id ? (
-                <Check className="mt-1 h-4 w-4 shrink-0 text-white" />
+                <Check className="h-3.5 w-3.5 shrink-0 text-white" />
             ) : null}
         </button>
       );
@@ -233,31 +211,30 @@ export const ModelSelector: React.FC<{
         <div className="relative" ref={dropdownRef}>
             <button
                 type="button"
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={() => currentModel && setIsOpen(!isOpen)}
+                disabled={!currentModel}
                 aria-haspopup="listbox"
                 aria-expanded={isOpen}
                 aria-label={`${t('label')}: ${currentModel?.name ?? t('label')}`}
                 className={cn(
-                    "inline-flex items-center relative shrink-0 transition-[color,background-color,border-color,transform] duration-150 h-8 rounded-lg px-2.5 active:scale-[0.98] whitespace-nowrap text-xs gap-1.5 cursor-pointer max-w-[200px] border bg-[var(--studio-surface-raised)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-reduce:transition-none",
+                    "relative inline-flex h-8 max-w-[220px] shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border bg-[var(--studio-surface-raised)] px-2.5 text-xs transition-[color,background-color,border-color,transform] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:cursor-not-allowed disabled:text-[var(--studio-text-disabled)] motion-reduce:transition-none",
                     isOpen
                         ? "bg-[var(--studio-selected)] border-[var(--studio-border-strong)] text-white"
                         : "border-[var(--studio-border)] text-[var(--studio-text-secondary)] hover:border-[var(--studio-border-strong)] hover:text-white"
                 )}
             >
-                <span className="font-medium select-none truncate">{currentModel?.name ?? t('label')}</span>
+                {currentModel?.iconUrl ? <img src={currentModel.iconUrl} alt="" referrerPolicy="no-referrer" className="h-4 w-4 shrink-0 rounded object-cover" /> : currentModel ? <Sparkles className="h-3.5 w-3.5 shrink-0 text-white/65" /> : null}
+                <span className="select-none truncate font-medium">{currentModel?.name ?? emptyLabel ?? t('label')}</span>
                 <ChevronDown className={cn("w-3.5 h-3.5 opacity-60 shrink-0 transition-transform duration-150 motion-reduce:transition-none", isOpen && "rotate-180")} />
             </button>
 
             {isOpen && (
                 <div className={cn(
-                    "absolute end-0 w-[310px] max-w-[calc(100vw-2rem)] rounded-2xl overflow-hidden z-50 flex flex-col p-1.5 studio-menu-enter max-h-[420px] overflow-y-auto custom-scrollbar-thin border border-[var(--studio-border)] bg-[var(--studio-surface-elevated)] shadow-[var(--studio-shadow)] backdrop-blur-xl",
+                    "absolute end-0 z-50 flex max-h-[360px] w-[270px] max-w-[calc(100vw-2rem)] flex-col overflow-y-auto rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-elevated)] p-1.5 shadow-[var(--studio-shadow)] backdrop-blur-xl studio-menu-enter custom-scrollbar-thin",
                     dropdownPosition === 'top'
                         ? "bottom-full mb-2 origin-bottom-right"
                         : "top-full mt-2 origin-top-right"
-                )} role="listbox" aria-label={t('menuLabel')}>
-                    <div className="px-3 pb-1.5 pt-2 text-[9px] font-mono uppercase tracking-[0.22em] text-[var(--studio-text-muted)]">
-                        {t('menuLabel')}
-                    </div>
+                )} role="listbox" aria-label={menuLabel ?? t('menuLabel')}>
                     {models.map(renderItem)}
                 </div>
             )}
@@ -502,7 +479,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
             onDrop={onDrop}
         >
                 {/* ── Real composer surface ── */}
-                <div className="relative z-10 flex min-h-[104px] max-h-[360px] w-full flex-col justify-between rounded-2xl border border-white/10 bg-[#0A0A0B] p-3 shadow-2xl backdrop-blur-xl transition-[border-color] duration-150 focus-within:border-white/20 motion-reduce:transition-none">
+                <div className="relative z-10 flex min-h-[100px] max-h-[360px] w-full flex-col justify-between rounded-2xl border border-white/[0.07] bg-[#0A0A0B] p-2.5 shadow-[0_16px_50px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-[border-color] duration-150 focus-within:border-white/[0.14] motion-reduce:transition-none">
 
                 {/* Attachments above input */}
                 {(files.length > 0 || pastedContent.length > 0) && (

@@ -8,7 +8,7 @@ import { useTranslations } from 'next-intl';
 import { isModelSelectable, type StudioRuntimeModelDefinition } from '@/src/config/studio-registry';
 import { PrimaryButton, StateBlock } from './AppShell';
 import CreationWorkspace from './CreationWorkspace';
-import { demoMediaRepository, runDemoGeneration, type DemoMediaItem } from './media-repository';
+import { ModelSelector, type ChatModelOption } from '@/components/ui/claude-style-chat-input';
 
 const ASPECT_RATIOS = ['1:1', '4:3', '16:9', '9:16'] as const;
 const OUTPUT_COUNTS = [1, 2, 3, 4] as const;
@@ -29,10 +29,11 @@ function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.R
 
 export default function ImageCanvas({ models, onGenerate }: { models: StudioRuntimeModelDefinition[]; onGenerate?: (draft: ImageRequestDraft) => void | Promise<void> }) {
   const t = useTranslations('studio.image');
+  const modelsT = useTranslations('studio.models');
   const reduceMotion = useReducedMotion();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [prompt, setPrompt] = useState('');
-  const [modelId, setModelId] = useState(models[0]?.id ?? '');
+  const [modelId, setModelId] = useState(models.find(isModelSelectable)?.id ?? models[0]?.id ?? '');
   const [aspectRatio, setAspectRatio] = useState<(typeof ASPECT_RATIOS)[number]>('1:1');
   const [outputCount, setOutputCount] = useState<(typeof OUTPUT_COUNTS)[number]>(1);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -41,10 +42,17 @@ export default function ImageCanvas({ models, onGenerate }: { models: StudioRunt
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [referenceUrl, setReferenceUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [readyDraft, setReadyDraft] = useState<ImageRequestDraft | null>(null);
-  const [demoResult, setDemoResult] = useState<DemoMediaItem | null>(null);
-  const [demoStatus, setDemoStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [progress, setProgress] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const modelOptions: ChatModelOption[] = models.map((model) => ({
+    id: model.id,
+    name: model.displayName,
+    availability: model.availability,
+    enabled: model.enabled,
+    iconUrl: model.iconUrl,
+  }));
+  const selectedModel = models.find((model) => model.id === modelId);
+  const generationAvailable = Boolean(onGenerate && selectedModel && isModelSelectable(selectedModel));
 
   useEffect(() => () => {
     if (referenceUrl) URL.revokeObjectURL(referenceUrl);
@@ -72,13 +80,11 @@ export default function ImageCanvas({ models, onGenerate }: { models: StudioRunt
     event.preventDefault();
     if (!prompt.trim()) {
       setError(t('errors.prompt'));
-      setDemoStatus('error');
       return;
     }
     const selectedModel = models.find((model) => model.id === modelId);
     if (!selectedModel || !isModelSelectable(selectedModel)) {
       setError(t('errors.model'));
-      setDemoStatus('error');
       return;
     }
     const draft: ImageRequestDraft = {
@@ -86,20 +92,14 @@ export default function ImageCanvas({ models, onGenerate }: { models: StudioRunt
       negativePrompt: negativePrompt.trim(), seed: seed.trim(),
     };
     setError(null);
-    setReadyDraft(draft);
-    setProgress(0);
-    setDemoStatus('loading');
+    if (!onGenerate) return;
+    setIsSubmitting(true);
     try {
-      await runDemoGeneration(setProgress, draft.prompt === 'demo:error');
-      let result: DemoMediaItem | null = null;
-      for (let index = 0; index < outputCount; index += 1) {
-        result = await demoMediaRepository.create({ kind: 'image', prompt: draft.prompt, model: selectedModel.displayName, aspectRatio });
-      }
-      setDemoResult(result);
-      setDemoStatus('success');
+      await onGenerate(draft);
     } catch {
-      setError(t('errors.demo'));
-      setDemoStatus('error');
+      setError(t('errors.generation'));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -108,7 +108,7 @@ export default function ImageCanvas({ models, onGenerate }: { models: StudioRunt
       previewLabel={t('resultsLabel')}
       controls={<>
           <div className="studio-creation-header mb-7">
-            <div className="flex items-center justify-between gap-3"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">{t('eyebrow')}</p><span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-white/55">{t('demoMode')}</span></div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">{t('eyebrow')}</p>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white">{t('title')}</h1>
             <p className="mt-2 max-w-sm text-[13px] leading-relaxed text-[var(--studio-text-secondary)]">{t('description')}</p>
           </div>
@@ -135,8 +135,8 @@ export default function ImageCanvas({ models, onGenerate }: { models: StudioRunt
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
-                <FieldLabel htmlFor="image-model">{t('model')}</FieldLabel>
-                <div className="relative"><select id="image-model" disabled={!models.length} value={modelId || 'unavailable'} onChange={(event) => setModelId(event.target.value)} className="h-11 w-full appearance-none rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] ps-3.5 pe-10 text-[13px] text-white outline-none transition-[border-color,background-color] duration-150 hover:bg-[var(--studio-hover)] focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none">{models.length ? models.map((model) => <option key={model.id} value={model.id} disabled={!isModelSelectable(model)}>{model.displayName} · {model.category ?? model.provider} · {model.availabilityLabel ?? (model.availability === 'beta' ? 'Beta' : model.availability)}</option>) : <option value="unavailable">{t('errors.model')}</option>}</select><ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" /></div>
+                <FieldLabel>{t('model')}</FieldLabel>
+                <ModelSelector models={modelOptions} selectedModel={modelId} onSelect={setModelId} dropdownPosition="bottom" menuLabel={modelsT('imageMenuLabel')} emptyLabel={modelsT('noModels')} />
               </div>
               <div className="space-y-2"><FieldLabel htmlFor="image-ratio">{t('aspectRatio')}</FieldLabel><select id="image-ratio" value={aspectRatio} onChange={(event) => setAspectRatio(event.target.value as typeof aspectRatio)} className="h-11 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[13px] text-white outline-none focus-visible:ring-2 focus-visible:ring-white/40">{ASPECT_RATIOS.map((ratio) => <option key={ratio}>{ratio}</option>)}</select></div>
               <div className="space-y-2"><FieldLabel htmlFor="image-count">{t('outputs')}</FieldLabel><select id="image-count" value={outputCount} onChange={(event) => setOutputCount(Number(event.target.value) as typeof outputCount)} className="h-11 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[13px] text-white outline-none focus-visible:ring-2 focus-visible:ring-white/40">{OUTPUT_COUNTS.map((count) => <option key={count} value={count}>{count}</option>)}</select></div>
@@ -148,11 +148,11 @@ export default function ImageCanvas({ models, onGenerate }: { models: StudioRunt
             </div>
 
             {error && <p role="alert" className="text-[12px] text-red-300">{error}</p>}
-            <div className="studio-creation-action space-y-2"><PrimaryButton type="submit" disabled={demoStatus === 'loading'} className="w-full">{demoStatus === 'loading' ? t('generating', { progress }) : t('generateDemo')}</PrimaryButton><p className="text-center text-[11px] text-white/60">{t('demoNote')}</p></div>
+            <div className="studio-creation-action space-y-2"><PrimaryButton type="submit" disabled={!generationAvailable || isSubmitting} className="w-full">{isSubmitting ? t('generating') : t('generate')}</PrimaryButton>{!generationAvailable && <p className="text-center text-[11.5px] font-medium text-white/60">{t('unavailableNote')}</p>}</div>
           </form>
         </>}
       preview={<div className="flex min-h-[300px] w-full items-center justify-center lg:aspect-video lg:min-h-0">
-          {demoStatus === 'loading' ? <StateBlock icon={<ImageIcon className="h-6 w-6 animate-pulse motion-reduce:animate-none" />} title={t('preparing')} description={t('progress', { progress })} /> : demoResult ? <div className="w-full"><img src={demoResult.assetUrl} alt={t('demoAssetAlt')} className="max-h-[70vh] w-full rounded-xl object-contain" /><p className="mt-3 text-center text-xs text-white/55">{t('demoAssetDisclosure')}</p></div> : readyDraft ? <StateBlock icon={<ImageIcon className="h-6 w-6" />} title={t('configurationReady')} description={t('configurationDescription', { ratio: readyDraft.aspectRatio, count: readyDraft.outputCount })} /> : <StateBlock icon={<ImageIcon className="h-6 w-6" />} title={t('emptyTitle')} description={t('emptyDescription')} />}
+          <StateBlock icon={<ImageIcon className="h-6 w-6" />} title={t('emptyTitle')} description={t('emptyDescription')} />
         </div>}
     />
   );

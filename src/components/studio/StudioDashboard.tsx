@@ -535,14 +535,10 @@ export default function StudioDashboard({
                       models={chatModels.map((model) => ({
                         id: model.id,
                         name: model.displayName,
-                        provider: model.provider,
                         availability: model.availability,
                         enabled: model.enabled,
-                        verifiedCreditCost: model.verifiedCreditCost,
                         requiresAuth: (model.verifiedCreditCost ?? 0) > 0,
-                        description: model.shortDescription,
                         iconUrl: model.iconUrl,
-                        availabilityLabel: model.availabilityLabel,
                       }))}
                       selectedModelId={selectedModelId}
                       onSelectModel={setSelectedModelId}

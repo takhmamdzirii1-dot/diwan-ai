@@ -197,7 +197,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
         ) : (
           <div
             dir={isRTL ? 'rtl' : 'ltr'}
-            className="w-full max-w-full min-w-0 bg-transparent shadow-none border-none pt-0.5"
+            className="w-full max-w-4xl min-w-0 bg-transparent shadow-none border-none pt-0.5"
           >
             {/* Thinking state indicator */}
             {isThinking && (
@@ -360,13 +360,13 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
 
             {/* Message-Level Hover Controls */}
             {!isStreaming && (
-              <div className="flex items-center gap-1 mt-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+              <div className="mt-2 flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
                 <button
                   type="button"
                   onClick={handleCopyMessage}
                   title={t('copyMessage')}
                   aria-label={t('copyMessage')}
-                  className="flex size-9 cursor-pointer items-center justify-center rounded-lg text-white/60 transition-colors duration-150 hover:bg-white/[0.06] hover:text-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"
+                  className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-white/50 transition-colors duration-150 hover:bg-white/[0.05] hover:text-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"
                 >
                   {copiedMessage ? <Check className="h-3.5 w-3.5 text-white" /> : <Copy className="h-3.5 w-3.5" />}
                 </button>
@@ -376,7 +376,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                     onClick={onRegenerate}
                     title={t('retryResponse')}
                     aria-label={t('retryResponse')}
-                    className="flex size-9 cursor-pointer items-center justify-center rounded-lg text-white/60 transition-colors duration-150 hover:bg-white/[0.06] hover:text-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"
+                    className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-white/50 transition-colors duration-150 hover:bg-white/[0.05] hover:text-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"
                   >
                     <RefreshCw className="h-3.5 w-3.5" />
                   </button>
