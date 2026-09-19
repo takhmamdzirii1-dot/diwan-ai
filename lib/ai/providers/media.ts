@@ -241,7 +241,7 @@ export async function submitPrunaVideoRoute(
   const { duration, resolution, mode, aspectRatio } = validatePrunaInput(input);
   let response: Response;
   try {
-    response = await fetch(`${connection.baseUrl}/predictions`, {
+    response = await fetch(`${connection.baseUrl.replace(/\/$/, '')}/predictions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -255,7 +255,6 @@ export async function submitPrunaVideoRoute(
           resolution,
           mode,
           aspect_ratio: aspectRatio,
-          ...(input.referenceImages?.[0] ? { image: input.referenceImages[0] } : {}),
         },
       }),
       signal: AbortSignal.timeout(60_000),
@@ -288,7 +287,7 @@ export async function getPrunaPredictionStatus(
   let response: Response;
   try {
     response = await fetch(
-      `${connection.baseUrl}/predictions/status/${encodeURIComponent(providerOperationId)}`,
+      `${connection.baseUrl.replace(/\/$/, '')}/predictions/status/${encodeURIComponent(providerOperationId)}`,
       {
         headers: { apikey: connection.apiKey },
         signal: AbortSignal.timeout(30_000),
@@ -330,9 +329,16 @@ export async function waitForPrunaPrediction(
   const maxAttempts = Math.min(12, Math.max(1, options.maxAttempts ?? 8));
   const initialDelayMs = Math.min(15_000, Math.max(500, options.initialDelayMs ?? 1_000));
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (options.signal?.aborted) {
+      throw new MediaProviderError('REQUEST_CANCELLED', false);
+    }
     if (attempt > 0) {
       const delay = Math.min(15_000, initialDelayMs * (2 ** (attempt - 1)));
       await new Promise<void>((resolve, reject) => {
+        if (options.signal?.aborted) {
+          reject(new MediaProviderError('REQUEST_CANCELLED', false));
+          return;
+        }
         const timer = setTimeout(resolve, delay);
         options.signal?.addEventListener('abort', () => {
           clearTimeout(timer);

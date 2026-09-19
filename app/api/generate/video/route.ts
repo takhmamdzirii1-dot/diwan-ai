@@ -1,0 +1,259 @@
+import { NextResponse } from 'next/server';
+import { createClient } from '@/src/lib/supabase/server';
+import {
+  prunaProviderCostMinor,
+  validatePrunaVideoRequest,
+  VideoRequestError,
+} from '@/lib/ai/pruna-video-request';
+import {
+  MediaProviderError,
+  submitPrunaVideoRoute,
+  waitForPrunaPrediction,
+} from '@/lib/ai/providers/media';
+import { resolveProviderRoutes } from '@/lib/ai/providers/routes';
+import { requireEffectiveRuntimeModel } from '@/lib/models/runtime-config';
+import type { VideoModelCapabilities } from '@/lib/models/capabilities';
+import {
+  beginGenerationExecution,
+  finalizeGeneration,
+  hashGenerationPayload,
+  markGenerationStreaming,
+  recordGenerationProviderOperation,
+  recordProviderResult,
+  reserveGenerationCredits,
+  resolveOperationKey,
+} from '@/lib/credits/generation-finance';
+import { resolveTerminalCustomerCharge } from '@/lib/credits/generation-policy';
+
+export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
+
+function safeResponseCode(code: string) {
+  if (/INSUFFICIENT_CREDITS/.test(code)) return 'INSUFFICIENT_CREDITS';
+  if (/MODEL_CUSTOMER_PRICE_UNCONFIGURED/.test(code)) return code;
+  if (/MODEL_|INVALID_|UNSUPPORTED_/.test(code)) return code;
+  if (/NO_CONFIGURED_PROVIDER_ROUTE|PROVIDER_NOT_CONFIGURED/.test(code)) {
+    return 'VIDEO_GENERATION_UNAVAILABLE';
+  }
+  return 'VIDEO_GENERATION_FAILED';
+}
+
+function responseStatus(code: string) {
+  if (/INSUFFICIENT_CREDITS/.test(code)) return 402;
+  if (/AUTHENTICATION_REQUIRED/.test(code)) return 401;
+  if (/INVALID_|UNSUPPORTED_/.test(code)) return 400;
+  if (/MODEL_CUSTOMER_PRICE_UNCONFIGURED|MODEL_NOT_AVAILABLE|REQUEST_ALREADY_PROCESSED/.test(code)) return 409;
+  return 503;
+}
+
+async function authenticatedUser(request: Request) {
+  const supabase = await createClient();
+  const authHeader = request.headers.get('authorization');
+  const result = authHeader?.startsWith('Bearer ')
+    ? await supabase.auth.getUser(authHeader.slice(7))
+    : await supabase.auth.getUser();
+  return result.data.user;
+}
+
+export async function POST(request: Request) {
+  const user = await authenticatedUser(request);
+  if (!user) return NextResponse.json({ error: 'AUTHENTICATION_REQUIRED' }, { status: 401 });
+  if (Number(request.headers.get('content-length') ?? 0) > 32_000) {
+    return NextResponse.json({ error: 'REQUEST_TOO_LARGE' }, { status: 413 });
+  }
+  const body = await request.json().catch(() => null);
+  if (!body || JSON.stringify(body).length > 32_000) {
+    return NextResponse.json({ error: 'INVALID_VIDEO_REQUEST' }, { status: 400 });
+  }
+
+  let runtimeModel;
+  try {
+    const requestedModel = typeof body.modelId === 'string' ? body.modelId.trim() : '';
+    runtimeModel = await requireEffectiveRuntimeModel(requestedModel, 'video');
+  } catch (cause) {
+    const code = cause instanceof Error ? cause.message : 'MODEL_RUNTIME_CONFIG_UNAVAILABLE';
+    return NextResponse.json({ error: safeResponseCode(code) }, { status: responseStatus(code) });
+  }
+
+  let input;
+  try {
+    input = validatePrunaVideoRequest(body, runtimeModel.capabilities as VideoModelCapabilities);
+  } catch (cause) {
+    const code = cause instanceof VideoRequestError ? cause.code : 'INVALID_VIDEO_REQUEST';
+    return NextResponse.json({ error: code }, { status: 400 });
+  }
+
+  let route;
+  try {
+    const routes = await resolveProviderRoutes(runtimeModel);
+    route = routes.find((candidate) => candidate.providerId === 'pruna_ai'
+      && candidate.providerModelId === 'p-video-2-pro');
+    if (!route) throw new Error('NO_CONFIGURED_PROVIDER_ROUTE');
+  } catch (cause) {
+    const code = cause instanceof Error ? cause.message : 'NO_CONFIGURED_PROVIDER_ROUTE';
+    return NextResponse.json({ error: safeResponseCode(code) }, { status: responseStatus(code) });
+  }
+
+  let operationKey: string;
+  try {
+    operationKey = resolveOperationKey(input.operationId ?? request.headers.get('x-idempotency-key'));
+  } catch {
+    return NextResponse.json({ error: 'INVALID_IDEMPOTENCY_KEY' }, { status: 400 });
+  }
+  const payloadHash = hashGenerationPayload({
+    modelKey: runtimeModel.key,
+    prompt: input.prompt,
+    duration: input.duration,
+    aspectRatio: input.aspectRatio,
+    resolution: input.resolution,
+    mode: input.mode,
+  });
+
+  let execution;
+  try {
+    execution = await beginGenerationExecution({
+      userId: user.id, operationKey, payloadHash, model: runtimeModel, route,
+    });
+  } catch (cause) {
+    const code = cause instanceof Error ? cause.message : 'EXECUTION_GUARD_FAILED';
+    return NextResponse.json({ error: safeResponseCode(code) }, { status: responseStatus(code) });
+  }
+  if (execution.idempotent) {
+    return NextResponse.json({ error: 'REQUEST_ALREADY_PROCESSED' }, { status: 409 });
+  }
+
+  let reservation: Awaited<ReturnType<typeof reserveGenerationCredits>> = null;
+  try {
+    reservation = await reserveGenerationCredits({
+      userId: user.id, operationKey, payloadHash, model: runtimeModel, route,
+    });
+  } catch (cause) {
+    const code = cause instanceof Error ? cause.message : 'CREDIT_RESERVATION_FAILED';
+    try {
+      await finalizeGeneration({
+        executionId: execution.executionId,
+        userId: user.id,
+        reservationId: null,
+        operationKey,
+        payloadHash,
+        terminalStatus: 'failed',
+        customerCharge: 0,
+        errorCode: code,
+        failureOwner: /INSUFFICIENT_CREDITS|INVALID_/.test(code) ? 'customer' : 'vantra',
+        failureCategory: 'pre_execution',
+        attemptCount: 0,
+      });
+    } catch (recordError) {
+      console.error('[video-generation] reservation failure record failed', {
+        executionId: execution.executionId,
+        code: recordError instanceof Error ? recordError.message : 'EXECUTION_FAILURE_RECORD_FAILED',
+      });
+    }
+    return NextResponse.json({ error: safeResponseCode(code) }, { status: responseStatus(code) });
+  }
+
+  const startedAt = Date.now();
+  let providerStarted = false;
+  let providerOperationId: string | null = null;
+  try {
+    await markGenerationStreaming(execution.executionId, user.id, reservation?.reservationId ?? null);
+    providerStarted = true;
+    const submitted = await submitPrunaVideoRoute(route, input);
+    providerOperationId = submitted.providerOperationId;
+    await recordGenerationProviderOperation({
+      executionId: execution.executionId,
+      userId: user.id,
+      providerOperationId,
+      rawStatus: submitted.rawStatus,
+    });
+    const result = submitted.state === 'completed'
+      ? submitted
+      : await waitForPrunaPrediction(providerOperationId, {
+        maxAttempts: 12,
+        initialDelayMs: 1_000,
+        signal: request.signal,
+      });
+    if (result.state !== 'completed' || !result.mediaUrl) {
+      throw new MediaProviderError('PROVIDER_RESULT_NOT_READY', true);
+    }
+
+    const latencyMs = Date.now() - startedAt;
+    const providerCostMinor = prunaProviderCostMinor(input);
+    const customerCharge = resolveTerminalCustomerCharge({
+      state: 'completed',
+      configuredCharge: runtimeModel.customerCreditPrice!,
+    });
+    const finalizeArgs = {
+      executionId: execution.executionId,
+      userId: user.id,
+      reservationId: reservation?.reservationId ?? null,
+      operationKey,
+      payloadHash,
+      terminalStatus: 'completed' as const,
+      customerCharge,
+      finishReason: 'video_generated',
+      actualUsage: {
+        provider: route.providerId,
+        providerModel: route.providerModelId,
+        duration: input.duration,
+        resolution: input.resolution,
+        aspectRatio: input.aspectRatio,
+        mode: input.mode,
+        latencyMs,
+        delivery: result.delivery,
+        providerPricing: 'pruna-p-video-2-pro-published-2026-09-19',
+      },
+      providerCostMinor,
+      providerCostCurrency: providerCostMinor == null ? null : 'USD',
+      providerOperationId,
+      attemptCount: 1,
+    };
+    let financialResult;
+    try {
+      financialResult = await finalizeGeneration(finalizeArgs);
+    } catch {
+      financialResult = await finalizeGeneration(finalizeArgs);
+    }
+    if (financialResult.state !== 'completed') throw new Error('EXECUTION_FINALIZATION_FAILED');
+    await recordProviderResult(route.providerId, true);
+    return NextResponse.json({
+      video: { src: result.mediaUrl, mimeType: result.mimeType ?? 'video/mp4' },
+      creditsCharged: Number(financialResult.credits_charged ?? customerCharge),
+    });
+  } catch (cause) {
+    const internalCode = cause instanceof MediaProviderError
+      ? cause.code
+      : cause instanceof Error ? cause.message : 'VIDEO_GENERATION_FAILED';
+    const providerCancelled = internalCode === 'PROVIDER_CANCELLED';
+    const failureOwner = cause instanceof MediaProviderError ? 'provider' as const : 'vantra' as const;
+    try {
+      await finalizeGeneration({
+        executionId: execution.executionId,
+        userId: user.id,
+        reservationId: reservation?.reservationId ?? null,
+        operationKey,
+        payloadHash,
+        terminalStatus: providerCancelled ? 'provider_cancelled' : 'failed',
+        customerCharge: 0,
+        errorCode: internalCode,
+        failureOwner,
+        failureCategory: providerStarted ? 'provider_execution' : 'vantra_execution',
+        actualUsage: { latencyMs: Date.now() - startedAt },
+        providerOperationId,
+        attemptCount: providerStarted ? 1 : 0,
+      });
+    } catch (finalizationError) {
+      console.error('[video-generation] failure finalization failed', {
+        executionId: execution.executionId,
+        code: finalizationError instanceof Error ? finalizationError.message : 'EXECUTION_FINALIZATION_FAILED',
+      });
+    }
+    if (failureOwner === 'provider') {
+      await recordProviderResult(route.providerId, false, internalCode);
+    }
+    return NextResponse.json(
+      { error: safeResponseCode(internalCode) },
+      { status: responseStatus(internalCode) }
+    );
+  }
+}

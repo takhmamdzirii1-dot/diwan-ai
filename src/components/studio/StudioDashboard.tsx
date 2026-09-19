@@ -11,7 +11,7 @@ import DashboardSidebar from './DashboardSidebar';
 import MessageBubble from './MessageBubble';
 import ImageCanvas, { type ImageGenerationResult, type ImageRequestDraft } from './ImageCanvas';
 import SettingsModal from './StudioSettingsDialog';
-import MotionStudio from './MotionStudio';
+import PrunaMotionStudio, { type VideoGenerationResult, type VideoRequestDraft } from './PrunaMotionStudio';
 import MediaLibrary from './MediaLibrary';
 import { VantraLogo } from '../VantraLogo';
 import { cn } from '@/lib/utils';
@@ -400,6 +400,32 @@ export default function StudioDashboard({
     };
   }, [openAuthModal, refreshBalance, user]);
 
+  const handleVideoGenerate = useCallback(async (draft: VideoRequestDraft): Promise<VideoGenerationResult> => {
+    if (!user) {
+      openAuthModal('signin');
+      throw new Error('AUTHENTICATION_REQUIRED');
+    }
+    const response = await fetch('/api/generate/video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...draft, operationId: crypto.randomUUID() }),
+    });
+    const payload = await response.json().catch(() => null) as {
+      error?: string;
+      video?: { src?: string; mimeType?: string };
+      creditsCharged?: number;
+    } | null;
+    if (!response.ok || !payload?.video?.src) {
+      throw new Error(payload?.error ?? 'VIDEO_GENERATION_FAILED');
+    }
+    await refreshBalance();
+    return {
+      src: payload.video.src,
+      mimeType: payload.video.mimeType ?? 'video/mp4',
+      creditsCharged: payload.creditsCharged ?? 0,
+    };
+  }, [openAuthModal, refreshBalance, user]);
+
   const totalTokens = useMemo(
     () => Math.ceil(messages.reduce((acc, m) => acc + (m.content?.length || 0), 0) / 4),
     [messages]
@@ -648,7 +674,7 @@ export default function StudioDashboard({
             {/* ── Motion Studio ── */}
             {activeWorkspace === 'video' && (
               <motion.div key="video" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }} className="absolute inset-0">
-                <MotionStudio models={videoModels} />
+                <PrunaMotionStudio models={videoModels} onGenerate={handleVideoGenerate} />
               </motion.div>
             )}
 

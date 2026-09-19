@@ -1,7 +1,7 @@
 import type { StudioModality } from '@/src/config/studio-registry';
 
 export const MODEL_ASPECT_RATIOS = ['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3'] as const;
-export const MODEL_VIDEO_DURATIONS = [5, 10, 15] as const;
+export const MODEL_VIDEO_DURATIONS = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] as const;
 export const MODEL_CAMERA_MOTIONS = ['auto', 'static', 'push-in', 'pull-out', 'pan-left', 'pan-right', 'orbit'] as const;
 
 export type ModelAspectRatio = (typeof MODEL_ASPECT_RATIOS)[number];

@@ -117,6 +117,28 @@ export async function markGenerationStreaming(
   if (error) throw new Error(error.message || 'EXECUTION_TRANSITION_FAILED');
 }
 
+export async function recordGenerationProviderOperation(args: {
+  executionId: string;
+  userId: string;
+  providerOperationId: string;
+  rawStatus?: string;
+}) {
+  const { data, error } = await adminClient().from('ai_executions')
+    .update({
+      execution_metadata: {
+        provider_operation_id: args.providerOperationId,
+        provider_status: args.rawStatus ?? 'submitted',
+        submitted_at: new Date().toISOString(),
+      },
+    })
+    .eq('id', args.executionId)
+    .eq('user_id', args.userId)
+    .eq('state', 'streaming')
+    .select('id')
+    .maybeSingle();
+  if (error || !data) throw new Error(error?.message || 'PROVIDER_OPERATION_PERSIST_FAILED');
+}
+
 export async function settleGeneration(args: {
   executionId: string;
   userId: string;

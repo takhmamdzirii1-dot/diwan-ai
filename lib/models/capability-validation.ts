@@ -26,7 +26,7 @@ const imageCapabilities = z.object({
 const videoCapabilities = z.object({
   textToVideo: z.boolean(),
   imageToVideo: z.boolean(),
-  durations: z.array(z.union(MODEL_VIDEO_DURATIONS.map((value) => z.literal(value)) as [z.ZodLiteral<5>, z.ZodLiteral<10>, z.ZodLiteral<15>])).max(MODEL_VIDEO_DURATIONS.length),
+  durations: z.array(z.number().int().min(5).max(15)).max(MODEL_VIDEO_DURATIONS.length),
   aspectRatios: z.array(z.enum(MODEL_ASPECT_RATIOS)).max(MODEL_ASPECT_RATIOS.length),
   cameraMotions: z.array(z.enum(MODEL_CAMERA_MOTIONS)).max(MODEL_CAMERA_MOTIONS.length),
   generatedAudio: z.boolean(),
