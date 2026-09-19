@@ -10,6 +10,7 @@ import { PrimaryButton, StateBlock } from './AppShell';
 import CreationWorkspace from './CreationWorkspace';
 import { ModelSelector, type ChatModelOption } from '@/components/ui/claude-style-chat-input';
 import type { ImageModelCapabilities, ModelAspectRatio } from '@/lib/models/capabilities';
+import { downloadPrivateMedia } from './media-repository';
 
 export type ImageRequestDraft = {
   prompt: string;
@@ -142,20 +143,9 @@ export default function ImageCanvas({ models, onGenerate, onOpenLibrary }: { mod
     if (draft) await generate(draft);
   };
 
-  const downloadResult = async () => {
+  const downloadResult = () => {
     if (!result) return;
-    try {
-      const response = await fetch(result.src);
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `vantra-image.${result.mimeType === 'image/jpeg' ? 'jpg' : 'png'}`;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 0);
-    } catch {
-      setError(t('errors.download'));
-    }
+    downloadPrivateMedia(result.libraryAssetId);
   };
 
   return (

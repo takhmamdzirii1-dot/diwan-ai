@@ -28,7 +28,10 @@ export interface PermanentMediaStorage {
     modality: 'image' | 'video';
     contentType: string;
   }): Promise<{ storageKey: string; uploadUrl: string; expiresAt: string }>;
-  createPrivateReadUrl(storageKey: string): Promise<{ url: string; expiresAt: string }>;
+  createPrivateReadUrl(
+    storageKey: string,
+    options?: { downloadFilename?: string }
+  ): Promise<{ url: string; expiresAt: string }>;
   deleteObject(storageKey: string): Promise<void>;
 }
 
@@ -164,9 +167,12 @@ class B2S3MediaStorage implements PermanentMediaStorage {
     };
   }
 
-  async createPrivateReadUrl(storageKey: string) {
+  async createPrivateReadUrl(storageKey: string, options?: { downloadFilename?: string }) {
+    const responseParameters = options?.downloadFilename
+      ? { 'response-content-disposition': `attachment; filename="${options.downloadFilename}"` }
+      : undefined;
     return {
-      url: this.presignedUrl('GET', storageKey, 300),
+      url: this.presignedUrl('GET', storageKey, 300, responseParameters),
       expiresAt: new Date(Date.now() + 300_000).toISOString(),
     };
   }
@@ -192,7 +198,12 @@ class B2S3MediaStorage implements PermanentMediaStorage {
     }
   }
 
-  private presignedUrl(method: 'GET' | 'PUT', storageKey: string, expires: number) {
+  private presignedUrl(
+    method: 'GET' | 'PUT',
+    storageKey: string,
+    expires: number,
+    responseParameters?: Record<string, string>
+  ) {
     const url = objectUrl(this.config, storageKey);
     const { amzDate, date } = requestTimestamp();
     const scope = `${date}/${this.config.region}/s3/aws4_request`;
@@ -202,6 +213,7 @@ class B2S3MediaStorage implements PermanentMediaStorage {
       ['X-Amz-Date', amzDate],
       ['X-Amz-Expires', String(expires)],
       ['X-Amz-SignedHeaders', 'host'],
+      ...Object.entries(responseParameters ?? {}),
     ]);
     const canonicalQuery = [...parameters.entries()]
       .sort(([left], [right]) => left.localeCompare(right))

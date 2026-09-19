@@ -28,6 +28,15 @@ export interface MediaRepository<TItem> {
   remove(ids: ReadonlySet<string>): Promise<TItem[]>;
 }
 
+export function downloadPrivateMedia(assetId: string) {
+  const link = document.createElement('a');
+  link.href = `/api/library/media/${encodeURIComponent(assetId)}?download=1`;
+  link.download = '';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
 export class DemoMediaRepository implements MediaRepository<DemoMediaItem> {
   async list() { return readDemoLibrary(); }
   async create(input: Omit<DemoMediaItem, 'id' | 'assetUrl' | 'createdAt' | 'demo'>) {
@@ -92,17 +101,7 @@ export class SupabaseMediaRepository implements MediaRepository<ProductionMediaR
   }
 
   async download(item: ProductionMediaRecord) {
-    const response = await fetch(item.assetUrl);
-    if (!response.ok) throw new Error('LIBRARY_DOWNLOAD_FAILED');
-    const url = URL.createObjectURL(await response.blob());
-    const link = document.createElement('a');
-    const extension = item.mimeType === 'image/jpeg'
-      ? 'jpg'
-      : item.mimeType?.split('/')[1] ?? (item.kind === 'image' ? 'png' : 'mp4');
-    link.href = url;
-    link.download = `vantra-${item.kind}.${extension}`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+    downloadPrivateMedia(item.id);
   }
 }
 

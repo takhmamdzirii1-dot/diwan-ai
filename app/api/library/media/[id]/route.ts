@@ -9,7 +9,7 @@ async function ownedAsset(id: string) {
   const { data: auth } = await client.auth.getUser();
   if (!auth.user) return { client, status: 401 as const, asset: null };
   const { data, error } = await client.from('generations')
-    .select('id,storage_path,status')
+    .select('id,type,storage_path,status')
     .eq('id', id)
     .eq('status', 'completed')
     .maybeSingle();
@@ -17,7 +17,18 @@ async function ownedAsset(id: string) {
   return { client, status: 200 as const, asset: data };
 }
 
-export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+function downloadFilename(asset: { type: string; storage_path: string }) {
+  const extension = asset.storage_path.split('.').pop()?.toLowerCase();
+  const allowed = asset.type === 'video'
+    ? new Set(['mp4', 'webm', 'mov'])
+    : new Set(['png', 'jpg', 'jpeg', 'webp', 'gif']);
+  const safeExtension = extension && allowed.has(extension)
+    ? (extension === 'jpeg' ? 'jpg' : extension)
+    : asset.type === 'video' ? 'mp4' : 'png';
+  return `vantra-${asset.type === 'video' ? 'video' : 'image'}.${safeExtension}`;
+}
+
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
   const owned = await ownedAsset(id);
@@ -29,7 +40,11 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   }
   const storage = getPermanentMediaStorage();
   if (!storage) return NextResponse.json({ error: 'MEDIA_STORAGE_UNAVAILABLE' }, { status: 503 });
-  const signed = await storage.createPrivateReadUrl(owned.asset.storage_path);
+  const shouldDownload = new URL(request.url).searchParams.get('download') === '1';
+  const signed = await storage.createPrivateReadUrl(
+    owned.asset.storage_path,
+    shouldDownload ? { downloadFilename: downloadFilename(owned.asset) } : undefined
+  );
   const response = NextResponse.redirect(signed.url, 307);
   response.headers.set('Cache-Control', 'private, no-store');
   return response;
