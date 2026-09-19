@@ -179,7 +179,7 @@ export default function DashboardSidebar({
         aria-hidden={!isMobileOpen ? undefined : false}
         style={{ insetInlineStart: isMobileOpen ? 0 : '-100%' }}
         className={cn(
-          'studio-sidebar flex flex-col fixed lg:static top-0 bottom-0 z-50 w-64 h-full bg-[var(--studio-surface)] border-e border-[var(--studio-border-subtle)] transition-[inset-inline-start,width] duration-200 motion-reduce:transition-none'
+          'studio-sidebar flex flex-col fixed lg:static top-0 bottom-0 z-50 w-64 h-full bg-[var(--studio-sidebar)] border-e border-[var(--studio-border-subtle)] transition-[inset-inline-start,width] duration-200 motion-reduce:transition-none'
         )}
       >
         {/* Brand — matches 56px top bar height */}
@@ -338,7 +338,7 @@ export default function DashboardSidebar({
                 <div
                   role="menu"
                   aria-label={t('profileMenu')}
-                  className="absolute bottom-full start-0 end-0 mb-2 rounded-xl border border-white/10 bg-[#171717] p-1.5 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.9)]"
+                  className="absolute bottom-full start-0 end-0 mb-2 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-popover)] p-1.5 shadow-[var(--studio-shadow)]"
                 >
                   <button
                     role="menuitem"

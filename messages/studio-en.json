@@ -54,6 +54,13 @@
       "planCredits": "Plan & Credits",
       "generalDescription": "Workspace identity and interface defaults.",
       "language": "Language",
+      "appearance": "Appearance",
+      "appearanceDescription": "Choose the Studio surface theme. Saved on this device only.",
+      "themes": {
+        "neutral": "VANTRA Neutral",
+        "oled": "OLED Black",
+        "warm": "Warm Charcoal"
+      },
       "guest": "Guest",
       "notSignedIn": "Not signed in",
       "startScreen": "Default start screen",

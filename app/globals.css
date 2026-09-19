@@ -12,23 +12,124 @@
 }
 
 /* Studio-only semantic surface and motion system. Marketing pages remain untouched. */
-.studio-shell,
-.studio-overlay-root {
-  --studio-bg: #070707;
-  --studio-surface: #0d0d0d;
-  --studio-surface-raised: #121212;
-  --studio-surface-elevated: #171717;
-  --studio-hover: rgba(255, 255, 255, 0.06);
-  --studio-selected: rgba(255, 255, 255, 0.09);
-  --studio-text-primary: rgba(255, 255, 255, 0.96);
-  --studio-text-secondary: rgba(255, 255, 255, 0.66);
-  --studio-text-muted: rgba(255, 255, 255, 0.44);
-  --studio-text-disabled: rgba(255, 255, 255, 0.3);
-  --studio-border-subtle: rgba(255, 255, 255, 0.06);
-  --studio-border: rgba(255, 255, 255, 0.1);
-  --studio-border-strong: rgba(255, 255, 255, 0.2);
+.studio-overlay-root[data-studio-theme] {
+  color-scheme: dark;
+  --studio-canvas: #0b0b0d;
+  --studio-recessed: #070709;
+  --studio-sidebar: #08080a;
+  --studio-card: #131316;
+  --studio-composer: #17171b;
+  --studio-user-message: #1b1b1f;
+  --studio-popover: #1d1d22;
+  --studio-hover: #222227;
+  --studio-selected: #27272d;
+  --studio-border-subtle: #1f1f23;
+  --studio-border: #29292f;
+  --studio-border-strong: #35353c;
+  --studio-text-primary: #ededef;
+  --studio-text-secondary: #a3a3aa;
+  --studio-text-muted: #7f7f87;
+  --studio-text-disabled: #55555d;
+  --studio-success: #79b88a;
+  --studio-warning: #d0a85c;
+  --studio-error: #d98282;
+  --studio-info: #8aa8c7;
+  --studio-accent: #ededef;
+  --studio-accent-contrast: #0b0b0d;
+  /* Backward-compatible aliases used by existing Studio primitives. */
+  --studio-bg: var(--studio-canvas);
+  --studio-surface: var(--studio-card);
+  --studio-surface-raised: var(--studio-composer);
+  --studio-surface-elevated: var(--studio-popover);
   --studio-overlay: rgba(0, 0, 0, 0.78);
   --studio-shadow: 0 24px 64px -24px rgba(0, 0, 0, 0.94);
+}
+
+.studio-overlay-root[data-studio-theme="oled"] {
+  --studio-canvas: #000000;
+  --studio-recessed: #020203;
+  --studio-sidebar: #050506;
+  --studio-card: #0d0d0f;
+  --studio-composer: #121214;
+  --studio-user-message: #161619;
+  --studio-popover: #1c1c20;
+  --studio-hover: #202023;
+  --studio-selected: #26262b;
+  --studio-border-subtle: #18181b;
+  --studio-border: #252529;
+  --studio-border-strong: #34343a;
+  --studio-text-primary: #f0f0f2;
+  --studio-text-secondary: #a5a5ac;
+  --studio-text-muted: #808088;
+  --studio-text-disabled: #56565e;
+  --studio-accent: #f0f0f2;
+  --studio-accent-contrast: #000000;
+}
+
+.studio-overlay-root[data-studio-theme="warm"] {
+  --studio-canvas: #11100e;
+  --studio-recessed: #090807;
+  --studio-sidebar: #0c0b0a;
+  --studio-card: #181613;
+  --studio-composer: #1d1a16;
+  --studio-user-message: #211e19;
+  --studio-popover: #26221d;
+  --studio-hover: #2b2722;
+  --studio-selected: #322c25;
+  --studio-border-subtle: #28231d;
+  --studio-border: #363027;
+  --studio-border-strong: #4a4135;
+  --studio-text-primary: #eeeae3;
+  --studio-text-secondary: #b2aaa0;
+  --studio-text-muted: #837b72;
+  --studio-text-disabled: #5e574f;
+  --studio-accent: #c7a76b;
+  --studio-accent-contrast: #11100e;
+}
+
+/* Theme previews are intentionally local to Settings and never affect the page theme. */
+[data-studio-theme-preview="neutral"] {
+  --preview-canvas: #0b0b0d;
+  --preview-sidebar: #08080a;
+  --preview-card: #131316;
+  --preview-composer: #17171b;
+  --preview-border: #29292f;
+}
+
+[data-studio-theme-preview="oled"] {
+  --preview-canvas: #000000;
+  --preview-sidebar: #050506;
+  --preview-card: #0d0d0f;
+  --preview-composer: #121214;
+  --preview-border: #252529;
+}
+
+[data-studio-theme-preview="warm"] {
+  --preview-canvas: #11100e;
+  --preview-sidebar: #0c0b0a;
+  --preview-card: #181613;
+  --preview-composer: #1d1a16;
+  --preview-border: #363027;
+}
+
+.studio-theme-preview {
+  border-color: var(--preview-border);
+  background: var(--preview-canvas);
+}
+
+.studio-theme-preview-sidebar { background: var(--preview-sidebar); }
+.studio-theme-preview-card { background: var(--preview-card); }
+.studio-theme-preview-composer { background: var(--preview-composer); }
+
+.studio-overlay-root,
+.studio-overlay-root .custom-scrollbar,
+.studio-overlay-root .custom-scrollbar-thin {
+  scrollbar-color: var(--studio-border-strong) transparent;
+}
+
+.studio-overlay-root .custom-scrollbar::-webkit-scrollbar-thumb,
+.studio-overlay-root .custom-scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--studio-border-strong);
 }
 
 .studio-menu-enter {

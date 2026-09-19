@@ -146,7 +146,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
         >
           {/* Animated gradient avatar */}
           <div className="ai-avatar-ring h-7 w-7 rounded-lg p-[1.5px] shrink-0">
-            <div className="w-full h-full rounded-[calc(0.5rem-1.5px)] bg-[#1A1C1F] flex items-center justify-center">
+            <div className="w-full h-full rounded-[calc(0.5rem-1.5px)] bg-[var(--studio-selected)] flex items-center justify-center">
               <Sparkles className="h-3.5 w-3.5 text-[#FFFFFF]" />
             </div>
           </div>
@@ -160,7 +160,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
       <div className={`w-full flex ${isUser ? 'justify-end' : 'justify-start'}`}>
         {isUser ? (
           <div
-            className="ms-auto flex w-fit max-w-[88%] self-end flex-col gap-3 rounded-2xl rounded-ee-sm border border-white/[0.07] bg-white/[0.055] px-4 py-3 text-white/90 shadow-sm sm:max-w-[80%] sm:px-5"
+            className="ms-auto flex w-fit max-w-[88%] self-end flex-col gap-3 rounded-2xl rounded-ee-sm border border-[var(--studio-border-subtle)] bg-[var(--studio-user-message)] px-4 py-3 text-[var(--studio-text-primary)] shadow-sm sm:max-w-[80%] sm:px-5"
             dir={isRTL ? 'rtl' : 'ltr'}
           >
             {/* Visual Attachment Rendering */}
@@ -284,7 +284,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                     </a>
                   ),
                   table: ({ children }) => (
-                    <div className="my-6 overflow-x-auto custom-scrollbar rounded-xl border border-white/[0.1] bg-[#1A1C1F]" dir="ltr">
+                    <div className="my-6 overflow-x-auto custom-scrollbar rounded-xl border border-[var(--studio-border)] bg-[var(--studio-recessed)]" dir="ltr">
                       <table className="w-full text-[14px] font-sans text-white/90 border-collapse min-w-[520px]">{children}</table>
                     </div>
                   ),
@@ -310,7 +310,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                     const codeString = String(children).replace(/\n$/, '');
                     const blockId = `blk-${message.id}-${codeBlockCounter.current++}`;
                     return (
-                      <div className="my-5 overflow-hidden rounded-xl border border-white/[0.09] bg-[#1A1C1F] shadow-2xl flex flex-col w-full" dir="ltr">
+                      <div className="my-5 overflow-hidden rounded-xl border border-[var(--studio-border)] bg-[var(--studio-recessed)] shadow-[var(--studio-shadow)] flex flex-col w-full" dir="ltr">
                         <div className="flex flex-wrap items-center justify-between border-b border-white/[0.07] bg-white/[0.02] px-4 py-2.5 gap-4">
                           <div className="flex items-center gap-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#FFFFFF]/85 shrink-0">
                             <Terminal className="h-3 w-3" />

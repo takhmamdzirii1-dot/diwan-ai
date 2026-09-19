@@ -395,7 +395,7 @@ export default function StudioDashboard({
       />
 
       {/* Workspace — absolute black + bottom glow behind all content */}
-      <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative bg-black">
+      <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative bg-[var(--studio-canvas)]">
         {/* Bottom glow — restricted to bottom half, pure white 3% */}
         <div className="absolute inset-x-0 bottom-0 h-1/2 bg-[radial-gradient(ellipse_at_bottom,rgba(255,255,255,0.03)_0%,transparent_100%)] pointer-events-none z-0" aria-hidden="true" />
 
@@ -405,7 +405,7 @@ export default function StudioDashboard({
           onClick={() => setIsMobileNavOpen(true)}
           aria-label={sidebarT('openNavigation')}
           aria-expanded={isMobileNavOpen}
-          className="lg:hidden absolute top-3.5 start-4 z-40 p-2 rounded-xl bg-[#111216]/80 border border-white/10 text-white/70 hover:text-white backdrop-blur-md transition-[color,background-color,transform] duration-150 active:scale-95 cursor-pointer shadow-lg motion-reduce:transition-none"
+          className="lg:hidden absolute top-3.5 start-4 z-40 p-2 rounded-xl bg-[var(--studio-popover)] border border-[var(--studio-border)] text-[var(--studio-text-secondary)] hover:text-[var(--studio-text-primary)] transition-[color,background-color,transform] duration-150 active:scale-95 cursor-pointer shadow-lg motion-reduce:transition-none"
         >
           <Menu className="h-4 w-4" />
         </button>
@@ -518,7 +518,7 @@ export default function StudioDashboard({
                         {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
                           <div className="flex items-center gap-2.5 py-1 text-[13.5px] text-white/60 animate-pulse" role="status" aria-live="polite">
                             <div className="ai-avatar-ring h-6 w-6 rounded-md p-[1px] shrink-0">
-                              <div className="w-full h-full rounded-[calc(0.375rem-1px)] bg-[#1A1C1F] flex items-center justify-center">
+                              <div className="w-full h-full rounded-[calc(0.375rem-1px)] bg-[var(--studio-selected)] flex items-center justify-center">
                                 <Sparkles className="h-3 w-3 text-white/70" />
                               </div>
                             </div>
@@ -568,7 +568,7 @@ export default function StudioDashboard({
                           type="button"
                           onClick={scrollToLatest}
                           aria-label={t('jumpToLatest')}
-                          className="flex items-center justify-center gap-1.5 rounded-full border border-white/10 bg-[#0A0A0B]/85 px-3 py-2 text-xs font-medium text-white/75 shadow-xl backdrop-blur-md transition-[color,background-color,transform] duration-150 hover:bg-white/10 hover:text-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                          className="flex items-center justify-center gap-1.5 rounded-full border border-[var(--studio-border)] bg-[var(--studio-popover)] px-3 py-2 text-xs font-medium text-[var(--studio-text-secondary)] shadow-xl transition-[color,background-color,transform] duration-150 hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]"
                         >
                           <ArrowDown className="h-4 w-4" />
                           <span>{t('jumpToLatest')}</span>

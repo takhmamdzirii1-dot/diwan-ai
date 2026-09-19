@@ -11,6 +11,7 @@ import {
   KeyRound,
   Loader2,
   Mail,
+  Palette,
   Settings2,
   X,
 } from 'lucide-react';
@@ -25,6 +26,7 @@ import {
   isModelSelectable,
   type StudioRuntimeModelDefinition,
 } from '@/src/config/studio-registry';
+import { STUDIO_THEMES, useStudioTheme } from '../../context/StudioThemeContext';
 
 type TabId = 'general' | 'models' | 'credits';
 type StartScreen = 'chat' | 'image' | 'video' | 'library';
@@ -61,6 +63,7 @@ function GeneralPanel() {
   const locale = useLocale();
   const router = useRouter();
   const { user } = useUser();
+  const { theme, setTheme } = useStudioTheme();
   const [startScreen, setStartScreen] = useState<StartScreen>('chat');
   const [newEmail, setNewEmail] = useState('');
   const [emailLoading, setEmailLoading] = useState(false);
@@ -196,6 +199,45 @@ function GeneralPanel() {
                 {value}
               </button>
             ))}
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend className="flex items-center gap-2 text-[12px] font-medium text-white/85">
+            <Palette className="h-3.5 w-3.5 text-[var(--studio-text-muted)]" aria-hidden="true" />
+            {t('appearance')}
+          </legend>
+          <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--studio-text-muted)]">{t('appearanceDescription')}</p>
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {STUDIO_THEMES.map((value) => {
+              const selected = theme === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={selected}
+                  data-studio-theme-preview={value}
+                  onClick={() => setTheme(value)}
+                  className={cn(
+                    'group rounded-xl border p-2 text-start transition-[background-color,border-color,transform] duration-150 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] motion-reduce:transition-none',
+                    selected
+                      ? 'border-[var(--studio-border-strong)] bg-[var(--studio-selected)]'
+                      : 'border-[var(--studio-border)] bg-[var(--studio-card)] hover:bg-[var(--studio-hover)]'
+                  )}
+                >
+                  <span className="studio-theme-preview flex h-14 overflow-hidden rounded-lg border" aria-hidden="true">
+                    <span className="studio-theme-preview-sidebar w-[28%] border-e" style={{ borderColor: 'var(--preview-border)' }} />
+                    <span className="flex flex-1 flex-col justify-between p-2">
+                      <span className="studio-theme-preview-card h-3 w-3/4 rounded-sm" />
+                      <span className="studio-theme-preview-composer h-2.5 w-full rounded-full" />
+                    </span>
+                  </span>
+                  <span className="mt-2 flex items-center justify-between gap-2 px-0.5 text-[11.5px] font-medium text-[var(--studio-text-primary)]">
+                    {t(`themes.${value}`)}
+                    {selected && <Check className="h-3.5 w-3.5 text-[var(--studio-accent)]" aria-hidden="true" />}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </fieldset>
         <fieldset>

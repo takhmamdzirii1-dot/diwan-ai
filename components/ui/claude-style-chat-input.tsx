@@ -494,7 +494,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
             onDrop={onDrop}
         >
                 {/* ── Real composer surface ── */}
-                <div className="relative z-10 flex min-h-[100px] max-h-[360px] w-full flex-col justify-between rounded-2xl border border-white/[0.07] bg-[#0A0A0B] p-2.5 shadow-[0_16px_50px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-[border-color] duration-150 focus-within:border-white/[0.14] motion-reduce:transition-none">
+                <div className="relative z-10 flex min-h-[100px] max-h-[360px] w-full flex-col justify-between rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-composer)] p-2.5 shadow-[var(--studio-shadow)] transition-[border-color] duration-150 focus-within:border-[var(--studio-border-strong)] motion-reduce:transition-none">
 
                 {/* Attachments above input */}
                 {(files.length > 0 || pastedContent.length > 0) && (
@@ -557,7 +557,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
 
                             {multimodalMenuOpen && (
                                 <div
-                                    className="absolute bottom-full left-0 mb-2 w-52 bg-[#0F1012] border border-white/[0.08] shadow-2xl rounded-lg p-1 text-sm text-white/80 z-50 flex flex-col gap-0.5"
+                                    className="absolute bottom-full left-0 mb-2 w-52 bg-[var(--studio-popover)] border border-[var(--studio-border)] shadow-[var(--studio-shadow)] rounded-lg p-1 text-sm text-[var(--studio-text-secondary)] z-50 flex flex-col gap-0.5"
                                 >
                                     {supportsVision && <button
                                         type="button"
@@ -680,7 +680,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
 
             {/* Drag overlay */}
             {supportsAttachments && isDragging && (
-                <div className="absolute inset-0 bg-[#1A1C1F]/90 border-2 border-dashed border-[#FFFFFF]/60 rounded-2xl z-50 flex flex-col items-center justify-center backdrop-blur-sm pointer-events-none">
+                <div className="absolute inset-0 bg-[var(--studio-popover)] border-2 border-dashed border-[var(--studio-border-strong)] rounded-2xl z-50 flex flex-col items-center justify-center pointer-events-none">
                     <Archive className="w-10 h-10 text-[#FFFFFF] mb-2 animate-bounce" />
                     <p className="text-[#FFFFFF] font-medium text-sm">Drop files to upload</p>
                 </div>

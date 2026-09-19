@@ -11,6 +11,7 @@ import StudioWorkspace from '../../../src/components/studio/StudioWorkspace';
 import { getStudioRuntimeModels } from '../../../lib/models/runtime-config';
 import { emptyModelCapabilities } from '../../../lib/models/capabilities';
 import { STUDIO_MODELS } from '../../../src/config/studio-registry';
+import { StudioThemeProvider } from '../../../src/context/StudioThemeContext';
 
 export const metadata: Metadata = {
   title: 'VANTRA Studio',
@@ -38,7 +39,7 @@ export default async function StudioRootLayout({ children }: { children: React.R
     capabilities: emptyModelCapabilities(model.modality),
   })));
   return (
-    <div lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'} className="studio-overlay-root min-h-screen bg-[#070707] text-[#F5F6F8]">
+    <StudioThemeProvider locale={locale}>
       <DocumentLocale locale={locale} />
       <NextIntlClientProvider locale={locale} messages={messages}>
         <ModalProvider>
@@ -46,6 +47,6 @@ export default async function StudioRootLayout({ children }: { children: React.R
           <StudioWorkspace models={models} />
         </ModalProvider>
       </NextIntlClientProvider>
-    </div>
+    </StudioThemeProvider>
   );
 }

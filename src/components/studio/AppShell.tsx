@@ -11,7 +11,7 @@ import { VantraLogo } from '../VantraLogo';
    white/…  neutral text + active states
    ───────────────────────────────────────────────────────── */
 export const SHELL_TOKENS = {
-  canvas: 'var(--studio-bg)',
+  canvas: 'var(--studio-canvas)',
   surface: 'var(--studio-surface)',
   raised: 'var(--studio-surface-raised)',
   border: 'var(--studio-border)',
@@ -33,7 +33,7 @@ export function TopBar({
 }) {
   return (
     <header
-      className="shrink-0 flex items-center gap-3 px-4 border-b border-[var(--studio-border-subtle)] bg-[var(--studio-surface)]/90 backdrop-blur-xl"
+      className="shrink-0 flex items-center gap-3 px-4 border-b border-[var(--studio-border-subtle)] bg-[var(--studio-card)]"
       style={{ height: SHELL_TOKENS.topBarHeight }}
     >
       {onOpenNav && (
@@ -81,7 +81,7 @@ export function WorkspaceShell({
   className?: string;
 }) {
   return (
-    <div className={cn('flex flex-col h-full min-h-0 bg-[var(--studio-bg)]', className)}>
+    <div className={cn('flex flex-col h-full min-h-0 bg-[var(--studio-canvas)]', className)}>
       <TopBar title={title} subtitle={subtitle} onOpenNav={onOpenNav} actions={actions} />
       <div className="flex-1 min-h-0 relative">{children}</div>
     </div>
@@ -150,7 +150,7 @@ export function Segmented<T extends string>({
       aria-label={label}
       onKeyDown={onKeyDown}
       className={cn(
-        'inline-flex items-center gap-1 p-1 rounded-xl bg-white/[0.05] border border-white/[0.07]',
+        'inline-flex items-center gap-1 p-1 rounded-xl bg-[var(--studio-card)] border border-[var(--studio-border-subtle)]',
         className
       )}
     >
@@ -167,14 +167,14 @@ export function Segmented<T extends string>({
             className={cn(
               'relative rounded-full font-medium cursor-pointer transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-reduce:transition-none',
               size === 'sm' ? 'h-7 px-3 text-[11.5px]' : 'h-8 px-4 text-[12.5px]',
-              active ? 'text-black' : 'text-white/50 hover:text-white/80'
+              active ? 'text-[var(--studio-accent-contrast)]' : 'text-[var(--studio-text-muted)] hover:text-[var(--studio-text-primary)]'
             )}
           >
             {active && (
               <span
                 aria-hidden="true"
                 data-indicator={layoutId}
-                className="absolute inset-0 z-0 bg-white rounded-full"
+                className="absolute inset-0 z-0 bg-[var(--studio-accent)] rounded-full"
               />
             )}
             <span className="relative z-10">{o.label}</span>
@@ -197,10 +197,10 @@ export function PrimaryButton({
       {...rest}
       disabled={disabled}
       className={cn(
-        'h-11 rounded-xl text-[14px] font-semibold inline-flex items-center justify-center gap-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--studio-bg)] motion-reduce:transition-none',
+        'h-11 rounded-xl text-[14px] font-semibold inline-flex items-center justify-center gap-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--studio-canvas)] motion-reduce:transition-none',
         disabled
-          ? 'bg-white/10 text-white/50 border border-white/10 cursor-not-allowed'
-          : 'bg-white text-black hover:bg-white/90 active:scale-[0.99] cursor-pointer',
+          ? 'bg-[var(--studio-selected)] text-[var(--studio-text-disabled)] border border-[var(--studio-border)] cursor-not-allowed'
+          : 'bg-[var(--studio-accent)] text-[var(--studio-accent-contrast)] hover:opacity-90 active:scale-[0.99] cursor-pointer',
         className
       )}
     >
@@ -245,7 +245,7 @@ export function StateBlock({
   return (
     <div className={cn('flex flex-col items-center justify-center text-center px-6', className)}>
       {icon && (
-        <div className="h-16 w-16 rounded-2xl border border-white/[0.08] bg-white/[0.025] flex items-center justify-center text-white/20">
+        <div className="h-16 w-16 rounded-2xl border border-[var(--studio-border-subtle)] bg-[var(--studio-card)] flex items-center justify-center text-[var(--studio-text-disabled)]">
           {icon}
         </div>
       )}
