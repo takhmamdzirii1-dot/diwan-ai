@@ -420,6 +420,7 @@ export default function StudioDashboard({
       form.set('mode', draft.mode);
       form.set('operationId', operationId);
       form.set('sourceImage', draft.sourceImage);
+      if (draft.endImage) form.set('endImage', draft.endImage);
       body = form;
     } else {
       headers = { 'Content-Type': 'application/json' };

@@ -23,6 +23,7 @@ export type VideoRequestDraft = {
   modelId: string;
   sourceMode: PrunaVideoSourceMode;
   sourceImage?: File;
+  endImage?: File;
   duration: ModelVideoDuration;
   aspectRatio?: ModelAspectRatio;
   resolution: PrunaVideoResolution;
@@ -40,6 +41,50 @@ function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.R
   return <label htmlFor={htmlFor} className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/55">{children}</label>;
 }
 
+function ImageUploadField({
+  label,
+  inputRef,
+  previewUrl,
+  chooseLabel,
+  selectedLabel,
+  replaceLabel,
+  removeLabel,
+  addLabel,
+  onChoose,
+  onRemove,
+}: {
+  label: string;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  previewUrl: string | null;
+  chooseLabel: string;
+  selectedLabel: string;
+  replaceLabel: string;
+  removeLabel: string;
+  addLabel: string;
+  onChoose: (file?: File) => void;
+  onRemove: () => void;
+}) {
+  return <div className="space-y-2">
+    <FieldLabel>{label}</FieldLabel>
+    <input
+      ref={inputRef}
+      type="file"
+      accept={PRUNA_SOURCE_IMAGE_TYPES.join(',')}
+      aria-label={chooseLabel}
+      className="sr-only"
+      onChange={(event) => {
+        onChoose(event.target.files?.[0]);
+        event.target.value = '';
+      }}
+    />
+    {previewUrl ? <div className="flex items-center gap-3 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] p-2.5">
+      <img src={previewUrl} alt={selectedLabel} className="h-14 w-14 rounded-lg object-cover" />
+      <div className="min-w-0 flex-1"><button type="button" onClick={() => inputRef.current?.click()} className="text-[12.5px] font-medium text-white/85 hover:text-white">{replaceLabel}</button></div>
+      <button type="button" onClick={onRemove} aria-label={removeLabel} className="flex h-9 w-9 items-center justify-center rounded-lg text-white/55 transition-[color,background-color] duration-150 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><X className="h-4 w-4" /></button>
+    </div> : <button type="button" onClick={() => inputRef.current?.click()} className="studio-creation-reference flex min-h-20 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--studio-border)] bg-[var(--studio-recessed)] text-[12.5px] font-medium text-[var(--studio-text-secondary)] transition-[color,background-color,border-color] duration-150 hover:border-[var(--studio-border-strong)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] motion-reduce:transition-none"><ImagePlus className="h-4 w-4" />{addLabel}</button>}
+  </div>;
+}
+
 export default function PrunaMotionStudio({
   models,
   onGenerate,
@@ -55,6 +100,7 @@ export default function PrunaMotionStudio({
   const libraryT = useTranslations('studio.library');
   const submitGuardRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const endFileInputRef = useRef<HTMLInputElement>(null);
   const [sourceMode, setSourceMode] = useState<PrunaVideoSourceMode>('text');
   const [prompt, setPrompt] = useState('');
   const [modelId, setModelId] = useState(models.find(isModelSelectable)?.id ?? models[0]?.id ?? '');
@@ -64,6 +110,8 @@ export default function PrunaMotionStudio({
   const [generationMode, setGenerationMode] = useState<PrunaVideoMode>('speed');
   const [sourceImage, setSourceImage] = useState<File | null>(null);
   const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
+  const [endImage, setEndImage] = useState<File | null>(null);
+  const [endImageUrl, setEndImageUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<VideoGenerationResult | null>(null);
@@ -103,10 +151,20 @@ export default function PrunaMotionStudio({
     if (sourceImageUrl) URL.revokeObjectURL(sourceImageUrl);
   }, [sourceImageUrl]);
 
+  useEffect(() => () => {
+    if (endImageUrl) URL.revokeObjectURL(endImageUrl);
+  }, [endImageUrl]);
+
   const clearSourceImage = () => {
     if (sourceImageUrl) URL.revokeObjectURL(sourceImageUrl);
     setSourceImage(null);
     setSourceImageUrl(null);
+  };
+
+  const clearEndImage = () => {
+    if (endImageUrl) URL.revokeObjectURL(endImageUrl);
+    setEndImage(null);
+    setEndImageUrl(null);
   };
 
   const chooseSourceImage = (file?: File) => {
@@ -122,6 +180,19 @@ export default function PrunaMotionStudio({
     setError(null);
   };
 
+  const chooseEndImage = (file?: File) => {
+    if (!file) return;
+    if (!PRUNA_SOURCE_IMAGE_TYPES.includes(file.type as (typeof PRUNA_SOURCE_IMAGE_TYPES)[number])
+      || file.size === 0 || file.size > PRUNA_SOURCE_IMAGE_MAX_BYTES) {
+      setError(t('errors.reference'));
+      return;
+    }
+    if (endImageUrl) URL.revokeObjectURL(endImageUrl);
+    setEndImage(file);
+    setEndImageUrl(URL.createObjectURL(file));
+    setError(null);
+  };
+
   useEffect(() => {
     if (!capabilities) return;
     setSourceMode((current) => supportedSourceModes.includes(current)
@@ -133,7 +204,10 @@ export default function PrunaMotionStudio({
     setAspectRatio((current) => capabilities.aspectRatios.includes(current as ModelAspectRatio)
       ? current
       : (capabilities.aspectRatios[0] ?? ''));
-    if (!capabilities.imageToVideo) clearSourceImage();
+    if (!capabilities.imageToVideo) {
+      clearSourceImage();
+      clearEndImage();
+    }
   }, [modelId, capabilities]);
 
   const buildDraft = () => {
@@ -153,6 +227,7 @@ export default function PrunaMotionStudio({
       prompt: prompt.trim(), modelId, sourceMode, duration, resolution, mode: generationMode,
     };
     if (sourceMode === 'image' && sourceImage) draft.sourceImage = sourceImage;
+    if (sourceMode === 'image' && endImage) draft.endImage = endImage;
     if (sourceMode === 'text' && aspectRatio) draft.aspectRatio = aspectRatio;
     return draft;
   };
@@ -204,7 +279,10 @@ export default function PrunaMotionStudio({
           value={sourceMode}
           onChange={(value) => {
             setSourceMode(value);
-            if (value === 'text') clearSourceImage();
+            if (value === 'text') {
+              clearSourceImage();
+              clearEndImage();
+            }
             setError(null);
           }}
           layoutId="pruna-video-source-mode"
@@ -216,24 +294,9 @@ export default function PrunaMotionStudio({
           className="w-full [&>button]:flex-1"
         />}
         <div className="space-y-2"><FieldLabel htmlFor="video-prompt">{t('prompt')}</FieldLabel><textarea id="video-prompt" value={prompt} onChange={(event) => { setPrompt(event.target.value); setError(null); }} rows={5} placeholder={t('promptPlaceholder')} className="studio-creation-prompt w-full resize-y rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3.5 py-3 text-[14px] leading-relaxed text-white outline-none transition-[border-color,background-color] duration-150 placeholder:text-white/40 hover:bg-[var(--studio-hover)] focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/40" /></div>
-        {sourceMode === 'image' && capabilities?.imageToVideo && <div className="space-y-2">
-          <FieldLabel>{t('sourceImage')}</FieldLabel>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={PRUNA_SOURCE_IMAGE_TYPES.join(',')}
-            aria-label={t('chooseReference')}
-            className="sr-only"
-            onChange={(event) => {
-              chooseSourceImage(event.target.files?.[0]);
-              event.target.value = '';
-            }}
-          />
-          {sourceImageUrl ? <div className="flex items-center gap-3 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] p-2.5">
-            <img src={sourceImageUrl} alt={t('selectedReference')} className="h-14 w-14 rounded-lg object-cover" />
-            <div className="min-w-0 flex-1"><button type="button" onClick={() => fileInputRef.current?.click()} className="text-[12.5px] font-medium text-white/85 hover:text-white">{t('replaceReference')}</button></div>
-            <button type="button" onClick={clearSourceImage} aria-label={t('removeReference')} className="flex h-9 w-9 items-center justify-center rounded-lg text-white/55 transition-[color,background-color] duration-150 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><X className="h-4 w-4" /></button>
-          </div> : <button type="button" onClick={() => fileInputRef.current?.click()} className="studio-creation-reference flex min-h-20 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--studio-border)] bg-[var(--studio-recessed)] text-[12.5px] font-medium text-[var(--studio-text-secondary)] transition-[color,background-color,border-color] duration-150 hover:border-[var(--studio-border-strong)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] motion-reduce:transition-none"><ImagePlus className="h-4 w-4" />{t('addSourceImage')}</button>}
+        {sourceMode === 'image' && capabilities?.imageToVideo && <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <ImageUploadField label={t('startImage')} inputRef={fileInputRef} previewUrl={sourceImageUrl} chooseLabel={t('chooseStartImage')} selectedLabel={t('selectedStartImage')} replaceLabel={t('replaceStartImage')} removeLabel={t('removeStartImage')} addLabel={t('addStartImage')} onChoose={chooseSourceImage} onRemove={clearSourceImage} />
+          <ImageUploadField label={t('endImage')} inputRef={endFileInputRef} previewUrl={endImageUrl} chooseLabel={t('chooseEndImage')} selectedLabel={t('selectedEndImage')} replaceLabel={t('replaceEndImage')} removeLabel={t('removeEndImage')} addLabel={t('addEndImage')} onChoose={chooseEndImage} onRemove={clearEndImage} />
         </div>}
         <div className="space-y-2"><FieldLabel>{t('model')}</FieldLabel><ModelSelector models={modelOptions} selectedModel={modelId} onSelect={setModelId} dropdownPosition="bottom" menuLabel={modelsT('videoMenuLabel')} emptyLabel={modelsT('noModels')} /></div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

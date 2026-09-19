@@ -19,6 +19,7 @@ export type MediaProviderInput = {
   mode?: 'speed' | 'quality';
   sourceMode?: 'text' | 'image';
   sourceImage?: File;
+  endImage?: File;
   autoAspectRatio?: boolean;
   webGrounding?: boolean;
 };
@@ -243,6 +244,15 @@ function validatePrunaInput(input: MediaProviderInput) {
       )) {
       throw new MediaProviderError('INVALID_SOURCE_IMAGE', false);
     }
+    if (input.endImage != null && (!(input.endImage instanceof File) || input.endImage.size === 0
+      || input.endImage.size > PRUNA_SOURCE_IMAGE_MAX_BYTES
+      || !PRUNA_SOURCE_IMAGE_TYPES.includes(
+        input.endImage.type as (typeof PRUNA_SOURCE_IMAGE_TYPES)[number]
+      ))) {
+      throw new MediaProviderError('INVALID_END_IMAGE', false);
+    }
+  } else if (input.sourceImage != null || input.endImage != null) {
+    throw new MediaProviderError('INVALID_VIDEO_CONFIGURATION', false);
   }
   return { duration, resolution, mode, sourceMode, aspectRatio };
 }
@@ -262,13 +272,14 @@ function prunaFileReference(body: PrunaFileBody) {
 
 async function uploadPrunaSourceImage(
   connection: ReturnType<typeof prunaConnection>,
-  sourceImage: File
+  sourceImage: File,
+  safeName: 'start' | 'end'
 ) {
   const extension = sourceImage.type === 'image/png'
     ? 'png'
     : sourceImage.type === 'image/webp' ? 'webp' : 'jpg';
   const form = new FormData();
-  form.append('file', sourceImage, `source.${extension}`);
+  form.append('file', sourceImage, `${safeName}.${extension}`);
   let response: Response;
   try {
     response = await fetch(`${connection.baseUrl.replace(/\/$/, '')}/files`, {
@@ -301,7 +312,10 @@ export async function submitPrunaVideoRoute(
   const prompt = validateInput(route, input);
   const { duration, resolution, mode, sourceMode, aspectRatio } = validatePrunaInput(input);
   const sourceImage = sourceMode === 'image' && input.sourceImage
-    ? await uploadPrunaSourceImage(connection, input.sourceImage)
+    ? await uploadPrunaSourceImage(connection, input.sourceImage, 'start')
+    : undefined;
+  const endImage = sourceMode === 'image' && input.endImage
+    ? await uploadPrunaSourceImage(connection, input.endImage, 'end')
     : undefined;
   let response: Response;
   try {
@@ -318,7 +332,10 @@ export async function submitPrunaVideoRoute(
           duration,
           resolution,
           mode,
-          ...(sourceImage ? { image: sourceImage } : { aspect_ratio: aspectRatio }),
+          ...(sourceImage ? {
+            image: sourceImage,
+            ...(endImage ? { last_frame_image: endImage } : {}),
+          } : { aspect_ratio: aspectRatio }),
         },
       }),
       signal: AbortSignal.timeout(60_000),

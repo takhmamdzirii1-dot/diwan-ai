@@ -27,6 +27,7 @@ export type ValidatedPrunaVideoRequest = {
   modelId: typeof PRUNA_VIDEO_MODEL_ID;
   sourceMode: PrunaVideoSourceMode;
   sourceImage?: File;
+  endImage?: File;
   duration: ModelVideoDuration;
   aspectRatio?: ModelAspectRatio;
   resolution: PrunaVideoResolution;
@@ -37,7 +38,8 @@ export type ValidatedPrunaVideoRequest = {
 export function validatePrunaVideoRequest(
   value: unknown,
   capabilities: VideoModelCapabilities,
-  sourceImage?: unknown
+  sourceImage?: unknown,
+  endImage?: unknown
 ): ValidatedPrunaVideoRequest {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new VideoRequestError('INVALID_VIDEO_REQUEST');
@@ -75,7 +77,13 @@ export function validatePrunaVideoRequest(
       || !PRUNA_SOURCE_IMAGE_TYPES.includes(sourceImage.type as (typeof PRUNA_SOURCE_IMAGE_TYPES)[number])) {
       throw new VideoRequestError('INVALID_SOURCE_IMAGE');
     }
+    if (endImage != null && (!(endImage instanceof File) || endImage.size === 0
+      || endImage.size > PRUNA_SOURCE_IMAGE_MAX_BYTES
+      || !PRUNA_SOURCE_IMAGE_TYPES.includes(endImage.type as (typeof PRUNA_SOURCE_IMAGE_TYPES)[number]))) {
+      throw new VideoRequestError('INVALID_END_IMAGE');
+    }
   } else {
+    if (sourceImage != null || endImage != null) throw new VideoRequestError('UNSUPPORTED_VIDEO_PARAMETER');
     aspectRatio = (body.aspectRatio ?? capabilities.aspectRatios[0]) as ModelAspectRatio;
     if (!capabilities.aspectRatios.includes(aspectRatio)) {
       throw new VideoRequestError('UNSUPPORTED_ASPECT_RATIO');
@@ -98,6 +106,7 @@ export function validatePrunaVideoRequest(
     modelId: PRUNA_VIDEO_MODEL_ID,
     sourceMode,
     ...(sourceMode === 'image' ? { sourceImage: sourceImage as File } : {}),
+    ...(sourceMode === 'image' && endImage instanceof File ? { endImage } : {}),
     duration,
     ...(aspectRatio ? { aspectRatio } : {}),
     resolution,

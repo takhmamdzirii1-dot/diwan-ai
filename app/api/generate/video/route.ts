@@ -31,7 +31,7 @@ import { persistGeneratedMedia } from '@/lib/ai/library-media';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 const MAX_JSON_BYTES = 32_000;
-const MAX_MULTIPART_BYTES = PRUNA_SOURCE_IMAGE_MAX_BYTES + 64 * 1024;
+const MAX_MULTIPART_BYTES = PRUNA_SOURCE_IMAGE_MAX_BYTES * 2 + 64 * 1024;
 
 function safeResponseCode(code: string) {
   if (/INSUFFICIENT_CREDITS/.test(code)) return 'INSUFFICIENT_CREDITS';
@@ -70,6 +70,7 @@ export async function POST(request: Request) {
   }
   let body: Record<string, unknown> | null = null;
   let sourceImage: FormDataEntryValue | null = null;
+  let endImage: FormDataEntryValue | null = null;
   if (multipart) {
     const form = await request.formData().catch(() => null);
     if (form) {
@@ -79,6 +80,7 @@ export async function POST(request: Request) {
         if (typeof value === 'string') body[key] = value;
       }
       sourceImage = form.get('sourceImage');
+      endImage = form.get('endImage');
     }
   } else {
     body = await request.json().catch(() => null) as Record<string, unknown> | null;
@@ -101,7 +103,8 @@ export async function POST(request: Request) {
     input = validatePrunaVideoRequest(
       body,
       runtimeModel.capabilities as VideoModelCapabilities,
-      sourceImage
+      sourceImage,
+      endImage
     );
   } catch (cause) {
     const code = cause instanceof VideoRequestError ? cause.code : 'INVALID_VIDEO_REQUEST';
@@ -128,11 +131,15 @@ export async function POST(request: Request) {
   const sourceImageHash = input.sourceImage
     ? createHash('sha256').update(new Uint8Array(await input.sourceImage.arrayBuffer())).digest('hex')
     : null;
+  const endImageHash = input.endImage
+    ? createHash('sha256').update(new Uint8Array(await input.endImage.arrayBuffer())).digest('hex')
+    : null;
   const payloadHash = hashGenerationPayload({
     modelKey: runtimeModel.key,
     prompt: input.prompt,
     sourceMode: input.sourceMode,
     sourceImageHash,
+    ...(endImageHash ? { endImageHash } : {}),
     duration: input.duration,
     ...(input.aspectRatio ? { aspectRatio: input.aspectRatio } : {}),
     resolution: input.resolution,

@@ -53,6 +53,7 @@ test('accepts image-to-video only with a valid source and omits aspect ratio', (
   assert.equal(result.sourceMode, 'image');
   assert.equal(result.sourceImage, sourceImage);
   assert.equal(result.aspectRatio, undefined);
+  assert.equal(result.endImage, undefined);
   assert.throws(
     () => validatePrunaVideoRequest({
       prompt: 'Bring this still frame to life',
@@ -62,6 +63,22 @@ test('accepts image-to-video only with a valid source and omits aspect ratio', (
     }, { ...capabilities, imageToVideo: true }, sourceImage),
     (error) => error instanceof VideoRequestError && error.code === 'UNSUPPORTED_VIDEO_PARAMETER'
   );
+});
+
+test('accepts an optional valid I2V end frame', () => {
+  const sourceImage = new File([new Uint8Array([1])], 'start.png', { type: 'image/png' });
+  const endImage = new File([new Uint8Array([2])], 'end.webp', { type: 'image/webp' });
+  const result = validatePrunaVideoRequest({
+    prompt: 'Move between these two frames',
+    modelId: 'vantra-p-video-2-pro',
+    sourceMode: 'image',
+    duration: 5,
+    resolution: '768p',
+    mode: 'quality',
+  }, { ...capabilities, imageToVideo: true }, sourceImage, endImage);
+  assert.equal(result.sourceImage, sourceImage);
+  assert.equal(result.endImage, endImage);
+  assert.equal(result.aspectRatio, undefined);
 });
 
 test('requires an allowlisted source image for image-to-video', () => {
@@ -82,6 +99,16 @@ test('requires an allowlisted source image for image-to-video', () => {
       type: 'image/svg+xml',
     })),
     (error) => error instanceof VideoRequestError && error.code === 'INVALID_SOURCE_IMAGE'
+  );
+  assert.throws(
+    () => validatePrunaVideoRequest({
+      prompt: 'Bring this still frame to life',
+      modelId: 'vantra-p-video-2-pro',
+      sourceMode: 'image',
+    }, { ...capabilities, imageToVideo: true }, new File(['ok'], 'start.png', {
+      type: 'image/png',
+    }), new File(['no'], 'end.svg', { type: 'image/svg+xml' })),
+    (error) => error instanceof VideoRequestError && error.code === 'INVALID_END_IMAGE'
   );
 });
 
