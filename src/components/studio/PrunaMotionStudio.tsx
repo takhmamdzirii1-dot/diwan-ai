@@ -10,6 +10,7 @@ import { isModelSelectable, type StudioRuntimeModelDefinition } from '@/src/conf
 import { ModelSelector, type ChatModelOption } from '@/components/ui/claude-style-chat-input';
 import { PrimaryButton, StateBlock } from './AppShell';
 import CreationWorkspace from './CreationWorkspace';
+import { downloadPrivateMedia } from './media-repository';
 
 export type VideoRequestDraft = {
   prompt: string;
@@ -129,20 +130,9 @@ export default function PrunaMotionStudio({
     if (draft) await generate(draft);
   };
 
-  const downloadResult = async () => {
+  const downloadResult = () => {
     if (!result) return;
-    try {
-      const response = await fetch(result.src);
-      if (!response.ok) throw new Error('DOWNLOAD_FAILED');
-      const url = URL.createObjectURL(await response.blob());
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'vantra-video.mp4';
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 0);
-    } catch {
-      setError(executionT('downloadError'));
-    }
+    downloadPrivateMedia(result.libraryAssetId);
   };
 
   const options = <T extends string>(values: readonly T[], selected: T, select: (value: T) => void, label: (value: T) => string) => (
