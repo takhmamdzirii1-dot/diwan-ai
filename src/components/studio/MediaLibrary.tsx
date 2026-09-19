@@ -5,20 +5,22 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Check, Download, Grid2X2, Image as ImageIcon, List, Search, Trash2, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
-import type { DemoMediaItem } from './demo-media';
-import { demoMediaRepository } from './media-repository';
+import { supabase } from '@/src/lib/supabase/client';
+import { SupabaseMediaRepository, type ProductionMediaRecord } from './media-repository';
 import { GhostButton, StateBlock } from './AppShell';
 
 type FilterKey = 'all' | 'images' | 'videos';
 type SortKey = 'newest' | 'oldest';
 type ViewKey = 'grid' | 'list';
-type MediaItem = DemoMediaItem;
+type MediaItem = ProductionMediaRecord;
+
+const mediaRepository = new SupabaseMediaRepository(supabase);
 
 export default function MediaLibrary() {
   const t = useTranslations('studio.library');
   const reduceMotion = useReducedMotion();
   const dialogRef = useRef<HTMLDivElement>(null);
-  const [saved, setSaved] = useState<DemoMediaItem[]>([]);
+  const [saved, setSaved] = useState<MediaItem[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [filter, setFilter] = useState<FilterKey>('all');
   const [sort, setSort] = useState<SortKey>('newest');
@@ -27,19 +29,17 @@ export default function MediaLibrary() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [preview, setPreview] = useState<MediaItem | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [undoItems, setUndoItems] = useState<DemoMediaItem[] | null>(null);
 
   useEffect(() => {
     let active = true;
     const sync = async () => {
       try {
-        const items = await demoMediaRepository.list();
+        const items = await mediaRepository.list();
         if (active) { setSaved(items); setStatus('ready'); }
       } catch { if (active) setStatus('error'); }
     };
     void sync();
-    const unsubscribe = demoMediaRepository.subscribe(() => { void sync(); });
-    return () => { active = false; unsubscribe(); };
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -58,16 +58,13 @@ export default function MediaLibrary() {
 
   const toggleSelected = (id: string) => setSelected((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const deleteSelected = async () => {
-    const removed = items.filter((item) => selected.has(item.id));
     const next = items.filter((item) => !selected.has(item.id));
     try {
-      await demoMediaRepository.remove(selected);
-      setUndoItems(removed);
+      await mediaRepository.remove(selected);
       setSaved(next); setSelected(new Set()); setConfirmDelete(false);
     } catch { setStatus('error'); }
   };
-  const undoDelete = async () => { if (!undoItems) return; const next = [...undoItems, ...saved]; try { await demoMediaRepository.replace(next); setSaved(next); setUndoItems(null); } catch { setStatus('error'); } };
-  const download = async (item: MediaItem) => { try { await demoMediaRepository.download(item); } catch { setStatus('error'); } };
+  const download = async (item: MediaItem) => { try { await mediaRepository.download(item); } catch { setStatus('error'); } };
 
   return <div className="custom-scrollbar absolute inset-0 overflow-y-auto bg-[var(--studio-canvas)]">
     <div className="mx-auto w-full max-w-[1440px] px-4 pb-12 pt-16 sm:px-6 sm:pt-8 lg:px-8">
@@ -75,8 +72,6 @@ export default function MediaLibrary() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">{t('eyebrow')}</p><h1 className="mt-2 text-2xl font-semibold tracking-tight text-white">{t('title')}</h1><p className="mt-1.5 text-[13px] text-[var(--studio-text-secondary)]">{t('count', { count: visible.length })}</p></div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-white/55">{t('demoMode')}</span>
-            {undoItems && <GhostButton onClick={undoDelete}>{t('undo')}</GhostButton>}
             {selected.size > 0 && (confirmDelete ? <div className="flex items-center gap-2" role="alert"><span className="text-xs text-white/65">{t('confirmDelete', { count: selected.size })}</span><GhostButton onClick={deleteSelected} className="border-red-400/20 text-red-200 hover:bg-red-400/10"><Trash2 className="h-3.5 w-3.5" />{t('delete')}</GhostButton><GhostButton onClick={() => setConfirmDelete(false)}>{t('cancel')}</GhostButton></div> : <GhostButton onClick={() => setConfirmDelete(true)}><Trash2 className="h-3.5 w-3.5" />{t('deleteSelected', { count: selected.size })}</GhostButton>)}
             <div className="flex rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-1" role="group" aria-label={t('viewLabel')}>{(['grid', 'list'] as const).map((option) => { const Icon = option === 'grid' ? Grid2X2 : List; return <button key={option} type="button" aria-label={t(option)} aria-pressed={view === option} onClick={() => setView(option)} className={cn('flex h-8 w-8 items-center justify-center rounded-lg transition-[color,background-color] duration-150 focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none', view === option ? 'bg-white text-black' : 'text-white/50 hover:bg-white/[0.06] hover:text-white')}><Icon className="h-4 w-4" /></button>; })}</div>
           </div>
@@ -89,8 +84,8 @@ export default function MediaLibrary() {
       </header>
 
       {status === 'loading' && <div className="grid grid-cols-1 gap-4 pt-6 sm:grid-cols-2 lg:grid-cols-3" aria-label={t('loading')}>{[0,1,2].map((item) => <div key={item} className="aspect-[4/3] animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.025] motion-reduce:animate-none" />)}</div>}
-      {status === 'error' && <StateBlock className="min-h-[52vh]" icon={<ImageIcon className="h-6 w-6" />} title={t('errorTitle')} description={t('errorDescription')} action={<GhostButton onClick={() => location.reload()}>{t('retry')}</GhostButton>} />}
-      {status === 'ready' && visible.length === 0 && <StateBlock className="min-h-[52vh]" icon={<ImageIcon className="h-6 w-6" />} title={query ? t('noResults') : filter === 'videos' ? t('noVideos') : t('emptyTitle')} description={query ? t('noResultsDescription') : t('emptyDescription')} />}
+      {status === 'error' && <StateBlock className="min-h-[52vh]" icon={<ImageIcon className="h-6 w-6" />} title={t('errorTitle')} description={t('productionErrorDescription')} action={<GhostButton onClick={() => location.reload()}>{t('retry')}</GhostButton>} />}
+      {status === 'ready' && visible.length === 0 && <StateBlock className="min-h-[52vh]" icon={<ImageIcon className="h-6 w-6" />} title={query ? t('noResults') : filter === 'videos' ? t('noVideos') : t('emptyTitle')} description={query ? t('noResultsDescription') : t('productionEmptyDescription')} />}
       {status === 'ready' && visible.length > 0 && <motion.div layout className={cn('pt-6', view === 'grid' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3' : 'flex flex-col gap-2')}>
         {visible.map((item) => view === 'list' ? (
           <motion.article
@@ -108,10 +103,12 @@ export default function MediaLibrary() {
               aria-label={t('openPreview')}
               className="grid min-w-0 flex-1 grid-cols-[72px_minmax(0,1fr)] items-center text-start focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40 sm:grid-cols-[104px_minmax(0,1fr)]"
             >
-              <img src={item.assetUrl} alt={t('demoAssetAlt')} loading="lazy" className="h-[82px] w-[72px] shrink-0 object-cover sm:w-[104px]" />
+              {item.kind === 'video'
+                ? <video src={item.assetUrl} muted playsInline preload="metadata" aria-label={t('video')} className="h-[82px] w-[72px] shrink-0 object-cover sm:w-[104px]" />
+                : <img src={item.assetUrl} alt={t('generatedImage')} loading="lazy" className="h-[82px] w-[72px] shrink-0 object-cover sm:w-[104px]" />}
               <div className="min-w-0 px-3 py-2.5 sm:px-4">
                 <p className="truncate text-[13px] leading-relaxed text-white/80" title={item.prompt || t('untitled')}>{item.prompt || t('untitled')}</p>
-                <p className="mt-1 truncate text-[10.5px] uppercase tracking-[0.12em] text-white/50">{item.kind === 'video' ? t('video') : t('image')} · {t('demoAsset')}</p>
+                <p className="mt-1 truncate text-[10.5px] uppercase tracking-[0.12em] text-white/50">{item.kind === 'video' ? t('video') : t('image')} · {item.model}</p>
               </div>
             </button>
             <div className="flex shrink-0 items-center gap-1 pe-2 sm:pe-3">
@@ -121,13 +118,13 @@ export default function MediaLibrary() {
           </motion.article>
         ) : (
           <motion.article layout key={item.id} transition={{ duration: reduceMotion ? 0 : 0.16 }} className={cn('group relative overflow-hidden rounded-2xl border bg-[var(--studio-surface)] transition-[border-color,background-color] duration-150 motion-reduce:transition-none', selected.has(item.id) ? 'border-[var(--studio-border-strong)] bg-[var(--studio-selected)]' : 'border-[var(--studio-border-subtle)] hover:border-[var(--studio-border)]')}>
-            <button type="button" onClick={() => setPreview(item)} aria-label={t('openPreview')} className="block w-full min-w-0 text-start focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40"><img src={item.assetUrl} alt={t('demoAssetAlt')} loading="lazy" className="aspect-[4/3] w-full object-cover" /><div className="min-w-0 p-3.5"><p className="line-clamp-2 text-[13px] leading-relaxed text-white/80">{item.prompt || t('untitled')}</p><p className="mt-1 truncate text-[10.5px] uppercase tracking-[0.12em] text-white/50">{item.kind === 'video' ? t('video') : t('image')} · {t('demoAsset')}</p></div></button>
+            <button type="button" onClick={() => setPreview(item)} aria-label={t('openPreview')} className="block w-full min-w-0 text-start focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40">{item.kind === 'video' ? <video src={item.assetUrl} muted playsInline preload="metadata" aria-label={t('video')} className="aspect-[4/3] w-full object-cover" /> : <img src={item.assetUrl} alt={t('generatedImage')} loading="lazy" className="aspect-[4/3] w-full object-cover" />}<div className="min-w-0 p-3.5"><p className="line-clamp-2 text-[13px] leading-relaxed text-white/80">{item.prompt || t('untitled')}</p><p className="mt-1 truncate text-[10.5px] uppercase tracking-[0.12em] text-white/50">{item.kind === 'video' ? t('video') : t('image')} · {item.model}</p></div></button>
             <div className="absolute end-2.5 top-2.5 flex gap-1 rounded-xl border border-white/10 bg-black/70 p-1 opacity-100 backdrop-blur-xl sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"><button type="button" onClick={() => toggleSelected(item.id)} aria-label={t('select')} aria-pressed={selected.has(item.id)} className={cn('flex h-8 w-8 items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-white/40', selected.has(item.id) ? 'bg-white text-black' : 'text-white/65 hover:bg-white/10 hover:text-white')}><Check className="h-4 w-4" /></button><button type="button" onClick={() => download(item)} aria-label={t('download')} className="flex h-8 w-8 items-center justify-center rounded-lg text-white/65 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40"><Download className="h-4 w-4" /></button></div>
           </motion.article>
         ))}
       </motion.div>}
     </div>
 
-    <AnimatePresence>{preview && <motion.div className="fixed inset-0 z-[80] flex items-center justify-center bg-[var(--studio-overlay)] p-4 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.16 }} onMouseDown={(event) => event.target === event.currentTarget && setPreview(null)}><motion.div ref={dialogRef} role="dialog" aria-modal="true" aria-label={t('preview')} tabIndex={-1} initial={reduceMotion ? false : { opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: reduceMotion ? 0 : 0.16 }} className="relative max-h-[92dvh] w-full max-w-5xl overflow-hidden rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-popover)] shadow-[var(--studio-shadow)]"><button type="button" onClick={() => setPreview(null)} aria-label={t('closePreview')} className="absolute end-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--studio-border)] bg-[var(--studio-popover)] text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]"><X className="h-4 w-4" /></button><img src={preview.assetUrl} alt={t('demoAssetAlt')} className="max-h-[76dvh] w-full object-contain bg-[var(--studio-recessed)]" /><div className="flex items-center justify-between gap-4 border-t border-[var(--studio-border-subtle)] p-4"><div className="min-w-0"><p className="line-clamp-2 text-sm text-[var(--studio-text-primary)]">{preview.prompt || t('untitled')}</p><p className="mt-1 text-xs text-[var(--studio-text-muted)]">{t('demoDisclosure')}</p></div><GhostButton onClick={() => download(preview)}><Download className="h-4 w-4" />{t('download')}</GhostButton></div></motion.div></motion.div>}</AnimatePresence>
+    <AnimatePresence>{preview && <motion.div className="fixed inset-0 z-[80] flex items-center justify-center bg-[var(--studio-overlay)] p-4 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.16 }} onMouseDown={(event) => event.target === event.currentTarget && setPreview(null)}><motion.div ref={dialogRef} role="dialog" aria-modal="true" aria-label={t('preview')} tabIndex={-1} initial={reduceMotion ? false : { opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: reduceMotion ? 0 : 0.16 }} className="relative max-h-[92dvh] w-full max-w-5xl overflow-hidden rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-popover)] shadow-[var(--studio-shadow)]"><button type="button" onClick={() => setPreview(null)} aria-label={t('closePreview')} className="absolute end-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--studio-border)] bg-[var(--studio-popover)] text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]"><X className="h-4 w-4" /></button>{preview.kind === 'video' ? <video src={preview.assetUrl} controls playsInline aria-label={t('video')} className="max-h-[76dvh] w-full object-contain bg-[var(--studio-recessed)]" /> : <img src={preview.assetUrl} alt={t('generatedImage')} className="max-h-[76dvh] w-full object-contain bg-[var(--studio-recessed)]" />}<div className="flex items-center justify-between gap-4 border-t border-[var(--studio-border-subtle)] p-4"><div className="min-w-0"><p className="line-clamp-2 text-sm text-[var(--studio-text-primary)]">{preview.prompt || t('untitled')}</p><p className="mt-1 text-xs text-[var(--studio-text-muted)]">{preview.model}</p></div><GhostButton onClick={() => download(preview)}><Download className="h-4 w-4" />{t('download')}</GhostButton></div></motion.div></motion.div>}</AnimatePresence>
   </div>;
 }

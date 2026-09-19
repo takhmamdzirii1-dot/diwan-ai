@@ -15,6 +15,7 @@ import {
   resolveOperationKey,
 } from '@/lib/credits/generation-finance';
 import { resolveTerminalCustomerCharge } from '@/lib/credits/generation-policy';
+import { persistGeneratedMedia } from '@/lib/ai/library-media';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -166,6 +167,19 @@ export async function POST(request: Request) {
       throw new MediaProviderError('PROVIDER_INVALID_RESPONSE', true);
     }
 
+    const libraryAsset = await persistGeneratedMedia({
+      executionId: execution.executionId,
+      userId: user.id,
+      modality: 'image',
+      modelId: runtimeModel.modelId,
+      prompt: input.prompt,
+      mimeType: result.mimeType ?? 'image/png',
+      mediaBase64: result.mediaBase64,
+      mediaUrl: result.mediaUrl,
+      width: input.width,
+      height: input.height,
+    });
+
     const latencyMs = Date.now() - startedAt;
     const customerCharge = resolveTerminalCustomerCharge({
       state: 'completed',
@@ -204,14 +218,9 @@ export async function POST(request: Request) {
     if (financialResult.state !== 'completed') throw new Error('EXECUTION_FINALIZATION_FAILED');
     await recordProviderResult(route.providerId, true);
 
-    const mimeType = result.mimeType ?? 'image/png';
-    const src = result.mediaBase64
-      ? (result.mediaBase64.startsWith('data:')
-        ? result.mediaBase64
-        : `data:${mimeType};base64,${result.mediaBase64}`)
-      : result.mediaUrl!;
     return NextResponse.json({
-      image: { src, mimeType },
+      image: { src: libraryAsset.src, mimeType: libraryAsset.mimeType },
+      libraryAssetId: libraryAsset.id,
       creditsCharged: Number(financialResult.credits_charged ?? customerCharge),
     });
   } catch (cause) {

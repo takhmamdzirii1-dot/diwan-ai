@@ -141,6 +141,9 @@
     "videoExecution": { "resolution": "Resolution", "speed": "Speed", "quality": "Quality", "generatingTitle": "Creating your video", "generatingDescription": "Your video is being generated securely. This can take a few minutes.", "resultAlt": "Generated video", "download": "Download", "regenerate": "Regenerate", "errorTitle": "Video generation failed", "downloadError": "The video could not be downloaded.", "insufficientCredits": "You do not have enough Unified Credits for this video.", "signIn": "Sign in to generate a video.", "unavailable": "Video generation is temporarily unavailable." },
     "videoControls": { "cameraMotion": "Camera motion", "camera": { "auto": "Auto", "static": "Static", "pushin": "Push in", "pullout": "Pull out", "panleft": "Pan left", "panright": "Pan right", "orbit": "Orbit" }, "advanced": "Advanced", "negativePrompt": "Negative prompt", "negativePlaceholder": "Used only when a connected model supports it" },
     "library": {
+      "openInLibrary": "Open in Library",
+      "productionErrorDescription": "Your saved creations could not be loaded.",
+      "productionEmptyDescription": "Your permanently saved images and videos will collect here.",
       "eyebrow": "Workspace",
       "title": "Library",
       "count": "{count, plural, one {# item} other {# items}}",

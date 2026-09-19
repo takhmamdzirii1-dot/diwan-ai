@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Clapperboard, Download, LoaderCircle, RotateCcw } from 'lucide-react';
+import { Clapperboard, Download, FolderOpen, LoaderCircle, RotateCcw } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import type { PrunaVideoMode, PrunaVideoResolution } from '@/lib/ai/pruna-video-request';
@@ -24,6 +24,7 @@ export type VideoGenerationResult = {
   src: string;
   mimeType: string;
   creditsCharged: number;
+  libraryAssetId: string;
 };
 
 function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) {
@@ -33,13 +34,16 @@ function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.R
 export default function PrunaMotionStudio({
   models,
   onGenerate,
+  onOpenLibrary,
 }: {
   models: StudioRuntimeModelDefinition[];
   onGenerate?: (draft: VideoRequestDraft) => Promise<VideoGenerationResult>;
+  onOpenLibrary?: () => void;
 }) {
   const t = useTranslations('studio.video');
   const executionT = useTranslations('studio.videoExecution');
   const modelsT = useTranslations('studio.models');
+  const libraryT = useTranslations('studio.library');
   const submitGuardRef = useRef(false);
   const [prompt, setPrompt] = useState('');
   const [modelId, setModelId] = useState(models.find(isModelSelectable)?.id ?? models[0]?.id ?? '');
@@ -165,7 +169,7 @@ export default function PrunaMotionStudio({
     preview={<div className="flex min-h-[300px] w-full items-center justify-center lg:min-h-0">{isSubmitting
       ? <StateBlock icon={<LoaderCircle className="h-6 w-6 animate-spin motion-reduce:animate-none" />} title={executionT('generatingTitle')} description={executionT('generatingDescription')} />
       : result
-        ? <div className="flex w-full flex-col gap-3"><div className="flex min-h-[300px] items-center justify-center overflow-hidden rounded-xl border border-[var(--studio-border-subtle)] bg-black"><video src={result.src} controls playsInline className="max-h-[min(68vh,760px)] w-full object-contain" aria-label={executionT('resultAlt')} /></div><div className="flex flex-wrap justify-end gap-2"><button type="button" onClick={downloadResult} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)]"><Download className="h-4 w-4" />{executionT('download')}</button><button type="button" onClick={() => { const draft = buildDraft(); if (draft) void generate(draft); }} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)]"><RotateCcw className="h-4 w-4" />{executionT('regenerate')}</button></div></div>
+        ? <div className="flex w-full flex-col gap-3"><div className="flex min-h-[300px] items-center justify-center overflow-hidden rounded-xl border border-[var(--studio-border-subtle)] bg-black"><video src={result.src} controls playsInline className="max-h-[min(68vh,760px)] w-full object-contain" aria-label={executionT('resultAlt')} /></div><div className="flex flex-wrap justify-end gap-2">{result.libraryAssetId && onOpenLibrary && <button type="button" onClick={onOpenLibrary} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)]"><FolderOpen className="h-4 w-4" />{libraryT('openInLibrary')}</button>}<button type="button" onClick={downloadResult} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)]"><Download className="h-4 w-4" />{executionT('download')}</button><button type="button" onClick={() => { const draft = buildDraft(); if (draft) void generate(draft); }} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)]"><RotateCcw className="h-4 w-4" />{executionT('regenerate')}</button></div></div>
         : error
           ? <StateBlock icon={<Clapperboard className="h-6 w-6" />} title={executionT('errorTitle')} description={error} />
           : <StateBlock icon={<Clapperboard className="h-6 w-6" />} title={t('emptyTitle')} description={t('emptyDescription')} />}</div>}

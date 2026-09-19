@@ -388,8 +388,9 @@ export default function StudioDashboard({
       error?: string;
       image?: { src?: string; mimeType?: string };
       creditsCharged?: number;
+      libraryAssetId?: string;
     } | null;
-    if (!response.ok || !payload?.image?.src) {
+    if (!response.ok || !payload?.image?.src || !payload.libraryAssetId) {
       throw new Error(payload?.error ?? 'IMAGE_GENERATION_FAILED');
     }
     await refreshBalance();
@@ -397,6 +398,7 @@ export default function StudioDashboard({
       src: payload.image.src,
       mimeType: payload.image.mimeType ?? 'image/png',
       creditsCharged: payload.creditsCharged ?? 0,
+      libraryAssetId: payload.libraryAssetId,
     };
   }, [openAuthModal, refreshBalance, user]);
 
@@ -414,8 +416,9 @@ export default function StudioDashboard({
       error?: string;
       video?: { src?: string; mimeType?: string };
       creditsCharged?: number;
+      libraryAssetId?: string;
     } | null;
-    if (!response.ok || !payload?.video?.src) {
+    if (!response.ok || !payload?.video?.src || !payload.libraryAssetId) {
       throw new Error(payload?.error ?? 'VIDEO_GENERATION_FAILED');
     }
     await refreshBalance();
@@ -423,6 +426,7 @@ export default function StudioDashboard({
       src: payload.video.src,
       mimeType: payload.video.mimeType ?? 'video/mp4',
       creditsCharged: payload.creditsCharged ?? 0,
+      libraryAssetId: payload.libraryAssetId,
     };
   }, [openAuthModal, refreshBalance, user]);
 
@@ -667,14 +671,14 @@ export default function StudioDashboard({
           {/* ── Image Canvas ── */}
           {activeWorkspace === 'image' && (
             <motion.div key="image" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }} className="absolute inset-0">
-              <ImageCanvas models={imageModels} onGenerate={handleImageGenerate} />
+              <ImageCanvas models={imageModels} onGenerate={handleImageGenerate} onOpenLibrary={() => onWorkspaceChange('library')} />
             </motion.div>
           )}
 
             {/* ── Motion Studio ── */}
             {activeWorkspace === 'video' && (
               <motion.div key="video" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }} className="absolute inset-0">
-                <PrunaMotionStudio models={videoModels} onGenerate={handleVideoGenerate} />
+                <PrunaMotionStudio models={videoModels} onGenerate={handleVideoGenerate} onOpenLibrary={() => onWorkspaceChange('library')} />
               </motion.div>
             )}
 

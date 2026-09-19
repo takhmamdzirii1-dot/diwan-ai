@@ -24,6 +24,7 @@ import {
   resolveOperationKey,
 } from '@/lib/credits/generation-finance';
 import { resolveTerminalCustomerCharge } from '@/lib/credits/generation-policy';
+import { persistGeneratedMedia } from '@/lib/ai/library-media';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -177,6 +178,17 @@ export async function POST(request: Request) {
       throw new MediaProviderError('PROVIDER_RESULT_NOT_READY', true);
     }
 
+    const libraryAsset = await persistGeneratedMedia({
+      executionId: execution.executionId,
+      userId: user.id,
+      modality: 'video',
+      modelId: runtimeModel.modelId,
+      prompt: input.prompt,
+      mimeType: result.mimeType ?? 'video/mp4',
+      mediaUrl: result.mediaUrl,
+      duration: input.duration,
+    });
+
     const latencyMs = Date.now() - startedAt;
     const providerCostMinor = prunaProviderCostMinor(input);
     const customerCharge = resolveTerminalCustomerCharge({
@@ -217,7 +229,8 @@ export async function POST(request: Request) {
     if (financialResult.state !== 'completed') throw new Error('EXECUTION_FINALIZATION_FAILED');
     await recordProviderResult(route.providerId, true);
     return NextResponse.json({
-      video: { src: result.mediaUrl, mimeType: result.mimeType ?? 'video/mp4' },
+      video: { src: libraryAsset.src, mimeType: libraryAsset.mimeType },
+      libraryAssetId: libraryAsset.id,
       creditsCharged: Number(financialResult.credits_charged ?? customerCharge),
     });
   } catch (cause) {

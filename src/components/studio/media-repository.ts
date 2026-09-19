@@ -12,21 +12,15 @@ import {
 } from './demo-media';
 
 export type MediaKind = 'image' | 'video';
-export type MediaStatus = 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
 
 export type ProductionMediaRecord = {
   id: string;
-  userId: string;
   kind: MediaKind;
   prompt: string;
-  modelId: string;
-  status: MediaStatus;
-  storagePath: string | null;
-  thumbnailPath: string | null;
-  metadata: Record<string, unknown>;
-  errorMessage: string | null;
-  createdAt: string;
-  updatedAt: string;
+  model: string;
+  assetUrl: string;
+  mimeType: string | null;
+  createdAt: number;
 };
 
 export interface MediaRepository<TItem> {
@@ -55,47 +49,32 @@ export class DemoMediaRepository implements MediaRepository<DemoMediaItem> {
 
 type GenerationRow = {
   id: string;
-  user_id: string;
   type: MediaKind;
   prompt: string;
   model_id: string;
-  status: MediaStatus;
-  storage_path: string | null;
-  thumbnail_path: string | null;
   metadata: Record<string, unknown> | null;
-  error_message: string | null;
   created_at: string;
-  updated_at: string;
 };
 
 const mapGeneration = (row: GenerationRow): ProductionMediaRecord => ({
   id: row.id,
-  userId: row.user_id,
   kind: row.type,
   prompt: row.prompt,
-  modelId: row.model_id,
-  status: row.status,
-  storagePath: row.storage_path,
-  thumbnailPath: row.thumbnail_path,
-  metadata: row.metadata ?? {},
-  errorMessage: row.error_message,
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
+  model: row.model_id,
+  assetUrl: `/api/library/media/${row.id}`,
+  mimeType: typeof row.metadata?.mimeType === 'string' ? row.metadata.mimeType : null,
+  createdAt: Date.parse(row.created_at),
 });
 
-/**
- * Prepared production adapter. It is intentionally not activated while Studio is in Demo mode.
- * Production boundary: create one job, let the provider run asynchronously, receive the result by
- * webhook into Supabase, and deliver media directly from Storage/provider CDN. Never poll a Vercel
- * Function or proxy large media downloads through one.
- */
 export class SupabaseMediaRepository implements MediaRepository<ProductionMediaRecord> {
   constructor(private readonly client: SupabaseClient) {}
 
   async list() {
     const { data, error } = await this.client
       .from('generations')
-      .select('*')
+      .select('id,type,prompt,model_id,metadata,created_at')
+      .eq('status', 'completed')
+      .not('storage_path', 'is', null)
       .order('created_at', { ascending: false });
     if (error) throw error;
     return ((data ?? []) as GenerationRow[]).map(mapGeneration);
@@ -103,19 +82,27 @@ export class SupabaseMediaRepository implements MediaRepository<ProductionMediaR
 
   async remove(ids: ReadonlySet<string>) {
     if (ids.size === 0) return [];
-    const { data, error } = await this.client
-      .from('generations')
-      .delete()
-      .in('id', [...ids])
-      .select('*');
-    if (error) throw error;
-    return ((data ?? []) as GenerationRow[]).map(mapGeneration);
+    const current = await this.list();
+    const removed = current.filter((item) => ids.has(item.id));
+    for (const item of removed) {
+      const response = await fetch(`/api/library/media/${item.id}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('LIBRARY_DELETE_FAILED');
+    }
+    return removed;
   }
 
-  async createSignedMediaUrl(path: string, expiresInSeconds = 60) {
-    const { data, error } = await this.client.storage.from('media').createSignedUrl(path, expiresInSeconds);
-    if (error) throw error;
-    return data.signedUrl;
+  async download(item: ProductionMediaRecord) {
+    const response = await fetch(item.assetUrl);
+    if (!response.ok) throw new Error('LIBRARY_DOWNLOAD_FAILED');
+    const url = URL.createObjectURL(await response.blob());
+    const link = document.createElement('a');
+    const extension = item.mimeType === 'image/jpeg'
+      ? 'jpg'
+      : item.mimeType?.split('/')[1] ?? (item.kind === 'image' ? 'png' : 'mp4');
+    link.href = url;
+    link.download = `vantra-${item.kind}.${extension}`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 }
 

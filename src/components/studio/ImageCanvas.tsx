@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ChevronDown, Download, ImageIcon, LoaderCircle, Paperclip, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronDown, Download, FolderOpen, ImageIcon, LoaderCircle, Paperclip, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
 import { isModelSelectable, type StudioRuntimeModelDefinition } from '@/src/config/studio-registry';
@@ -24,15 +24,17 @@ export type ImageGenerationResult = {
   src: string;
   mimeType: string;
   creditsCharged: number;
+  libraryAssetId: string;
 };
 
 function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) {
   return <label htmlFor={htmlFor} className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/55">{children}</label>;
 }
 
-export default function ImageCanvas({ models, onGenerate }: { models: StudioRuntimeModelDefinition[]; onGenerate?: (draft: ImageRequestDraft) => Promise<ImageGenerationResult> }) {
+export default function ImageCanvas({ models, onGenerate, onOpenLibrary }: { models: StudioRuntimeModelDefinition[]; onGenerate?: (draft: ImageRequestDraft) => Promise<ImageGenerationResult>; onOpenLibrary?: () => void }) {
   const t = useTranslations('studio.image');
   const modelsT = useTranslations('studio.models');
+  const libraryT = useTranslations('studio.library');
   const reduceMotion = useReducedMotion();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [prompt, setPrompt] = useState('');
@@ -212,6 +214,7 @@ export default function ImageCanvas({ models, onGenerate }: { models: StudioRunt
                 <img src={result.src} alt={t('resultAlt')} className="max-h-[min(68vh,760px)] w-full object-contain" />
               </div>
               <div className="flex flex-wrap justify-end gap-2">
+                {result.libraryAssetId && onOpenLibrary && <button type="button" onClick={onOpenLibrary} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] transition-colors duration-150 hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] motion-reduce:transition-none"><FolderOpen className="h-4 w-4" />{libraryT('openInLibrary')}</button>}
                 <button type="button" onClick={downloadResult} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] transition-colors duration-150 hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] motion-reduce:transition-none"><Download className="h-4 w-4" />{t('download')}</button>
                 <button type="button" onClick={regenerate} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] transition-colors duration-150 hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] motion-reduce:transition-none"><RotateCcw className="h-4 w-4" />{t('regenerate')}</button>
               </div>
