@@ -9,7 +9,7 @@ import { useModal } from '../../context/ModalContext';
 import { ClaudeChatInput } from '@/components/ui/claude-style-chat-input';
 import DashboardSidebar from './DashboardSidebar';
 import MessageBubble from './MessageBubble';
-import ImageCanvas from './ImageCanvas';
+import ImageCanvas, { type ImageGenerationResult, type ImageRequestDraft } from './ImageCanvas';
 import SettingsModal from './StudioSettingsDialog';
 import MotionStudio from './MotionStudio';
 import MediaLibrary from './MediaLibrary';
@@ -368,6 +368,38 @@ export default function StudioDashboard({
     window.dispatchEvent(new CustomEvent('vantra-prefill-prompt', { detail: { prompt: text } }));
   }, []);
 
+  const handleImageGenerate = useCallback(async (draft: ImageRequestDraft): Promise<ImageGenerationResult> => {
+    if (!user) {
+      openAuthModal('signin');
+      throw new Error('AUTHENTICATION_REQUIRED');
+    }
+    const response = await fetch('/api/generate/image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: draft.prompt,
+        modelId: draft.modelId,
+        aspectRatio: draft.aspectRatio,
+        outputCount: draft.outputCount ?? 1,
+        operationId: crypto.randomUUID(),
+      }),
+    });
+    const payload = await response.json().catch(() => null) as {
+      error?: string;
+      image?: { src?: string; mimeType?: string };
+      creditsCharged?: number;
+    } | null;
+    if (!response.ok || !payload?.image?.src) {
+      throw new Error(payload?.error ?? 'IMAGE_GENERATION_FAILED');
+    }
+    await refreshBalance();
+    return {
+      src: payload.image.src,
+      mimeType: payload.image.mimeType ?? 'image/png',
+      creditsCharged: payload.creditsCharged ?? 0,
+    };
+  }, [openAuthModal, refreshBalance, user]);
+
   const totalTokens = useMemo(
     () => Math.ceil(messages.reduce((acc, m) => acc + (m.content?.length || 0), 0) / 4),
     [messages]
@@ -609,7 +641,7 @@ export default function StudioDashboard({
           {/* ── Image Canvas ── */}
           {activeWorkspace === 'image' && (
             <motion.div key="image" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }} className="absolute inset-0">
-              <ImageCanvas models={imageModels} />
+              <ImageCanvas models={imageModels} onGenerate={handleImageGenerate} />
             </motion.div>
           )}
 

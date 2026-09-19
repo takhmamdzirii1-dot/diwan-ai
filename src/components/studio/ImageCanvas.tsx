@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ChevronDown, ImageIcon, Paperclip, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronDown, Download, ImageIcon, LoaderCircle, Paperclip, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
 import { isModelSelectable, type StudioRuntimeModelDefinition } from '@/src/config/studio-registry';
@@ -20,11 +20,17 @@ export type ImageRequestDraft = {
   negativePrompt?: string;
 };
 
+export type ImageGenerationResult = {
+  src: string;
+  mimeType: string;
+  creditsCharged: number;
+};
+
 function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) {
   return <label htmlFor={htmlFor} className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/55">{children}</label>;
 }
 
-export default function ImageCanvas({ models, onGenerate }: { models: StudioRuntimeModelDefinition[]; onGenerate?: (draft: ImageRequestDraft) => void | Promise<void> }) {
+export default function ImageCanvas({ models, onGenerate }: { models: StudioRuntimeModelDefinition[]; onGenerate?: (draft: ImageRequestDraft) => Promise<ImageGenerationResult> }) {
   const t = useTranslations('studio.image');
   const modelsT = useTranslations('studio.models');
   const reduceMotion = useReducedMotion();
@@ -39,6 +45,7 @@ export default function ImageCanvas({ models, onGenerate }: { models: StudioRunt
   const [referenceUrl, setReferenceUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [result, setResult] = useState<ImageGenerationResult | null>(null);
 
   const modelOptions: ChatModelOption[] = models.map((model) => ({
     id: model.id,
@@ -82,32 +89,70 @@ export default function ImageCanvas({ models, onGenerate }: { models: StudioRunt
     if (!capabilities.negativePrompt) setNegativePrompt('');
   }, [modelId]);
 
-  const submitDraft = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const buildDraft = () => {
     if (!prompt.trim()) {
       setError(t('errors.prompt'));
-      return;
+      return null;
     }
     const selectedModel = models.find((model) => model.id === modelId);
     if (!selectedModel || !isModelSelectable(selectedModel)) {
       setError(t('errors.model'));
-      return;
+      return null;
     }
-    if (!capabilities?.textToImage) { setError(t('errors.model')); return; }
+    if (!capabilities?.textToImage) { setError(t('errors.model')); return null; }
     const draft: ImageRequestDraft = { prompt: prompt.trim(), modelId };
     if (capabilities.referenceImage && referenceFile) draft.referenceFile = referenceFile;
     if (aspectRatio && capabilities.aspectRatios.includes(aspectRatio)) draft.aspectRatio = aspectRatio;
     if (capabilities.maxOutputs > 1) draft.outputCount = outputCount;
     if (capabilities.negativePrompt && negativePrompt.trim()) draft.negativePrompt = negativePrompt.trim();
+    return draft;
+  };
+
+  const generate = async (draft: ImageRequestDraft) => {
     setError(null);
     if (!onGenerate) return;
     setIsSubmitting(true);
+    setResult(null);
     try {
-      await onGenerate(draft);
-    } catch {
-      setError(t('errors.generation'));
+      setResult(await onGenerate(draft));
+    } catch (cause) {
+      const code = cause instanceof Error ? cause.message : 'IMAGE_GENERATION_FAILED';
+      setError(code === 'INSUFFICIENT_CREDITS'
+        ? t('errors.insufficientCredits')
+        : code === 'AUTHENTICATION_REQUIRED'
+          ? t('errors.signIn')
+          : code === 'IMAGE_GENERATION_UNAVAILABLE'
+            ? t('errors.unavailable')
+            : t('errors.generation'));
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const submitDraft = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const draft = buildDraft();
+    if (draft) await generate(draft);
+  };
+
+  const regenerate = async () => {
+    const draft = buildDraft();
+    if (draft) await generate(draft);
+  };
+
+  const downloadResult = async () => {
+    if (!result) return;
+    try {
+      const response = await fetch(result.src);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `vantra-image.${result.mimeType === 'image/jpeg' ? 'jpg' : 'png'}`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch {
+      setError(t('errors.download'));
     }
   };
 
@@ -158,8 +203,24 @@ export default function ImageCanvas({ models, onGenerate }: { models: StudioRunt
             <div className="studio-creation-action space-y-2"><PrimaryButton type="submit" disabled={!generationAvailable || isSubmitting} className="w-full">{isSubmitting ? t('generating') : t('generate')}</PrimaryButton>{!generationAvailable && <p className="text-center text-[11.5px] font-medium text-white/60">{t('unavailableNote')}</p>}</div>
           </form>
         </>}
-      preview={<div className="flex min-h-[300px] w-full items-center justify-center lg:aspect-video lg:min-h-0">
-          <StateBlock icon={<ImageIcon className="h-6 w-6" />} title={t('emptyTitle')} description={t('emptyDescription')} />
+      preview={<div className="flex min-h-[300px] w-full items-center justify-center lg:min-h-0">
+          {isSubmitting ? (
+            <StateBlock icon={<LoaderCircle className="h-6 w-6 animate-spin motion-reduce:animate-none" />} title={t('generatingTitle')} description={t('generatingDescription')} />
+          ) : result ? (
+            <div className="flex w-full flex-col gap-3">
+              <div className="flex min-h-[300px] items-center justify-center overflow-hidden rounded-xl border border-[var(--studio-border-subtle)] bg-[var(--studio-recessed)]">
+                <img src={result.src} alt={t('resultAlt')} className="max-h-[min(68vh,760px)] w-full object-contain" />
+              </div>
+              <div className="flex flex-wrap justify-end gap-2">
+                <button type="button" onClick={downloadResult} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] transition-colors duration-150 hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] motion-reduce:transition-none"><Download className="h-4 w-4" />{t('download')}</button>
+                <button type="button" onClick={regenerate} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] transition-colors duration-150 hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] motion-reduce:transition-none"><RotateCcw className="h-4 w-4" />{t('regenerate')}</button>
+              </div>
+            </div>
+          ) : error ? (
+            <StateBlock icon={<ImageIcon className="h-6 w-6" />} title={t('errorTitle')} description={error} />
+          ) : (
+            <StateBlock icon={<ImageIcon className="h-6 w-6" />} title={t('emptyTitle')} description={t('emptyDescription')} />
+          )}
         </div>}
     />
   );

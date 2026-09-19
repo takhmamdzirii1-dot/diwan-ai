@@ -131,6 +131,9 @@ export async function generateWithMicrosoftFoundryRoute(
     || !connection.deploymentName) {
     throw new MediaProviderError('PROVIDER_NOT_CONFIGURED', false);
   }
+  if (route.providerModelId !== connection.deploymentName) {
+    throw new MediaProviderError('INVALID_MICROSOFT_FOUNDRY_ROUTE', false);
+  }
   const prompt = validateInput(route, input);
   const width = input.width ?? 1024;
   const height = input.height ?? 1024;
