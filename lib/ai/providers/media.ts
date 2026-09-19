@@ -3,6 +3,10 @@ import 'server-only';
 import { getProviderConnection } from './registry';
 import type { ResolvedProviderRoute } from './routes';
 import { runRunwareTask } from '@/lib/ai/image-providers/runware';
+import {
+  PRUNA_SOURCE_IMAGE_MAX_BYTES,
+  PRUNA_SOURCE_IMAGE_TYPES,
+} from '@/lib/ai/pruna-video-request';
 
 export type MediaProviderInput = {
   prompt: string;
@@ -13,6 +17,8 @@ export type MediaProviderInput = {
   aspectRatio?: '16:9' | '9:16' | '4:3' | '3:4' | '3:2' | '2:3' | '1:1';
   resolution?: '480p' | '768p';
   mode?: 'speed' | 'quality';
+  sourceMode?: 'text' | 'image';
+  sourceImage?: File;
   autoAspectRatio?: boolean;
   webGrounding?: boolean;
 };
@@ -194,6 +200,15 @@ type PrunaPredictionBody = {
   error?: string | { message?: string; code?: string };
 };
 
+type PrunaFileBody = {
+  id?: string;
+  url?: string;
+  file_url?: string;
+  file?: { id?: string; url?: string; file_url?: string };
+  files?: Array<{ id?: string; url?: string; file_url?: string }>;
+  error?: string | { message?: string; code?: string };
+};
+
 function prunaOutputUrl(output: PrunaPredictionBody['output']) {
   const candidate = Array.isArray(output) ? output[0] : output;
   if (typeof candidate === 'string') return candidate;
@@ -211,13 +226,25 @@ function validatePrunaInput(input: MediaProviderInput) {
   }
   const resolution = input.resolution ?? '768p';
   const mode = input.mode ?? 'quality';
-  const aspectRatio = input.aspectRatio ?? '16:9';
+  const sourceMode = input.sourceMode ?? 'text';
+  const aspectRatio = sourceMode === 'text' ? input.aspectRatio ?? '16:9' : undefined;
   if (!['480p', '768p'].includes(resolution)
     || !['speed', 'quality'].includes(mode)
-    || !['16:9', '9:16', '4:3', '3:4', '3:2', '2:3', '1:1'].includes(aspectRatio)) {
+    || !['text', 'image'].includes(sourceMode)
+    || (aspectRatio != null
+      && !['16:9', '9:16', '4:3', '3:4', '3:2', '2:3', '1:1'].includes(aspectRatio))) {
     throw new MediaProviderError('INVALID_VIDEO_CONFIGURATION', false);
   }
-  return { duration, resolution, mode, aspectRatio };
+  if (sourceMode === 'image') {
+    if (!(input.sourceImage instanceof File) || input.sourceImage.size === 0
+      || input.sourceImage.size > PRUNA_SOURCE_IMAGE_MAX_BYTES
+      || !PRUNA_SOURCE_IMAGE_TYPES.includes(
+        input.sourceImage.type as (typeof PRUNA_SOURCE_IMAGE_TYPES)[number]
+      )) {
+      throw new MediaProviderError('INVALID_SOURCE_IMAGE', false);
+    }
+  }
+  return { duration, resolution, mode, sourceMode, aspectRatio };
 }
 
 function prunaConnection() {
@@ -226,6 +253,40 @@ function prunaConnection() {
     throw new MediaProviderError('PROVIDER_NOT_CONFIGURED', false);
   }
   return connection;
+}
+
+function prunaFileReference(body: PrunaFileBody) {
+  const item = body.file ?? body.files?.[0] ?? body;
+  return item.url ?? item.file_url ?? item.id;
+}
+
+async function uploadPrunaSourceImage(
+  connection: ReturnType<typeof prunaConnection>,
+  sourceImage: File
+) {
+  const extension = sourceImage.type === 'image/png'
+    ? 'png'
+    : sourceImage.type === 'image/webp' ? 'webp' : 'jpg';
+  const form = new FormData();
+  form.append('file', sourceImage, `source.${extension}`);
+  let response: Response;
+  try {
+    response = await fetch(`${connection.baseUrl.replace(/\/$/, '')}/files`, {
+      method: 'POST',
+      headers: { apikey: connection.apiKey },
+      body: form,
+      signal: AbortSignal.timeout(60_000),
+      cache: 'no-store',
+    });
+  } catch (cause) {
+    throw new MediaProviderError('PROVIDER_NETWORK_FAILURE', true, { cause });
+  }
+  const body = await response.json().catch(() => ({})) as PrunaFileBody;
+  const providerCode = typeof body.error === 'object' ? body.error.code : undefined;
+  if (!response.ok) throw responseError(response.status, providerCode);
+  const reference = prunaFileReference(body);
+  if (!reference) throw new MediaProviderError('PROVIDER_INVALID_RESPONSE', true);
+  return reference;
 }
 
 export async function submitPrunaVideoRoute(
@@ -238,7 +299,10 @@ export async function submitPrunaVideoRoute(
   }
   const connection = prunaConnection();
   const prompt = validateInput(route, input);
-  const { duration, resolution, mode, aspectRatio } = validatePrunaInput(input);
+  const { duration, resolution, mode, sourceMode, aspectRatio } = validatePrunaInput(input);
+  const sourceImage = sourceMode === 'image' && input.sourceImage
+    ? await uploadPrunaSourceImage(connection, input.sourceImage)
+    : undefined;
   let response: Response;
   try {
     response = await fetch(`${connection.baseUrl.replace(/\/$/, '')}/predictions`, {
@@ -254,7 +318,7 @@ export async function submitPrunaVideoRoute(
           duration,
           resolution,
           mode,
-          aspect_ratio: aspectRatio,
+          ...(sourceImage ? { image: sourceImage } : { aspect_ratio: aspectRatio }),
         },
       }),
       signal: AbortSignal.timeout(60_000),

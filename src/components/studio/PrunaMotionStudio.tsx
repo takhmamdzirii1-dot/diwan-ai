@@ -1,22 +1,30 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Clapperboard, Download, FolderOpen, LoaderCircle, RotateCcw } from 'lucide-react';
+import { Clapperboard, Download, FolderOpen, ImagePlus, LoaderCircle, RotateCcw, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
-import type { PrunaVideoMode, PrunaVideoResolution } from '@/lib/ai/pruna-video-request';
+import {
+  PRUNA_SOURCE_IMAGE_MAX_BYTES,
+  PRUNA_SOURCE_IMAGE_TYPES,
+  type PrunaVideoMode,
+  type PrunaVideoResolution,
+  type PrunaVideoSourceMode,
+} from '@/lib/ai/pruna-video-request';
 import type { ModelAspectRatio, ModelVideoDuration, VideoModelCapabilities } from '@/lib/models/capabilities';
 import { isModelSelectable, type StudioRuntimeModelDefinition } from '@/src/config/studio-registry';
 import { ModelSelector, type ChatModelOption } from '@/components/ui/claude-style-chat-input';
-import { PrimaryButton, StateBlock } from './AppShell';
+import { PrimaryButton, Segmented, StateBlock } from './AppShell';
 import CreationWorkspace from './CreationWorkspace';
 import { downloadPrivateMedia } from './media-repository';
 
 export type VideoRequestDraft = {
   prompt: string;
   modelId: string;
+  sourceMode: PrunaVideoSourceMode;
+  sourceImage?: File;
   duration: ModelVideoDuration;
-  aspectRatio: ModelAspectRatio;
+  aspectRatio?: ModelAspectRatio;
   resolution: PrunaVideoResolution;
   mode: PrunaVideoMode;
 };
@@ -46,12 +54,16 @@ export default function PrunaMotionStudio({
   const modelsT = useTranslations('studio.models');
   const libraryT = useTranslations('studio.library');
   const submitGuardRef = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [sourceMode, setSourceMode] = useState<PrunaVideoSourceMode>('text');
   const [prompt, setPrompt] = useState('');
   const [modelId, setModelId] = useState(models.find(isModelSelectable)?.id ?? models[0]?.id ?? '');
   const [duration, setDuration] = useState<ModelVideoDuration | ''>('');
   const [aspectRatio, setAspectRatio] = useState<ModelAspectRatio | ''>('');
   const [resolution, setResolution] = useState<PrunaVideoResolution>('768p');
   const [generationMode, setGenerationMode] = useState<PrunaVideoMode>('speed');
+  const [sourceImage, setSourceImage] = useState<File | null>(null);
+  const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<VideoGenerationResult | null>(null);
@@ -65,26 +77,63 @@ export default function PrunaMotionStudio({
   }));
   const selectedModel = models.find((model) => model.id === modelId);
   const capabilities = selectedModel?.capabilities as VideoModelCapabilities | undefined;
+  const supportedSourceModes: PrunaVideoSourceMode[] = capabilities
+    ? [capabilities.textToVideo ? 'text' : null, capabilities.imageToVideo ? 'image' : null]
+      .filter((value): value is PrunaVideoSourceMode => Boolean(value))
+    : [];
+  const sourceModeSupported = sourceMode === 'text'
+    ? capabilities?.textToVideo
+    : capabilities?.imageToVideo;
   const configurationValid = Boolean(
     onGenerate
     && selectedModel
     && isModelSelectable(selectedModel)
-    && capabilities?.textToVideo
+    && sourceModeSupported
     && duration
     && capabilities.durations.includes(duration)
-    && aspectRatio
-    && capabilities.aspectRatios.includes(aspectRatio)
+    && (sourceMode === 'image'
+      || Boolean(aspectRatio && capabilities.aspectRatios.includes(aspectRatio)))
   );
-  const generationAvailable = configurationValid && Boolean(prompt.trim()) && !isSubmitting;
+  const generationAvailable = configurationValid
+    && Boolean(prompt.trim())
+    && (sourceMode !== 'image' || Boolean(sourceImage))
+    && !isSubmitting;
+
+  useEffect(() => () => {
+    if (sourceImageUrl) URL.revokeObjectURL(sourceImageUrl);
+  }, [sourceImageUrl]);
+
+  const clearSourceImage = () => {
+    if (sourceImageUrl) URL.revokeObjectURL(sourceImageUrl);
+    setSourceImage(null);
+    setSourceImageUrl(null);
+  };
+
+  const chooseSourceImage = (file?: File) => {
+    if (!file) return;
+    if (!PRUNA_SOURCE_IMAGE_TYPES.includes(file.type as (typeof PRUNA_SOURCE_IMAGE_TYPES)[number])
+      || file.size === 0 || file.size > PRUNA_SOURCE_IMAGE_MAX_BYTES) {
+      setError(t('errors.reference'));
+      return;
+    }
+    if (sourceImageUrl) URL.revokeObjectURL(sourceImageUrl);
+    setSourceImage(file);
+    setSourceImageUrl(URL.createObjectURL(file));
+    setError(null);
+  };
 
   useEffect(() => {
     if (!capabilities) return;
+    setSourceMode((current) => supportedSourceModes.includes(current)
+      ? current
+      : (supportedSourceModes[0] ?? 'text'));
     setDuration((current) => capabilities.durations.includes(current as ModelVideoDuration)
       ? current
       : (capabilities.durations[0] ?? ''));
     setAspectRatio((current) => capabilities.aspectRatios.includes(current as ModelAspectRatio)
       ? current
       : (capabilities.aspectRatios[0] ?? ''));
+    if (!capabilities.imageToVideo) clearSourceImage();
   }, [modelId, capabilities]);
 
   const buildDraft = () => {
@@ -92,13 +141,20 @@ export default function PrunaMotionStudio({
       setError(t('errors.prompt'));
       return null;
     }
-    if (!configurationValid || !duration || !aspectRatio) {
+    if (!configurationValid || !duration) {
       setError(t('errors.model'));
       return null;
     }
-    return {
-      prompt: prompt.trim(), modelId, duration, aspectRatio, resolution, mode: generationMode,
-    } satisfies VideoRequestDraft;
+    if (sourceMode === 'image' && !sourceImage) {
+      setError(t('errors.referenceRequired'));
+      return null;
+    }
+    const draft: VideoRequestDraft = {
+      prompt: prompt.trim(), modelId, sourceMode, duration, resolution, mode: generationMode,
+    };
+    if (sourceMode === 'image' && sourceImage) draft.sourceImage = sourceImage;
+    if (sourceMode === 'text' && aspectRatio) draft.aspectRatio = aspectRatio;
+    return draft;
   };
 
   const generate = async (draft: VideoRequestDraft) => {
@@ -144,11 +200,45 @@ export default function PrunaMotionStudio({
     controls={<>
       <div className="studio-creation-header mb-6"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">{t('eyebrow')}</p><h1 className="mt-2 text-2xl font-semibold tracking-tight text-white">{t('title')}</h1><p className="mt-2 max-w-sm text-[13px] leading-relaxed text-[var(--studio-text-secondary)]">{t('description')}</p></div>
       <form className="studio-creation-form space-y-5" onSubmit={submitDraft} noValidate>
+        {supportedSourceModes.length > 1 && <Segmented
+          value={sourceMode}
+          onChange={(value) => {
+            setSourceMode(value);
+            if (value === 'text') clearSourceImage();
+            setError(null);
+          }}
+          layoutId="pruna-video-source-mode"
+          label={t('modeLabel')}
+          options={supportedSourceModes.map((value) => ({
+            value,
+            label: t(value === 'text' ? 'textToVideo' : 'imageToVideo'),
+          }))}
+          className="w-full [&>button]:flex-1"
+        />}
         <div className="space-y-2"><FieldLabel htmlFor="video-prompt">{t('prompt')}</FieldLabel><textarea id="video-prompt" value={prompt} onChange={(event) => { setPrompt(event.target.value); setError(null); }} rows={5} placeholder={t('promptPlaceholder')} className="studio-creation-prompt w-full resize-y rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3.5 py-3 text-[14px] leading-relaxed text-white outline-none transition-[border-color,background-color] duration-150 placeholder:text-white/40 hover:bg-[var(--studio-hover)] focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/40" /></div>
+        {sourceMode === 'image' && capabilities?.imageToVideo && <div className="space-y-2">
+          <FieldLabel>{t('sourceImage')}</FieldLabel>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={PRUNA_SOURCE_IMAGE_TYPES.join(',')}
+            aria-label={t('chooseReference')}
+            className="sr-only"
+            onChange={(event) => {
+              chooseSourceImage(event.target.files?.[0]);
+              event.target.value = '';
+            }}
+          />
+          {sourceImageUrl ? <div className="flex items-center gap-3 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] p-2.5">
+            <img src={sourceImageUrl} alt={t('selectedReference')} className="h-14 w-14 rounded-lg object-cover" />
+            <div className="min-w-0 flex-1"><button type="button" onClick={() => fileInputRef.current?.click()} className="text-[12.5px] font-medium text-white/85 hover:text-white">{t('replaceReference')}</button></div>
+            <button type="button" onClick={clearSourceImage} aria-label={t('removeReference')} className="flex h-9 w-9 items-center justify-center rounded-lg text-white/55 transition-[color,background-color] duration-150 hover:bg-[var(--studio-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"><X className="h-4 w-4" /></button>
+          </div> : <button type="button" onClick={() => fileInputRef.current?.click()} className="studio-creation-reference flex min-h-20 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--studio-border)] bg-[var(--studio-recessed)] text-[12.5px] font-medium text-[var(--studio-text-secondary)] transition-[color,background-color,border-color] duration-150 hover:border-[var(--studio-border-strong)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] motion-reduce:transition-none"><ImagePlus className="h-4 w-4" />{t('addSourceImage')}</button>}
+        </div>}
         <div className="space-y-2"><FieldLabel>{t('model')}</FieldLabel><ModelSelector models={modelOptions} selectedModel={modelId} onSelect={setModelId} dropdownPosition="bottom" menuLabel={modelsT('videoMenuLabel')} emptyLabel={modelsT('noModels')} /></div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {capabilities && capabilities.durations.length > 0 && <label className="space-y-2"><FieldLabel htmlFor="video-duration">{t('duration')}</FieldLabel><select id="video-duration" value={duration} onChange={(event) => setDuration(Number(event.target.value) as ModelVideoDuration)} className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white">{capabilities.durations.map((value) => <option key={value} value={value}>{t('durationSeconds', { value })}</option>)}</select></label>}
-          {capabilities && capabilities.aspectRatios.length > 0 && <label className="space-y-2"><FieldLabel htmlFor="video-aspect">{t('aspectRatio')}</FieldLabel><select id="video-aspect" value={aspectRatio} onChange={(event) => setAspectRatio(event.target.value as ModelAspectRatio)} className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white">{capabilities.aspectRatios.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>}
+          {sourceMode === 'text' && capabilities && capabilities.aspectRatios.length > 0 && <label className="space-y-2"><FieldLabel htmlFor="video-aspect">{t('aspectRatio')}</FieldLabel><select id="video-aspect" value={aspectRatio} onChange={(event) => setAspectRatio(event.target.value as ModelAspectRatio)} className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white">{capabilities.aspectRatios.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>}
           <div className="space-y-2"><FieldLabel>{executionT('resolution')}</FieldLabel>{options(['480p', '768p'] as const, resolution, (value) => setResolution(value as PrunaVideoResolution), (value) => value)}</div>
           <div className="space-y-2"><FieldLabel>{t('modeLabel')}</FieldLabel>{options(['speed', 'quality'] as const, generationMode, (value) => setGenerationMode(value as PrunaVideoMode), (value) => executionT(value))}</div>
         </div>

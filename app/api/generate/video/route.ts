@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { createHash } from 'node:crypto';
 import { createClient } from '@/src/lib/supabase/server';
 import {
+  PRUNA_SOURCE_IMAGE_MAX_BYTES,
   prunaProviderCostMinor,
   validatePrunaVideoRequest,
   VideoRequestError,
@@ -28,6 +30,8 @@ import { persistGeneratedMedia } from '@/lib/ai/library-media';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
+const MAX_JSON_BYTES = 32_000;
+const MAX_MULTIPART_BYTES = PRUNA_SOURCE_IMAGE_MAX_BYTES + 64 * 1024;
 
 function safeResponseCode(code: string) {
   if (/INSUFFICIENT_CREDITS/.test(code)) return 'INSUFFICIENT_CREDITS';
@@ -59,11 +63,27 @@ async function authenticatedUser(request: Request) {
 export async function POST(request: Request) {
   const user = await authenticatedUser(request);
   if (!user) return NextResponse.json({ error: 'AUTHENTICATION_REQUIRED' }, { status: 401 });
-  if (Number(request.headers.get('content-length') ?? 0) > 32_000) {
+  const multipart = request.headers.get('content-type')?.toLowerCase().includes('multipart/form-data') ?? false;
+  const requestLimit = multipart ? MAX_MULTIPART_BYTES : MAX_JSON_BYTES;
+  if (Number(request.headers.get('content-length') ?? 0) > requestLimit) {
     return NextResponse.json({ error: 'REQUEST_TOO_LARGE' }, { status: 413 });
   }
-  const body = await request.json().catch(() => null);
-  if (!body || JSON.stringify(body).length > 32_000) {
+  let body: Record<string, unknown> | null = null;
+  let sourceImage: FormDataEntryValue | null = null;
+  if (multipart) {
+    const form = await request.formData().catch(() => null);
+    if (form) {
+      body = {};
+      for (const key of ['prompt', 'modelId', 'sourceMode', 'duration', 'resolution', 'mode', 'operationId']) {
+        const value = form.get(key);
+        if (typeof value === 'string') body[key] = value;
+      }
+      sourceImage = form.get('sourceImage');
+    }
+  } else {
+    body = await request.json().catch(() => null) as Record<string, unknown> | null;
+  }
+  if (!body || (!multipart && JSON.stringify(body).length > MAX_JSON_BYTES)) {
     return NextResponse.json({ error: 'INVALID_VIDEO_REQUEST' }, { status: 400 });
   }
 
@@ -78,7 +98,11 @@ export async function POST(request: Request) {
 
   let input;
   try {
-    input = validatePrunaVideoRequest(body, runtimeModel.capabilities as VideoModelCapabilities);
+    input = validatePrunaVideoRequest(
+      body,
+      runtimeModel.capabilities as VideoModelCapabilities,
+      sourceImage
+    );
   } catch (cause) {
     const code = cause instanceof VideoRequestError ? cause.code : 'INVALID_VIDEO_REQUEST';
     return NextResponse.json({ error: code }, { status: 400 });
@@ -101,11 +125,16 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: 'INVALID_IDEMPOTENCY_KEY' }, { status: 400 });
   }
+  const sourceImageHash = input.sourceImage
+    ? createHash('sha256').update(new Uint8Array(await input.sourceImage.arrayBuffer())).digest('hex')
+    : null;
   const payloadHash = hashGenerationPayload({
     modelKey: runtimeModel.key,
     prompt: input.prompt,
+    sourceMode: input.sourceMode,
+    sourceImageHash,
     duration: input.duration,
-    aspectRatio: input.aspectRatio,
+    ...(input.aspectRatio ? { aspectRatio: input.aspectRatio } : {}),
     resolution: input.resolution,
     mode: input.mode,
   });
@@ -207,9 +236,10 @@ export async function POST(request: Request) {
       actualUsage: {
         provider: route.providerId,
         providerModel: route.providerModelId,
+        sourceMode: input.sourceMode,
         duration: input.duration,
         resolution: input.resolution,
-        aspectRatio: input.aspectRatio,
+        ...(input.aspectRatio ? { aspectRatio: input.aspectRatio } : {}),
         mode: input.mode,
         latencyMs,
         delivery: result.delivery,

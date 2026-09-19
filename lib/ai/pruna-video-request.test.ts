@@ -28,6 +28,7 @@ test('accepts only the supported Pruna text-to-video contract', () => {
   }, capabilities), {
     prompt: 'A quiet monochrome product shot',
     modelId: 'vantra-p-video-2-pro',
+    sourceMode: 'text',
     duration: 5,
     aspectRatio: '16:9',
     resolution: '480p',
@@ -35,6 +36,53 @@ test('accepts only the supported Pruna text-to-video contract', () => {
   });
   assert.equal(prunaProviderCostMinor({ duration: 5, resolution: '480p', mode: 'speed' }), 10);
   assert.equal(prunaProviderCostMinor({ duration: 5, resolution: '768p', mode: 'speed' }), null);
+});
+
+test('accepts image-to-video only with a valid source and omits aspect ratio', () => {
+  const sourceImage = new File([new Uint8Array([1, 2, 3])], 'source.png', {
+    type: 'image/png',
+  });
+  const result = validatePrunaVideoRequest({
+    prompt: 'Bring this still frame to life',
+    modelId: 'vantra-p-video-2-pro',
+    sourceMode: 'image',
+    duration: 5,
+    resolution: '480p',
+    mode: 'speed',
+  }, { ...capabilities, imageToVideo: true }, sourceImage);
+  assert.equal(result.sourceMode, 'image');
+  assert.equal(result.sourceImage, sourceImage);
+  assert.equal(result.aspectRatio, undefined);
+  assert.throws(
+    () => validatePrunaVideoRequest({
+      prompt: 'Bring this still frame to life',
+      modelId: 'vantra-p-video-2-pro',
+      sourceMode: 'image',
+      aspectRatio: '16:9',
+    }, { ...capabilities, imageToVideo: true }, sourceImage),
+    (error) => error instanceof VideoRequestError && error.code === 'UNSUPPORTED_VIDEO_PARAMETER'
+  );
+});
+
+test('requires an allowlisted source image for image-to-video', () => {
+  assert.throws(
+    () => validatePrunaVideoRequest({
+      prompt: 'Bring this still frame to life',
+      modelId: 'vantra-p-video-2-pro',
+      sourceMode: 'image',
+    }, { ...capabilities, imageToVideo: true }),
+    (error) => error instanceof VideoRequestError && error.code === 'INVALID_SOURCE_IMAGE'
+  );
+  assert.throws(
+    () => validatePrunaVideoRequest({
+      prompt: 'Bring this still frame to life',
+      modelId: 'vantra-p-video-2-pro',
+      sourceMode: 'image',
+    }, { ...capabilities, imageToVideo: true }, new File(['no'], 'source.svg', {
+      type: 'image/svg+xml',
+    })),
+    (error) => error instanceof VideoRequestError && error.code === 'INVALID_SOURCE_IMAGE'
+  );
 });
 
 test('rejects image, negative prompt, camera motion, and unsupported controls', () => {

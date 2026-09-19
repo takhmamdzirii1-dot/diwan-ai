@@ -407,10 +407,36 @@ export default function StudioDashboard({
       openAuthModal('signin');
       throw new Error('AUTHENTICATION_REQUIRED');
     }
+    const operationId = crypto.randomUUID();
+    let body: BodyInit;
+    let headers: HeadersInit | undefined;
+    if (draft.sourceMode === 'image' && draft.sourceImage) {
+      const form = new FormData();
+      form.set('prompt', draft.prompt);
+      form.set('modelId', draft.modelId);
+      form.set('sourceMode', 'image');
+      form.set('duration', String(draft.duration));
+      form.set('resolution', draft.resolution);
+      form.set('mode', draft.mode);
+      form.set('operationId', operationId);
+      form.set('sourceImage', draft.sourceImage);
+      body = form;
+    } else {
+      headers = { 'Content-Type': 'application/json' };
+      body = JSON.stringify({
+        prompt: draft.prompt,
+        modelId: draft.modelId,
+        duration: draft.duration,
+        aspectRatio: draft.aspectRatio,
+        resolution: draft.resolution,
+        mode: draft.mode,
+        operationId,
+      });
+    }
     const response = await fetch('/api/generate/video', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...draft, operationId: crypto.randomUUID() }),
+      headers,
+      body,
     });
     const payload = await response.json().catch(() => null) as {
       error?: string;
