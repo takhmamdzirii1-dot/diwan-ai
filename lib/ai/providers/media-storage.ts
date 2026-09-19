@@ -216,8 +216,9 @@ class B2S3MediaStorage implements PermanentMediaStorage {
       ...Object.entries(responseParameters ?? {}),
     ]);
     const canonicalQuery = [...parameters.entries()]
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, value]) => `${encode(key)}=${encode(value)}`)
+      .map(([key, value]) => [encode(key), encode(value)] as const)
+      .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
+      .map(([key, value]) => `${key}=${value}`)
       .join('&');
     const canonicalRequest = [
       method,
