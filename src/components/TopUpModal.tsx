@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useLocale, useTranslations } from 'next-intl';
 import { ArrowRight, Banknote, Building2, CheckCircle2, Clock3, CreditCard, FileUp, Loader2, Wallet, X } from 'lucide-react';
 import type { ManualTransferDestination, PaymentMethod, PaymentOrder, PaymentPlan } from '@/lib/payments/types';
+import { isPurchasablePlan } from '@/lib/payments/plan-catalog';
 
 export interface TopUpPlan { id: string; }
 export interface TopUpModalProps { isOpen: boolean; onClose: () => void; plan?: TopUpPlan; onSuccess?: () => void; }
@@ -33,7 +34,7 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
     fetch('/api/payments/plans').then(async (response) => {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? 'PAYMENT_CATALOG_UNAVAILABLE');
-      const nextPlans = (body.plans ?? []) as PaymentPlan[];
+      const nextPlans = ((body.plans ?? []) as PaymentPlan[]).filter(isPurchasablePlan);
       setPlans(nextPlans);
       setSelectedPlanId(nextPlans.find((item) => item.id === plan?.id)?.id ?? nextPlans.find((item) => item.featured)?.id ?? nextPlans[0]?.id ?? '');
     }).catch((cause) => setError(translateError(cause instanceof Error ? cause.message : 'PAYMENT_CATALOG_UNAVAILABLE')))

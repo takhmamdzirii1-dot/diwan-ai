@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { formatDa } from '../content/marketingFacts';
 import type { Locale } from '../../i18n/routing';
 import type { PaymentPlan } from '@/lib/payments/types';
+import { isPublicCatalogPlan } from '@/lib/payments/plan-catalog';
 
 interface LocalizedPricingTier {
   name: string;
@@ -43,13 +44,12 @@ export default function GlobalPricing({ onGetStarted }: { onGetStarted: (planId?
   }, []);
 
   const cards = useMemo<PricingCard[]>(() => {
+    const publicPlans = plans.filter(isPublicCatalogPlan);
+    const byCode = new Map(publicPlans.map((plan) => [plan.planCode, plan]));
     return [
-      { tier: tiers[0], plan: null, free: true },
-      ...Array.from({ length: 2 }, (_, index) => ({
-        tier: tiers[index + 1] ?? tiers[tiers.length - 1],
-        plan: plans[index] ?? null,
-        free: false,
-      })),
+      { tier: tiers[0], plan: byCode.get('free') ?? null, free: true },
+      { tier: tiers[1] ?? tiers[tiers.length - 1], plan: byCode.get('pro') ?? null, free: false },
+      { tier: tiers[2] ?? tiers[tiers.length - 1], plan: byCode.get('max') ?? null, free: false },
     ];
   }, [plans, tiers]);
 
@@ -90,9 +90,9 @@ export default function GlobalPricing({ onGetStarted }: { onGetStarted: (planId?
       <div className="mx-auto mt-14 grid max-w-[1240px] grid-cols-1 items-stretch gap-5 px-6 md:mt-[72px] md:grid-cols-3 lg:gap-6">
         {cards.map(({ tier, plan, free }, i) => {
           const recommended = plan?.featured ?? (!free && i === 1);
-          const localPaymentAvailable = Boolean(plan);
+          const localPaymentAvailable = Boolean(plan && plan.active && !free);
           const unavailable = !free && !plan;
-          const features = plan
+          const features = plan && !free
             ? [t('creditsValue', { count: plan.unifiedCredits.toLocaleString(locale) }), ...tier.features.slice(1)]
             : tier.features;
           return (
@@ -122,7 +122,7 @@ export default function GlobalPricing({ onGetStarted }: { onGetStarted: (planId?
               <span dir="ltr" className="text-[42px] font-bold leading-none tracking-[-0.045em] text-[#f7f7f7] lg:text-[46px]">
                 {free ? formatDa(0, locale) : plan ? formatDa(plan.priceDzd, locale) : '—'}
               </span>
-              {plan?.kind === 'subscription' && <span className="text-[12px] font-medium text-white/35">{t('monthlyCadence')}</span>}
+              {plan?.kind === 'subscription' && !free && <span className="text-[12px] font-medium text-white/35">{t('monthlyCadence')}</span>}
             </div>
             {localPaymentAvailable && (
               <p className="mt-3 text-[11px] font-medium text-white/40">{t('localPayment')}</p>
@@ -146,7 +146,7 @@ export default function GlobalPricing({ onGetStarted }: { onGetStarted: (planId?
             <div className="mt-8 border-t border-white/[0.06] pt-6">
               <button
                 type="button"
-                onClick={() => onGetStarted(plan?.id)}
+                onClick={() => onGetStarted(free ? undefined : plan?.id)}
                 disabled={unavailable}
                 className={cn(
                   'h-12 w-full cursor-pointer rounded-xl text-[13.5px] font-semibold transition-[background-color,color,border-color,transform] duration-200 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505] disabled:cursor-not-allowed disabled:opacity-50',

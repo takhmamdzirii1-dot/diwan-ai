@@ -38,6 +38,7 @@ export type ManualTransferDestination = {
 export type PaymentPlan = {
   id: string;
   slug: string;
+  planCode: string;
   name: string;
   description: string | null;
   kind: PaymentOrderKind;
@@ -46,4 +47,6 @@ export type PaymentPlan = {
   active: boolean;
   displayOrder: number;
   featured: boolean;
+  accessPeriodDays: number | null;
+  publicVisible: boolean;
 };
