@@ -23,11 +23,14 @@ type PricingCard = {
   free: boolean;
 };
 
+type OutcomeEstimate = { min: number; max: number } | null;
+
 export default function GlobalPricing({ onGetStarted }: { onGetStarted: (planId?: string) => void }) {
   const t = useTranslations('pricing');
   const locale = useLocale() as Locale;
   const tiers = t.raw('tiers') as LocalizedPricingTier[];
   const [plans, setPlans] = useState<PaymentPlan[]>([]);
+  const [proEstimates, setProEstimates] = useState<{ image: OutcomeEstimate; video: OutcomeEstimate }>({ image: null, video: null });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,7 +39,13 @@ export default function GlobalPricing({ onGetStarted }: { onGetStarted: (planId?
       .then(async (response) => {
         const body = await response.json();
         if (!response.ok || !Array.isArray(body.plans)) throw new Error('catalog unavailable');
-        if (active) setPlans(body.plans);
+        if (active) {
+          setPlans(body.plans);
+          setProEstimates({
+            image: body.proOutcomeEstimates?.image ?? null,
+            video: body.proOutcomeEstimates?.video ?? null,
+          });
+        }
       })
       .catch(() => { if (active) setPlans([]); })
       .finally(() => { if (active) setLoading(false); });
@@ -92,9 +101,17 @@ export default function GlobalPricing({ onGetStarted }: { onGetStarted: (planId?
           const recommended = plan?.featured ?? (!free && i === 1);
           const localPaymentAvailable = Boolean(plan && plan.active && !free);
           const unavailable = !free && !plan;
-          const features = plan && !free
+          const catalogFeatures = plan && !free
             ? [t('creditsValue', { count: plan.unifiedCredits.toLocaleString(locale) }), ...tier.features.slice(1)]
             : tier.features;
+          const features = plan?.planCode === 'pro'
+            ? [
+                catalogFeatures[0],
+                catalogFeatures[1],
+                ...(proEstimates.image ? [t('imageEstimate', proEstimates.image)] : []),
+                ...(proEstimates.video ? [t('videoEstimate', proEstimates.video)] : []),
+              ]
+            : catalogFeatures;
           return (
           <motion.div
             key={plan?.id ?? `${free ? 'free' : 'catalog-slot'}-${i}`}

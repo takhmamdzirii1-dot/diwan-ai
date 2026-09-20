@@ -106,22 +106,24 @@
   },
   "pricing": {
     "label": "Tarifs",
-    "title": "Une plateforme. Des Crédits VANTRA unifiés.",
+    "title": "Une plateforme. Des Crédits VANTRA.",
     "subtitle": "Utilisez le Chat, l’Image, la Vidéo et les modèles compatibles sans multiplier les services.",
     "recommended": "Recommandé",
     "catalogLoading": "Chargement des formules disponibles",
     "catalogPending": "Aucune formule payante n’est disponible pour le moment. Le propriétaire peut publier les formules depuis l’administration VANTRA.",
     "catalogPendingShort": "Le tarif sera affiché ici dès que la formule sera disponible.",
     "catalogPendingAction": "Bientôt disponible",
-    "creditsValue": "{count} Crédits VANTRA unifiés",
+    "creditsValue": "{count} Crédits VANTRA",
     "catalogPlanDescription": "Une formule VANTRA configurée par le propriétaire.",
     "creditsIncluded": "Crédits VANTRA unifiés",
     "selectPlan": "Choisir cette formule",
     "localPayment": "Un paiement. 30 jours. Sans renouvellement automatique.",
     "monthlyCadence": "/ 30 jours",
+    "imageEstimate": "Environ {min} à {max} images aux tarifs actuels des modèles",
+    "videoEstimate": "Environ {min} à {max} vidéos aux tarifs actuels des modèles",
     "tiers": [
-      { "name": "Gratuit", "blurb": "Essayez VANTRA", "cta": "Commencer avec VANTRA", "features": ["Chat, Image et Vidéo", "Modèles standard", "Crédits mensuels de démarrage", "Limites de génération standard", "1 génération active"] },
-      { "name": "Pro", "blurb": "Pour les créateurs réguliers", "cta": "Choisir Pro", "features": ["Chat, Image et Vidéo", "Accès aux modèles avancés", "Plus de crédits mensuels", "Limites de génération supérieures", "Générations prioritaires"] },
+      { "name": "Gratuit", "blurb": "Un essai unique avec une sélection de modèles performants", "cta": "Commencer avec VANTRA", "features": ["5 images + 1 vidéo", "Essai unique", "Sélection de modèles performants", "Aucun portefeuille Média récurrent"] },
+      { "name": "Pro", "blurb": "30 jours d’accès créatif", "cta": "Choisir Pro", "features": ["3 000 Crédits VANTRA", "Modèles Core + Premium/Advanced"] },
       { "name": "Max", "blurb": "Pour un usage intensif", "cta": "Choisir Max", "features": ["Chat, Image et Vidéo", "Accès aux modèles premium", "Le plus de crédits mensuels", "Limites de génération maximales", "Priorité de génération maximale"] }
     ]
   },

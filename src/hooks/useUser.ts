@@ -8,6 +8,7 @@ import { normalizeModelPlanCode, type ModelPlanCode } from '@/lib/models/plan-en
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 export type BalanceStatus = 'loading' | 'ready' | 'unavailable';
 export type PlanStatus = 'loading' | 'ready' | 'unavailable';
+export type PlanAccessState = 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED' | null;
 
 interface UserSnapshot {
   user: User | null;
@@ -15,8 +16,16 @@ interface UserSnapshot {
   status: AuthStatus;
   balance: number | null;
   balanceStatus: BalanceStatus;
+  subscriptionBalance: number | null;
+  purchasedBalance: number | null;
+  freeImageRemaining: number | null;
+  freeVideoRemaining: number | null;
+  liteVideoRemaining: number | null;
   planName: string | null;
   planCode: ModelPlanCode;
+  paidPlanCode: ModelPlanCode | null;
+  planEndsAt: string | null;
+  planAccessState: PlanAccessState;
   planStatus: PlanStatus;
 }
 
@@ -38,8 +47,16 @@ const serverSnapshot: UserSnapshot = {
   status: 'loading',
   balance: null,
   balanceStatus: 'loading',
+  subscriptionBalance: null,
+  purchasedBalance: null,
+  freeImageRemaining: null,
+  freeVideoRemaining: null,
+  liteVideoRemaining: null,
   planName: null,
   planCode: 'free',
+  paidPlanCode: null,
+  planEndsAt: null,
+  planAccessState: null,
   planStatus: 'loading',
 };
 
@@ -64,7 +81,7 @@ async function fetchVerifiedBalance(userId: string, force = false) {
   try {
     const { data, error } = await supabase
       .from('credits')
-      .select('balance')
+      .select('balance,subscription_balance,purchased_balance,free_image_remaining,free_video_remaining,lite_video_remaining')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -73,14 +90,41 @@ async function fetchVerifiedBalance(userId: string, force = false) {
     const value = data?.balance;
     const parsed = typeof value === 'number' ? value : Number(value);
     if (error || value == null || !Number.isFinite(parsed)) {
-      emit({ ...snapshot, balance: null, balanceStatus: 'unavailable' });
+      emit({
+        ...snapshot,
+        balance: null,
+        balanceStatus: 'unavailable',
+        subscriptionBalance: null,
+        purchasedBalance: null,
+        freeImageRemaining: null,
+        freeVideoRemaining: null,
+        liteVideoRemaining: null,
+      });
       return;
     }
 
-    emit({ ...snapshot, balance: parsed, balanceStatus: 'ready' });
+    emit({
+      ...snapshot,
+      balance: parsed,
+      balanceStatus: 'ready',
+      subscriptionBalance: Number(data.subscription_balance ?? 0),
+      purchasedBalance: Number(data.purchased_balance ?? 0),
+      freeImageRemaining: Number(data.free_image_remaining ?? 0),
+      freeVideoRemaining: Number(data.free_video_remaining ?? 0),
+      liteVideoRemaining: Number(data.lite_video_remaining ?? 0),
+    });
   } catch {
     if (requestRevision === balanceRevision && snapshot.user?.id === userId) {
-      emit({ ...snapshot, balance: null, balanceStatus: 'unavailable' });
+      emit({
+        ...snapshot,
+        balance: null,
+        balanceStatus: 'unavailable',
+        subscriptionBalance: null,
+        purchasedBalance: null,
+        freeImageRemaining: null,
+        freeVideoRemaining: null,
+        liteVideoRemaining: null,
+      });
     }
   } finally {
     if (balanceFetchUserId === userId) balanceFetchUserId = null;
@@ -91,29 +135,44 @@ async function fetchCurrentPlan(userId: string) {
   if (planFetchUserId === userId) return;
   planFetchUserId = userId;
   const requestRevision = ++planRevision;
-  emit({ ...snapshot, planName: null, planCode: 'free', planStatus: 'loading' });
+  emit({
+    ...snapshot,
+    planName: null,
+    planCode: 'free',
+    paidPlanCode: null,
+    planEndsAt: null,
+    planAccessState: null,
+    planStatus: 'loading',
+  });
 
   try {
     const { data, error } = await supabase
-      .rpc('get_current_model_plan')
-      .returns<{ plan_code: string; plan_name: string }[]>()
+      .rpc('get_user_plan_access')
+      .returns<{ plan_code: string; plan_name: string; ends_at: string | null; access_state: string }[]>()
       .maybeSingle();
 
     if (requestRevision !== planRevision || snapshot.user?.id !== userId) return;
     if (error) {
-      emit({ ...snapshot, planName: null, planCode: 'free', planStatus: 'unavailable' });
+      emit({ ...snapshot, planName: null, planCode: 'free', paidPlanCode: null, planEndsAt: null, planAccessState: null, planStatus: 'unavailable' });
       return;
     }
 
+    const accessState = data?.access_state === 'ACTIVE' || data?.access_state === 'EXPIRING_SOON' || data?.access_state === 'EXPIRED'
+      ? data.access_state
+      : null;
+    const paidPlanCode = data ? normalizeModelPlanCode(data.plan_code) : null;
     emit({
       ...snapshot,
-      planName: data?.plan_name ?? null,
-      planCode: data ? normalizeModelPlanCode(data.plan_code) : 'free',
+      planName: data && accessState !== 'EXPIRED' ? data.plan_name : null,
+      planCode: data && accessState !== 'EXPIRED' ? paidPlanCode ?? 'free' : 'free',
+      paidPlanCode,
+      planEndsAt: data?.ends_at ?? null,
+      planAccessState: accessState,
       planStatus: 'ready',
     });
   } catch {
     if (requestRevision === planRevision && snapshot.user?.id === userId) {
-      emit({ ...snapshot, planName: null, planCode: 'free', planStatus: 'unavailable' });
+      emit({ ...snapshot, planName: null, planCode: 'free', paidPlanCode: null, planEndsAt: null, planAccessState: null, planStatus: 'unavailable' });
     }
   } finally {
     if (planFetchUserId === userId) planFetchUserId = null;
@@ -132,8 +191,16 @@ function applySession(session: Session | null) {
       status: 'unauthenticated',
       balance: null,
       balanceStatus: 'unavailable',
+      subscriptionBalance: null,
+      purchasedBalance: null,
+      freeImageRemaining: null,
+      freeVideoRemaining: null,
+      liteVideoRemaining: null,
       planName: null,
       planCode: 'free',
+      paidPlanCode: null,
+      planEndsAt: null,
+      planAccessState: null,
       planStatus: 'unavailable',
     });
     return;
@@ -146,8 +213,16 @@ function applySession(session: Session | null) {
     status: 'authenticated',
     balance: isSameUser ? snapshot.balance : null,
     balanceStatus: isSameUser ? snapshot.balanceStatus : 'loading',
+    subscriptionBalance: isSameUser ? snapshot.subscriptionBalance : null,
+    purchasedBalance: isSameUser ? snapshot.purchasedBalance : null,
+    freeImageRemaining: isSameUser ? snapshot.freeImageRemaining : null,
+    freeVideoRemaining: isSameUser ? snapshot.freeVideoRemaining : null,
+    liteVideoRemaining: isSameUser ? snapshot.liteVideoRemaining : null,
     planName: isSameUser ? snapshot.planName : null,
     planCode: isSameUser ? snapshot.planCode : 'free',
+    paidPlanCode: isSameUser ? snapshot.paidPlanCode : null,
+    planEndsAt: isSameUser ? snapshot.planEndsAt : null,
+    planAccessState: isSameUser ? snapshot.planAccessState : null,
     planStatus: isSameUser ? snapshot.planStatus : 'loading',
   });
 

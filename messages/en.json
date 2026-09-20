@@ -109,22 +109,24 @@
   },
   "pricing": {
     "label": "Pricing",
-    "title": "One platform. Unified Credits.",
+    "title": "One platform. VANTRA Credits.",
     "subtitle": "Use Chat, Image, Video and supported AI models without managing separate services.",
     "recommended": "Recommended",
     "catalogLoading": "Loading available plans",
     "catalogPending": "No paid plan is available yet. The owner can publish plans from the VANTRA Admin Dashboard.",
     "catalogPendingShort": "Pricing will be published here once the plan is available.",
     "catalogPendingAction": "Not available yet",
-    "creditsValue": "{count} Unified Credits",
+    "creditsValue": "{count} VANTRA Credits",
     "catalogPlanDescription": "A VANTRA plan configured by the owner.",
     "creditsIncluded": "Unified Credits",
     "selectPlan": "Select plan",
     "localPayment": "One payment. 30 days. No automatic renewal.",
     "monthlyCadence": "/ 30 days",
+    "imageEstimate": "About {min}–{max} image generations at current model prices",
+    "videoEstimate": "About {min}–{max} video generations at current model prices",
     "tiers": [
-      { "name": "Free", "blurb": "Try VANTRA", "cta": "Start using VANTRA", "features": ["Chat, Image & Video", "Standard models", "Starter monthly credits", "Standard generation limits", "1 active generation"] },
-      { "name": "Pro", "blurb": "For regular creators", "cta": "Choose Pro", "features": ["Chat, Image & Video", "Advanced model access", "More monthly credits", "Higher generation limits", "Priority generations"] },
+      { "name": "Free", "blurb": "A one-time trial with strong selected models", "cta": "Start using VANTRA", "features": ["5 Images + 1 Video", "One-time trial", "Strong selected models", "No recurring Media wallet"] },
+      { "name": "Pro", "blurb": "30 days of creative access", "cta": "Choose Pro", "features": ["3,000 VANTRA Credits", "Core + Premium/Advanced models"] },
       { "name": "Max", "blurb": "For heavy usage", "cta": "Choose Max", "features": ["Chat, Image & Video", "Premium model access", "Highest monthly credits", "Highest generation limits", "Top generation priority"] }
     ]
   },

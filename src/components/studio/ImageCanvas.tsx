@@ -183,7 +183,7 @@ export default function ImageCanvas({ models, onGenerate, onOpenLibrary }: { mod
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
                 <FieldLabel>{t('model')}</FieldLabel>
-                <ModelSelector models={modelOptions} selectedModel={modelId} onSelect={setModelId} dropdownPosition="bottom" menuLabel={modelsT('imageMenuLabel')} emptyLabel={modelsT('noModels')} />
+                <ModelSelector models={modelOptions} selectedModel={modelId} onSelect={setModelId} dropdownPosition="bottom" menuLabel={modelsT('imageMenuLabel')} emptyLabel={modelsT('noModels')} modality="image" />
               </div>
               {capabilities && capabilities.aspectRatios.length > 0 && <div className="space-y-2 sm:col-span-2"><FieldLabel>{t('aspectRatio')}</FieldLabel><div className="flex flex-wrap gap-2">{capabilities.aspectRatios.map((ratio) => <button key={ratio} type="button" aria-pressed={aspectRatio === ratio} onClick={() => setAspectRatio(ratio)} className={cn('min-h-9 rounded-lg border px-3 text-[12px] font-semibold transition-colors duration-150 motion-reduce:transition-none', aspectRatio === ratio ? 'border-[var(--studio-accent)] bg-[var(--studio-accent)] text-[var(--studio-accent-contrast)]' : 'border-[var(--studio-border)] text-[var(--studio-text-secondary)] hover:text-[var(--studio-text-primary)]')}>{ratio}</button>)}</div></div>}
             </div>

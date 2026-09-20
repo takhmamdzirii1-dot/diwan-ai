@@ -27,6 +27,8 @@ import {
   type StudioRuntimeModelDefinition,
 } from '@/src/config/studio-registry';
 import { STUDIO_THEMES, useStudioTheme } from '../../context/StudioThemeContext';
+import { useModal } from '../../context/ModalContext';
+import type { PaymentPlan } from '@/lib/payments/types';
 
 type TabId = 'general' | 'models' | 'credits';
 type StartScreen = 'chat' | 'image' | 'video' | 'library';
@@ -427,10 +429,32 @@ function ModelsPanel({ selectedId, onSelect, models }: { selectedId: string; onS
 
 function CreditsPanel() {
   const t = useTranslations('studio.settings');
-  const { user, balance, balanceStatus, planName, planStatus } = useUser({
+  const locale = useLocale();
+  const { openTopUpModal } = useModal();
+  const [liteOffer, setLiteOffer] = useState<PaymentPlan | null>(null);
+  const [renewalPlanId, setRenewalPlanId] = useState<string | null>(null);
+  const {
+    user, balance, balanceStatus, planName, planCode, paidPlanCode, planStatus,
+    subscriptionBalance, purchasedBalance, freeImageRemaining, freeVideoRemaining,
+    liteVideoRemaining, planEndsAt, planAccessState,
+  } = useUser({
     loadBalance: true,
     loadPlan: true,
   });
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    fetch('/api/payments/retention', { cache: 'no-store' })
+      .then(async (response) => response.ok ? response.json() : null)
+      .then((body) => {
+        if (!active || !body) return;
+        setLiteOffer(body.liteOffer ?? null);
+        setRenewalPlanId(typeof body.renewalPlanId === 'string' ? body.renewalPlanId : null);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [user]);
 
   const displayedPlan = !user
     ? t('guest')
@@ -449,7 +473,38 @@ function CreditsPanel() {
           label={t('unifiedCreditsBalance')}
           value={user && balanceStatus === 'ready' && balance !== null ? balance.toLocaleString() : t('balanceUnavailable')}
         />
+        {user && balanceStatus === 'ready' && (subscriptionBalance ?? 0) > 0 && (
+          <StaticRow label={t('subscriptionCredits')} value={(subscriptionBalance ?? 0).toLocaleString()} />
+        )}
+        {user && balanceStatus === 'ready' && (purchasedBalance ?? 0) > 0 && (
+          <StaticRow label={t('purchasedCredits')} value={(purchasedBalance ?? 0).toLocaleString()} />
+        )}
+        {user && planStatus === 'ready' && planCode === 'free' && (
+          <>
+            <StaticRow label={t('freeImages')} value={t('remainingCount', { count: freeImageRemaining ?? 0 })} />
+            <StaticRow label={t('freeVideo')} value={t('remainingCount', { count: freeVideoRemaining ?? 0 })} />
+          </>
+        )}
+        {user && planStatus === 'ready' && paidPlanCode === 'lite' && planAccessState !== 'EXPIRED' && (
+          <StaticRow label={t('includedVideos')} value={t('remainingOfFour', { count: liteVideoRemaining ?? 0 })} />
+        )}
+        {user && planEndsAt && paidPlanCode && (
+          <StaticRow label={t('paidAccessEnds')} value={new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(planEndsAt))} />
+        )}
       </div>
+      {planAccessState === 'EXPIRING_SOON' && (
+        <div className="rounded-xl border border-amber-200/15 bg-amber-200/[0.04] p-4">
+          <p className="text-[12px] leading-relaxed text-white/75">{t('planEndsSoon')}</p>
+          <button type="button" onClick={() => openTopUpModal({ id: renewalPlanId ?? liteOffer?.id ?? '' })} className="mt-3 h-9 rounded-lg border border-white/15 px-3 text-[11px] font-semibold text-white hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">{t('renewPlan')}</button>
+        </div>
+      )}
+      {planAccessState === 'EXPIRED' && (
+        <div className="rounded-xl border border-white/10 bg-white/[0.025] p-4">
+          <p className="text-[12px] leading-relaxed text-white/70">{t('planEnded')}</p>
+          <button type="button" onClick={() => openTopUpModal({ id: renewalPlanId ?? liteOffer?.id ?? '' })} className="mt-3 h-9 rounded-lg bg-white px-3 text-[11px] font-semibold text-black hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">{t('renewPlan')}</button>
+          {liteOffer && paidPlanCode !== 'lite' && <p className="mt-3 text-[10.5px] text-white/45">{t('litePrivateOffer', { price: liteOffer.priceDzd.toLocaleString(locale), credits: liteOffer.unifiedCredits.toLocaleString(locale) })}</p>}
+        </div>
+      )}
       <PaymentStatusList enabled={Boolean(user)} />
     </div>
   );

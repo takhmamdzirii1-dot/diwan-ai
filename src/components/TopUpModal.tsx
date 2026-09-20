@@ -31,10 +31,20 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
     if (!isOpen) return;
     setMethod('baridimob'); setOrder(null); setDestination(null); setTransactionReference('');
     setProof(null); setLoading(false); setSubmitted(false); setError(null); setCatalogLoading(true);
-    fetch('/api/payments/plans').then(async (response) => {
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.error ?? 'PAYMENT_CATALOG_UNAVAILABLE');
-      const nextPlans = ((body.plans ?? []) as PaymentPlan[]).filter(isPurchasablePlan);
+    Promise.all([
+      fetch('/api/payments/plans').then(async (response) => {
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error ?? 'PAYMENT_CATALOG_UNAVAILABLE');
+        return (body.plans ?? []) as PaymentPlan[];
+      }),
+      fetch('/api/payments/retention', { cache: 'no-store' })
+        .then(async (response) => response.ok ? response.json() : null)
+        .catch(() => null),
+    ]).then(([publicPlans, retention]) => {
+      const eligibleLite = retention?.liteOffer as PaymentPlan | null | undefined;
+      const nextPlans = [...publicPlans, ...(eligibleLite ? [eligibleLite] : [])]
+        .filter(isPurchasablePlan)
+        .filter((item, index, all) => all.findIndex((candidate) => candidate.id === item.id) === index);
       setPlans(nextPlans);
       setSelectedPlanId(nextPlans.find((item) => item.id === plan?.id)?.id ?? nextPlans.find((item) => item.featured)?.id ?? nextPlans[0]?.id ?? '');
     }).catch((cause) => setError(translateError(cause instanceof Error ? cause.message : 'PAYMENT_CATALOG_UNAVAILABLE')))

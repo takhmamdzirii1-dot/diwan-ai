@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { useTranslations } from 'next-intl';
 import type { StudioAvailability } from '@/src/config/studio-registry';
 import type { ModelPlanCode } from '@/lib/models/plan-entitlements';
+import type { StudioModality } from '@/src/config/studio-registry';
+import useUser from '@/src/hooks/useUser';
 
 /* ------------------------------------------------------------------
    VANTRA glass adaptation of the Claude chat composer.
@@ -146,7 +148,8 @@ export const ModelSelector: React.FC<{
     dropdownPosition?: 'top' | 'bottom';
     menuLabel?: string;
     emptyLabel?: string;
-}> = ({ models, selectedModel, onSelect, onSignInClick, dropdownPosition = 'top', menuLabel, emptyLabel }) => {
+    modality?: StudioModality;
+}> = ({ models, selectedModel, onSelect, onSignInClick, dropdownPosition = 'top', menuLabel, emptyLabel, modality }) => {
     const t = useTranslations('studio.models');
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -243,6 +246,9 @@ export const ModelSelector: React.FC<{
                 <span className="select-none truncate font-medium">{currentModel?.name ?? emptyLabel ?? t('label')}</span>
                 <ChevronDown className={cn("w-3.5 h-3.5 opacity-60 shrink-0 transition-transform duration-150 motion-reduce:transition-none", isOpen && "rotate-180")} />
             </button>
+            {modality && currentModel && !currentModel.requiredPlan && (
+              <GenerationUsagePreview modality={modality} creditCost={currentModel.creditCost ?? 0} />
+            )}
 
             {isOpen && (
                 <div className={cn(
@@ -257,6 +263,36 @@ export const ModelSelector: React.FC<{
         </div>
     );
 };
+
+function GenerationUsagePreview({ modality, creditCost }: { modality: StudioModality; creditCost: number }) {
+    const t = useTranslations('studio.models');
+    const {
+      user, balance, balanceStatus, planCode, planStatus,
+      freeImageRemaining, freeVideoRemaining, liteVideoRemaining,
+    } = useUser({ loadBalance: true, loadPlan: true });
+
+    if (!user || balanceStatus !== 'ready' || planStatus !== 'ready') return null;
+    if (planCode === 'free' && modality === 'image') {
+      return <p className="mt-1.5 text-[10.5px] text-[var(--studio-text-muted)]">{t('freeImagesRemaining', { count: freeImageRemaining ?? 0 })}</p>;
+    }
+    if (planCode === 'free' && modality === 'video') {
+      return <p className="mt-1.5 text-[10.5px] text-[var(--studio-text-muted)]">{t('freeVideosRemaining', { count: freeVideoRemaining ?? 0 })}</p>;
+    }
+    if (planCode === 'lite' && modality === 'video') {
+      return <p className="mt-1.5 text-[10.5px] text-[var(--studio-text-muted)]">{t('includedVideoRemaining', { count: liteVideoRemaining ?? 0 })}</p>;
+    }
+    if (creditCost <= 0 || balance === null) return null;
+
+    return (
+      <p className="mt-1.5 text-[10.5px] text-[var(--studio-text-muted)]">
+        {t('creditPreview', {
+          cost: creditCost,
+          balance,
+          after: Math.max(0, balance - creditCost),
+        })}
+      </p>
+    );
+}
 
 /* --- Main Composer --- */
 export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
@@ -662,6 +698,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                     onSelect={(id) => onSelectModel?.(id)}
                                     onSignInClick={onSignInClick}
                                     dropdownPosition="top"
+                                    modality="chat"
                                 />
                             </div>
                         )}
