@@ -35,6 +35,9 @@ const MAX_MULTIPART_BYTES = PRUNA_SOURCE_IMAGE_MAX_BYTES * 2 + 64 * 1024;
 
 function safeResponseCode(code: string) {
   if (/INSUFFICIENT_CREDITS/.test(code)) return 'INSUFFICIENT_CREDITS';
+  if (/FREE_VIDEO_TRIAL_EXHAUSTED|LITE_VIDEO_ALLOWANCE_EXHAUSTED|PAID_MEDIA_ACCESS_REQUIRED/.test(code)) {
+    return code;
+  }
   if (/MODEL_CUSTOMER_PRICE_UNCONFIGURED/.test(code)) return code;
   if (/MODEL_|INVALID_|UNSUPPORTED_/.test(code)) return code;
   if (/NO_CONFIGURED_PROVIDER_ROUTE|PROVIDER_NOT_CONFIGURED/.test(code)) {
@@ -44,7 +47,7 @@ function safeResponseCode(code: string) {
 }
 
 function responseStatus(code: string) {
-  if (/INSUFFICIENT_CREDITS/.test(code)) return 402;
+  if (/INSUFFICIENT_CREDITS|FREE_VIDEO_TRIAL_EXHAUSTED|LITE_VIDEO_ALLOWANCE_EXHAUSTED|PAID_MEDIA_ACCESS_REQUIRED/.test(code)) return 402;
   if (/AUTHENTICATION_REQUIRED/.test(code)) return 401;
   if (/INVALID_|UNSUPPORTED_/.test(code)) return 400;
   if (/MODEL_CUSTOMER_PRICE_UNCONFIGURED|MODEL_NOT_AVAILABLE|REQUEST_ALREADY_PROCESSED/.test(code)) return 409;
@@ -229,7 +232,7 @@ export async function POST(request: Request) {
     const providerCostMinor = prunaProviderCostMinor(input);
     const customerCharge = resolveTerminalCustomerCharge({
       state: 'completed',
-      configuredCharge: runtimeModel.customerCreditPrice!,
+      configuredCharge: reservation?.customerCharge ?? runtimeModel.customerCreditPrice!,
     });
     const finalizeArgs = {
       executionId: execution.executionId,

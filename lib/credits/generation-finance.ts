@@ -78,7 +78,10 @@ export async function reserveGenerationCredits(args: {
 }) {
   const amount = args.model.customerCreditPrice;
   if (amount == null) throw new Error('MODEL_CUSTOMER_PRICE_UNCONFIGURED');
-  if (amount === 0) return null;
+  // Media always reserves through Postgres, even when the customer charge is
+  // zero, because Free/Lite success allowances are concurrency-safe funding
+  // sources selected by the server. Explicitly free Chat remains reservation-free.
+  if (amount === 0 && args.model.modality === 'chat') return null;
   const pricingVersion = args.model.updatedAt ?? 'registry-v1';
   const { data, error } = await adminClient().rpc('reserve_credits', {
     p_user_id: args.userId,
@@ -100,6 +103,8 @@ export async function reserveGenerationCredits(args: {
   const result = data as RpcJson;
   return {
     reservationId: String(result.reservation_id),
+    customerCharge: Number(result.customer_charge ?? amount),
+    fundingSource: String(result.funding_source ?? 'credits'),
     idempotent: Boolean(result.idempotent),
   };
 }

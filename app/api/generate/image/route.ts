@@ -22,13 +22,14 @@ export const maxDuration = 60;
 
 function safeResponseCode(code: string) {
   if (/INSUFFICIENT_CREDITS/.test(code)) return 'INSUFFICIENT_CREDITS';
+  if (/FREE_IMAGE_TRIAL_EXHAUSTED|PAID_MEDIA_ACCESS_REQUIRED/.test(code)) return code;
   if (/MODEL_CUSTOMER_PRICE_UNCONFIGURED/.test(code)) return 'MODEL_CUSTOMER_PRICE_UNCONFIGURED';
   if (/MODEL_|INVALID_|UNSUPPORTED_/.test(code)) return code;
   if (/NO_CONFIGURED_PROVIDER_ROUTE|PROVIDER_NOT_CONFIGURED/.test(code)) return 'IMAGE_GENERATION_UNAVAILABLE';
   return 'IMAGE_GENERATION_FAILED';
 }
 function responseStatus(code: string) {
-  if (/INSUFFICIENT_CREDITS/.test(code)) return 402;
+  if (/INSUFFICIENT_CREDITS|FREE_IMAGE_TRIAL_EXHAUSTED|PAID_MEDIA_ACCESS_REQUIRED/.test(code)) return 402;
   if (/AUTHENTICATION_REQUIRED/.test(code)) return 401;
   if (/INVALID_|UNSUPPORTED_/.test(code)) return 400;
   if (/MODEL_CUSTOMER_PRICE_UNCONFIGURED|MODEL_NOT_AVAILABLE|REQUEST_ALREADY_PROCESSED/.test(code)) return 409;
@@ -183,7 +184,7 @@ export async function POST(request: Request) {
     const latencyMs = Date.now() - startedAt;
     const customerCharge = resolveTerminalCustomerCharge({
       state: 'completed',
-      configuredCharge: runtimeModel.customerCreditPrice!,
+      configuredCharge: reservation?.customerCharge ?? runtimeModel.customerCreditPrice!,
     });
     const finalizeArgs = {
       executionId: execution.executionId,
