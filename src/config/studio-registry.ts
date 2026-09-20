@@ -1,3 +1,5 @@
+import type { ModelPlanCode } from '@/lib/models/plan-entitlements';
+
 export type StudioModality = 'chat' | 'image' | 'video';
 export type StudioAvailability =
   | 'available'
@@ -21,6 +23,7 @@ export interface StudioModelDefinition {
   supportedControls: readonly StudioControl[];
   fallbackAvailable: boolean;
   displayOrder: number;
+  allowedPlans: readonly ModelPlanCode[];
 }
 
 export interface StudioRuntimeModelDefinition extends StudioModelDefinition {
@@ -29,6 +32,8 @@ export interface StudioRuntimeModelDefinition extends StudioModelDefinition {
   category?: string;
   availabilityLabel?: string;
   capabilities: import('@/lib/models/capabilities').ModelCapabilities;
+  planAccessible?: boolean;
+  requiredPlan?: ModelPlanCode | null;
 }
 
 /**
@@ -49,6 +54,7 @@ export const STUDIO_MODELS: readonly StudioModelDefinition[] = [
     supportedControls: ['temperature', 'maxTokens', 'topP'],
     fallbackAvailable: false,
     displayOrder: 1,
+    allowedPlans: ['free', 'lite', 'pro', 'max'],
   },
   {
     id: 'z-ai/glm-5.2:free',
@@ -61,6 +67,7 @@ export const STUDIO_MODELS: readonly StudioModelDefinition[] = [
     supportedControls: [],
     fallbackAvailable: false,
     displayOrder: 2,
+    allowedPlans: ['pro', 'max'],
   },
   {
     id: 'poolside/laguna-s-2.1:free',
@@ -73,6 +80,7 @@ export const STUDIO_MODELS: readonly StudioModelDefinition[] = [
     supportedControls: [],
     fallbackAvailable: false,
     displayOrder: 3,
+    allowedPlans: ['pro', 'max'],
   },
   {
     id: 'minimax/minimax-m3:free',
@@ -85,6 +93,7 @@ export const STUDIO_MODELS: readonly StudioModelDefinition[] = [
     supportedControls: [],
     fallbackAvailable: false,
     displayOrder: 4,
+    allowedPlans: ['pro', 'max'],
   },
   {
     id: 'flux',
@@ -97,6 +106,7 @@ export const STUDIO_MODELS: readonly StudioModelDefinition[] = [
     supportedControls: [],
     fallbackAvailable: true,
     displayOrder: 1,
+    allowedPlans: ['free', 'lite', 'pro', 'max'],
   },
 ] as const;
 
@@ -125,5 +135,7 @@ export const DEFAULT_VIDEO_MODEL = VIDEO_MODELS.find(
 );
 
 export function isModelSelectable(model: StudioModelDefinition) {
-  return model.enabled && (model.availability === 'available' || model.availability === 'beta');
+  return model.enabled
+    && ('planAccessible' in model ? model.planAccessible !== false : true)
+    && (model.availability === 'available' || model.availability === 'beta');
 }

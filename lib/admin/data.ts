@@ -142,6 +142,7 @@ function buildAdminModelRows(models: readonly EffectiveRuntimeModel[], latestCos
       sortOrder: model.sortOrder, visibleInStudio: model.visibleInStudio,
       availabilityLabel: model.availabilityLabel,
       capabilities: model.capabilities,
+      allowedPlans: model.allowedPlans,
       routes: [], providerOptions: [],
     };
   });

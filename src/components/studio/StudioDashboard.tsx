@@ -17,6 +17,8 @@ import { VantraLogo } from '../VantraLogo';
 import { cn } from '@/lib/utils';
 import { GhostButton } from './AppShell';
 import type { StudioRuntimeModelDefinition } from '@/src/config/studio-registry';
+import { isModelSelectable } from '@/src/config/studio-registry';
+import { applyModelPlanAccess } from '@/lib/models/plan-entitlements';
 import { useTranslations } from 'next-intl';
 
 type CenterMode = 'chat' | 'image' | 'video' | 'library';
@@ -60,16 +62,19 @@ export default function StudioDashboard({
   const reduceMotion = useReducedMotion();
   const t = useTranslations('studio.chat');
   const sidebarT = useTranslations('studio.sidebar');
-  const { user, refreshBalance } = useUser();
+  const { user, refreshBalance, planCode, planStatus } = useUser({ loadPlan: true });
   const { openAuthModal } = useModal();
 
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const chatModels = useMemo(() => models.filter((model) => model.modality === 'chat'), [models]);
-  const imageModels = useMemo(() => models.filter((model) => model.modality === 'image'), [models]);
-  const videoModels = useMemo(() => models.filter((model) => model.modality === 'video'), [models]);
-  const defaultChatModel = chatModels.find((model) => model.enabled) ?? chatModels[0] ?? null;
+  const entitledModels = useMemo(() => models.map((model) =>
+    applyModelPlanAccess(model, planStatus === 'ready' ? planCode : 'free')),
+  [models, planCode, planStatus]);
+  const chatModels = useMemo(() => entitledModels.filter((model) => model.modality === 'chat'), [entitledModels]);
+  const imageModels = useMemo(() => entitledModels.filter((model) => model.modality === 'image'), [entitledModels]);
+  const videoModels = useMemo(() => entitledModels.filter((model) => model.modality === 'video'), [entitledModels]);
+  const defaultChatModel = chatModels.find(isModelSelectable) ?? chatModels[0] ?? null;
   const [selectedModelId, setSelectedModelId] = useState(defaultChatModel?.id ?? '');
   const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null);
   const sendStartRef = useRef<number>(0);
@@ -78,6 +83,12 @@ export default function StudioDashboard({
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
   const activeModel = chatModels.find((model) => model.id === selectedModelId) ?? defaultChatModel;
+
+  useEffect(() => {
+    if (activeModel && isModelSelectable(activeModel)) return;
+    const available = chatModels.find(isModelSelectable);
+    if (available) setSelectedModelId(available.id);
+  }, [activeModel, chatModels]);
 
   useEffect(() => {
     try {
@@ -303,7 +314,7 @@ export default function StudioDashboard({
 
   const handleSend = useCallback(
     async (data: { message: string; isThinkingEnabled: boolean; files?: Array<{ file: File; preview?: string | null; type: string }> }) => {
-      if (!activeModel) return;
+      if (!activeModel || !isModelSelectable(activeModel)) return;
       if (!user && (activeModel.verifiedCreditCost ?? 0) > 0) {
         openAuthModal('signin');
         return;
@@ -678,6 +689,8 @@ export default function StudioDashboard({
                         availability: model.availability,
                         enabled: model.enabled,
                         requiresAuth: (model.verifiedCreditCost ?? 0) > 0,
+                        creditCost: model.verifiedCreditCost,
+                        requiredPlan: model.enabled && !model.planAccessible ? model.requiredPlan : null,
                         iconUrl: model.iconUrl,
                         visionInput: 'visionInput' in model.capabilities && model.capabilities.visionInput,
                         fileInput: 'fileInput' in model.capabilities && model.capabilities.fileInput,
@@ -724,7 +737,7 @@ export default function StudioDashboard({
         onClose={() => setSettingsOpen(false)}
         selectedChatModelId={selectedModelId}
         onSelectChatModel={setSelectedModelId}
-        models={models}
+        models={entitledModels}
       />
     </div>
   );

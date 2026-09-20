@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Plus, ChevronDown, Square, X, FileText, Loader2, Check, Archive, Sparkles, Image as ImageIcon, ArrowUp } from "lucide-react";
+import { Plus, ChevronDown, Square, X, FileText, Loader2, Check, Archive, Sparkles, Image as ImageIcon, ArrowUp, LockKeyhole } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslations } from 'next-intl';
 import type { StudioAvailability } from '@/src/config/studio-registry';
+import type { ModelPlanCode } from '@/lib/models/plan-entitlements';
 
 /* ------------------------------------------------------------------
    VANTRA glass adaptation of the Claude chat composer.
@@ -27,6 +28,8 @@ export interface ChatModelOption {
     iconUrl?: string;
     visionInput?: boolean;
     fileInput?: boolean;
+    creditCost?: number;
+    requiredPlan?: ModelPlanCode | null;
 }
 
 export interface ClaudeSendPayload {
@@ -170,7 +173,7 @@ export const ModelSelector: React.FC<{
     }, [isOpen]);
 
     const handlePick = (model: ChatModelOption) => {
-        if (!model.enabled || !['available', 'beta'].includes(model.availability)) return;
+        if (!model.enabled || model.requiredPlan || !['available', 'beta'].includes(model.availability)) return;
         if (model.requiresAuth && onSignInClick) {
             setIsOpen(false);
             onSignInClick();
@@ -181,7 +184,10 @@ export const ModelSelector: React.FC<{
     };
 
     const renderItem = (model: ChatModelOption) => {
-      const selectable = model.enabled && ['available', 'beta'].includes(model.availability);
+      const selectable = model.enabled && !model.requiredPlan && ['available', 'beta'].includes(model.availability);
+      const planLabel = model.requiredPlan
+        ? model.requiredPlan.charAt(0).toUpperCase() + model.requiredPlan.slice(1)
+        : null;
       return (
         <button
             key={model.id}
@@ -202,9 +208,17 @@ export const ModelSelector: React.FC<{
               {model.iconUrl ? <img src={model.iconUrl} alt="" referrerPolicy="no-referrer" className="h-5 w-5 shrink-0 rounded-md border border-white/10 object-cover" /> : <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/[0.035]"><Sparkles className="h-3 w-3 text-white/65" /></span>}
               <span className="truncate text-[12.5px] font-medium text-white/90">{model.name}</span>
             </div>
-            {selectedModel === model.id ? (
-                <Check className="h-3.5 w-3.5 shrink-0 text-white" />
-            ) : null}
+            {model.requiredPlan ? (
+              <span className="flex shrink-0 items-center gap-1.5 text-[10.5px] font-semibold text-white/55">
+                <LockKeyhole className="h-3 w-3" aria-hidden="true" />
+                {t('requiresPlan', { plan: planLabel })}
+              </span>
+            ) : <span className="flex shrink-0 items-center gap-2">
+              {typeof model.creditCost === 'number' && <span className="text-[10.5px] text-white/45">
+                {model.creditCost === 0 ? t('noCreditCost') : t('creditCost', { count: model.creditCost })}
+              </span>}
+              {selectedModel === model.id && <Check className="h-3.5 w-3.5 shrink-0 text-white" />}
+            </span>}
         </button>
       );
     };

@@ -8,6 +8,11 @@ import { providerConfigurationSummary } from '@/lib/ai/providers/registry';
 import { emptyModelCapabilities, type ModelCapabilities } from '@/lib/models/capabilities';
 import { normalizeModelCapabilities } from '@/lib/models/capability-validation';
 import {
+  defaultAllowedPlansForModel,
+  normalizeAllowedPlans,
+  type ModelPlanCode,
+} from '@/lib/models/plan-entitlements';
+import {
   DEFAULT_CHAT_MODEL,
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
@@ -33,6 +38,7 @@ export type RegistryModelReference = {
   baseVisibleInStudio: boolean;
   baseSortOrder: number;
   baseCapabilities: ModelCapabilities;
+  baseAllowedPlans: readonly ModelPlanCode[];
 };
 
 export type ModelRuntimeOverride = {
@@ -53,6 +59,7 @@ export type ModelRuntimeOverride = {
   studioVisible: boolean | null;
   customerAvailabilityLabel: string | null;
   capabilities: ModelCapabilities;
+  allowedPlans: ModelPlanCode[];
   updatedAt: string;
 };
 
@@ -70,6 +77,7 @@ export type EffectiveRuntimeModel = RegistryModelReference & {
   visibleInStudio: boolean;
   availabilityLabel: string | null;
   capabilities: ModelCapabilities;
+  allowedPlans: ModelPlanCode[];
   persisted: boolean;
   updatedAt: string | null;
 };
@@ -100,6 +108,7 @@ const registryModels: RegistryModelReference[] = STUDIO_MODELS.map((model) => ({
   baseVisibleInStudio: true,
   baseSortOrder: model.displayOrder,
   baseCapabilities: emptyModelCapabilities(model.modality),
+  baseAllowedPlans: defaultAllowedPlansForModel(model.id),
 }));
 
 const registeredModelIds = new Set(STUDIO_MODELS.map((model) => model.id));
@@ -118,6 +127,7 @@ for (const model of PROVIDER_CATALOG_MODELS) {
     baseVisibleInStudio: false,
     baseSortOrder: 100,
     baseCapabilities: emptyModelCapabilities(model.modality),
+    baseAllowedPlans: defaultAllowedPlansForModel(model.modelId),
   });
   registeredModelIds.add(model.modelId);
 }
@@ -138,6 +148,7 @@ for (const provider of Object.values(PROVIDER_REGISTRY)) {
       baseVisibleInStudio: false,
       baseSortOrder: 100,
       baseCapabilities: emptyModelCapabilities('image'),
+      baseAllowedPlans: defaultAllowedPlansForModel(model.id),
     });
   }
 }
@@ -177,13 +188,14 @@ function mapOverride(row: any): ModelRuntimeOverride {
     studioVisible: row.studio_visible == null ? null : Boolean(row.studio_visible),
     customerAvailabilityLabel: row.customer_availability_label == null ? null : String(row.customer_availability_label),
     capabilities: normalizeModelCapabilities(row.modality, row.capabilities),
+    allowedPlans: normalizeAllowedPlans(row.allowed_plans),
     updatedAt: String(row.updated_at),
   };
 }
 
 export async function loadModelRuntimeOverrides(client: SupabaseClient, modelKey?: string) {
   let query = client.from('model_runtime_configs').select(
-    'model_key,model_id,modality,enabled,routing_role,customer_credit_price,provider_cost_status,provider_cost_minor,provider_cost_currency,customer_display_name,customer_short_description,customer_media_url,customer_category,customer_sort_order,studio_visible,customer_availability_label,capabilities,updated_at'
+    'model_key,model_id,modality,enabled,routing_role,customer_credit_price,provider_cost_status,provider_cost_minor,provider_cost_currency,customer_display_name,customer_short_description,customer_media_url,customer_category,customer_sort_order,studio_visible,customer_availability_label,capabilities,allowed_plans,updated_at'
   );
   if (modelKey) query = query.eq('model_key', modelKey);
   const { data, error } = await query;
@@ -215,6 +227,7 @@ export function applyModelRuntimeOverrides(overrides: readonly ModelRuntimeOverr
       baseVisibleInStudio: false,
       baseSortOrder: 100,
       baseCapabilities: emptyModelCapabilities(override.modality),
+      baseAllowedPlans: [],
     }));
 
   return [...MODEL_REGISTRY_REFERENCES, ...dynamicModels].map((model): EffectiveRuntimeModel => {
@@ -242,6 +255,7 @@ export function applyModelRuntimeOverrides(overrides: readonly ModelRuntimeOverr
       visibleInStudio: override?.studioVisible ?? model.baseVisibleInStudio,
       availabilityLabel: override?.customerAvailabilityLabel ?? null,
       capabilities: override?.capabilities ?? model.baseCapabilities,
+      allowedPlans: override ? override.allowedPlans : [...model.baseAllowedPlans],
       persisted: Boolean(override),
       updatedAt: override?.updatedAt ?? null,
     };
@@ -301,6 +315,7 @@ export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<S
         category: model.category ?? undefined,
         availabilityLabel: model.availabilityLabel ?? undefined,
         capabilities: model.capabilities,
+        allowedPlans: model.allowedPlans,
       } satisfies StudioRuntimeModelDefinition;
     });
 }
@@ -335,5 +350,6 @@ export async function resolveRuntimeModelReference(client: SupabaseClient, model
     baseVisibleInStudio: false,
     baseSortOrder: model.sortOrder,
     baseCapabilities: model.capabilities,
+    baseAllowedPlans: model.allowedPlans,
   } : null;
 }

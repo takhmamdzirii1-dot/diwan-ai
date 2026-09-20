@@ -3,7 +3,8 @@ import { createClient } from '../../../../src/lib/supabase/server';
 import { streamText } from 'ai';
 
 import { DEFAULT_CHAT_MODEL } from '../../../../src/config/studio-registry';
-import { requireEffectiveRuntimeModel } from '../../../../lib/models/runtime-config';
+import { requireEntitledRuntimeModel } from '@/lib/models/plan-entitlements.server';
+import { modelPlanErrorPayload } from '@/lib/models/plan-entitlements';
 import { createChatLanguageModel, classifyProviderFailure } from '@/lib/ai/providers/chat';
 import { resolveProviderRoutes } from '@/lib/ai/providers/routes';
 import {
@@ -118,11 +119,13 @@ export async function POST(request: Request) {
     }
     let runtimeModel;
     try {
-      runtimeModel = await requireEffectiveRuntimeModel(requestedModel, 'chat');
+      runtimeModel = await requireEntitledRuntimeModel(user.id, requestedModel, 'chat');
     } catch (cause) {
+      const accessError = modelPlanErrorPayload(cause);
+      if (accessError) return NextResponse.json(accessError, { status: 403 });
       const code = cause instanceof Error ? cause.message : 'MODEL_RUNTIME_CONFIG_UNAVAILABLE';
       const status = code === 'MODEL_NOT_REGISTERED' ? 400
-        : code === 'MODEL_RUNTIME_CONFIG_UNAVAILABLE' ? 503 : 409;
+        : /MODEL_RUNTIME_CONFIG_UNAVAILABLE|PLAN_ENTITLEMENT_UNAVAILABLE/.test(code) ? 503 : 409;
       return NextResponse.json({ error: code }, { status });
     }
     const chatCapabilities = runtimeModel.capabilities;

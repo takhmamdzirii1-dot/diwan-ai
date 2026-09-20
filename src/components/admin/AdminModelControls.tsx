@@ -4,9 +4,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { AdminModelRow } from '@/lib/admin/types';
+import { MODEL_PLAN_CODES, type ModelPlanCode } from '@/lib/models/plan-entitlements';
 
 type EditableModel = Pick<AdminModelRow,
-  'key' | 'enabled' | 'priority' | 'creditPrice' | 'activationSupported'>;
+  'key' | 'enabled' | 'priority' | 'creditPrice' | 'activationSupported' | 'allowedPlans'>;
+
+function editableAllowedPlans(plans: readonly ModelPlanCode[]) {
+  return MODEL_PLAN_CODES.filter((plan) => plan === 'max' || plans.includes(plan));
+}
 
 export default function AdminModelControls({ model, mode = 'pricing', onSaved }: {
   model: EditableModel;
@@ -16,6 +21,7 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
     enabled: boolean;
     routingRole: AdminModelRow['priority'];
     customerCreditPrice: number | null;
+    allowedPlans: ModelPlanCode[];
     updatedAt: string;
   }) => void;
 }) {
@@ -23,6 +29,7 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
   const [enabled, setEnabled] = useState(model.enabled);
   const [routingRole, setRoutingRole] = useState(model.priority);
   const [price, setPrice] = useState(model.creditPrice == null ? '' : String(model.creditPrice));
+  const [allowedPlans, setAllowedPlans] = useState<ModelPlanCode[]>(editableAllowedPlans(model.allowedPlans));
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
 
@@ -30,6 +37,7 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
     setEnabled(model.enabled);
     setRoutingRole(model.priority);
     setPrice(model.creditPrice == null ? '' : String(model.creditPrice));
+    setAllowedPlans(editableAllowedPlans(model.allowedPlans));
     setFeedback(null);
   }, [model.key]);
 
@@ -42,6 +50,7 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
   }, [price]);
   const dirty = mode === 'pricing'
     ? enabled !== model.enabled || normalizedPrice !== model.creditPrice
+      || MODEL_PLAN_CODES.some((plan) => allowedPlans.includes(plan) !== model.allowedPlans.includes(plan))
     : routingRole !== model.priority;
 
   const save = async () => {
@@ -60,6 +69,7 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
           enabled,
           routingRole: enabled ? routingRole : 'unassigned',
           customerCreditPrice: normalizedPrice,
+          allowedPlans,
         }),
       });
       const body = await response.json().catch(() => ({}));
@@ -118,6 +128,28 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
         className={controlClass}
       />
     </label>}
+    {mode === 'pricing' && <fieldset className="sm:col-span-2">
+      <legend className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">{t('planAccessLabel')}</legend>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {MODEL_PLAN_CODES.map((plan) => <label key={plan} className="flex min-h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-semibold text-white">
+          <input
+            type="checkbox"
+            checked={allowedPlans.includes(plan)}
+            disabled={plan === 'max'}
+            onChange={(event) => {
+              const planIndex = MODEL_PLAN_CODES.indexOf(plan);
+              setAllowedPlans((current) => MODEL_PLAN_CODES.filter((candidate, candidateIndex) =>
+                candidate === 'max' || (event.target.checked
+                  ? current.includes(candidate) || candidateIndex >= planIndex
+                  : current.includes(candidate) && candidateIndex > planIndex)));
+              setFeedback(null);
+            }}
+            className="h-4 w-4 accent-white"
+          />
+          {t(`plan.${plan}`)}{plan === 'max' ? ` · ${t('maxFrozen')}` : ''}
+        </label>)}
+      </div>
+    </fieldset>}
     <div className="flex min-w-32 flex-col items-stretch gap-1.5">
       <button
         type="button"

@@ -6,13 +6,16 @@ import { getOwnerAccess } from '@/lib/auth/owner';
 import { emptyModelCapabilities } from '@/lib/models/capabilities';
 import { resolveRuntimeModelReference } from '@/lib/models/runtime-config';
 import { providerConfigurationSummary } from '@/lib/ai/providers/registry';
+import { isHierarchicalAllowedPlans, MODEL_PLAN_CODES } from '@/lib/models/plan-entitlements';
 
 const schema = z.object({
   modelKey: z.string().trim().min(1).max(300),
   enabled: z.boolean(),
   routingRole: z.enum(['primary', 'backup', 'unassigned']),
   customerCreditPrice: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).nullable(),
-}).strict();
+  allowedPlans: z.array(z.enum(MODEL_PLAN_CODES)).min(1).max(MODEL_PLAN_CODES.length),
+}).strict().refine((value) => new Set(value.allowedPlans).size === value.allowedPlans.length
+  && isHierarchicalAllowedPlans(value.allowedPlans), { path: ['allowedPlans'] });
 
 const createSchema = z.object({
   stableId: z.string().trim().min(3).max(80).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
@@ -47,6 +50,7 @@ export async function POST(request: Request) {
     customer_sort_order: 100,
     studio_visible: false,
     capabilities: emptyModelCapabilities(parsed.data.modality),
+    allowed_plans: ['max'],
     updated_by: access.user.id,
   }).select('model_key,model_id,modality,customer_display_name,capabilities,updated_at').single();
   if (error) {
@@ -103,13 +107,14 @@ export async function PATCH(request: Request) {
       activeProviders.has(providerId) && providerConfigurationSummary(providerId).configured);
     if (!readyRoute) return NextResponse.json({ error: 'MODEL_REQUIRES_CONFIGURED_ROUTE' }, { status: 409 });
   }
-  const { data, error } = await client.rpc('admin_upsert_model_runtime_config', {
+  const { data, error } = await client.rpc('admin_upsert_model_runtime_config_v2', {
     p_model_key: registryModel.key,
     p_model_id: registryModel.modelId,
     p_modality: registryModel.modality,
     p_enabled: parsed.data.enabled,
     p_routing_role: parsed.data.routingRole,
     p_customer_credit_price: parsed.data.customerCreditPrice,
+    p_allowed_plans: parsed.data.allowedPlans,
     p_updated_by: access.user.id,
   });
 
@@ -132,6 +137,7 @@ export async function PATCH(request: Request) {
       enabled: Boolean(row.enabled),
       routingRole: row.routing_role,
       customerCreditPrice: row.customer_credit_price == null ? null : Number(row.customer_credit_price),
+      allowedPlans: row.allowed_plans,
       updatedAt: row.updated_at,
     },
   });

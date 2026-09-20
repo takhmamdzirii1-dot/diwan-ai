@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase/client';
+import { normalizeModelPlanCode, type ModelPlanCode } from '@/lib/models/plan-entitlements';
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 export type BalanceStatus = 'loading' | 'ready' | 'unavailable';
@@ -15,6 +16,7 @@ interface UserSnapshot {
   balance: number | null;
   balanceStatus: BalanceStatus;
   planName: string | null;
+  planCode: ModelPlanCode;
   planStatus: PlanStatus;
 }
 
@@ -37,6 +39,7 @@ const serverSnapshot: UserSnapshot = {
   balance: null,
   balanceStatus: 'loading',
   planName: null,
+  planCode: 'free',
   planStatus: 'loading',
 };
 
@@ -88,24 +91,29 @@ async function fetchCurrentPlan(userId: string) {
   if (planFetchUserId === userId) return;
   planFetchUserId = userId;
   const requestRevision = ++planRevision;
-  emit({ ...snapshot, planName: null, planStatus: 'loading' });
+  emit({ ...snapshot, planName: null, planCode: 'free', planStatus: 'loading' });
 
   try {
     const { data, error } = await supabase
-      .rpc('get_current_user_entitlement')
-      .returns<{ plan_name: string }[]>()
+      .rpc('get_current_model_plan')
+      .returns<{ plan_code: string; plan_name: string }[]>()
       .maybeSingle();
 
     if (requestRevision !== planRevision || snapshot.user?.id !== userId) return;
     if (error) {
-      emit({ ...snapshot, planName: null, planStatus: 'unavailable' });
+      emit({ ...snapshot, planName: null, planCode: 'free', planStatus: 'unavailable' });
       return;
     }
 
-    emit({ ...snapshot, planName: data?.plan_name ?? null, planStatus: 'ready' });
+    emit({
+      ...snapshot,
+      planName: data?.plan_name ?? null,
+      planCode: data ? normalizeModelPlanCode(data.plan_code) : 'free',
+      planStatus: 'ready',
+    });
   } catch {
     if (requestRevision === planRevision && snapshot.user?.id === userId) {
-      emit({ ...snapshot, planName: null, planStatus: 'unavailable' });
+      emit({ ...snapshot, planName: null, planCode: 'free', planStatus: 'unavailable' });
     }
   } finally {
     if (planFetchUserId === userId) planFetchUserId = null;
@@ -125,6 +133,7 @@ function applySession(session: Session | null) {
       balance: null,
       balanceStatus: 'unavailable',
       planName: null,
+      planCode: 'free',
       planStatus: 'unavailable',
     });
     return;
@@ -138,6 +147,7 @@ function applySession(session: Session | null) {
     balance: isSameUser ? snapshot.balance : null,
     balanceStatus: isSameUser ? snapshot.balanceStatus : 'loading',
     planName: isSameUser ? snapshot.planName : null,
+    planCode: isSameUser ? snapshot.planCode : 'free',
     planStatus: isSameUser ? snapshot.planStatus : 'loading',
   });
 

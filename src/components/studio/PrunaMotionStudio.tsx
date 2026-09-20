@@ -122,6 +122,8 @@ export default function PrunaMotionStudio({
     availability: model.availability,
     enabled: model.enabled,
     iconUrl: model.iconUrl,
+    creditCost: model.verifiedCreditCost,
+    requiredPlan: model.enabled && !model.planAccessible ? model.requiredPlan : null,
   }));
   const selectedModel = models.find((model) => model.id === modelId);
   const capabilities = selectedModel?.capabilities as VideoModelCapabilities | undefined;

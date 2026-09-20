@@ -79,6 +79,7 @@ export type AdminModelRow = {
   visibleInStudio: boolean;
   availabilityLabel: string | null;
   capabilities: import('@/lib/models/capabilities').ModelCapabilities;
+  allowedPlans: import('@/lib/models/plan-entitlements').ModelPlanCode[];
   routes: AdminModelRoute[];
   providerOptions: AdminModelProviderOption[];
 };

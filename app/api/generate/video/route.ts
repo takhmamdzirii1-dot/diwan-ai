@@ -13,7 +13,8 @@ import {
   waitForPrunaPrediction,
 } from '@/lib/ai/providers/media';
 import { resolveProviderRoutes } from '@/lib/ai/providers/routes';
-import { requireEffectiveRuntimeModel } from '@/lib/models/runtime-config';
+import { requireEntitledRuntimeModel } from '@/lib/models/plan-entitlements.server';
+import { modelPlanErrorPayload } from '@/lib/models/plan-entitlements';
 import type { VideoModelCapabilities } from '@/lib/models/capabilities';
 import {
   beginGenerationExecution,
@@ -95,8 +96,10 @@ export async function POST(request: Request) {
   let runtimeModel;
   try {
     const requestedModel = typeof body.modelId === 'string' ? body.modelId.trim() : '';
-    runtimeModel = await requireEffectiveRuntimeModel(requestedModel, 'video');
+    runtimeModel = await requireEntitledRuntimeModel(user.id, requestedModel, 'video');
   } catch (cause) {
+    const accessError = modelPlanErrorPayload(cause);
+    if (accessError) return NextResponse.json(accessError, { status: 403 });
     const code = cause instanceof Error ? cause.message : 'MODEL_RUNTIME_CONFIG_UNAVAILABLE';
     return NextResponse.json({ error: safeResponseCode(code) }, { status: responseStatus(code) });
   }

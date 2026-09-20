@@ -44,7 +44,8 @@
       "noCreditCost": "Free · 0 Unified Credits",
       "creditCost": "{count, plural, one {# Unified Credit} other {# Unified Credits}}",
       "connectedChat": "Connected for Chat",
-      "notSelectable": "Not selectable yet"
+      "notSelectable": "Not selectable yet",
+      "requiresPlan": "Requires {plan}"
     },
     "settings": {
       "title": "Settings",
