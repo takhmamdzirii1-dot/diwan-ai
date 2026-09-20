@@ -2,6 +2,7 @@ import 'server-only';
 
 import { createOpenAI } from '@ai-sdk/openai';
 import { getProviderConnection } from './registry';
+import { createSsrfSafeFetch } from './endpoint-security';
 import type { ResolvedProviderRoute } from './routes';
 
 export class ProviderAdapterError extends Error {
@@ -17,7 +18,7 @@ export class ProviderAdapterError extends Error {
 }
 
 export function createChatLanguageModel(route: ResolvedProviderRoute) {
-  const connection = getProviderConnection(route.providerId);
+  const connection = getProviderConnection(route.providerId, route.providerConfig);
   const supportsOpenAICompatibility = connection?.provider.adapter === 'openai-compatible-chat'
     || connection?.provider.adapter === 'vercel-gateway';
   if (!connection?.configured || !supportsOpenAICompatibility
@@ -28,6 +29,7 @@ export function createChatLanguageModel(route: ResolvedProviderRoute) {
     baseURL: connection.baseUrl,
     apiKey: connection.apiKey,
     compatibility: 'compatible',
+    fetch: connection.provider.configurable ? createSsrfSafeFetch(connection.baseUrl) : undefined,
   });
   return provider(route.providerModelId);
 }

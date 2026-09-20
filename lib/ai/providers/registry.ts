@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { validateProviderEndpoint } from './endpoint-security';
+
 export type ProviderModality = 'chat' | 'image' | 'video';
 export type ProviderAdapterKind =
   | 'openai-compatible-chat'
@@ -18,6 +20,15 @@ export type ServerProviderDefinition = {
   baseUrlEnv?: string;
   fixedBaseUrl?: string;
   deploymentEnv?: string;
+  configurable?: boolean;
+};
+
+export type ProviderRuntimeDescriptor = {
+  provider_id: string;
+  display_name?: string | null;
+  adapter_type?: string | null;
+  base_endpoint?: string | null;
+  archived?: boolean | null;
 };
 
 const definitions = [
@@ -38,6 +49,34 @@ export function getServerProvider(providerId: string) {
   return SERVER_PROVIDER_REGISTRY.find((provider) => provider.id === providerId) ?? null;
 }
 
+export const ADMIN_CONFIGURABLE_ADAPTERS = ['openai-compatible-chat'] as const;
+
+export function resolveServerProvider(providerId: string, runtime?: ProviderRuntimeDescriptor | null) {
+  const registered = getServerProvider(providerId);
+  if (registered) {
+    const endpointOverride = registered.adapter === 'openai-compatible-chat'
+      ? runtime?.base_endpoint?.trim() || undefined : undefined;
+    return {
+      ...registered,
+      name: runtime?.display_name?.trim() || registered.name,
+      fixedBaseUrl: endpointOverride ?? registered.fixedBaseUrl,
+      configurable: registered.adapter === 'openai-compatible-chat',
+    } satisfies ServerProviderDefinition;
+  }
+  if (!runtime || runtime.archived || runtime.provider_id !== providerId
+    || runtime.adapter_type !== 'openai-compatible-chat'
+    || !/^[a-z0-9][a-z0-9_-]{1,63}$/.test(providerId)) return null;
+  return {
+    id: providerId,
+    name: runtime.display_name?.trim() || providerId,
+    modalities: ['chat'],
+    adapter: 'openai-compatible-chat',
+    apiKeyEnv: [`VANTRA_PROVIDER_${providerId.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_API_KEY`],
+    fixedBaseUrl: runtime.base_endpoint?.trim(),
+    configurable: true,
+  } satisfies ServerProviderDefinition;
+}
+
 function firstEnvironmentValue(names: readonly string[]) {
   for (const name of names) {
     const value = process.env[name]?.trim();
@@ -46,14 +85,16 @@ function firstEnvironmentValue(names: readonly string[]) {
   return null;
 }
 
-export function getProviderConnection(providerId: string) {
-  const provider = getServerProvider(providerId);
+export function getProviderConnection(providerId: string, runtime?: ProviderRuntimeDescriptor | null) {
+  const provider = resolveServerProvider(providerId, runtime);
   if (!provider) return null;
   const apiKey = firstEnvironmentValue(provider.apiKeyEnv);
   const configuredBaseUrl = provider.baseUrlEnv
     ? process.env[provider.baseUrlEnv]?.trim() || null
     : null;
-  const baseUrl = configuredBaseUrl ?? provider.fixedBaseUrl ?? null;
+  const rawBaseUrl = configuredBaseUrl ?? provider.fixedBaseUrl ?? null;
+  let baseUrl: string | null = null;
+  try { baseUrl = rawBaseUrl ? validateProviderEndpoint(rawBaseUrl) : null; } catch { baseUrl = null; }
   const deploymentName = provider.deploymentEnv
     ? process.env[provider.deploymentEnv]?.trim() || null
     : null;
@@ -70,8 +111,8 @@ export function getProviderConnection(providerId: string) {
   return { provider, apiKey, baseUrl, deploymentName, configured };
 }
 
-export function providerConfigurationSummary(providerId: string) {
-  const connection = getProviderConnection(providerId);
+export function providerConfigurationSummary(providerId: string, runtime?: ProviderRuntimeDescriptor | null) {
+  const connection = getProviderConnection(providerId, runtime);
   return {
     registered: Boolean(connection),
     configured: Boolean(connection?.configured),

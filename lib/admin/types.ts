@@ -37,7 +37,12 @@ export type AdminProviderRow = {
   name: string;
   modalities: string[];
   enabled: boolean;
-  status: 'healthy' | 'attention' | 'idle' | 'unconfigured' | 'demo' | 'client_managed';
+  status: 'ready' | 'disabled' | 'misconfigured' | 'unavailable';
+  adapterType: string;
+  baseEndpoint: string | null;
+  archived: boolean;
+  routeCount: number;
+  testSupported: boolean;
   role: 'primary' | 'backup' | 'optional' | 'unassigned';
   requestCount: number;
   failures: number;
@@ -80,6 +85,7 @@ export type AdminModelRow = {
   availabilityLabel: string | null;
   capabilities: import('@/lib/models/capabilities').ModelCapabilities;
   allowedPlans: import('@/lib/models/plan-entitlements').ModelPlanCode[];
+  archived: boolean;
   routes: AdminModelRoute[];
   providerOptions: AdminModelProviderOption[];
 };

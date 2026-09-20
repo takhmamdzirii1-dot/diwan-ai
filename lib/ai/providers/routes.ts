@@ -3,7 +3,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
 import type { EffectiveRuntimeModel } from '@/lib/models/runtime-config';
-import { getProviderConnection } from './registry';
+import { getProviderConnection, type ProviderRuntimeDescriptor } from './registry';
 
 export type ResolvedProviderRoute = {
   id: string;
@@ -14,6 +14,7 @@ export type ResolvedProviderRoute = {
   providerModelId: string;
   priority: number;
   fallback: boolean;
+  providerConfig: ProviderRuntimeDescriptor;
 };
 
 type ProviderConfigRow = {
@@ -24,6 +25,10 @@ type ProviderConfigRow = {
   daily_spend_limit_minor: number | string | null;
   spend_currency: string | null;
   circuit_open_until: string | null;
+  display_name: string | null;
+  adapter_type: string | null;
+  base_endpoint: string | null;
+  archived: boolean;
 };
 
 export class ProviderRoutingError extends Error {
@@ -63,7 +68,7 @@ export async function resolveProviderRoutes(
         'id,model_key,model_id,modality,provider_id,provider_model_id,enabled,priority,fallback'
       ).eq('model_key', model.key).eq('enabled', true),
       serverClient.from('provider_runtime_configs').select(
-        'provider_id,enabled,priority,emergency_disabled,daily_spend_limit_minor,spend_currency,circuit_open_until'
+        'provider_id,enabled,priority,emergency_disabled,daily_spend_limit_minor,spend_currency,circuit_open_until,display_name,adapter_type,base_endpoint,archived'
       ),
     ]);
   if (routeError || configError) throw new ProviderRoutingError('PROVIDER_ROUTING_UNAVAILABLE');
@@ -76,8 +81,8 @@ export async function resolveProviderRoutes(
   for (const row of routeRows ?? []) {
     if (row.model_id !== model.modelId || row.modality !== model.modality) continue;
     const config = configs.get(row.provider_id);
-    const connection = getProviderConnection(row.provider_id);
-    if (!config?.enabled || config.emergency_disabled || !connection?.configured) continue;
+    const connection = getProviderConnection(row.provider_id, config);
+    if (!config?.enabled || config.archived || config.emergency_disabled || !connection?.configured) continue;
     if (config.circuit_open_until && Date.parse(config.circuit_open_until) > now) continue;
     if (await isSpendLimitReached(serverClient, config)) continue;
     candidates.push({
@@ -89,6 +94,7 @@ export async function resolveProviderRoutes(
       providerModelId: row.provider_model_id,
       priority: Number(row.priority),
       fallback: Boolean(row.fallback),
+      providerConfig: config,
       providerPriority: Number(config.priority),
     });
   }

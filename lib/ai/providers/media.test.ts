@@ -12,6 +12,7 @@ const route: ResolvedProviderRoute = {
   providerModelId: 'p-video-2-pro',
   priority: 0,
   fallback: false,
+  providerConfig: { provider_id: 'pruna_ai' },
 };
 
 test('Pruna I2V uploads the source and omits aspect_ratio from prediction input', {

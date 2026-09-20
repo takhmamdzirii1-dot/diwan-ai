@@ -60,6 +60,7 @@ export type ModelRuntimeOverride = {
   customerAvailabilityLabel: string | null;
   capabilities: ModelCapabilities;
   allowedPlans: ModelPlanCode[];
+  archived: boolean;
   updatedAt: string;
 };
 
@@ -78,6 +79,7 @@ export type EffectiveRuntimeModel = RegistryModelReference & {
   availabilityLabel: string | null;
   capabilities: ModelCapabilities;
   allowedPlans: ModelPlanCode[];
+  archived: boolean;
   persisted: boolean;
   updatedAt: string | null;
 };
@@ -189,13 +191,14 @@ function mapOverride(row: any): ModelRuntimeOverride {
     customerAvailabilityLabel: row.customer_availability_label == null ? null : String(row.customer_availability_label),
     capabilities: normalizeModelCapabilities(row.modality, row.capabilities),
     allowedPlans: normalizeAllowedPlans(row.allowed_plans),
+    archived: Boolean(row.archived),
     updatedAt: String(row.updated_at),
   };
 }
 
 export async function loadModelRuntimeOverrides(client: SupabaseClient, modelKey?: string) {
   let query = client.from('model_runtime_configs').select(
-    'model_key,model_id,modality,enabled,routing_role,customer_credit_price,provider_cost_status,provider_cost_minor,provider_cost_currency,customer_display_name,customer_short_description,customer_media_url,customer_category,customer_sort_order,studio_visible,customer_availability_label,capabilities,allowed_plans,updated_at'
+    'model_key,model_id,modality,enabled,routing_role,customer_credit_price,provider_cost_status,provider_cost_minor,provider_cost_currency,customer_display_name,customer_short_description,customer_media_url,customer_category,customer_sort_order,studio_visible,customer_availability_label,capabilities,allowed_plans,archived,updated_at'
   );
   if (modelKey) query = query.eq('model_key', modelKey);
   const { data, error } = await query;
@@ -232,7 +235,8 @@ export function applyModelRuntimeOverrides(overrides: readonly ModelRuntimeOverr
 
   return [...MODEL_REGISTRY_REFERENCES, ...dynamicModels].map((model): EffectiveRuntimeModel => {
     const override = overrideByKey.get(model.key);
-    const enabled = model.activationSupported && (override ? override.enabled : model.baseEnabled);
+    const archived = override?.archived ?? false;
+    const enabled = !archived && model.activationSupported && (override ? override.enabled : model.baseEnabled);
     let routingRole = override?.routingRole ?? model.baseRoutingRole;
     if (!override && explicitPrimaryModalities.has(model.modality) && routingRole === 'primary') {
       routingRole = 'unassigned';
@@ -256,6 +260,7 @@ export function applyModelRuntimeOverrides(overrides: readonly ModelRuntimeOverr
       availabilityLabel: override?.customerAvailabilityLabel ?? null,
       capabilities: override?.capabilities ?? model.baseCapabilities,
       allowedPlans: override ? override.allowedPlans : [...model.baseAllowedPlans],
+      archived,
       persisted: Boolean(override),
       updatedAt: override?.updatedAt ?? null,
     };
@@ -274,19 +279,20 @@ export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<S
   const [models, routesResult, providersResult] = await Promise.all([
     getEffectiveRuntimeModels(serverClient),
     serverClient.from('model_provider_routes').select('model_key,provider_id,enabled'),
-    serverClient.from('provider_runtime_configs').select('provider_id,enabled,emergency_disabled'),
+    serverClient.from('provider_runtime_configs').select('provider_id,enabled,emergency_disabled,display_name,adapter_type,base_endpoint,archived'),
   ]);
   if (routesResult.error) throw routesResult.error;
   if (providersResult.error) throw providersResult.error;
   const providerReady = new Map((providersResult.data ?? []).map((row) => [
     String(row.provider_id),
-    Boolean(row.enabled) && !Boolean(row.emergency_disabled) && providerConfigurationSummary(String(row.provider_id)).configured,
+    Boolean(row.enabled) && !Boolean(row.archived) && !Boolean(row.emergency_disabled)
+      && providerConfigurationSummary(String(row.provider_id), row).configured,
   ]));
   const routeReady = new Set((routesResult.data ?? [])
     .filter((row) => row.enabled && providerReady.get(String(row.provider_id)))
     .map((row) => String(row.model_key)));
   return models
-    .filter((model) => model.visibleInStudio)
+    .filter((model) => !model.archived && model.visibleInStudio)
     .sort((a, b) => a.modality.localeCompare(b.modality) || a.sortOrder - b.sortOrder)
     .map((model) => {
       const billableReady = model.customerCreditPrice != null;
@@ -326,7 +332,7 @@ export async function requireEffectiveRuntimeModel(modelId: string, modality: St
   const models = await getEffectiveRuntimeModels(serverClient);
   const model = models.find((candidate) => candidate.modelId === modelId && candidate.modality === modality);
   if (!model) throw new Error('MODEL_NOT_REGISTERED');
-  if (!model.enabled || !model.activationSupported) throw new Error('MODEL_NOT_AVAILABLE');
+  if (model.archived || !model.enabled || !model.activationSupported) throw new Error('MODEL_NOT_AVAILABLE');
   if (model.customerCreditPrice == null) throw new Error('MODEL_CUSTOMER_PRICE_UNCONFIGURED');
   return model;
 }

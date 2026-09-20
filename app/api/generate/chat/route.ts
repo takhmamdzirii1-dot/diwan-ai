@@ -378,7 +378,6 @@ export async function POST(request: Request) {
       return result.toDataStreamResponse({
         headers: {
           'x-vantra-operation-id': operationKey,
-          'x-vantra-provider': route.providerId,
         },
       });
     } catch (providerError) {

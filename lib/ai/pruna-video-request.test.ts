@@ -112,8 +112,8 @@ test('requires an allowlisted source image for image-to-video', () => {
   );
 });
 
-test('rejects image, negative prompt, camera motion, and unsupported controls', () => {
-  for (const parameter of ['image', 'referenceFile', 'negativePrompt', 'cameraMotion']) {
+test('rejects unsupported controls and provider routing injection', () => {
+  for (const parameter of ['image', 'referenceFile', 'negativePrompt', 'cameraMotion', 'provider', 'provider_model', 'endpoint', 'credential', 'headers', 'route']) {
     assert.throws(
       () => validatePrunaVideoRequest({
         prompt: 'A test', modelId: 'vantra-p-video-2-pro', [parameter]: 'not-allowed',

@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
 import { getOwnerAccess } from '@/lib/auth/owner';
-import { getServerProvider, providerConfigurationSummary } from '@/lib/ai/providers/registry';
+import { providerConfigurationSummary, resolveServerProvider } from '@/lib/ai/providers/registry';
 import { resolveRuntimeModelReference } from '@/lib/models/runtime-config';
 
 const schema = z.object({
@@ -35,9 +35,16 @@ export async function POST(request: Request) {
   const client = getSupabaseAdminClient();
   if (!client) return NextResponse.json({ error: 'ADMIN_DATA_UNAVAILABLE' }, { status: 503 });
   const model = await resolveRuntimeModelReference(client, parsed.data.modelKey);
-  const provider = getServerProvider(parsed.data.providerId);
+  const { data: providerConfig, error: providerLoadError } = await client.from('provider_runtime_configs')
+    .select('provider_id,display_name,adapter_type,base_endpoint,enabled,emergency_disabled,archived')
+    .eq('provider_id', parsed.data.providerId).maybeSingle();
+  const provider = resolveServerProvider(parsed.data.providerId, providerConfig);
   if (!model) return NextResponse.json({ error: 'MODEL_NOT_REGISTERED' }, { status: 404 });
-  if (!provider) return NextResponse.json({ error: 'PROVIDER_ADAPTER_REQUIRED' }, { status: 409 });
+  const { data: modelConfig } = await client.from('model_runtime_configs')
+    .select('archived').eq('model_key', model.key).maybeSingle();
+  if (modelConfig?.archived) return NextResponse.json({ error: 'MODEL_ARCHIVED' }, { status: 409 });
+  if (providerLoadError || providerConfig?.archived) return NextResponse.json({ error: 'PROVIDER_NOT_ACTIVE' }, { status: 409 });
+  if (!provider) return NextResponse.json({ error: 'PROVIDER_CODE_ADAPTER_REQUIRED' }, { status: 409 });
   if (!provider.modalities.some((modality) => modality === model.modality)) {
     return NextResponse.json({ error: 'PROVIDER_ROUTE_INCOMPATIBLE' }, { status: 409 });
   }
@@ -58,9 +65,7 @@ export async function POST(request: Request) {
   }
   revalidatePath('/admin/models');
   revalidatePath('/admin/audit');
-  const configuration = providerConfigurationSummary(provider.id);
-  const { data: providerConfig } = await client.from('provider_runtime_configs')
-    .select('enabled').eq('provider_id', provider.id).maybeSingle();
+  const configuration = providerConfigurationSummary(provider.id, providerConfig);
   return NextResponse.json({ route: {
     id: String(data.id),
     providerId: String(data.provider_id),
@@ -69,7 +74,7 @@ export async function POST(request: Request) {
     priority: Number(data.priority),
     fallback: Boolean(data.fallback),
     configured: configuration.configured,
-    providerEnabled: Boolean(providerConfig?.enabled),
+    providerEnabled: Boolean(providerConfig?.enabled) && !Boolean(providerConfig?.emergency_disabled),
   } }, { status: 201 });
 }
 
@@ -94,14 +99,15 @@ export async function PATCH(request: Request) {
   if (!model || model.modelId !== route.model_id || model.modality !== route.modality) {
     return NextResponse.json({ error: 'PROVIDER_ROUTE_NOT_REGISTERED' }, { status: 409 });
   }
+  const { data: modelConfig } = await client.from('model_runtime_configs')
+    .select('archived').eq('model_key', model.key).maybeSingle();
+  if (modelConfig?.archived) return NextResponse.json({ error: 'MODEL_ARCHIVED' }, { status: 409 });
   if (parsed.data.enabled) {
-    const configuration = providerConfigurationSummary(route.provider_id);
-    if (!configuration.configured) {
-      return NextResponse.json({ error: 'PROVIDER_CREDENTIALS_MISSING' }, { status: 409 });
-    }
     const { data: providerConfig, error: providerError } = await client.from('provider_runtime_configs')
-      .select('enabled,emergency_disabled').eq('provider_id', route.provider_id).maybeSingle();
-    if (providerError || !providerConfig?.enabled || providerConfig.emergency_disabled) {
+      .select('provider_id,display_name,adapter_type,base_endpoint,enabled,emergency_disabled,archived').eq('provider_id', route.provider_id).maybeSingle();
+    const configuration = providerConfigurationSummary(route.provider_id, providerConfig);
+    if (!configuration.configured) return NextResponse.json({ error: 'PROVIDER_CREDENTIALS_MISSING' }, { status: 409 });
+    if (providerError || !providerConfig?.enabled || providerConfig.emergency_disabled || providerConfig.archived) {
       return NextResponse.json({ error: 'PROVIDER_NOT_ACTIVE' }, { status: 409 });
     }
   }

@@ -66,7 +66,7 @@
     },
     "status": {
       "reserved": "Reserved", "streaming": "Streaming",
-      "healthy": "Operational", "attention": "Attention", "idle": "No activity yet", "unconfigured": "Unavailable",
+        "healthy": "Operational", "attention": "Attention", "idle": "No activity yet", "unconfigured": "Unavailable", "ready": "Ready", "disabled": "Disabled", "misconfigured": "Misconfigured",
       "demo": "Demo", "client_managed": "Client-managed", "available": "Available", "beta": "Beta", "preview": "Preview",
       "unavailable": "Unavailable", "temporarily_unavailable": "Temporarily unavailable", "provider_config_required": "Provider setup required", "internal_test": "Internal test",
       "not_in_studio": "Not in Studio", "active": "Active", "unconfirmed": "Unconfirmed", "suspended": "Suspended",

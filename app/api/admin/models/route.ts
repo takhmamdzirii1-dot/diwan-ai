@@ -23,6 +23,11 @@ const createSchema = z.object({
   modality: z.enum(['chat', 'image', 'video']),
 }).strict();
 
+const lifecycleSchema = z.object({
+  modelKey: z.string().trim().min(1).max(300),
+  action: z.enum(['archive', 'delete']),
+}).strict();
+
 function sameOrigin(request: Request) {
   const origin = request.headers.get('origin');
   return !origin || origin === new URL(request.url).origin;
@@ -81,6 +86,9 @@ export async function PATCH(request: Request) {
   if (!client) return NextResponse.json({ error: 'ADMIN_DATA_UNAVAILABLE' }, { status: 503 });
   const registryModel = await resolveRuntimeModelReference(client, parsed.data.modelKey);
   if (!registryModel) return NextResponse.json({ error: 'MODEL_NOT_REGISTERED' }, { status: 404 });
+  const { data: lifecycle } = await client.from('model_runtime_configs')
+    .select('archived').eq('model_key', registryModel.key).maybeSingle();
+  if (lifecycle?.archived) return NextResponse.json({ error: 'MODEL_ARCHIVED' }, { status: 409 });
   if (parsed.data.enabled && !registryModel.activationSupported) {
     return NextResponse.json({ error: 'MODEL_ACTIVATION_UNSUPPORTED' }, { status: 409 });
   }
@@ -97,14 +105,15 @@ export async function PATCH(request: Request) {
     if (routeError) return NextResponse.json({ error: 'MODEL_ROUTE_CHECK_FAILED' }, { status: 503 });
     const providerIds = [...new Set((routes ?? []).map((route) => String(route.provider_id)))];
     const { data: providers, error: providerError } = providerIds.length
-      ? await client.from('provider_runtime_configs').select('provider_id,enabled,emergency_disabled').in('provider_id', providerIds)
+      ? await client.from('provider_runtime_configs').select('provider_id,enabled,emergency_disabled,display_name,adapter_type,base_endpoint,archived').in('provider_id', providerIds)
       : { data: [], error: null };
     if (providerError) return NextResponse.json({ error: 'MODEL_ROUTE_CHECK_FAILED' }, { status: 503 });
     const activeProviders = new Set((providers ?? [])
-      .filter((provider) => provider.enabled && !provider.emergency_disabled)
+      .filter((provider) => provider.enabled && !provider.archived && !provider.emergency_disabled)
       .map((provider) => String(provider.provider_id)));
     const readyRoute = providerIds.some((providerId) =>
-      activeProviders.has(providerId) && providerConfigurationSummary(providerId).configured);
+      activeProviders.has(providerId)
+        && providerConfigurationSummary(providerId, providers?.find((provider) => provider.provider_id === providerId)).configured);
     if (!readyRoute) return NextResponse.json({ error: 'MODEL_REQUIRES_CONFIGURED_ROUTE' }, { status: 409 });
   }
   const { data, error } = await client.rpc('admin_upsert_model_runtime_config_v2', {
@@ -141,4 +150,32 @@ export async function PATCH(request: Request) {
       updatedAt: row.updated_at,
     },
   });
+}
+
+export async function DELETE(request: Request) {
+  if (!sameOrigin(request)) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
+  const access = await getOwnerAccess();
+  if (!access.user) return NextResponse.json({ error: 'AUTHENTICATION_REQUIRED' }, { status: 401 });
+  if (!access.isOwner) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
+  const parsed = lifecycleSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: 'INVALID_MODEL_LIFECYCLE_ACTION' }, { status: 400 });
+  const client = getSupabaseAdminClient();
+  if (!client) return NextResponse.json({ error: 'ADMIN_DATA_UNAVAILABLE' }, { status: 503 });
+  const model = await resolveRuntimeModelReference(client, parsed.data.modelKey);
+  if (!model) return NextResponse.json({ error: 'MODEL_NOT_REGISTERED' }, { status: 404 });
+  if (parsed.data.action === 'delete' && !model.key.startsWith('custom:')) {
+    return NextResponse.json({ error: 'MODEL_CODE_REGISTERED_ARCHIVE_REQUIRED' }, { status: 409 });
+  }
+  const { data, error } = await client.rpc('admin_archive_or_delete_model', {
+    p_model_key: model.key, p_model_id: model.modelId, p_modality: model.modality,
+    p_hard_delete: parsed.data.action === 'delete', p_updated_by: access.user.id,
+  });
+  if (error) {
+    const known = /MODEL_(?:REFERENCED_ARCHIVE_REQUIRED|NOT_FOUND)/.exec(error.message)?.[0];
+    return NextResponse.json({ error: known ?? 'MODEL_LIFECYCLE_UPDATE_FAILED' }, { status: known === 'MODEL_NOT_FOUND' ? 404 : 409 });
+  }
+  revalidatePath('/admin');
+  revalidatePath('/admin/models');
+  revalidatePath('/admin/audit');
+  return NextResponse.json({ action: data });
 }

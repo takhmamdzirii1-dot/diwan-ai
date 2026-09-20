@@ -23,6 +23,14 @@ test('maps supported aspect ratios to valid MAI dimensions', () => {
   assert.ok(landscape.width >= 768 && landscape.height >= 768);
 });
 test('rejects options the selected model does not support', () => {
+  for (const key of ['provider', 'provider_model', 'endpoint', 'credential', 'headers', 'route']) {
+    assert.throws(
+      () => validateMaiImageRequest({
+        prompt: 'A test', modelId: 'vantra-mai-image-2.6-flash', aspectRatio: '1:1', [key]: 'injected',
+      }, capabilities),
+      (error) => error instanceof ImageRequestError && error.code === 'UNSUPPORTED_IMAGE_PARAMETER'
+    );
+  }
   assert.throws(
     () => validateMaiImageRequest({
       prompt: 'A test', modelId: 'vantra-mai-image-2.6-flash', aspectRatio: '1:1', negativePrompt: 'text',
