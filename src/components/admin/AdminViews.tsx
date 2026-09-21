@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { AlertTriangle, ChevronDown, Database, ExternalLink, Search, X } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronRight, CreditCard, Database, ExternalLink, ImageIcon, Search, UserRound, X } from 'lucide-react';
 import RunwareProviderTest, { type ProviderTestCopy } from '@/src/components/internal/RunwareProviderTest';
 import AdminPaymentActions from './AdminPaymentActions';
 import AdminPaymentPlans from './AdminPaymentPlans';
@@ -195,22 +195,60 @@ export function UsersView({ result }: { result: AdminDataResult<AdminUsersData> 
   const t = useTranslations('Admin');
   const [users, setUsers] = useState(result.data.users);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [planFilter, setPlanFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [activityFilter, setActivityFilter] = useState('all');
   useEffect(() => setUsers(result.data.users), [result.data.users]);
   const selected = users.find((user) => user.id === selectedId);
-  return <><PageHeader title={t('users.title')} description={t('users.description')} />{!result.available && <Notice reason={result.reason} />}
-    <form action="/admin/users" method="get" className="mb-3 flex gap-2"><label className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--studio-text-muted)]" aria-hidden="true" /><span className="sr-only">{t('users.search')}</span><input name="q" defaultValue={result.data.query} placeholder={t('users.search')} className="h-9 w-full rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface)] ps-9 pe-3 text-[12px] text-white outline-none placeholder:text-[var(--studio-text-muted)] focus-visible:border-[var(--studio-border-strong)]" /></label><button className="h-9 rounded-lg bg-white px-3.5 text-[12px] font-semibold text-black transition-[background-color] duration-150 hover:bg-white/90 motion-reduce:transition-none">{t('users.searchAction')}</button></form>
-    <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[var(--studio-text-muted)]"><span>{t('users.showing', { total: result.data.total })}</span><span>{t('users.safeActions')}</span></div>{result.data.truncated && <p className="mb-3 text-[11px] text-[var(--studio-text-muted)]">{t('users.truncated')}</p>}
-    {users.length ? <TableFrame><table className={adminTableClass}>
-      <colgroup><col className="w-[29%]" /><col className="w-[11%]" /><col className="w-[13%]" /><col className="w-[16%]" /><col className="w-[17%]" /><col className="w-[14%]" /></colgroup>
-      <thead className="border-b border-[var(--studio-border)]"><tr>{['email','balance','status','created','recentUsage','actions'].map((key) => <th key={key} className={key === 'balance' || key === 'actions' ? 'text-end' : ''}>{t(`users.${key}`)}</th>)}</tr></thead>
-      <tbody>{users.map((user) => <tr key={user.id} className="border-b border-[var(--studio-border-subtle)] last:border-0">
-        <td><button type="button" onClick={() => setSelectedId(user.id)} className="max-w-full truncate text-start font-semibold text-white hover:underline focus-visible:ring-2 focus-visible:ring-white/50">{user.email}</button><p className="mt-0.5 truncate text-[11px] text-[var(--studio-text-secondary)]">{user.plan}</p></td>
-        <td className="text-end font-semibold tabular-nums text-white">{user.creditBalance ?? '—'}</td><td><Status value={user.status} /></td>
-        <td className="text-[var(--studio-text-secondary)]"><DateValue value={user.createdAt} /></td>
-        <td><p className="font-medium tabular-nums text-white">{t('users.usageCredits', { value: user.creditsUsed })}</p><p className="mt-0.5 text-[10.5px] tabular-nums text-[var(--studio-text-muted)]">{t('users.usageGenerations', { value: user.generationCount })}</p></td>
-        <td className="text-end"><button type="button" onClick={() => setSelectedId(user.id)} className="text-[11px] font-semibold text-white underline">{t('users.view')}</button></td>
+  const planOptions = useMemo(() => [...new Set(users.map((user) => user.plan))].sort(), [users]);
+  const filteredUsers = useMemo(() => {
+    const now = Date.now();
+    return users.filter((user) => {
+      if (planFilter !== 'all' && user.plan !== planFilter) return false;
+      if (statusFilter !== 'all' && user.status !== statusFilter) return false;
+      const lastActive = user.lastSignInAt ? Date.parse(user.lastSignInAt) : null;
+      if (activityFilter === '7d' && (!lastActive || now - lastActive > 7 * 86_400_000)) return false;
+      if (activityFilter === '30d' && (!lastActive || now - lastActive > 30 * 86_400_000)) return false;
+      if (activityFilter === 'never' && lastActive) return false;
+      return true;
+    });
+  }, [activityFilter, planFilter, statusFilter, users]);
+  const initials = (email: string) => email.split('@')[0].split(/[._-]+/).filter(Boolean).slice(0, 2)
+    .map((part) => part[0]?.toUpperCase()).join('') || 'U';
+  const relativeActivity = (value: string | null) => {
+    if (!value) return 'Never';
+    const elapsed = Math.max(0, Date.now() - Date.parse(value));
+    const minutes = Math.floor(elapsed / 60_000);
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
+  const selectClass = 'h-11 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] px-3 text-[12px] text-white outline-none focus-visible:border-[var(--studio-border-strong)]';
+
+  return <><PageHeader title="Users" description="Manage accounts, subscriptions, usage, and customer activity." />{!result.available && <Notice reason={result.reason} />}
+    <form action="/admin/users" method="get" className="mb-5 grid items-end gap-3 lg:grid-cols-[minmax(320px,1fr)_174px_174px_180px]">
+      <label className="relative min-w-0"><Search className="pointer-events-none absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--studio-text-muted)]" aria-hidden="true" /><span className="sr-only">Search users</span><input name="q" defaultValue={result.data.query} placeholder="Search users by email or user ID..." className="h-11 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] ps-11 pe-3 text-[12px] text-white outline-none placeholder:text-[var(--studio-text-muted)] focus-visible:border-[var(--studio-border-strong)]" /></label>
+      <label className="text-start"><span className="mb-1 block text-[10.5px] font-medium text-[var(--studio-text-secondary)]">Plan</span><select value={planFilter} onChange={(event) => setPlanFilter(event.target.value)} className={selectClass}><option value="all">All plans</option>{planOptions.map((plan) => <option key={plan} value={plan}>{plan}</option>)}</select></label>
+      <label className="text-start"><span className="mb-1 block text-[10.5px] font-medium text-[var(--studio-text-secondary)]">Status</span><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className={selectClass}><option value="all">All statuses</option><option value="active">Active</option><option value="unconfirmed">Unconfirmed</option><option value="suspended">Suspended</option></select></label>
+      <label className="text-start"><span className="mb-1 block text-[10.5px] font-medium text-[var(--studio-text-secondary)]">Activity</span><select value={activityFilter} onChange={(event) => setActivityFilter(event.target.value)} className={selectClass}><option value="all">All activity</option><option value="7d">Active in 7 days</option><option value="30d">Active in 30 days</option><option value="never">Never active</option></select></label>
+      <button type="submit" className="sr-only">Search</button>
+    </form>
+    <div className="mb-3 text-start text-[12px] text-[var(--studio-text-secondary)]">{filteredUsers.length.toLocaleString()} {filteredUsers.length === 1 ? 'user' : 'users'}</div>
+    {result.data.truncated && <p className="mb-3 text-[11px] text-[var(--studio-text-muted)]">{t('users.truncated')}</p>}
+    {filteredUsers.length ? <div className="overflow-x-auto rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)]"><table className="w-full min-w-[820px] table-fixed text-start text-[12px]">
+      <colgroup><col className="w-[31%]" /><col className="w-[12%]" /><col className="w-[16%]" /><col className="w-[23%]" /><col className="w-[18%]" /></colgroup>
+      <thead className="border-b border-[var(--studio-border)] bg-white/[0.025]"><tr>{['User', 'Plan', 'Status', 'Media', 'Last Active'].map((label) => <th key={label} className="h-10 px-5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-secondary)]">{label}</th>)}</tr></thead>
+      <tbody>{filteredUsers.map((user) => <tr key={user.id} tabIndex={0} onClick={() => setSelectedId(user.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedId(user.id); } }} className="group cursor-pointer border-b border-[var(--studio-border-subtle)] outline-none transition-colors last:border-0 hover:bg-white/[0.035] focus-visible:bg-white/[0.045]">
+        <td className="px-5 py-3"><div className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/[0.07] bg-white/[0.08] text-[11px] font-medium text-white">{initials(user.email)}</span><div className="min-w-0"><p className="truncate font-semibold text-white">{user.email}</p>{user.isOwner && <p className="mt-0.5 text-[10.5px] text-[var(--studio-text-muted)]">Owner</p>}</div></div></td>
+        <td className="px-5 py-3 font-medium text-white">{user.plan}</td>
+        <td className="px-5 py-3"><Status value={user.status} /></td>
+        <td className="px-5 py-3"><p className="font-medium tabular-nums text-white">{user.generationCount.toLocaleString()} generations</p><p className="mt-0.5 text-[10.5px] tabular-nums text-[var(--studio-text-muted)]">{user.creditsUsed} credits used</p></td>
+        <td className="px-5 py-3"><div className="flex items-center justify-between gap-3"><span className="text-[var(--studio-text-secondary)]">{relativeActivity(user.lastSignInAt)}</span><ChevronRight className="h-4 w-4 shrink-0 text-[var(--studio-text-muted)] transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></div></td>
       </tr>)}</tbody>
-    </table></TableFrame> : <Empty label={result.data.query ? t('users.noMatches') : t('users.noUsers')} />}
+    </table></div> : <Empty label={users.length ? 'No users match these filters.' : result.data.query ? t('users.noMatches') : t('users.noUsers')} />}
     {selected && <AdminUserDetail key={selected.id} user={selected} onClose={() => setSelectedId(null)} onStatusChanged={(nextStatus) => setUsers((current) => current.map((item) => item.id === selected.id ? { ...item, status: nextStatus } : item))} onCreditChanged={(creditBalance) => setUsers((current) => current.map((item) => item.id === selected.id ? { ...item, creditBalance } : item))} />}</>;
 }
 
@@ -222,16 +260,35 @@ type UserDetailData = {
   audit: { id: string; payment_order_id: string; action: string; created_at: string }[];
 };
 
+function UserOverviewSection({ icon, title, description, children }: {
+  icon: React.ReactNode; title: string; description: string; children: React.ReactNode;
+}) {
+  return <section className="grid gap-4 border-b border-[var(--studio-border-subtle)] py-6 last:border-0 sm:grid-cols-[180px_minmax(0,1fr)]">
+    <div className="flex items-start gap-3 text-start"><span className="mt-0.5 text-white">{icon}</span><div><h3 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-white">{title}</h3><p className="mt-1 text-[11px] leading-relaxed text-[var(--studio-text-muted)]">{description}</p></div></div>
+    <div className="min-w-0">{children}</div>
+  </section>;
+}
+
+function UserOverviewField({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div className="grid min-h-10 items-center gap-2 border-b border-[var(--studio-border-subtle)] py-2 last:border-0 sm:grid-cols-[145px_minmax(0,1fr)]"><span className="text-[11.5px] text-[var(--studio-text-secondary)]">{label}</span><div className="min-w-0 text-[12px] font-medium text-white">{children}</div></div>;
+}
+
 function AdminUserDetail({ user, onClose, onStatusChanged, onCreditChanged }: {
   user: AdminUserRow; onClose: () => void;
   onStatusChanged: (status: AdminUserRow['status']) => void;
   onCreditChanged: (balance: string) => void;
 }) {
   const t = useTranslations('Admin');
+  const drawerRef = useRef<HTMLDialogElement>(null);
   const [tab, setTab] = useState<'overview' | 'subscription' | 'credits' | 'payments' | 'jobs' | 'security' | 'audit'>('overview');
   const [data, setData] = useState<UserDetailData | null>(null);
   const [balance, setBalance] = useState(user.creditBalance);
   const [error, setError] = useState(false);
+  useEffect(() => {
+    const drawer = drawerRef.current;
+    drawer?.showModal();
+    return () => { if (drawer?.open) drawer.close(); };
+  }, []);
   useEffect(() => {
     const controller = new AbortController();
     fetch(`/api/admin/users/${user.id}/detail`, { signal: controller.signal })
@@ -241,17 +298,54 @@ function AdminUserDetail({ user, onClose, onStatusChanged, onCreditChanged }: {
     return () => controller.abort();
   }, [user.id]);
   const tabs = ['overview', 'subscription', 'credits', 'payments', 'jobs', 'security', 'audit'] as const;
-  return <DetailDrawer title={user.email} onClose={onClose}><div className="mb-3 flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{tabs.map((value) => <button key={value} type="button" aria-pressed={tab === value} onClick={() => setTab(value)} className={`min-h-8 shrink-0 rounded-lg border px-2.5 text-[11px] font-medium ${tab === value ? 'border-white bg-white text-black' : 'border-[var(--studio-border)] text-[var(--studio-text-secondary)]'}`}>{t(`users.tabs.${value}`)}</button>)}</div>
-    {tab === 'overview' && <div className="space-y-2 text-[13px]"><p>{user.email}</p><p><strong>{t('users.plan')}:</strong> {user.plan}</p><p><strong>{t('users.balance')}:</strong> {balance ?? '—'}</p><p><strong>{t('users.status')}:</strong> <Status value={user.status} /></p><p><strong>{t('users.created')}:</strong> <DateValue value={user.createdAt} /></p><p><strong>{t('users.lastSignIn')}:</strong> <DateValue value={user.lastSignInAt} /></p><TechnicalDetails><TechnicalId label={t('common.userId')} value={user.id} /></TechnicalDetails></div>}
-    {tab === 'security' && <div className="space-y-3"><p className="text-[12px] text-[var(--studio-text-secondary)]">{t('users.securityHelp')}</p><AdminUserActions userId={user.id} status={user.status} isOwner={user.isOwner} onChanged={onStatusChanged} /></div>}
-    {tab !== 'overview' && tab !== 'security' && (error ? <Notice reason="query_failed" /> : !data ? <p role="status" className="text-[12px] text-[var(--studio-text-muted)]">{t('users.loading')}</p> : <div className="space-y-2 text-[12px]">
-      {tab === 'subscription' && (data.entitlements.length ? data.entitlements.map((item) => <div key={item.id} className="rounded-lg border border-[var(--studio-border)] p-3"><p className="font-semibold text-white">{item.plan_name} · {item.status}</p><p className="mt-1 text-[var(--studio-text-muted)]"><DateValue value={item.starts_at} /> – <DateValue value={item.ends_at} /></p></div>) : <Empty />)}
-      {tab === 'credits' && <><p className="mb-3 font-semibold text-white">{t('users.balance')}: <span className="tabular-nums">{balance ?? '—'}</span></p><AdminCreditAdjustment userId={user.id} onAdjusted={(result) => { setBalance(result.balance); onCreditChanged(result.balance); setData((current) => current ? { ...current, ledger: [result.transaction, ...current.ledger.filter((item) => item.id !== result.transaction.id)] } : current); }} />{data.ledger.length ? data.ledger.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><div><strong>{t.has(`status.${item.transaction_type}`) ? t(`status.${item.transaction_type}`) : item.transaction_type}</strong><p className="text-[var(--studio-text-muted)]">{item.reason}</p></div><div className="shrink-0 text-end tabular-nums">{item.amount}<p className="text-[var(--studio-text-muted)]"><DateValue value={item.created_at} /></p></div></div>) : <Empty />}</>}
-      {tab === 'payments' && (data.payments.length ? data.payments.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><div><strong>{item.plan_name}</strong><div className="mt-1"><Status value={item.status} /></div></div><div className="shrink-0 text-end tabular-nums">{item.amount_dzd} DZD<p className="text-[var(--studio-text-muted)]"><DateValue value={item.created_at} /></p></div></div>) : <Empty />)}
-      {tab === 'jobs' && (data.jobs.length ? data.jobs.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><div><strong>{humanizeIdentifier(item.model_id)}</strong><p className="text-[var(--studio-text-muted)]">{humanizeIdentifier(item.modality)} · {humanizeIdentifier(item.state)}</p><TechnicalDetails><TechnicalId label={t('common.modelId')} value={item.model_id} /></TechnicalDetails></div><div className="shrink-0 text-end tabular-nums">{item.credits_charged ?? '—'}<p className="text-[var(--studio-text-muted)]"><DateValue value={item.created_at} /></p></div></div>) : <Empty />)}
-      {tab === 'audit' && (data.audit.length ? data.audit.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><strong>{t.has(`audit.actions.${item.action}`) ? t(`audit.actions.${item.action}`) : humanizeIdentifier(item.action)}</strong><DateValue value={item.created_at} /></div>) : <Empty />)}
-    </div>)}
-  </DetailDrawer>;
+  const tabLabels = { overview: 'Overview', subscription: 'Subscription', credits: 'Credits & Ledger', payments: 'Payments', jobs: 'Jobs', security: 'Security', audit: 'Audit' } as const;
+  const currentEntitlement = data?.entitlements.find((item) => item.status === 'active'
+    && (!item.ends_at || Date.parse(item.ends_at) > Date.now())) ?? data?.entitlements[0] ?? null;
+  const recentImages = data?.jobs.filter((item) => item.modality === 'image').length ?? null;
+  const recentVideos = data?.jobs.filter((item) => item.modality === 'video').length ?? null;
+  const avatar = user.email.split('@')[0].split(/[._-]+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'U';
+
+  return <dialog ref={drawerRef} onClose={onClose} onClick={(event) => { if (event.target === drawerRef.current) drawerRef.current?.close(); }} aria-label={`User details for ${user.email}`} className="fixed inset-y-0 end-0 m-0 ms-auto h-dvh max-h-dvh w-full max-w-[760px] overflow-y-auto border-s border-[var(--studio-border)] bg-[var(--studio-surface)] p-0 text-white shadow-2xl backdrop:bg-black/75">
+    <div className="sticky top-0 z-20 border-b border-[var(--studio-border)] bg-[var(--studio-surface)]">
+      <div className="flex items-start gap-4 px-6 pb-5 pt-6">
+        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.08] text-[18px] font-medium text-white">{avatar}</span>
+        <div className="min-w-0 flex-1 text-start"><h2 className="truncate text-[20px] font-semibold tracking-[-0.025em] text-white">{user.email}</h2><div className="mt-2 flex flex-wrap items-center gap-2"><Badge>{user.plan}</Badge><Status value={user.status} /></div><p className="mt-3 text-[10.5px] text-[var(--studio-text-muted)]">User</p><p className="truncate text-[11.5px] text-[var(--studio-text-secondary)]">{user.email}</p></div>
+        <button type="button" onClick={() => drawerRef.current?.close()} aria-label="Close user details" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[var(--studio-text-secondary)] hover:bg-white/[0.06] hover:text-white"><X className="h-4 w-4" aria-hidden="true" /></button>
+      </div>
+      <div role="tablist" aria-label="User details" className="flex gap-1 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{tabs.map((value) => <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => setTab(value)} className={`shrink-0 border-b-2 px-2.5 pb-3 pt-1 text-[11.5px] font-medium transition-colors ${tab === value ? 'border-white text-white' : 'border-transparent text-[var(--studio-text-secondary)] hover:text-white'}`}>{tabLabels[value]}</button>)}</div>
+    </div>
+
+    <div className="px-6 pb-8">
+      {tab === 'overview' && <div>
+        <UserOverviewSection icon={<UserRound className="h-5 w-5" />} title="Account" description="Basic information and account status.">
+          <UserOverviewField label="Email"><span className="break-all">{user.email}</span></UserOverviewField>
+          <UserOverviewField label="Joined"><DateValue value={user.createdAt} /></UserOverviewField>
+          <UserOverviewField label="Last active"><DateValue value={user.lastSignInAt} /></UserOverviewField>
+          <UserOverviewField label="Email status"><Status value={user.status === 'unconfirmed' ? 'unconfirmed' : 'active'} /></UserOverviewField>
+        </UserOverviewSection>
+        <UserOverviewSection icon={<CreditCard className="h-5 w-5" />} title="Subscription" description="Plan and manual billing details.">
+          <UserOverviewField label="Plan">{user.plan}</UserOverviewField>
+          <UserOverviewField label="Access">{user.plan.toLowerCase() === 'free' ? 'Trial' : currentEntitlement ? humanizeIdentifier(currentEntitlement.status) : 'No active paid period'}</UserOverviewField>
+          <UserOverviewField label="Current period">{currentEntitlement ? <><DateValue value={currentEntitlement.starts_at} /> – <DateValue value={currentEntitlement.ends_at} /></> : '—'}</UserOverviewField>
+          <UserOverviewField label="Billing">{user.plan.toLowerCase() === 'free' ? '0 DA · Trial' : 'Manual payment'}</UserOverviewField>
+        </UserOverviewSection>
+        <UserOverviewSection icon={<ImageIcon className="h-5 w-5" />} title="Media" description="Recorded generation activity.">
+          <UserOverviewField label="All generations"><span className="tabular-nums">{user.generationCount.toLocaleString()}</span></UserOverviewField>
+          <UserOverviewField label="Recent image jobs"><span className="tabular-nums">{recentImages ?? '—'}</span></UserOverviewField>
+          <UserOverviewField label="Recent video jobs"><span className="tabular-nums">{recentVideos ?? '—'}</span></UserOverviewField>
+        </UserOverviewSection>
+        <details className="group border-b border-[var(--studio-border-subtle)] py-5"><summary className="flex cursor-pointer list-none items-center gap-3 text-start [&::-webkit-details-marker]:hidden"><ChevronRight className="h-4 w-4 text-[var(--studio-text-secondary)] transition-transform group-open:rotate-90" aria-hidden="true" /><span><strong className="block text-[12px] font-semibold text-white">Technical details</strong><span className="mt-0.5 block text-[10.5px] text-[var(--studio-text-muted)]">IDs and raw account references</span></span></summary><div className="mt-4 rounded-xl border border-[var(--studio-border-subtle)] bg-black/15 p-3"><TechnicalId label={t('common.userId')} value={user.id} /><p className="mt-2 text-[11px] text-[var(--studio-text-secondary)]">Credit balance: <span className="tabular-nums text-white">{balance ?? '—'}</span></p><p className="mt-1 text-[11px] text-[var(--studio-text-secondary)]">Payment records: <span className="tabular-nums text-white">{user.paymentOrderCount}</span></p></div></details>
+      </div>}
+      {tab === 'security' && <div className="space-y-4 py-6"><p className="text-[12px] text-[var(--studio-text-secondary)]">{t('users.securityHelp')}</p><AdminUserActions userId={user.id} status={user.status} isOwner={user.isOwner} onChanged={onStatusChanged} /></div>}
+      {tab !== 'overview' && tab !== 'security' && (error ? <div className="pt-6"><Notice reason="query_failed" /></div> : !data ? <p role="status" className="py-8 text-[12px] text-[var(--studio-text-muted)]">{t('users.loading')}</p> : <div className="space-y-2 py-6 text-[12px]">
+        {tab === 'subscription' && (data.entitlements.length ? data.entitlements.map((item) => <div key={item.id} className="rounded-lg border border-[var(--studio-border)] p-3"><p className="font-semibold text-white">{item.plan_name} · {item.status}</p><p className="mt-1 text-[var(--studio-text-muted)]"><DateValue value={item.starts_at} /> – <DateValue value={item.ends_at} /></p></div>) : <Empty />)}
+        {tab === 'credits' && <><p className="mb-3 font-semibold text-white">{t('users.balance')}: <span className="tabular-nums">{balance ?? '—'}</span></p><AdminCreditAdjustment userId={user.id} onAdjusted={(result) => { setBalance(result.balance); onCreditChanged(result.balance); setData((current) => current ? { ...current, ledger: [result.transaction, ...current.ledger.filter((item) => item.id !== result.transaction.id)] } : current); }} />{data.ledger.length ? data.ledger.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><div><strong>{t.has(`status.${item.transaction_type}`) ? t(`status.${item.transaction_type}`) : item.transaction_type}</strong><p className="text-[var(--studio-text-muted)]">{item.reason}</p></div><div className="shrink-0 text-end tabular-nums">{item.amount}<p className="text-[var(--studio-text-muted)]"><DateValue value={item.created_at} /></p></div></div>) : <Empty />}</>}
+        {tab === 'payments' && (data.payments.length ? data.payments.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><div><strong>{item.plan_name}</strong><div className="mt-1"><Status value={item.status} /></div></div><div className="shrink-0 text-end tabular-nums">{item.amount_dzd} DZD<p className="text-[var(--studio-text-muted)]"><DateValue value={item.created_at} /></p></div></div>) : <Empty />)}
+        {tab === 'jobs' && (data.jobs.length ? data.jobs.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><div><strong>{humanizeIdentifier(item.model_id)}</strong><p className="text-[var(--studio-text-muted)]">{humanizeIdentifier(item.modality)} · {humanizeIdentifier(item.state)}</p><TechnicalDetails><TechnicalId label={t('common.modelId')} value={item.model_id} /></TechnicalDetails></div><div className="shrink-0 text-end tabular-nums">{item.credits_charged ?? '—'}<p className="text-[var(--studio-text-muted)]"><DateValue value={item.created_at} /></p></div></div>) : <Empty />)}
+        {tab === 'audit' && (data.audit.length ? data.audit.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><strong>{t.has(`audit.actions.${item.action}`) ? t(`audit.actions.${item.action}`) : humanizeIdentifier(item.action)}</strong><DateValue value={item.created_at} /></div>) : <Empty />)}
+      </div>)}
+    </div>
+  </dialog>;
 }
 
 export function JobsView({ result, filters }: { result: AdminDataResult<AdminJobsData>; filters: { q?: string; status?: string; modality?: string; provider?: string; model?: string; range?: string; cursor?: string; seen?: string } }) {
