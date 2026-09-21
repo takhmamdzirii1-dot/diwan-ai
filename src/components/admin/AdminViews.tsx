@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { AlertTriangle, ChevronDown, ChevronRight, CreditCard, Database, ExternalLink, ImageIcon, Search, UserRound, X } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronRight, Copy, CreditCard, Database, ExternalLink, ImageIcon, MoreHorizontal, Search, UserRound, X } from 'lucide-react';
 import RunwareProviderTest, { type ProviderTestCopy } from '@/src/components/internal/RunwareProviderTest';
 import AdminPaymentActions from './AdminPaymentActions';
 import AdminPaymentPlans from './AdminPaymentPlans';
@@ -290,6 +290,11 @@ function UserOverviewField({ label, children }: { label: string; children: React
   return <div className="grid min-h-10 items-center gap-2 border-b border-[var(--studio-border-subtle)] py-2 last:border-0 sm:grid-cols-[145px_minmax(0,1fr)]"><span className="text-[11.5px] text-[var(--studio-text-secondary)]">{label}</span><div className="min-w-0 text-[12px] font-medium text-white">{children}</div></div>;
 }
 
+function RemainingAllowance({ remaining, total }: { remaining: number | null; total: number }) {
+  const valid = remaining !== null && Number.isFinite(remaining) && remaining >= 0 && remaining <= total;
+  return <div className="max-w-xs"><span className="tabular-nums">{remaining ?? '—'} / {total}</span>{valid && <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/10" aria-hidden="true"><div className="h-full rounded-full bg-emerald-300/75" style={{ width: `${remaining / total * 100}%` }} /></div>}</div>;
+}
+
 function isPositiveStoredBalance(value: string | null) {
   if (value === null) return false;
   try { return BigInt(value) > 0n; } catch { return false; }
@@ -306,6 +311,8 @@ function AdminUserDetail({ user, onClose, onStatusChanged, onCreditChanged }: {
   const [data, setData] = useState<UserDetailData | null>(null);
   const [balance, setBalance] = useState(user.creditBalance);
   const [error, setError] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<'email' | 'id' | 'failed' | null>(null);
   useEffect(() => {
     const drawer = drawerRef.current;
     drawer?.showModal();
@@ -322,9 +329,7 @@ function AdminUserDetail({ user, onClose, onStatusChanged, onCreditChanged }: {
   const tabs = ['overview', 'subscription', 'credits', 'payments', 'jobs', 'security', 'audit'] as const;
   const tabLabels = { overview: 'Overview', subscription: 'Subscription', credits: 'Credits & Ledger', payments: 'Payments', jobs: 'Jobs', security: 'Security', audit: 'Audit' } as const;
   const currentEntitlement = data?.entitlements.find((item) => item.status === 'active'
-    && (!item.ends_at || Date.parse(item.ends_at) > Date.now())) ?? data?.entitlements[0] ?? null;
-  const recentImages = data?.jobs.filter((item) => item.modality === 'image').length ?? null;
-  const recentVideos = data?.jobs.filter((item) => item.modality === 'video').length ?? null;
+    && (!item.ends_at || Date.parse(item.ends_at) > Date.now())) ?? null;
   const plan = user.plan.toLowerCase();
   const usageBalances = data?.balances ?? {
     balance: user.creditBalance,
@@ -335,56 +340,87 @@ function AdminUserDetail({ user, onClose, onStatusChanged, onCreditChanged }: {
     free_video_remaining: user.freeVideoRemaining,
     lite_video_remaining: user.liteVideoRemaining,
   };
-  const avatar = user.email.split('@')[0].split(/[._-]+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'U';
+  const avatar = (user.displayName ?? user.email.split('@')[0]).split(/[\s._-]+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'U';
+  const copyValue = async (value: string, field: 'email' | 'id') => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopyStatus(field);
+    } catch {
+      setCopyStatus('failed');
+    }
+  };
+  const canLeave = () => {
+    const form = drawerRef.current?.querySelector<HTMLFormElement>('form[data-credit-adjustment-state]');
+    if (!form) return true;
+    if (form.dataset.creditAdjustmentState === 'saving') return false;
+    const fields = Array.from(form.querySelectorAll<HTMLInputElement>('input'));
+    return fields.every((field) => !field.value.trim()) || window.confirm('Discard the unfinished credit adjustment?');
+  };
+  const closeDrawer = () => { if (canLeave()) drawerRef.current?.close(); };
 
-  return <dialog ref={drawerRef} onClose={onClose} onClick={(event) => { if (event.target === drawerRef.current) drawerRef.current?.close(); }} aria-label={`User details for ${user.email}`} className="fixed inset-y-0 end-0 m-0 ms-auto h-dvh max-h-dvh w-full max-w-[760px] overflow-y-auto border-s border-[var(--studio-border)] bg-[var(--studio-surface)] p-0 text-white shadow-2xl backdrop:bg-black/75">
-    <div className="sticky top-0 z-20 border-b border-[var(--studio-border)] bg-[var(--studio-surface)]">
+  return <dialog ref={drawerRef} onClose={onClose} onCancel={(event) => { if (!canLeave()) event.preventDefault(); }} onClick={(event) => { if (event.target === drawerRef.current) closeDrawer(); }} aria-label={`User details for ${user.email}`} className="fixed inset-y-0 end-0 m-0 ms-auto h-dvh max-h-dvh w-full max-w-[960px] overflow-y-auto border-s border-[var(--studio-border)] bg-[#111112] p-0 text-white shadow-[0_0_36px_rgba(0,0,0,0.2)] backdrop:bg-black/65 lg:w-[58vw]">
+    <div className="sticky top-0 z-20 border-b border-[var(--studio-border)] bg-[#111112]">
       <div className="flex items-start gap-4 px-6 pb-5 pt-6">
         <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.08] text-[18px] font-medium text-white">{avatar}</span>
-        <div className="min-w-0 flex-1 text-start"><h2 className="truncate text-[20px] font-semibold tracking-[-0.025em] text-white">{user.email}</h2><div className="mt-2 flex flex-wrap items-center gap-2"><Badge>{user.plan}</Badge><Status value={user.status} /></div><p className="mt-3 text-[10.5px] text-[var(--studio-text-muted)]">User</p><p className="truncate text-[11.5px] text-[var(--studio-text-secondary)]">{user.email}</p></div>
-        <button type="button" onClick={() => drawerRef.current?.close()} aria-label="Close user details" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[var(--studio-text-secondary)] hover:bg-white/[0.06] hover:text-white"><X className="h-4 w-4" aria-hidden="true" /></button>
+        <div className="min-w-0 flex-1 text-start"><h2 className="truncate text-[20px] font-semibold tracking-[-0.025em] text-white">{user.displayName ?? user.email}</h2>{user.displayName && <p className="mt-0.5 truncate text-[11.5px] text-[var(--studio-text-secondary)]">{user.email}</p>}<div className="mt-2 flex flex-wrap items-center gap-2"><Badge>{user.plan}</Badge><Status value={user.status} /></div></div>
+        <div className="relative shrink-0">
+          <button type="button" aria-label="User actions" aria-expanded={actionsOpen} onClick={() => setActionsOpen((current) => !current)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--studio-border)] text-[var(--studio-text-secondary)] hover:bg-white/[0.06] hover:text-white"><MoreHorizontal className="h-4 w-4" aria-hidden="true" /></button>
+          {actionsOpen && <div className="absolute end-0 top-11 z-30 w-52 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] p-1.5 shadow-xl">
+            <button type="button" onClick={() => { setTab('credits'); setActionsOpen(false); }} className="flex min-h-9 w-full items-center rounded-md px-2.5 text-start text-[11.5px] font-medium text-white hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">Adjust Usage Balance</button>
+            <button type="button" onClick={() => void copyValue(user.id, 'id')} className="flex min-h-9 w-full items-center rounded-md px-2.5 text-start text-[11.5px] font-medium text-white hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">{copyStatus === 'id' ? 'User ID copied' : copyStatus === 'failed' ? 'Copy failed' : 'Copy User ID'}</button>
+            <div className="my-1 border-t border-[var(--studio-border-subtle)]" />
+            <AdminUserActions userId={user.id} status={user.status} isOwner={user.isOwner} onChanged={(status) => { onStatusChanged(status); setActionsOpen(false); }} />
+          </div>}
+        </div>
+        <button type="button" onClick={closeDrawer} aria-label="Close user details" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[var(--studio-text-secondary)] hover:bg-white/[0.06] hover:text-white"><X className="h-4 w-4" aria-hidden="true" /></button>
       </div>
-      <div role="tablist" aria-label="User details" className="flex gap-1 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{tabs.map((value) => <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => setTab(value)} className={`shrink-0 border-b-2 px-2.5 pb-3 pt-1 text-[11.5px] font-medium transition-colors ${tab === value ? 'border-white text-white' : 'border-transparent text-[var(--studio-text-secondary)] hover:text-white'}`}>{tabLabels[value]}</button>)}</div>
+      <div role="tablist" aria-label="User details" className="flex gap-1 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{tabs.map((value) => <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => { if (value === tab || canLeave()) { setTab(value); setActionsOpen(false); } }} className={`shrink-0 border-b-2 px-2.5 pb-3 pt-1 text-[11.5px] font-medium transition-colors ${tab === value ? 'border-white text-white' : 'border-transparent text-[var(--studio-text-secondary)] hover:text-white'}`}>{tabLabels[value]}</button>)}</div>
     </div>
 
     <div className="px-6 pb-8">
       {tab === 'overview' && <div>
         <UserOverviewSection icon={<UserRound className="h-5 w-5" />} title="Account" description="Basic information and account status.">
-          <UserOverviewField label="Email"><span className="break-all">{user.email}</span></UserOverviewField>
+          <UserOverviewField label="Email"><span className="flex items-center justify-between gap-2"><span className="break-all">{user.email}</span><button type="button" onClick={() => void copyValue(user.email, 'email')} aria-label="Copy email" title={copyStatus === 'email' ? 'Copied' : 'Copy email'} className="shrink-0 rounded p-1.5 text-[var(--studio-text-secondary)] hover:text-white focus-visible:ring-2 focus-visible:ring-white/50"><Copy className="h-3.5 w-3.5" /></button></span></UserOverviewField>
+          <UserOverviewField label="User ID"><span className="flex items-center justify-between gap-2"><span className="truncate font-mono text-[11px]" title={user.id}>{user.id}</span><button type="button" onClick={() => void copyValue(user.id, 'id')} aria-label="Copy User ID" title={copyStatus === 'id' ? 'Copied' : 'Copy User ID'} className="shrink-0 rounded p-1.5 text-[var(--studio-text-secondary)] hover:text-white focus-visible:ring-2 focus-visible:ring-white/50"><Copy className="h-3.5 w-3.5" /></button></span></UserOverviewField>
           <UserOverviewField label="Joined"><DateValue value={user.createdAt} /></UserOverviewField>
           <UserOverviewField label="Last active"><DateValue value={user.lastSignInAt} /></UserOverviewField>
-          <UserOverviewField label="Email status"><Status value={user.status === 'unconfirmed' ? 'unconfirmed' : 'active'} /></UserOverviewField>
+          <UserOverviewField label="Email status"><div><Badge tone={user.emailConfirmed ? 'success' : 'warning'}>{user.emailConfirmed ? 'Verified' : 'Unconfirmed'}</Badge><p className="mt-1 text-[11px] font-normal text-[var(--studio-text-muted)]">{user.emailConfirmed ? 'Email address confirmed.' : 'Email address has not been confirmed.'}</p></div></UserOverviewField>
+          <UserOverviewField label="Account status"><Status value={user.status} /></UserOverviewField>
         </UserOverviewSection>
         <UserOverviewSection icon={<CreditCard className="h-5 w-5" />} title="Subscription" description="Plan and manual billing details.">
           <UserOverviewField label="Plan">{user.plan}</UserOverviewField>
-          <UserOverviewField label="Access">{user.plan.toLowerCase() === 'free' ? 'Trial' : currentEntitlement ? humanizeIdentifier(currentEntitlement.status) : 'No active paid period'}</UserOverviewField>
-          <UserOverviewField label="Current period">{currentEntitlement ? <><DateValue value={currentEntitlement.starts_at} /> – <DateValue value={currentEntitlement.ends_at} /></> : '—'}</UserOverviewField>
-          <UserOverviewField label="Billing">{user.plan.toLowerCase() === 'free' ? '0 DA · Trial' : 'Manual payment'}</UserOverviewField>
+          <UserOverviewField label="Access">{plan === 'free' ? 'One-time trial' : currentEntitlement ? humanizeIdentifier(currentEntitlement.status) : data ? 'No active paid period' : 'Loading…'}</UserOverviewField>
+          <UserOverviewField label="Current period">{plan === 'free' ? 'One-time allowance' : currentEntitlement ? <><DateValue value={currentEntitlement.starts_at} /> – <DateValue value={currentEntitlement.ends_at} /></> : data ? '—' : 'Loading…'}</UserOverviewField>
+          {plan !== 'free' && <UserOverviewField label="Period ends">{currentEntitlement ? <DateValue value={currentEntitlement.ends_at} /> : data ? '—' : 'Loading…'}</UserOverviewField>}
+          <UserOverviewField label="Billing">{plan === 'free' ? 'No payment required' : 'Manual payment'}</UserOverviewField>
         </UserOverviewSection>
-        <UserOverviewSection icon={<ImageIcon className="h-5 w-5" />} title="Media" description={plan === 'max' ? 'Recorded generation activity.' : 'Current plan allowances and balances.'}>
+        <UserOverviewSection icon={<ImageIcon className="h-5 w-5" />} title="Media" description="Current stored allowances and balances.">
           {plan === 'free' ? <>
-            <UserOverviewField label="Lifetime Images remaining"><span className="tabular-nums">{usageBalances.free_image_remaining ?? '—'} / 5</span></UserOverviewField>
-            <UserOverviewField label="Lifetime Videos remaining"><span className="tabular-nums">{usageBalances.free_video_remaining ?? '—'} / 1</span></UserOverviewField>
+            <UserOverviewField label="Images remaining"><RemainingAllowance remaining={usageBalances.free_image_remaining} total={5} /></UserOverviewField>
+            <UserOverviewField label="Videos remaining"><RemainingAllowance remaining={usageBalances.free_video_remaining} total={1} /></UserOverviewField>
+            <p className="pt-3 text-[11px] text-[var(--studio-text-muted)]">Free includes a one-time trial allowance of 5 images and 1 video.</p>
           </> : plan === 'lite' ? <>
             <UserOverviewField label="Subscription Credits"><span className="tabular-nums">{usageBalances.subscription_balance ?? '—'}</span></UserOverviewField>
             <UserOverviewField label="Included Videos remaining"><span className="tabular-nums">{usageBalances.lite_video_remaining ?? '—'}</span></UserOverviewField>
             {isPositiveStoredBalance(usageBalances.purchased_balance) && <UserOverviewField label="Purchased Credits"><span className="tabular-nums">{usageBalances.purchased_balance}</span></UserOverviewField>}
+            <p className="pt-3 text-[11px] text-[var(--studio-text-muted)]">Included videos are separate from Subscription Credits.</p>
           </> : plan === 'pro' ? <>
             <UserOverviewField label="Subscription Credits"><span className="tabular-nums">{usageBalances.subscription_balance ?? '—'}</span></UserOverviewField>
             <UserOverviewField label="Rollover Credits"><span className="tabular-nums">{usageBalances.subscription_rollover_balance ?? '—'}</span></UserOverviewField>
-            {isPositiveStoredBalance(usageBalances.purchased_balance) && <UserOverviewField label="Purchased Credits"><span className="tabular-nums">{usageBalances.purchased_balance}</span></UserOverviewField>}
+            <UserOverviewField label="Purchased Credits"><span className="tabular-nums">{usageBalances.purchased_balance ?? '—'}</span></UserOverviewField>
           </> : <>
-            <UserOverviewField label="All generations"><span className="tabular-nums">{user.generationCount.toLocaleString()}</span></UserOverviewField>
-            <UserOverviewField label="Recent image jobs"><span className="tabular-nums">{recentImages ?? '—'}</span></UserOverviewField>
-            <UserOverviewField label="Recent video jobs"><span className="tabular-nums">{recentVideos ?? '—'}</span></UserOverviewField>
+            <UserOverviewField label="Current Credits"><span className="tabular-nums">{usageBalances.balance ?? '—'}</span></UserOverviewField>
+            <UserOverviewField label="Subscription Credits"><span className="tabular-nums">{usageBalances.subscription_balance ?? '—'}</span></UserOverviewField>
+            <UserOverviewField label="Rollover Credits"><span className="tabular-nums">{usageBalances.subscription_rollover_balance ?? '—'}</span></UserOverviewField>
+            <UserOverviewField label="Purchased Credits"><span className="tabular-nums">{usageBalances.purchased_balance ?? '—'}</span></UserOverviewField>
           </>}
         </UserOverviewSection>
         <details className="group border-b border-[var(--studio-border-subtle)] py-5"><summary className="flex cursor-pointer list-none items-center gap-3 text-start [&::-webkit-details-marker]:hidden"><ChevronRight className="h-4 w-4 text-[var(--studio-text-secondary)] transition-transform group-open:rotate-90" aria-hidden="true" /><span><strong className="block text-[12px] font-semibold text-white">Technical details</strong><span className="mt-0.5 block text-[10.5px] text-[var(--studio-text-muted)]">IDs and raw account references</span></span></summary><div className="mt-4 rounded-xl border border-[var(--studio-border-subtle)] bg-black/15 p-3"><TechnicalId label={t('common.userId')} value={user.id} /><p className="mt-2 text-[11px] text-[var(--studio-text-secondary)]">Credit balance: <span className="tabular-nums text-white">{balance ?? '—'}</span></p><p className="mt-1 text-[11px] text-[var(--studio-text-secondary)]">Payment records: <span className="tabular-nums text-white">{user.paymentOrderCount}</span></p></div></details>
       </div>}
       {tab === 'security' && <div className="space-y-4 py-6"><p className="text-[12px] text-[var(--studio-text-secondary)]">{t('users.securityHelp')}</p><AdminUserActions userId={user.id} status={user.status} isOwner={user.isOwner} onChanged={onStatusChanged} /></div>}
-      {tab !== 'overview' && tab !== 'security' && (error ? <div className="pt-6"><Notice reason="query_failed" /></div> : !data ? <p role="status" className="py-8 text-[12px] text-[var(--studio-text-muted)]">{t('users.loading')}</p> : <div className="space-y-2 py-6 text-[12px]">
-        {tab === 'subscription' && (data.entitlements.length ? data.entitlements.map((item) => <div key={item.id} className="rounded-lg border border-[var(--studio-border)] p-3"><p className="font-semibold text-white">{item.plan_name} · {item.status}</p><p className="mt-1 text-[var(--studio-text-muted)]"><DateValue value={item.starts_at} /> – <DateValue value={item.ends_at} /></p></div>) : <Empty />)}
-        {tab === 'credits' && <><p className="mb-3 font-semibold text-white">{t('users.balance')}: <span className="tabular-nums">{balance ?? '—'}</span></p><AdminCreditAdjustment userId={user.id} onAdjusted={(result) => { setBalance(result.balance); onCreditChanged(result.balance); setData((current) => current ? { ...current, ledger: [result.transaction, ...current.ledger.filter((item) => item.id !== result.transaction.id)] } : current); }} />{data.ledger.length ? data.ledger.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><div><strong>{t.has(`status.${item.transaction_type}`) ? t(`status.${item.transaction_type}`) : item.transaction_type}</strong><p className="text-[var(--studio-text-muted)]">{item.reason}</p></div><div className="shrink-0 text-end tabular-nums">{item.amount}<p className="text-[var(--studio-text-muted)]"><DateValue value={item.created_at} /></p></div></div>) : <Empty />}</>}
+      {tab !== 'overview' && tab !== 'security' && (error ? <div className="pt-6"><Notice reason="query_failed" /></div> : !data ? <div role="status" aria-label={t('users.loading')} className="space-y-3 py-8 animate-pulse"><div className="h-12 rounded bg-white/[0.05]" /><div className="h-12 rounded bg-white/[0.04]" /><div className="h-12 rounded bg-white/[0.03]" /></div> : <div className="space-y-2 py-6 text-[12px]">
+        {tab === 'subscription' && <><div className="mb-4 border-b border-[var(--studio-border-subtle)] pb-4"><h3 className="text-[13px] font-semibold text-white">Subscription history</h3><p className="mt-1 text-[11px] text-[var(--studio-text-muted)]">Paid periods are activated through manual payments.</p></div>{data.entitlements.length ? data.entitlements.map((item) => <div key={item.id} className="grid gap-2 border-b border-[var(--studio-border-subtle)] py-3 sm:grid-cols-[minmax(0,1fr)_auto]"><div><p className="font-semibold text-white">{item.plan_name}</p><p className="mt-1 text-[var(--studio-text-muted)]"><DateValue value={item.starts_at} /> – <DateValue value={item.ends_at} /></p></div><div><Status value={item.status} /></div></div>) : <Empty label="No paid subscription periods recorded." />}</>}
+        {tab === 'credits' && <><div className="grid gap-x-6 border-b border-[var(--studio-border-subtle)] pb-5 sm:grid-cols-2"><UserOverviewField label={t('users.balance')}><span className="tabular-nums">{balance ?? '—'}</span></UserOverviewField><UserOverviewField label="Subscription"><span className="tabular-nums">{usageBalances.subscription_balance ?? '—'}</span></UserOverviewField><UserOverviewField label="Rollover"><span className="tabular-nums">{usageBalances.subscription_rollover_balance ?? '—'}</span></UserOverviewField><UserOverviewField label="Purchased"><span className="tabular-nums">{usageBalances.purchased_balance ?? '—'}</span></UserOverviewField></div><div className="pt-4"><AdminCreditAdjustment userId={user.id} onAdjusted={(result) => { setBalance(result.balance); onCreditChanged(result.balance); setData((current) => current ? { ...current, balances: current.balances ? { ...current.balances, balance: result.balance } : null, ledger: [result.transaction, ...current.ledger.filter((item) => item.id !== result.transaction.id)] } : current); void fetch(`/api/admin/users/${user.id}/detail`).then((response) => response.ok ? response.json() : null).then((fresh: UserDetailData | null) => { if (fresh) setData(fresh); }).catch(() => {}); }} /></div><h3 className="pt-2 text-[12px] font-semibold text-white">Ledger history</h3>{data.ledger.length ? data.ledger.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><div><strong>{t.has(`status.${item.transaction_type}`) ? t(`status.${item.transaction_type}`) : item.transaction_type}</strong><p className="text-[var(--studio-text-muted)]">{item.reason}</p></div><div className="shrink-0 text-end tabular-nums">{item.amount}<p className="text-[var(--studio-text-muted)]"><DateValue value={item.created_at} /></p></div></div>) : <Empty />}</>}
         {tab === 'payments' && (data.payments.length ? data.payments.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><div><strong>{item.plan_name}</strong><div className="mt-1"><Status value={item.status} /></div></div><div className="shrink-0 text-end tabular-nums">{item.amount_dzd} DZD<p className="text-[var(--studio-text-muted)]"><DateValue value={item.created_at} /></p></div></div>) : <Empty />)}
         {tab === 'jobs' && (data.jobs.length ? data.jobs.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><div><strong>{humanizeIdentifier(item.model_id)}</strong><p className="text-[var(--studio-text-muted)]">{humanizeIdentifier(item.modality)} · {humanizeIdentifier(item.state)}</p><TechnicalDetails><TechnicalId label={t('common.modelId')} value={item.model_id} /></TechnicalDetails></div><div className="shrink-0 text-end tabular-nums">{item.credits_charged ?? '—'}<p className="text-[var(--studio-text-muted)]"><DateValue value={item.created_at} /></p></div></div>) : <Empty />)}
         {tab === 'audit' && (data.audit.length ? data.audit.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><strong>{t.has(`audit.actions.${item.action}`) ? t(`audit.actions.${item.action}`) : humanizeIdentifier(item.action)}</strong><DateValue value={item.created_at} /></div>) : <Empty />)}

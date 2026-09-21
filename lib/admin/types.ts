@@ -134,6 +134,8 @@ export type AdminUserRow = {
   generationCount: number;
   paymentOrderCount: number;
   status: 'active' | 'unconfirmed' | 'suspended';
+  emailConfirmed: boolean;
+  displayName: string | null;
   createdAt: string;
   lastSignInAt: string | null;
 };

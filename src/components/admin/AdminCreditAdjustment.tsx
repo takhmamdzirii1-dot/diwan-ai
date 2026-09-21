@@ -69,7 +69,7 @@ export default function AdminCreditAdjustment({ userId, onAdjusted }: {
     }
   };
 
-  return <form onSubmit={submit} className="mb-4 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-3.5">
+  return <form onSubmit={submit} data-credit-adjustment-state={state} className="mb-4 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-3.5">
     <div className="mb-3"><h3 className="text-[13px] font-semibold text-white">{t('title')}</h3><p className="mt-0.5 text-[11px] leading-relaxed text-[var(--studio-text-secondary)]">{t('description')}</p></div>
     <div className="grid gap-2 sm:grid-cols-[120px_140px_minmax(0,1fr)]">
       <label><span className="mb-1 block text-[10.5px] font-medium text-[var(--studio-text-secondary)]">{t('direction')}</span><select value={direction} onChange={(event) => { setDirection(event.target.value as 'add' | 'deduct'); resetAttempt(); }} className="h-9 w-full rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-2.5 text-[12px] text-white outline-none focus-visible:ring-2 focus-visible:ring-white/50"><option value="add">{t('add')}</option><option value="deduct">{t('deduct')}</option></select></label>

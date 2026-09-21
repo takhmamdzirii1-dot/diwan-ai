@@ -503,8 +503,11 @@ export async function getAdminUsers(query = ''): Promise<AdminDataResult<AdminUs
       .slice(0, 100).map((user) => {
         const bannedUntil = user.banned_until ? new Date(user.banned_until).getTime() : 0;
         const userBalances = balances.get(user.id);
+        const rawDisplayName = user.user_metadata?.full_name ?? user.user_metadata?.display_name ?? user.user_metadata?.name;
         return {
           id: user.id, email: user.email ?? '—', plan: plansByUser.get(user.id)?.name ?? 'Free',
+          displayName: typeof rawDisplayName === 'string' && rawDisplayName.trim() ? rawDisplayName.trim() : null,
+          emailConfirmed: Boolean(user.email_confirmed_at),
           isOwner: isOwnerUser(user), creditBalance: userBalances ? numericString(userBalances.balance) : null,
           subscriptionBalance: userBalances ? numericString(userBalances.subscription_balance) : null,
           subscriptionRolloverBalance: userBalances ? numericString(userBalances.subscription_rollover_balance) : null,
