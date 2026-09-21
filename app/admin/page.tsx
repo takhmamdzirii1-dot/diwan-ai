@@ -1,6 +1,6 @@
-import { OverviewView } from '@/src/components/admin/AdminViews';
+import AdminOverview from '@/src/components/admin/AdminOverview';
 import { getAdminOverview } from '@/lib/admin/data';
 
 export default async function AdminOverviewPage() {
-  return <OverviewView result={await getAdminOverview()} />;
+  return <AdminOverview result={await getAdminOverview()} />;
 }

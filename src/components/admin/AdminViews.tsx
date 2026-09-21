@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { AlertTriangle, ArrowRight, ChevronDown, Database, ExternalLink, Search, X } from 'lucide-react';
+import { AlertTriangle, ChevronDown, Database, ExternalLink, Search, X } from 'lucide-react';
 import RunwareProviderTest, { type ProviderTestCopy } from '@/src/components/internal/RunwareProviderTest';
 import AdminPaymentActions from './AdminPaymentActions';
 import AdminPaymentPlans from './AdminPaymentPlans';
@@ -18,7 +18,7 @@ import AdminModelCreate from './AdminModelCreate';
 import AdminProviderCreate from './AdminProviderCreate';
 import AdminModelLifecycleControls from './AdminModelLifecycleControls';
 import type {
-  AdminAuditRow, AdminDataResult, AdminJobRow, AdminJobsData, AdminModelRow, AdminOverviewData, AdminPaymentRow,
+  AdminAuditRow, AdminDataResult, AdminJobRow, AdminJobsData, AdminModelRow, AdminPaymentRow,
   AdminPaymentPlan, AdminProviderRow, AdminUserRow, AdminUsersData, CostAmount,
 } from '@/lib/admin/types';
 import { isMissingCustomerPricing } from '@/lib/admin/model-economics';
@@ -120,58 +120,6 @@ function SectionHeading({ title, description }: { title: string; description?: s
 
 function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
   return <section className="rounded-lg border border-[var(--studio-border-subtle)] bg-black/15 p-3"><h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-secondary)]">{title}</h3><div className="space-y-2 text-[12.5px]">{children}</div></section>;
-}
-
-const actionLinkClass = 'group flex min-h-9 items-center justify-between gap-3 rounded-lg border border-[var(--studio-border)] bg-white/[0.025] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] transition-[background-color,border-color,color] duration-150 hover:border-[var(--studio-border-strong)] hover:bg-white/[0.065] hover:text-white motion-reduce:transition-none';
-
-function summarizeActivity(items: AdminOverviewData['recentActivity']) {
-  return items.reduce<Array<AdminOverviewData['recentActivity'][number] & { occurrences: number }>>((summary, item) => {
-    const existing = summary.find((candidate) => candidate.kind === item.kind
-      && candidate.label === item.label && candidate.detail === item.detail
-      && candidate.status === item.status && candidate.technicalDetail === item.technicalDetail);
-    if (existing) existing.occurrences += 1;
-    else summary.push({ ...item, occurrences: 1 });
-    return summary;
-  }, []);
-}
-
-export function OverviewView({ result }: { result: AdminDataResult<AdminOverviewData> }) {
-  const t = useTranslations('Admin');
-  const metrics = [
-    ['totalUsers', result.data.totalUsers], ['totalGenerations', result.data.totalGenerations],
-    ['successfulJobs', result.data.successfulJobs], ['failedJobs', result.data.failedJobs],
-    ['pendingPayments', result.data.pendingPayments], ['activeProviders', result.data.activeProviders],
-    ['activeModels', result.data.activeModels],
-  ] as const;
-  const attentionItems = [
-    { key: 'pendingPayments', value: result.data.pendingPayments, href: '/admin/payments?view=payments&status=pending' },
-    { key: 'providerIssues', value: result.data.providerIssues, href: '/admin/providers' },
-    { key: 'modelsMissingPricing', value: result.data.modelsMissingPricing, href: '/admin/models' },
-  ].filter((item) => typeof item.value === 'number' && item.value > 0);
-  return <><PageHeader title={t('overview.title')} description={t('overview.description')} />{!result.available && <Notice reason={result.reason} />}
-    {attentionItems.length ? <div role="region" aria-labelledby="admin-attention-title" className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[0.05] px-3 py-2">
-      <AlertTriangle className="h-4 w-4 shrink-0 text-amber-200" aria-hidden="true" /><div className="me-1 min-w-0 text-start"><h2 id="admin-attention-title" className="text-[13px] font-semibold text-amber-50">{t('overview.attentionTitle')}</h2><p className="sr-only">{t('overview.attentionDescription')}</p></div>
-      <div className="flex flex-wrap gap-1.5">{attentionItems.map((item) => <Link key={item.key} href={item.href} prefetch={false} className="inline-flex min-h-7 items-center gap-2.5 rounded-lg border border-amber-200/15 bg-black/20 px-2.5 py-1 text-[11px] font-medium text-amber-50/85 hover:bg-black/30 hover:text-white"><span>{t(`overview.${item.key}`)}</span><strong className="tabular-nums text-white">{item.value}</strong></Link>)}</div>
-    </div> : null}
-    <section aria-label={t('overview.metrics')} className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{metrics.map(([key, value]) => <Metric key={key} label={t(`overview.${key}`)} value={value} />)}</section>
-    <section className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_320px]"><div className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-3.5"><SectionHeading title={t('overview.recentActivity')} />
-      <div className="space-y-1">{result.data.recentActivity.length ? summarizeActivity(result.data.recentActivity).map((item) => {
-        const action = t.has(`status.${item.status}`) ? t(`status.${item.status}`) : item.status;
-        const title = item.kind === 'generation'
-          ? t('overview.generationActivity', { item: item.label })
-          : t('overview.creditActivity', { action });
-        const detail = item.kind === 'credit' ? t('overview.creditChange', { value: item.detail }) : item.detail;
-        return <div key={item.id} className="flex items-start justify-between gap-4 border-t border-[var(--studio-border-subtle)] py-2.5 text-start first:border-0"><div className="min-w-0"><p className="text-[13px] font-medium text-white">{title}{item.occurrences > 1 ? <span className="ms-2 text-[11px] font-medium text-[var(--studio-text-muted)]">{t('overview.repeatedActivity', { count: item.occurrences })}</span> : null}</p><p className="mt-0.5 break-words text-[12px] text-[var(--studio-text-secondary)]">{detail}</p>{item.technicalDetail ? <TechnicalDetails><p className="break-words text-[11px] text-[var(--studio-text-secondary)]">{item.technicalDetail}</p></TechnicalDetails> : null}</div><div className="shrink-0 text-end"><Status value={item.status} /><p className="mt-1 text-[11px] text-[var(--studio-text-muted)]"><DateValue value={item.createdAt} /></p></div></div>;
-      }) : <Empty label={t('overview.noActivity')} />}</div></div>
-      <div className="space-y-3"><div className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-3.5 text-start"><SectionHeading title={t('overview.quickActions')} /><div className="grid gap-1.5">
-        <Link href="/admin/payments?view=payments&status=pending" prefetch={false} className={actionLinkClass}><span>{t('overview.reviewPayments')}</span><ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 rtl:rotate-180" aria-hidden="true" /></Link>
-        <Link href="/admin/payments?view=plans" prefetch={false} className={actionLinkClass}><span>{t('overview.managePlans')}</span><ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 rtl:rotate-180" aria-hidden="true" /></Link>
-        <Link href="/admin/jobs" prefetch={false} className={actionLinkClass}><span>{t('overview.viewJobs')}</span><ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 rtl:rotate-180" aria-hidden="true" /></Link>
-        <Link href="/admin/providers" prefetch={false} className={actionLinkClass}><span>{t('overview.reviewProviders')}</span><ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 rtl:rotate-180" aria-hidden="true" /></Link>
-        <Link href="/admin/users" prefetch={false} className={actionLinkClass}><span>{t('overview.findUser')}</span><ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 rtl:rotate-180" aria-hidden="true" /></Link>
-      </div></div>
-      {result.data.providerCosts.length ? <div className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-3.5 text-start"><SectionHeading title={t('overview.providerCost')} description={t('overview.providerCostDescription')} /><div className="space-y-1.5">{result.data.providerCosts.map((cost) => <div key={cost.currency} className="rounded-lg border border-[var(--studio-border-subtle)] bg-white/[0.025] px-3 py-2 text-[12px] font-semibold text-white"><Cost value={cost} /></div>)}</div></div> : null}</div>
-    </section></>;
 }
 
 export function ProvidersView({ result }: { result: AdminDataResult<AdminProviderRow[]> }) {
@@ -306,7 +254,7 @@ function AdminUserDetail({ user, onClose, onStatusChanged, onCreditChanged }: {
   </DetailDrawer>;
 }
 
-export function JobsView({ result, filters }: { result: AdminDataResult<AdminJobsData>; filters: { q?: string; status?: string; modality?: string; provider?: string; model?: string; cursor?: string; seen?: string } }) {
+export function JobsView({ result, filters }: { result: AdminDataResult<AdminJobsData>; filters: { q?: string; status?: string; modality?: string; provider?: string; model?: string; range?: string; cursor?: string; seen?: string } }) {
   const t = useTranslations('Admin');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = result.data.jobs.find((job) => job.id === selectedId);

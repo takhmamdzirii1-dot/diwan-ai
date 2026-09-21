@@ -8,28 +8,38 @@ export type CostAmount = { currency: string; minor: string };
 
 export type AdminActivity = {
   id: string;
-  kind: 'generation' | 'credit';
-  label: string;
-  detail: string;
-  technicalDetail?: string | null;
+  kind: 'payment' | 'generation' | 'subscription' | 'provider' | 'model' | 'plan' | 'credit';
+  title: string;
+  context: string;
   status: string;
   createdAt: string;
+  href: string;
 };
 
 export type AdminOverviewData = {
+  generatedAt: string;
   totalUsers: number | null;
-  totalGenerations: number | null;
-  successfulJobs: number | null;
-  failedJobs: number | null;
+  usersThisMonth: number | null;
+  generations7d: number | null;
+  generationsPrevious7d: number | null;
+  successfulJobs7d: number | null;
+  failedJobs7d: number | null;
   providerIssues: number | null;
-  modelsMissingPricing: number;
-  modelsUnknownProviderCost: number;
-  creditsConsumed: string | null;
+  modelsMissingPricing: number | null;
+  modelsMissingRoute: number | null;
   pendingPayments: number | null;
-  providerCosts: CostAmount[];
-  recentActivity: AdminActivity[];
-  activeProviders: number | null;
+  providerHealth: {
+    ready: number;
+    degraded: number;
+    unavailable: number;
+    misconfigured: number;
+    enabled: number;
+  } | null;
   activeModels: number | null;
+  testingModels: number | null;
+  disabledModels: number | null;
+  recentActivity: AdminActivity[];
+  partialFailures: string[];
 };
 
 export type AdminProviderRow = {

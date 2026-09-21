@@ -72,9 +72,6 @@ const numericString = (value: unknown) => {
   return '0';
 };
 
-const sumIntegerValues = (rows: any[], key: string) =>
-  rows.reduce((total, row) => total + BigInt(numericString(row[key])), 0n).toString();
-
 function groupCosts(rows: any[]): Map<string, CostAmount[]> {
   const grouped = new Map<string, Map<string, bigint>>();
   for (const row of rows) {
@@ -90,17 +87,6 @@ function groupCosts(rows: any[]): Map<string, CostAmount[]> {
     provider,
     [...currencies.entries()].map(([currency, minor]) => ({ currency, minor: minor.toString() })),
   ]));
-}
-
-function totalCosts(rows: any[]): CostAmount[] {
-  const totals = new Map<string, bigint>();
-  for (const row of rows) {
-    if (row.actual_cost_minor == null) continue;
-    const currency = String(row.currency ?? '').toUpperCase();
-    if (!currency) continue;
-    totals.set(currency, (totals.get(currency) ?? 0n) + BigInt(numericString(row.actual_cost_minor)));
-  }
-  return [...totals.entries()].map(([currency, minor]) => ({ currency, minor: minor.toString() }));
 }
 
 const unavailable = <T,>(data: T): AdminDataResult<T> => ({ available: false, data, reason: 'not_configured' });
@@ -151,78 +137,190 @@ function buildAdminModelRows(models: readonly EffectiveRuntimeModel[], latestCos
 
 export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewData>> {
   const empty: AdminOverviewData = {
-    totalUsers: null, totalGenerations: null, successfulJobs: null, failedJobs: null,
-    providerIssues: null,
-    modelsMissingPricing: buildAdminModelRows(applyModelRuntimeOverrides([]), new Map()).filter(isMissingCustomerPricing).length,
-    modelsUnknownProviderCost: buildAdminModelRows(applyModelRuntimeOverrides([]), new Map()).filter((model) => model.providerCostState === 'unknown').length,
-    creditsConsumed: null, pendingPayments: null, providerCosts: [], recentActivity: [],
-    activeProviders: null, activeModels: null,
+    generatedAt: new Date().toISOString(), totalUsers: null, usersThisMonth: null,
+    generations7d: null, generationsPrevious7d: null, successfulJobs7d: null, failedJobs7d: null,
+    providerIssues: null, modelsMissingPricing: null, modelsMissingRoute: null, pendingPayments: null,
+    providerHealth: null, activeModels: null, testingModels: null, disabledModels: null,
+    recentActivity: [], partialFailures: [],
   };
   const client = await requireAdminDataAccess();
   if (!client) return unavailable(empty);
 
-  try {
-    const [auth, executions, generations, usage, costs, transactions, providerConfigs, executionCount, completedCount, failedCount, mediaCount, mediaCompleted, mediaFailed, pendingPaymentCount] = await Promise.all([
-      allAuthUsers(client),
-      client.from('ai_executions').select('id,modality,model_id,state,error_code,created_at')
-        .order('created_at', { ascending: false }).limit(8),
-      client.from('generations').select('id,type,model_id,status,error_message,created_at')
-        .order('created_at', { ascending: false }).limit(8),
-      allRows(client, 'usage_records', 'credits_charged,created_at'),
-      allRows(client, 'provider_cost_records', 'provider,provider_model,actual_cost_minor,currency,created_at'),
-      client.from('credit_transactions').select('id,transaction_type,amount,reason,created_at')
-        .order('created_at', { ascending: false }).limit(8),
-      client.from('provider_runtime_configs').select('provider_id,enabled,emergency_disabled,last_error_code,display_name,adapter_type,base_endpoint,archived'),
-      client.from('ai_executions').select('id', { count: 'exact', head: true }),
-      client.from('ai_executions').select('id', { count: 'exact', head: true }).eq('state', 'completed'),
-      client.from('ai_executions').select('id', { count: 'exact', head: true }).eq('state', 'failed'),
-      client.from('generations').select('id', { count: 'exact', head: true }),
-      client.from('generations').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
-      client.from('generations').select('id', { count: 'exact', head: true }).eq('status', 'failed'),
-      client.from('payment_orders').select('id', { count: 'exact', head: true })
-        .eq('status', 'pending').not('submitted_at', 'is', null),
-    ]);
-    for (const result of [executions, generations, transactions, providerConfigs, executionCount, completedCount, failedCount, mediaCount, mediaCompleted, mediaFailed, pendingPaymentCount]) {
-      if (result.error) throw result.error;
-    }
-    const executionActivity: AdminActivity[] = (executions.data ?? []).map((row) => ({
-      id: `execution:${row.id}`, kind: 'generation', label: `${row.modality} · ${MODEL_NAMES.get(row.model_id) ?? row.model_id}`,
-      detail: row.error_code ?? row.state, status: row.state, createdAt: row.created_at,
-    }));
-    const generationActivity: AdminActivity[] = (generations.data ?? [])
-      .map((row) => ({
-        id: `generation:${row.id}`, kind: 'generation', label: `${row.type} · ${MODEL_NAMES.get(row.model_id) ?? row.model_id}`,
-        detail: row.error_message ?? row.status, status: row.status, createdAt: row.created_at,
-      }));
-    const creditActivity: AdminActivity[] = (transactions.data ?? []).map((row: any) => ({
-      id: `credit:${row.id}`, kind: 'credit', label: row.transaction_type,
-      detail: numericString(row.amount), technicalDetail: row.reason,
-      status: row.transaction_type, createdAt: row.created_at,
-    }));
-    const modelRows = buildAdminModelRows(await getEffectiveRuntimeModels(client), latestCostsByModel(costs));
-    const activeProviders = (providerConfigs.data ?? []).filter((row) => row.enabled && !row.archived
-      && !row.emergency_disabled && providerConfigurationSummary(row.provider_id, row).configured).length;
+  const now = new Date();
+  const weekStart = new Date(now.getTime() - 7 * 86_400_000).toISOString();
+  const previousWeekStart = new Date(now.getTime() - 14 * 86_400_000).toISOString();
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+  const checked = <T extends { error: unknown }>(result: T) => {
+    if (result.error) throw result.error;
+    return result;
+  };
+  const countJobs = (table: string, statusColumn: string, status?: string, from = weekStart, to?: string) => {
+    let query = client.from(table).select('id', { count: 'exact', head: true }).gte('created_at', from);
+    if (to) query = query.lt('created_at', to);
+    if (status) query = query.eq(statusColumn, status);
+    return query;
+  };
 
-    return { available: true, data: {
-      totalUsers: auth.truncated ? null : auth.users.length,
-      totalGenerations: executionCount.count == null || mediaCount.count == null ? null : executionCount.count + mediaCount.count,
-      successfulJobs: completedCount.count == null || mediaCompleted.count == null ? null : completedCount.count + mediaCompleted.count,
-      failedJobs: failedCount.count == null || mediaFailed.count == null ? null : failedCount.count + mediaFailed.count,
-      providerIssues: (providerConfigs.data ?? []).filter((row) => row.emergency_disabled || row.last_error_code).length,
-      modelsMissingPricing: modelRows.filter((model) => model.enabled && isMissingCustomerPricing(model)).length,
-      modelsUnknownProviderCost: modelRows.filter((model) => model.providerCostState === 'unknown').length,
-      creditsConsumed: usage.length >= PAGE_SIZE * MAX_PAGES ? null : sumIntegerValues(usage, 'credits_charged'),
-      pendingPayments: pendingPaymentCount.count ?? null,
-      providerCosts: costs.length >= PAGE_SIZE * MAX_PAGES ? [] : totalCosts(costs),
-      activeProviders,
-      activeModels: modelRows.filter((row) => row.enabled).length,
-      recentActivity: [...executionActivity, ...generationActivity, ...creditActivity]
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 10),
-    } };
-  } catch (error) {
-    console.error('[admin] overview query failed', { message: error instanceof Error ? error.message : 'Unknown error' });
-    return failed(empty);
+  const groups = await Promise.allSettled([
+    (async () => {
+      const auth = await allAuthUsers(client);
+      return {
+        total: auth.truncated ? null : auth.users.length,
+        thisMonth: auth.truncated ? null : auth.users.filter((user) => user.created_at >= monthStart).length,
+        emails: new Map(auth.users.map((user) => [user.id, user.email ?? null])),
+      };
+    })(),
+    (async () => {
+      const results = await Promise.all([
+        countJobs('ai_executions', 'state'), countJobs('generations', 'status'),
+        countJobs('ai_executions', 'state', undefined, previousWeekStart, weekStart),
+        countJobs('generations', 'status', undefined, previousWeekStart, weekStart),
+        countJobs('ai_executions', 'state', 'completed'), countJobs('generations', 'status', 'completed'),
+        countJobs('ai_executions', 'state', 'failed'), countJobs('generations', 'status', 'failed'),
+        client.from('ai_executions').select('id,user_id,model_id,created_at').eq('state', 'failed')
+          .order('created_at', { ascending: false }).limit(8),
+        client.from('generations').select('id,user_id,model_id,created_at').eq('status', 'failed')
+          .order('created_at', { ascending: false }).limit(8),
+      ]);
+      results.forEach(checked);
+      const counts = results.slice(0, 8).map((result) => result.count);
+      return {
+        current: counts[0] == null || counts[1] == null ? null : counts[0] + counts[1],
+        previous: counts[2] == null || counts[3] == null ? null : counts[2] + counts[3],
+        successful: counts[4] == null || counts[5] == null ? null : counts[4] + counts[5],
+        failed: counts[6] == null || counts[7] == null ? null : counts[6] + counts[7],
+        failedExecutions: results[8].data ?? [], failedGenerations: results[9].data ?? [],
+      };
+    })(),
+    (async () => {
+      const [pending, audits, orders] = await Promise.all([
+        client.from('payment_orders').select('id', { count: 'exact', head: true })
+          .eq('status', 'pending').not('submitted_at', 'is', null),
+        client.from('payment_audit_log').select('id,payment_order_id,action,metadata,created_at')
+          .in('action', ['submitted', 'approved', 'rejected', 'cancelled']).order('created_at', { ascending: false }).limit(24),
+        client.from('payment_orders').select('id,user_id,plan_name,order_kind,status')
+          .order('created_at', { ascending: false }).limit(300),
+      ]);
+      [pending, audits, orders].forEach(checked);
+      return { pending: pending.count ?? null, audits: audits.data ?? [], orders: orders.data ?? [] };
+    })(),
+    (async () => {
+      const [providers, routes, models] = await Promise.all([
+        client.from('provider_runtime_configs').select('provider_id,enabled,emergency_disabled,last_error_code,last_checked_at,display_name,adapter_type,base_endpoint,archived'),
+        client.from('model_provider_routes').select('model_key,provider_id,enabled'),
+        getEffectiveRuntimeModels(client),
+      ]);
+      checked(providers);
+      checked(routes);
+      const enabledProviders = (providers.data ?? []).filter((row) => row.enabled && !row.archived);
+      const states = new Map<string, 'ready' | 'degraded' | 'unavailable' | 'misconfigured'>();
+      for (const provider of enabledProviders) {
+        const id = String(provider.provider_id);
+        states.set(id, !providerConfigurationSummary(id, provider).configured ? 'misconfigured'
+          : provider.emergency_disabled ? 'unavailable' : provider.last_error_code ? 'degraded' : 'ready');
+      }
+      const providerHealth = {
+        ready: [...states.values()].filter((state) => state === 'ready').length,
+        degraded: [...states.values()].filter((state) => state === 'degraded').length,
+        unavailable: [...states.values()].filter((state) => state === 'unavailable').length,
+        misconfigured: [...states.values()].filter((state) => state === 'misconfigured').length,
+        enabled: enabledProviders.length,
+      };
+      const modelRows = buildAdminModelRows(models, new Map());
+      const active = modelRows.filter((model) => model.enabled && !model.archived);
+      const usableRoutes = new Set((routes.data ?? []).filter((route) => route.enabled
+        && ['ready', 'degraded'].includes(states.get(String(route.provider_id)) ?? '')).map((route) => String(route.model_key)));
+      return {
+        providerHealth, providers: enabledProviders,
+        providerIssues: providerHealth.degraded + providerHealth.unavailable + providerHealth.misconfigured,
+        missingPricing: active.filter(isMissingCustomerPricing).length,
+        missingRoute: active.filter((model) => !usableRoutes.has(model.key)).length,
+        active: active.length,
+        testing: active.filter((model) => ['preview', 'beta', 'internal_test'].includes(model.availability)).length,
+        disabled: modelRows.filter((model) => !model.enabled && !model.archived).length,
+      };
+    })(),
+    (async () => {
+      const audits = await client.from('admin_audit_log').select('id,action,resource_type,resource_id,created_at')
+        .order('created_at', { ascending: false }).limit(30);
+      checked(audits);
+      return audits.data ?? [];
+    })(),
+  ]);
+
+  const labels = ['users', 'jobs', 'payments', 'configuration', 'activity'];
+  const partialFailures = labels.filter((_, index) => groups[index].status === 'rejected');
+  groups.forEach((group, index) => {
+    if (group.status === 'rejected') console.error('[admin] overview partial query failed', {
+      group: labels[index], message: group.reason instanceof Error ? group.reason.message : 'Unknown error',
+    });
+  });
+  if (partialFailures.length === groups.length) return failed({ ...empty, partialFailures });
+
+  const users = groups[0].status === 'fulfilled' ? groups[0].value : null;
+  const jobs = groups[1].status === 'fulfilled' ? groups[1].value : null;
+  const payments = groups[2].status === 'fulfilled' ? groups[2].value : null;
+  const configuration = groups[3].status === 'fulfilled' ? groups[3].value : null;
+  const generalAudits = groups[4].status === 'fulfilled' ? groups[4].value : [];
+  const emails = users?.emails ?? new Map<string, string | null>();
+  const orderById = new Map((payments?.orders ?? []).map((order: any) => [String(order.id), order]));
+  const activity: AdminActivity[] = [];
+
+  for (const audit of payments?.audits ?? []) {
+    const order: any = orderById.get(String(audit.payment_order_id));
+    if (!order) continue;
+    const lifecycle = audit.metadata && typeof audit.metadata === 'object'
+      ? String((audit.metadata as Record<string, unknown>).lifecycle_type ?? '') : '';
+    const title = audit.action === 'submitted' ? 'Payment awaiting review'
+      : audit.action === 'rejected' ? 'Payment rejected'
+        : audit.action === 'cancelled' ? 'Payment canceled'
+          : order.order_kind === 'credit_pack' ? 'Top-up approved'
+            : lifecycle === 'upgrade' ? 'Subscription upgraded'
+              : lifecycle === 'same_plan_renewal' ? 'Subscription renewed' : 'New subscription';
+    activity.push({
+      id: `payment:${audit.id}`, kind: order.order_kind === 'credit_pack' ? 'credit' : lifecycle ? 'subscription' : 'payment',
+      title, context: `${emails.get(String(order.user_id)) ?? 'Customer'} · ${order.plan_name}`,
+      status: audit.action === 'submitted' ? 'pending' : audit.action, createdAt: audit.created_at,
+      href: `/admin/payments?view=payments&status=${audit.action === 'submitted' ? 'pending' : audit.action}`,
+    });
   }
+  for (const row of [...(jobs?.failedExecutions ?? []), ...(jobs?.failedGenerations ?? [])]) activity.push({
+    id: `generation:${row.id}`, kind: 'generation', title: 'Generation failed',
+    context: `${emails.get(String(row.user_id)) ?? 'Customer'} · ${MODEL_NAMES.get(row.model_id) ?? row.model_id}`,
+    status: 'failed', createdAt: row.created_at, href: `/admin/jobs?range=7d&status=failed&q=${encodeURIComponent(row.id)}`,
+  });
+  for (const provider of configuration?.providers ?? []) {
+    const state = !providerConfigurationSummary(String(provider.provider_id), provider).configured ? 'misconfigured'
+      : provider.emergency_disabled ? 'unavailable' : provider.last_error_code ? 'degraded' : null;
+    if (!state || !provider.last_checked_at) continue;
+    activity.push({ id: `provider:${provider.provider_id}:${provider.last_checked_at}`, kind: 'provider',
+      title: `Provider ${state}`, context: String(provider.display_name ?? provider.provider_id), status: state,
+      createdAt: provider.last_checked_at, href: '/admin/providers' });
+  }
+  for (const audit of generalAudits) {
+    const resource = String(audit.resource_type);
+    const isModel = resource === 'model';
+    const isProvider = resource === 'provider';
+    const isPlan = resource === 'payment_plan' || resource === 'plan';
+    const isCredit = String(audit.action).includes('credit');
+    if (!isModel && !isProvider && !isPlan && !isCredit) continue;
+    activity.push({ id: `admin:${audit.id}`, kind: isModel ? 'model' : isProvider ? 'provider' : isPlan ? 'plan' : 'credit',
+      title: isModel ? 'Model updated' : isProvider ? 'Provider updated' : isPlan ? 'Plan updated' : 'Credit adjustment',
+      context: String(audit.resource_id).replaceAll('_', ' '), status: 'updated', createdAt: audit.created_at,
+      href: isModel ? '/admin/models' : isProvider ? '/admin/providers' : isPlan ? '/admin/payments?view=plans' : `/admin/users?q=${encodeURIComponent(audit.resource_id)}` });
+  }
+
+  return { available: true, data: {
+    generatedAt: now.toISOString(), totalUsers: users?.total ?? null, usersThisMonth: users?.thisMonth ?? null,
+    generations7d: jobs?.current ?? null, generationsPrevious7d: jobs?.previous ?? null,
+    successfulJobs7d: jobs?.successful ?? null, failedJobs7d: jobs?.failed ?? null,
+    providerIssues: configuration?.providerIssues ?? null, modelsMissingPricing: configuration?.missingPricing ?? null,
+    modelsMissingRoute: configuration?.missingRoute ?? null, pendingPayments: payments?.pending ?? null,
+    providerHealth: configuration?.providerHealth ?? null, activeModels: configuration?.active ?? null,
+    testingModels: configuration?.testing ?? null, disabledModels: configuration?.disabled ?? null,
+    recentActivity: activity.sort((left, right) => right.createdAt.localeCompare(left.createdAt)).slice(0, 5),
+    partialFailures,
+  } };
 }
 
 export async function getAdminProviders(): Promise<AdminDataResult<AdminProviderRow[]>> {
@@ -421,7 +519,7 @@ export async function getAdminUsers(query = ''): Promise<AdminDataResult<AdminUs
 }
 
 export async function getAdminJobs(filters: {
-  q?: string; status?: string; modality?: string; provider?: string; model?: string; cursor?: string; seen?: string;
+  q?: string; status?: string; modality?: string; provider?: string; model?: string; range?: string; cursor?: string; seen?: string;
 } = {}): Promise<AdminDataResult<AdminJobsData>> {
   const empty: AdminJobsData = { jobs: [], nextCursor: null, total: 0 };
   const client = await requireAdminDataAccess();
@@ -433,10 +531,12 @@ export async function getAdminJobs(filters: {
     const seen = filters.cursor && /^\d{1,6}$/.test(filters.seen ?? '') ? Number(filters.seen) : 0;
     const matchingUsers = q ? auth.users.filter((user) => user.email?.toLowerCase().includes(q.toLowerCase()) || user.id === q).slice(0, 30).map((user) => user.id) : [];
     const cursor = filters.cursor && !Number.isNaN(Date.parse(filters.cursor)) ? filters.cursor : null;
+    const rangeStart = filters.range === '7d' ? new Date(Date.now() - 7 * 86_400_000).toISOString() : null;
     let executionsQuery = client.from('ai_executions')
       .select('id,user_id,operation_key,modality,model_id,provider_id,provider_model_id,reservation_id,state,credits_charged,error_code,execution_metadata,created_at,updated_at,completed_at', { count: 'exact' })
       .order('created_at', { ascending: false }).limit(51);
     if (cursor) executionsQuery = executionsQuery.lt('created_at', cursor);
+    if (rangeStart) executionsQuery = executionsQuery.gte('created_at', rangeStart);
     if (filters.status && filters.status !== 'all') executionsQuery = executionsQuery.eq('state', filters.status);
     if (filters.modality && filters.modality !== 'all') executionsQuery = executionsQuery.eq('modality', filters.modality);
     if (filters.provider && filters.provider !== 'all') executionsQuery = executionsQuery.eq('provider_id', filters.provider);
@@ -451,6 +551,7 @@ export async function getAdminJobs(filters: {
       .select('id,user_id,type,prompt,model_id,status,metadata,error_message,created_at,updated_at', { count: 'exact' })
       .order('created_at', { ascending: false }).limit(51);
     if (cursor) generationsQuery = generationsQuery.lt('created_at', cursor);
+    if (rangeStart) generationsQuery = generationsQuery.gte('created_at', rangeStart);
     if (filters.status && filters.status !== 'all') generationsQuery = generationsQuery.eq('status', filters.status);
     if (filters.modality && filters.modality !== 'all') generationsQuery = generationsQuery.eq('type', filters.modality);
     if (filters.model && filters.model !== 'all') generationsQuery = generationsQuery.eq('model_id', filters.model);
