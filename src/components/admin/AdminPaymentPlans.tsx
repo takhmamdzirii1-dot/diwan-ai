@@ -13,23 +13,25 @@ type Draft = {
   kind: AdminPaymentPlan['kind'];
   priceDzd: string;
   unifiedCredits: string;
+  includedVideoAllowance: string;
   active: boolean;
   displayOrder: string;
   featured: boolean;
 };
 
 type Feedback = { scope: string; tone: 'success' | 'error'; message: string } | null;
-type ValidationKey = 'validationRequired' | 'validationPositive' | 'validationOrder' | 'validationSlug' | 'validationDuplicateSlug';
+type ValidationKey = 'validationRequired' | 'validationPositive' | 'validationVideoAllowance' | 'validationOrder' | 'validationSlug' | 'validationDuplicateSlug';
 
 const emptyDraft: Draft = {
   slug: '', name: '', description: '', kind: 'credit_pack', priceDzd: '',
-  unifiedCredits: '', active: false, displayOrder: '0', featured: false,
+  unifiedCredits: '', includedVideoAllowance: '', active: false, displayOrder: '0', featured: false,
 };
 
 function toDraft(plan: AdminPaymentPlan): Draft {
   return {
     slug: plan.slug, name: plan.name, description: plan.description ?? '', kind: plan.kind,
     priceDzd: String(plan.priceDzd), unifiedCredits: String(plan.unifiedCredits),
+    includedVideoAllowance: plan.includedVideoAllowance == null ? '' : String(plan.includedVideoAllowance),
     active: plan.active, displayOrder: String(plan.displayOrder), featured: plan.featured,
   };
 }
@@ -43,6 +45,7 @@ function normalizeDraft(draft: Draft) {
     slug: draft.slug.trim().toLowerCase(), name: draft.name.trim(),
     description: draft.description.trim() || null, kind: draft.kind,
     priceDzd: Number(draft.priceDzd), unifiedCredits: Number(draft.unifiedCredits),
+    includedVideoAllowance: draft.includedVideoAllowance.trim() === '' ? null : Number(draft.includedVideoAllowance),
     active: draft.active, displayOrder: Number(draft.displayOrder), featured: draft.featured,
   };
 }
@@ -58,6 +61,9 @@ function validateDraft(draft: Draft, existingSlugs: Set<string>, originalSlug?: 
   if (slug !== originalSlug && existingSlugs.has(slug)) return 'validationDuplicateSlug';
   if (!isWholeNumber(draft.priceDzd) || Number(draft.priceDzd) <= 0
     || !isWholeNumber(draft.unifiedCredits) || Number(draft.unifiedCredits) <= 0) return 'validationPositive';
+  if (slug === 'lite' && (!isWholeNumber(draft.includedVideoAllowance)
+    || Number(draft.includedVideoAllowance) < 0 || Number(draft.includedVideoAllowance) > 4)) return 'validationVideoAllowance';
+  if (slug !== 'lite' && draft.includedVideoAllowance.trim() !== '') return 'validationVideoAllowance';
   if (!isWholeNumber(draft.displayOrder, true)
     || Number(draft.displayOrder) < -10000 || Number(draft.displayOrder) > 10000) return 'validationOrder';
   return null;
@@ -68,6 +74,7 @@ function planMatchesDraft(plan: AdminPaymentPlan, draft: Draft) {
   return plan.slug === normalized.slug && plan.name === normalized.name
     && plan.description === normalized.description && plan.kind === normalized.kind
     && plan.priceDzd === normalized.priceDzd && plan.unifiedCredits === normalized.unifiedCredits
+    && plan.includedVideoAllowance === normalized.includedVideoAllowance
     && plan.active === normalized.active && plan.displayOrder === normalized.displayOrder
     && plan.featured === normalized.featured;
 }
@@ -99,6 +106,11 @@ function PlanFields({ idPrefix, value, existing, onChange }: {
           value={value.unifiedCredits} onChange={(event) => onChange({ ...value, unifiedCredits: event.target.value })} />
         <FieldHelp>{t('creditsHelp')}</FieldHelp>
       </label>
+      {value.slug.trim().toLowerCase() === 'lite' && <label htmlFor={`${idPrefix}-included-videos`} className={label}>Included Videos
+        <input id={`${idPrefix}-included-videos`} required className={input} type="number" min="0" max="4" step="1" inputMode="numeric"
+          value={value.includedVideoAllowance} onChange={(event) => onChange({ ...value, includedVideoAllowance: event.target.value })} />
+        <FieldHelp>Videos granted with each paid Lite period. New payment orders snapshot this value.</FieldHelp>
+      </label>}
       <label htmlFor={`${idPrefix}-description`} className={`${label} md:col-span-2 xl:col-span-3`}>{t('planDescription')}
         <textarea id={`${idPrefix}-description`} maxLength={500} rows={2}
           className="mt-1.5 min-h-16 w-full resize-y rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 py-2 text-[13px] leading-relaxed text-white outline-none placeholder:text-[var(--studio-text-muted)] focus-visible:border-[var(--studio-border-strong)]"
@@ -196,7 +208,9 @@ export default function AdminPaymentPlans({ plans }: { plans: AdminPaymentPlan[]
     if (!draft || (id && !original)) return;
     const validationError = validateDraft(draft, slugs, original?.slug);
     if (validationError) {
-      setFeedback({ scope, tone: 'error', message: t(validationError) });
+      setFeedback({ scope, tone: 'error', message: validationError === 'validationVideoAllowance'
+        ? 'Included Videos must be a whole number from 0 to 4 for Lite and empty for other plans.'
+        : t(validationError) });
       return;
     }
 
