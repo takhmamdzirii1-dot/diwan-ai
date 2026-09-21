@@ -98,6 +98,7 @@ export type AdminModelRow = {
   archived: boolean;
   routes: AdminModelRoute[];
   providerOptions: AdminModelProviderOption[];
+  audit: { id: string; action: string; createdAt: string; previousState: Record<string, unknown> | null; newState: Record<string, unknown> | null }[];
 };
 
 export type AdminModelProviderOption = {
@@ -156,6 +157,7 @@ export type AdminJobRow = {
   provider: string | null;
   modelId: string;
   modelName: string | null;
+  vantraModelName: string | null;
   status: string;
   providerCost: CostAmount | null;
   creditsCharged: string | null;
@@ -164,6 +166,7 @@ export type AdminJobRow = {
   prompt: string | null;
   createdAt: string;
   updatedAt: string;
+  completedAt: string | null;
   providerModelId: string | null;
   reservationState: string | null;
   attempts: { provider: string; state: string; error: string | null; startedAt: string; finishedAt: string | null }[];
@@ -206,12 +209,15 @@ export type AdminPaymentRow = {
   paymentMethod: 'baridimob' | 'ccp' | 'cib' | 'edahabia';
   amountDzd: number;
   creditsAmount: string | null;
+  entitlementSnapshot: Record<string, unknown> | null;
   paymentReference: string;
   customerReference: string | null;
   proofUrl: string | null;
+  proofStoragePath: string | null;
   status: string;
   submittedAt: string | null;
   reviewedAt: string | null;
+  reviewedBy: string | null;
   reviewNote: string | null;
   resultingCreditTransactionId: string | null;
   resultingEntitlementId: string | null;

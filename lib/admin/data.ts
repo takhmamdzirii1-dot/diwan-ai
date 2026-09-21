@@ -130,7 +130,7 @@ function buildAdminModelRows(models: readonly EffectiveRuntimeModel[], latestCos
       capabilities: model.capabilities,
       allowedPlans: model.allowedPlans,
       archived: model.archived,
-      routes: [], providerOptions: [],
+      routes: [], providerOptions: [], audit: [],
     };
   });
 }
@@ -421,11 +421,13 @@ export async function getAdminProviders(): Promise<AdminDataResult<AdminProvider
 export async function getAdminModels(): Promise<AdminDataResult<AdminModelRow[]>> {
   const client = await requireAdminDataAccess();
   try {
-    const [costs, routes, providerConfigs] = client ? await Promise.all([
+    const [costs, routes, providerConfigs, modelAudits] = client ? await Promise.all([
       allRows(client, 'provider_cost_records', 'provider,provider_model,actual_cost_minor,currency,created_at'),
       allRows(client, 'model_provider_routes', 'id,model_key,provider_id,provider_model_id,enabled,priority,fallback'),
       allRows(client, 'provider_runtime_configs', 'provider_id,display_name,adapter_type,base_endpoint,archived,enabled,emergency_disabled'),
-    ]) : [[], [], []];
+      client.from('admin_audit_log').select('id,action,resource_id,previous_state,new_state,created_at').eq('resource_type', 'model').order('created_at', { ascending: false }).limit(500),
+    ]) : [[], [], [], { data: [], error: null }];
+    if (modelAudits.error) console.warn('[admin] model audit history unavailable', { message: modelAudits.error.message });
     const providerEnabled = new Map(providerConfigs.map((row) => [String(row.provider_id), Boolean(row.enabled) && !Boolean(row.archived) && !Boolean(row.emergency_disabled)]));
     const providerDefinitions = [...new Set([
       ...SERVER_PROVIDER_REGISTRY.map((provider) => provider.id),
@@ -439,6 +441,11 @@ export async function getAdminModels(): Promise<AdminDataResult<AdminModelRow[]>
       latestCostsByModel(costs),
     ).map((model) => ({
       ...model,
+      audit: (modelAudits.data ?? []).filter((audit) => audit.resource_id === model.key).map((audit) => ({
+        id: String(audit.id), action: String(audit.action), createdAt: String(audit.created_at),
+        previousState: audit.previous_state && typeof audit.previous_state === 'object' ? audit.previous_state as Record<string, unknown> : null,
+        newState: audit.new_state && typeof audit.new_state === 'object' ? audit.new_state as Record<string, unknown> : null,
+      })),
       providerOptions: providerDefinitions
         .filter(({ provider }) => provider!.modalities.some((modality) => modality === model.modality))
         .map(({ id, config, provider }) => ({
@@ -535,13 +542,18 @@ export async function getAdminJobs(filters: {
   const client = await requireAdminDataAccess();
   if (!client) return unavailable(empty);
   try {
-    const auth = await allAuthUsers(client);
+    const [auth, effectiveModels] = await Promise.all([allAuthUsers(client), getEffectiveRuntimeModels(client)]);
+    const visibleNames = new Map<string, string | null>();
+    effectiveModels.forEach((model) => visibleNames.set(model.modelId,
+      visibleNames.has(model.modelId) ? null : model.displayName));
     const emails = new Map(auth.users.map((user) => [user.id, user.email ?? null]));
-    const q = (filters.q ?? '').trim().slice(0, 80).replace(/[^\w@.:/\-]/g, '');
+    const rawQuery = (filters.q ?? '').trim().slice(0, 80);
+    const q = rawQuery.replace(/[^\w@.:/\-]/g, '');
     const seen = filters.cursor && /^\d{1,6}$/.test(filters.seen ?? '') ? Number(filters.seen) : 0;
     const matchingUsers = q ? auth.users.filter((user) => user.email?.toLowerCase().includes(q.toLowerCase()) || user.id === q).slice(0, 30).map((user) => user.id) : [];
+    const matchingModels = rawQuery ? effectiveModels.filter((model) => model.displayName.toLowerCase().includes(rawQuery.toLowerCase())).slice(0, 30).map((model) => model.modelId) : [];
     const cursor = filters.cursor && !Number.isNaN(Date.parse(filters.cursor)) ? filters.cursor : null;
-    const rangeStart = filters.range === '7d' ? new Date(Date.now() - 7 * 86_400_000).toISOString() : null;
+    const rangeStart = filters.range === 'all' ? null : new Date(Date.now() - (filters.range === '30d' ? 30 : 7) * 86_400_000).toISOString();
     let executionsQuery = client.from('ai_executions')
       .select('id,user_id,operation_key,modality,model_id,provider_id,provider_model_id,reservation_id,state,credits_charged,error_code,execution_metadata,created_at,updated_at,completed_at', { count: 'exact' })
       .order('created_at', { ascending: false }).limit(51);
@@ -555,6 +567,7 @@ export async function getAdminJobs(filters: {
       const clauses = [`model_id.ilike.%${q}%`, `provider_id.ilike.%${q}%`, `operation_key.ilike.%${q}%`];
       if (/^[0-9a-f-]{36}$/i.test(q)) clauses.push(`id.eq.${q}`);
       if (matchingUsers.length) clauses.push(`user_id.in.(${matchingUsers.join(',')})`);
+      if (matchingModels.length) clauses.push(`model_id.in.(${matchingModels.join(',')})`);
       executionsQuery = executionsQuery.or(clauses.join(','));
     }
     let generationsQuery = client.from('generations')
@@ -570,6 +583,7 @@ export async function getAdminJobs(filters: {
       const clauses = [`model_id.ilike.%${q}%`];
       if (/^[0-9a-f-]{36}$/i.test(q)) clauses.push(`id.eq.${q}`);
       if (matchingUsers.length) clauses.push(`user_id.in.(${matchingUsers.join(',')})`);
+      if (matchingModels.length) clauses.push(`model_id.in.(${matchingModels.join(',')})`);
       generationsQuery = generationsQuery.or(clauses.join(','));
     }
     const [executions, generations] = await Promise.all([executionsQuery, generationsQuery]);
@@ -609,11 +623,12 @@ export async function getAdminJobs(filters: {
         userEmail: emails.get(row.user_id) ?? null,
         provider: row.provider_id, modelId: row.model_id,
         modelName: MODEL_NAMES.get(row.model_id) ?? null,
+        vantraModelName: visibleNames.get(row.model_id) ?? null,
         status: row.state,
         providerCost: cost?.actual_cost_minor == null ? null : { currency: cost.currency, minor: numericString(cost.actual_cost_minor) },
         creditsCharged: row.credits_charged == null && usageRecord?.credits_charged == null ? null : numericString(row.credits_charged ?? usageRecord.credits_charged),
         latencyMs: row.completed_at ? Math.max(0, new Date(row.completed_at).getTime() - new Date(row.created_at).getTime()) : null,
-        error: row.error_code, prompt: null, createdAt: row.created_at, updatedAt: row.updated_at,
+        error: row.error_code, prompt: null, createdAt: row.created_at, updatedAt: row.updated_at, completedAt: row.completed_at,
         providerModelId: row.provider_model_id,
         reservationState: (reservationById.get(row.reservation_id) as any)?.state ?? null,
         attempts: providerAttempts.map((attempt) => ({ provider: attempt.provider, state: attempt.state, error: attempt.error_message, startedAt: attempt.started_at, finishedAt: attempt.finished_at })),
@@ -627,9 +642,10 @@ export async function getAdminJobs(filters: {
         userEmail: emails.get(row.user_id) ?? null,
         provider: typeof metadata.provider === 'string' ? metadata.provider : null, modelId: row.model_id,
         modelName: MODEL_NAMES.get(row.model_id) ?? null,
+        vantraModelName: visibleNames.get(row.model_id) ?? null,
         status: row.status, providerCost: null, creditsCharged: null, latencyMs: null,
         error: row.error_message, prompt: row.prompt,
-        createdAt: row.created_at, updatedAt: row.updated_at,
+        createdAt: row.created_at, updatedAt: row.updated_at, completedAt: null,
         providerModelId: typeof metadata.providerModel === 'string' ? metadata.providerModel : null,
         reservationState: null, attempts: [],
         usageMetadata: null,
@@ -654,7 +670,7 @@ export async function getAdminPayments(): Promise<AdminDataResult<AdminPaymentRo
   try {
     const [orders, audits, auth] = await Promise.all([
       client.from('payment_orders')
-        .select('id,user_id,plan_id,plan_name,order_kind,payment_method,amount_dzd,credits_amount,payment_reference,customer_reference,proof_storage_path,status,submitted_at,reviewed_at,review_note,resulting_credit_transaction_id,resulting_entitlement_id,created_at')
+        .select('id,user_id,plan_id,plan_name,order_kind,payment_method,amount_dzd,credits_amount,entitlement,payment_reference,customer_reference,proof_storage_path,status,submitted_at,reviewed_at,reviewed_by,review_note,resulting_credit_transaction_id,resulting_entitlement_id,created_at')
         .order('created_at', { ascending: false }).limit(200),
       client.from('payment_audit_log').select('id,payment_order_id,actor_user_id,action,created_at')
         .order('created_at', { ascending: false }).limit(1000),
@@ -686,13 +702,16 @@ export async function getAdminPayments(): Promise<AdminDataResult<AdminPaymentRo
         paymentMethod: order.payment_method,
         amountDzd: order.amount_dzd,
         creditsAmount: order.credits_amount == null ? null : numericString(order.credits_amount),
+        entitlementSnapshot: order.entitlement && typeof order.entitlement === 'object' ? order.entitlement : null,
         paymentReference: order.payment_reference,
         customerReference: order.customer_reference,
         proofUrl,
+        proofStoragePath: order.proof_storage_path,
         status: order.status === 'draft' || (order.status === 'pending' && !order.submitted_at)
           ? 'incomplete' : order.status,
         submittedAt: order.submitted_at,
         reviewedAt: order.reviewed_at,
+        reviewedBy: order.reviewed_by,
         reviewNote: order.review_note,
         resultingCreditTransactionId: order.resulting_credit_transaction_id,
         resultingEntitlementId: order.resulting_entitlement_id,
