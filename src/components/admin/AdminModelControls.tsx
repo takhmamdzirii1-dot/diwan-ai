@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { AdminModelRow } from '@/lib/admin/types';
 import { MODEL_PLAN_CODES, type ModelPlanCode } from '@/lib/models/plan-entitlements';
 
 type EditableModel = Pick<AdminModelRow,
-  'key' | 'enabled' | 'priority' | 'creditPrice' | 'activationSupported' | 'allowedPlans'>;
+  'key' | 'displayName' | 'modality' | 'enabled' | 'priority' | 'creditPrice' | 'activationSupported' | 'allowedPlans'>;
 
 function editableAllowedPlans(plans: readonly ModelPlanCode[]) {
   return MODEL_PLAN_CODES.filter((plan) => plan === 'max' || plans.includes(plan));
@@ -15,7 +15,7 @@ function editableAllowedPlans(plans: readonly ModelPlanCode[]) {
 
 export default function AdminModelControls({ model, mode = 'pricing', onSaved }: {
   model: EditableModel;
-  mode?: 'pricing' | 'routing';
+  mode?: 'pricing' | 'plans' | 'routing';
   onSaved: (config: {
     modelKey: string;
     enabled: boolean;
@@ -31,6 +31,9 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
   const [price, setPrice] = useState(model.creditPrice == null ? '' : String(model.creditPrice));
   const [allowedPlans, setAllowedPlans] = useState<ModelPlanCode[]>(editableAllowedPlans(model.allowedPlans));
   const [saving, setSaving] = useState(false);
+  const [confirmingPrice, setConfirmingPrice] = useState(false);
+  const cancelConfirmationRef = useRef<HTMLButtonElement>(null);
+  const saveConfirmationRef = useRef<HTMLButtonElement>(null);
   const [feedback, setFeedback] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
@@ -39,7 +42,10 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
     setPrice(model.creditPrice == null ? '' : String(model.creditPrice));
     setAllowedPlans(editableAllowedPlans(model.allowedPlans));
     setFeedback(null);
+    setConfirmingPrice(false);
   }, [model.key]);
+
+  useEffect(() => { if (confirmingPrice) cancelConfirmationRef.current?.focus(); }, [confirmingPrice]);
 
   const normalizedPrice = useMemo(() => {
     const trimmed = price.trim();
@@ -48,10 +54,17 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
     const value = Number(trimmed);
     return Number.isSafeInteger(value) ? value : undefined;
   }, [price]);
-  const dirty = mode === 'pricing'
-    ? enabled !== model.enabled || normalizedPrice !== model.creditPrice
-      || MODEL_PLAN_CODES.some((plan) => allowedPlans.includes(plan) !== model.allowedPlans.includes(plan))
-    : routingRole !== model.priority;
+  const dirty = mode === 'pricing' ? enabled !== model.enabled || normalizedPrice !== model.creditPrice
+    : mode === 'plans' ? MODEL_PLAN_CODES.some((plan) => allowedPlans.includes(plan) !== model.allowedPlans.includes(plan))
+      : routingRole !== model.priority;
+
+  const requestSave = () => {
+    if (mode === 'pricing' && normalizedPrice !== model.creditPrice) {
+      setConfirmingPrice(true);
+      return;
+    }
+    void save();
+  };
 
   const save = async () => {
     if (normalizedPrice === undefined) {
@@ -68,13 +81,14 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
           modelKey: model.key,
           enabled,
           routingRole: enabled ? routingRole : 'unassigned',
-          customerCreditPrice: normalizedPrice,
+          customerCreditPrice: mode === 'pricing' ? normalizedPrice : model.creditPrice,
           allowedPlans,
         }),
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || !body.config) throw new Error(body.error ?? 'MODEL_CONFIG_UPDATE_FAILED');
       onSaved(body.config);
+      setConfirmingPrice(false);
       setFeedback({ tone: 'success', message: t('saved') });
     } catch (cause) {
       const code = cause instanceof Error ? cause.message : 'MODEL_CONFIG_UPDATE_FAILED';
@@ -89,7 +103,7 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
 
   const controlClass = 'h-9 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] text-white outline-none focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/40 disabled:cursor-not-allowed disabled:opacity-45';
 
-  return <div className="grid gap-3 rounded-lg border border-[var(--studio-border-subtle)] bg-black/20 p-3 text-start sm:grid-cols-2 sm:items-end">
+  return <div className="grid gap-3 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-card)] p-4 text-start sm:grid-cols-2 sm:items-end">
     {mode === 'pricing' && <label title={t('runtimeHelp')} className="flex min-h-9 items-center gap-2.5 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-semibold text-white">
       <input
         type="checkbox"
@@ -128,9 +142,9 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
         className={controlClass}
       />
     </label>}
-    {mode === 'pricing' && <fieldset className="sm:col-span-2">
+    {mode === 'plans' && <fieldset className="sm:col-span-2">
       <legend className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">{t('planAccessLabel')}</legend>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2">
         {MODEL_PLAN_CODES.map((plan) => <label key={plan} className="flex min-h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-semibold text-white">
           <input
             type="checkbox"
@@ -154,16 +168,31 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
       <button
         type="button"
         disabled={saving || !dirty || normalizedPrice === undefined}
-        onClick={save}
+        onClick={requestSave}
         className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-white px-4 text-[12px] font-semibold text-black transition-colors duration-150 hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-45 motion-reduce:transition-none"
       >
         {saving && <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
-        {saving ? t('saving') : t('save')}
+        {saving ? t('saving') : 'Save Changes'}
       </button>
       {feedback && <p role={feedback.tone === 'error' ? 'alert' : 'status'} className={`text-[10.5px] ${feedback.tone === 'error' ? 'text-red-200' : 'text-emerald-200'}`}>{feedback.message}</p>}
     </div>
     {mode === 'pricing' && !model.activationSupported && <p className="sm:col-span-2 text-[11px] text-amber-100/80">{t('activationUnavailable')}</p>}
     {mode === 'pricing' && <p className="sm:col-span-2 text-[11px] text-[var(--studio-text-muted)]">{t('priceSemantics')}</p>}
     {mode === 'routing' && !model.enabled && <p className="sm:col-span-2 text-[11px] text-amber-100/80">{t('routingRequiresEnabled')}</p>}
+    {confirmingPrice && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--studio-overlay)] p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setConfirmingPrice(false); }} onKeyDown={(event) => { if (event.key === 'Escape' && !saving) setConfirmingPrice(false); if (event.key === 'Tab' && !event.shiftKey && event.target === saveConfirmationRef.current) { event.preventDefault(); cancelConfirmationRef.current?.focus(); } if (event.key === 'Tab' && event.shiftKey && event.target === cancelConfirmationRef.current) { event.preventDefault(); saveConfirmationRef.current?.focus(); } }}>
+      <div role="alertdialog" aria-modal="true" aria-labelledby="confirm-pricing-title" aria-describedby="confirm-pricing-description" className="w-full max-w-[480px] rounded-2xl border border-[var(--studio-border-strong)] bg-[var(--studio-popover)] p-6 text-center text-[var(--studio-text-primary)] shadow-[var(--studio-shadow)]">
+        <div className="mx-auto mb-4 flex h-9 w-9 items-center justify-center rounded-full border border-amber-400/50 text-xl text-[var(--studio-warning)]">!</div>
+        <h2 id="confirm-pricing-title" className="text-[20px] font-semibold">Confirm pricing change</h2>
+        <p id="confirm-pricing-description" className="mt-2 text-[13px] text-[var(--studio-text-secondary)]">You are changing the customer cost for {model.displayName}.</p>
+        <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-card)] p-4 text-start text-[13px]">
+          <div><p className="text-[var(--studio-text-secondary)]">Current customer cost</p><strong className="mt-1 block">{model.creditPrice == null ? 'Unavailable' : `${model.creditPrice} credits / ${model.modality === 'chat' ? 'request' : model.modality}`}</strong></div>
+          <span aria-hidden="true" className="text-[var(--studio-text-muted)]">→</span>
+          <div><p className="text-[var(--studio-text-secondary)]">New customer cost</p><strong className="mt-1 block text-[var(--studio-warning)]">{normalizedPrice == null ? 'Unavailable' : `${normalizedPrice} credits / ${model.modality === 'chat' ? 'request' : model.modality}`}</strong></div>
+        </div>
+        <p className="mt-4 text-[12px] leading-relaxed text-[var(--studio-text-secondary)]">This affects future customer usage. Historical jobs and records remain unchanged.</p>
+        <div className="mt-6 flex gap-3"><button ref={cancelConfirmationRef} type="button" disabled={saving} onClick={() => setConfirmingPrice(false)} className="h-10 flex-1 rounded-lg border border-[var(--studio-border)]">Cancel</button><button ref={saveConfirmationRef} type="button" disabled={saving} onClick={() => void save()} className="h-10 flex-1 rounded-lg bg-[var(--studio-accent)] font-semibold text-[var(--studio-accent-contrast)] disabled:opacity-50">{saving ? t('saving') : 'Save change'}</button></div>
+        {feedback?.tone === 'error' && <p role="alert" className="mt-3 text-[12px] text-[var(--studio-error)]">{feedback.message}</p>}
+      </div>
+    </div>}
   </div>;
 }

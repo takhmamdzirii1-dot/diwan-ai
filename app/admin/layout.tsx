@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { NextIntlClientProvider } from 'next-intl';
 import AdminShell from '@/src/components/admin/AdminShell';
+import { StudioThemeProvider } from '@/src/context/StudioThemeContext';
 import DocumentLocale from '@/src/components/DocumentLocale';
 import { getOwnerAccess } from '@/lib/auth/owner';
 import english from '@/messages/admin-en.json';
@@ -28,13 +29,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div lang="en" dir="ltr">
       <DocumentLocale locale="en" />
-      <NextIntlClientProvider locale="en" messages={english}>
-        <AdminShell
-          realtimeOwner={access.user.app_metadata?.role === 'owner'}
-          ownerName={ownerName}
-          ownerEmail={access.user.email ?? ''}
-        >{children}</AdminShell>
-      </NextIntlClientProvider>
+      <StudioThemeProvider locale="en">
+        <NextIntlClientProvider locale="en" messages={english}>
+          <AdminShell
+            realtimeOwner={access.user.app_metadata?.role === 'owner'}
+            ownerName={ownerName}
+            ownerEmail={access.user.email ?? ''}
+          >{children}</AdminShell>
+        </NextIntlClientProvider>
+      </StudioThemeProvider>
     </div>
   );
 }

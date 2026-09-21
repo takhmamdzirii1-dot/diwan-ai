@@ -38,16 +38,16 @@ export default function AdminShell({ children, realtimeOwner, ownerName, ownerEm
   const initials = ownerName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'VA';
 
   return (
-    <div className="admin-root studio-overlay-root min-h-screen bg-[var(--studio-bg)] text-[var(--studio-text-primary)] [--section-padding:0px] lg:grid lg:items-start lg:grid-cols-[244px_minmax(0,1fr)]">
+    <div className="admin-root min-h-screen bg-[var(--studio-canvas)] text-[var(--studio-text-primary)] [--section-padding:0px] lg:grid lg:items-start lg:grid-cols-[224px_minmax(0,1fr)]">
       <AdminRealtime canSubscribe={realtimeOwner} />
-      <aside className="border-b border-[var(--studio-border)] bg-[var(--studio-surface)] lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-e">
+      <aside className="border-b border-[var(--studio-border)] bg-[var(--studio-sidebar)] lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-e">
         <div className="flex h-[60px] items-center justify-between gap-3 border-b border-[var(--studio-border-subtle)] px-4">
           <div className="flex min-w-0 items-center gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--studio-border)] bg-white/[0.04]">
               <VantraLogo className="h-5 w-5" />
             </span>
             <div className="min-w-0 text-start">
-              <p className="truncate text-[13px] font-semibold text-white">{t('brand')}</p>
+              <p className="truncate text-[13px] font-semibold text-[var(--studio-text-primary)]">{t('brand')}</p>
               <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--studio-text-muted)]">{t('internal')}</p>
             </div>
           </div>
@@ -70,8 +70,8 @@ export default function AdminShell({ children, realtimeOwner, ownerName, ownerEm
                 className={cn(
                   'flex h-10 shrink-0 items-center gap-3 rounded-lg px-3 text-[12.5px] font-medium transition-[color,background-color,border-color] duration-150 motion-reduce:transition-none',
                   active
-                    ? 'border border-white/15 bg-white/[0.075] font-semibold text-white'
-                    : 'border border-transparent text-[var(--studio-text-secondary)] hover:border-white/10 hover:bg-white/[0.06] hover:text-white'
+                    ? 'border border-[var(--studio-border-strong)] bg-[var(--studio-selected)] font-semibold text-[var(--studio-text-primary)]'
+                    : 'border border-transparent text-[var(--studio-text-secondary)] hover:border-[var(--studio-border)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)]'
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -86,7 +86,7 @@ export default function AdminShell({ children, realtimeOwner, ownerName, ownerEm
           <Link
             href="/studio/chat"
             prefetch={false}
-            className="flex h-10 items-center justify-between rounded-xl border border-[var(--studio-border)] px-3 text-[12.5px] font-medium text-[var(--studio-text-secondary)] transition-[color,background-color,border-color] duration-150 hover:border-[var(--studio-border-strong)] hover:bg-white/[0.06] hover:text-white motion-reduce:transition-none"
+            className="flex h-10 items-center justify-between rounded-xl border border-[var(--studio-border)] px-3 text-[12.5px] font-medium text-[var(--studio-text-secondary)] transition-[color,background-color,border-color] duration-150 hover:border-[var(--studio-border-strong)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] motion-reduce:transition-none"
           >
             {t('backToStudio')}
             <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
@@ -104,18 +104,18 @@ export default function AdminShell({ children, realtimeOwner, ownerName, ownerEm
               name="q"
               defaultValue={pathname === '/admin/users' ? searchParams.get('q') ?? '' : ''}
               placeholder="Search users, models, jobs..."
-              className="h-10 w-full rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface)] ps-10 pe-3 text-[12px] text-white outline-none placeholder:text-[var(--studio-text-secondary)] focus:border-[var(--studio-border-strong)]"
+              className="h-10 w-full rounded-lg border border-[var(--studio-border)] bg-[var(--studio-card)] ps-10 pe-3 text-[12px] text-[var(--studio-text-primary)] outline-none placeholder:text-[var(--studio-text-secondary)] focus:border-[var(--studio-border-strong)]"
             />
           </form>
           <div className="flex shrink-0 items-center gap-2">
-            <Link href="/admin/audit" prefetch={false} aria-label="Open Audit Log" className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--studio-text-secondary)] hover:bg-white/[0.05] hover:text-white">
+            <Link href="/admin/audit" prefetch={false} aria-label="Open Audit Log" className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)]">
               <Bell className="h-[18px] w-[18px]" aria-hidden="true" />
             </Link>
             <span className="hidden h-7 w-px bg-[var(--studio-border-subtle)] sm:block" aria-hidden="true" />
             <details className="group relative hidden sm:block">
-              <summary className="flex cursor-pointer list-none items-center gap-2.5 rounded-lg px-1.5 py-1 text-start hover:bg-white/[0.04] [&::-webkit-details-marker]:hidden">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.1] text-[10px] font-semibold text-white">{initials}</span>
-                <span className="hidden min-w-0 lg:block"><strong className="block max-w-32 truncate text-[11.5px] font-semibold text-white">{ownerName}</strong><span className="block text-[9.5px] text-[var(--studio-text-secondary)]">Owner</span></span>
+              <summary className="flex cursor-pointer list-none items-center gap-2.5 rounded-lg px-1.5 py-1 text-start hover:bg-[var(--studio-hover)] [&::-webkit-details-marker]:hidden">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--studio-selected)] text-[10px] font-semibold text-[var(--studio-text-primary)]">{initials}</span>
+                <span className="hidden min-w-0 lg:block"><strong className="block max-w-32 truncate text-[11.5px] font-semibold text-[var(--studio-text-primary)]">{ownerName}</strong><span className="block text-[9.5px] text-[var(--studio-text-secondary)]">Owner</span></span>
                 <ChevronDown className="h-3.5 w-3.5 text-[var(--studio-text-secondary)] transition-transform group-open:rotate-180" aria-hidden="true" />
               </summary>
               <div className="absolute end-0 z-30 mt-2 w-56 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] p-2 text-start">

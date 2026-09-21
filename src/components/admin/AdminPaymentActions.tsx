@@ -56,16 +56,18 @@ export default function AdminPaymentActions({ paymentId, creditsAmount, allowRev
     </label>
     <p className="text-start text-[11px] leading-relaxed text-[var(--studio-text-secondary)]">{t(allowReview ? 'reviewHelp' : 'cancelHelp')}</p>
     <div className="flex gap-2">
-      {allowReview && <button type="button" disabled={pendingAction !== null} onClick={() => void run('approve')}
-        className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-white px-3 text-[12px] font-semibold text-black transition-[background-color,opacity] duration-150 hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none">
-        {pendingAction === 'approve' ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Check className="h-3.5 w-3.5" aria-hidden="true" />}{pendingAction === 'approve' ? t('approving') : t('approve')}
-      </button>}
       {allowReview && <button type="button" disabled={pendingAction !== null} onClick={() => void run('reject')}
         className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-red-300/25 bg-red-300/[0.04] px-3 text-[12px] font-semibold text-red-100 transition-[background-color,opacity] duration-150 hover:bg-red-300/[0.1] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none">
         {pendingAction === 'reject' ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <X className="h-3.5 w-3.5" aria-hidden="true" />}{pendingAction === 'reject' ? t('rejecting') : t('reject')}
       </button>}
+      {allowReview && <button type="button" disabled={pendingAction !== null} onClick={() => void run('approve')}
+        className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[var(--studio-accent)] px-3 text-[12px] font-semibold text-[var(--studio-accent-contrast)] transition-[background-color,opacity] duration-150 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none">
+        {pendingAction === 'approve' ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Check className="h-3.5 w-3.5" aria-hidden="true" />}{pendingAction === 'approve' ? t('approving') : 'Approve Payment'}
+      </button>}
+    </div>
+    <div className="flex justify-end">
       <button type="button" disabled={pendingAction !== null} onClick={() => void run('cancel')}
-        className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-white/[0.035] px-3 text-[12px] font-semibold text-white/80 transition-[background-color,opacity] duration-150 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none">
+        className="flex h-8 items-center justify-center gap-1.5 rounded-lg px-3 text-[11px] text-[var(--studio-text-muted)] hover:text-[var(--studio-text-primary)] disabled:cursor-not-allowed disabled:opacity-50">
         {pendingAction === 'cancel' ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Ban className="h-3.5 w-3.5" aria-hidden="true" />}{pendingAction === 'cancel' ? t('cancelling') : t('cancel')}
       </button>
     </div>
