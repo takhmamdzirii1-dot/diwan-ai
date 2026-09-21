@@ -12,7 +12,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   }
   const client = getSupabaseAdminClient();
   if (!client) return NextResponse.json({ error: 'ADMIN_DATA_UNAVAILABLE' }, { status: 503 });
-  const [entitlements, ledger, payments, jobs] = await Promise.all([
+  const [balances, entitlements, ledger, payments, jobs] = await Promise.all([
+    client.from('credits')
+      .select('balance,subscription_balance,subscription_rollover_balance,purchased_balance,free_image_remaining,free_video_remaining,lite_video_remaining')
+      .eq('user_id', id).maybeSingle(),
     client.from('user_entitlements').select('id,plan_name,status,starts_at,ends_at')
       .eq('user_id', id).order('created_at', { ascending: false }).limit(20),
     client.from('credit_transactions').select('id,transaction_type,amount,reason,created_at')
@@ -22,7 +25,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     client.from('ai_executions').select('id,model_id,modality,state,credits_charged,created_at')
       .eq('user_id', id).order('created_at', { ascending: false }).limit(20),
   ]);
-  if ([entitlements, ledger, payments, jobs].some((result) => result.error)) {
+  if ([balances, entitlements, ledger, payments, jobs].some((result) => result.error)) {
     return NextResponse.json({ error: 'USER_DETAIL_QUERY_FAILED' }, { status: 503 });
   }
   const orderIds = (payments.data ?? []).map((order) => order.id);
@@ -36,6 +39,15 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'USER_DETAIL_QUERY_FAILED' }, { status: 503 });
   }
   return NextResponse.json({
+    balances: balances.data ? {
+      balance: String(balances.data.balance),
+      subscription_balance: String(balances.data.subscription_balance),
+      subscription_rollover_balance: String(balances.data.subscription_rollover_balance),
+      purchased_balance: String(balances.data.purchased_balance),
+      free_image_remaining: Number(balances.data.free_image_remaining),
+      free_video_remaining: Number(balances.data.free_video_remaining),
+      lite_video_remaining: Number(balances.data.lite_video_remaining),
+    } : null,
     entitlements: entitlements.data ?? [], ledger: ledger.data ?? [],
     payments: payments.data ?? [], jobs: jobs.data ?? [],
     audit: [...(generalAudit.data ?? []), ...(audit.data ?? [])]

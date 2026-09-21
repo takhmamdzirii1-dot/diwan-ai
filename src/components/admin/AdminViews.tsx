@@ -191,6 +191,14 @@ export function ModelsView({ result }: { result: AdminDataResult<AdminModelRow[]
     </DetailDrawer>}</>;
 }
 
+function UserMediaSummary({ user }: { user: AdminUserRow }) {
+  const plan = user.plan.toLowerCase();
+  if (plan === 'free') return <><p className="font-medium tabular-nums text-white">Images {user.freeImageRemaining ?? '—'} / 5</p><p className="mt-0.5 text-[10.5px] tabular-nums text-[var(--studio-text-muted)]">Videos {user.freeVideoRemaining ?? '—'} / 1 · lifetime</p></>;
+  if (plan === 'lite') return <><p className="font-medium tabular-nums text-white">{user.subscriptionBalance ?? '—'} subscription Credits</p><p className="mt-0.5 text-[10.5px] tabular-nums text-[var(--studio-text-muted)]">{user.liteVideoRemaining ?? '—'} included Videos remaining</p></>;
+  if (plan === 'pro') return <><p className="font-medium tabular-nums text-white">{user.creditBalance ?? '—'} usable Credits</p><p className="mt-0.5 text-[10.5px] text-[var(--studio-text-muted)]">Subscription + purchased</p></>;
+  return <><p className="font-medium tabular-nums text-white">{user.generationCount.toLocaleString()} generations</p><p className="mt-0.5 text-[10.5px] tabular-nums text-[var(--studio-text-muted)]">{user.creditsUsed} credits used</p></>;
+}
+
 export function UsersView({ result }: { result: AdminDataResult<AdminUsersData> }) {
   const t = useTranslations('Admin');
   const [users, setUsers] = useState(result.data.users);
@@ -245,7 +253,7 @@ export function UsersView({ result }: { result: AdminDataResult<AdminUsersData> 
         <td className="px-5 py-3"><div className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/[0.07] bg-white/[0.08] text-[11px] font-medium text-white">{initials(user.email)}</span><div className="min-w-0"><p className="truncate font-semibold text-white">{user.email}</p>{user.isOwner && <p className="mt-0.5 text-[10.5px] text-[var(--studio-text-muted)]">Owner</p>}</div></div></td>
         <td className="px-5 py-3 font-medium text-white">{user.plan}</td>
         <td className="px-5 py-3"><Status value={user.status} /></td>
-        <td className="px-5 py-3"><p className="font-medium tabular-nums text-white">{user.generationCount.toLocaleString()} generations</p><p className="mt-0.5 text-[10.5px] tabular-nums text-[var(--studio-text-muted)]">{user.creditsUsed} credits used</p></td>
+        <td className="px-5 py-3"><UserMediaSummary user={user} /></td>
         <td className="px-5 py-3"><div className="flex items-center justify-between gap-3"><span className="text-[var(--studio-text-secondary)]">{relativeActivity(user.lastSignInAt)}</span><ChevronRight className="h-4 w-4 shrink-0 text-[var(--studio-text-muted)] transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></div></td>
       </tr>)}</tbody>
     </table></div> : <Empty label={users.length ? 'No users match these filters.' : result.data.query ? t('users.noMatches') : t('users.noUsers')} />}
@@ -253,6 +261,15 @@ export function UsersView({ result }: { result: AdminDataResult<AdminUsersData> 
 }
 
 type UserDetailData = {
+  balances: {
+    balance: string;
+    subscription_balance: string;
+    subscription_rollover_balance: string;
+    purchased_balance: string;
+    free_image_remaining: number;
+    free_video_remaining: number;
+    lite_video_remaining: number;
+  } | null;
   entitlements: { id: string; plan_name: string; status: string; starts_at: string; ends_at: string | null }[];
   ledger: { id: string; transaction_type: string; amount: string; reason: string; created_at: string }[];
   payments: { id: string; plan_name: string; status: string; amount_dzd: number; created_at: string }[];
@@ -271,6 +288,11 @@ function UserOverviewSection({ icon, title, description, children }: {
 
 function UserOverviewField({ label, children }: { label: string; children: React.ReactNode }) {
   return <div className="grid min-h-10 items-center gap-2 border-b border-[var(--studio-border-subtle)] py-2 last:border-0 sm:grid-cols-[145px_minmax(0,1fr)]"><span className="text-[11.5px] text-[var(--studio-text-secondary)]">{label}</span><div className="min-w-0 text-[12px] font-medium text-white">{children}</div></div>;
+}
+
+function isPositiveStoredBalance(value: string | null) {
+  if (value === null) return false;
+  try { return BigInt(value) > 0n; } catch { return false; }
 }
 
 function AdminUserDetail({ user, onClose, onStatusChanged, onCreditChanged }: {
@@ -303,6 +325,16 @@ function AdminUserDetail({ user, onClose, onStatusChanged, onCreditChanged }: {
     && (!item.ends_at || Date.parse(item.ends_at) > Date.now())) ?? data?.entitlements[0] ?? null;
   const recentImages = data?.jobs.filter((item) => item.modality === 'image').length ?? null;
   const recentVideos = data?.jobs.filter((item) => item.modality === 'video').length ?? null;
+  const plan = user.plan.toLowerCase();
+  const usageBalances = data?.balances ?? {
+    balance: user.creditBalance,
+    subscription_balance: user.subscriptionBalance,
+    subscription_rollover_balance: user.subscriptionRolloverBalance,
+    purchased_balance: user.purchasedBalance,
+    free_image_remaining: user.freeImageRemaining,
+    free_video_remaining: user.freeVideoRemaining,
+    lite_video_remaining: user.liteVideoRemaining,
+  };
   const avatar = user.email.split('@')[0].split(/[._-]+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'U';
 
   return <dialog ref={drawerRef} onClose={onClose} onClick={(event) => { if (event.target === drawerRef.current) drawerRef.current?.close(); }} aria-label={`User details for ${user.email}`} className="fixed inset-y-0 end-0 m-0 ms-auto h-dvh max-h-dvh w-full max-w-[760px] overflow-y-auto border-s border-[var(--studio-border)] bg-[var(--studio-surface)] p-0 text-white shadow-2xl backdrop:bg-black/75">
@@ -329,10 +361,23 @@ function AdminUserDetail({ user, onClose, onStatusChanged, onCreditChanged }: {
           <UserOverviewField label="Current period">{currentEntitlement ? <><DateValue value={currentEntitlement.starts_at} /> – <DateValue value={currentEntitlement.ends_at} /></> : '—'}</UserOverviewField>
           <UserOverviewField label="Billing">{user.plan.toLowerCase() === 'free' ? '0 DA · Trial' : 'Manual payment'}</UserOverviewField>
         </UserOverviewSection>
-        <UserOverviewSection icon={<ImageIcon className="h-5 w-5" />} title="Media" description="Recorded generation activity.">
-          <UserOverviewField label="All generations"><span className="tabular-nums">{user.generationCount.toLocaleString()}</span></UserOverviewField>
-          <UserOverviewField label="Recent image jobs"><span className="tabular-nums">{recentImages ?? '—'}</span></UserOverviewField>
-          <UserOverviewField label="Recent video jobs"><span className="tabular-nums">{recentVideos ?? '—'}</span></UserOverviewField>
+        <UserOverviewSection icon={<ImageIcon className="h-5 w-5" />} title="Media" description={plan === 'max' ? 'Recorded generation activity.' : 'Current plan allowances and balances.'}>
+          {plan === 'free' ? <>
+            <UserOverviewField label="Lifetime Images remaining"><span className="tabular-nums">{usageBalances.free_image_remaining ?? '—'} / 5</span></UserOverviewField>
+            <UserOverviewField label="Lifetime Videos remaining"><span className="tabular-nums">{usageBalances.free_video_remaining ?? '—'} / 1</span></UserOverviewField>
+          </> : plan === 'lite' ? <>
+            <UserOverviewField label="Subscription Credits"><span className="tabular-nums">{usageBalances.subscription_balance ?? '—'}</span></UserOverviewField>
+            <UserOverviewField label="Included Videos remaining"><span className="tabular-nums">{usageBalances.lite_video_remaining ?? '—'}</span></UserOverviewField>
+            {isPositiveStoredBalance(usageBalances.purchased_balance) && <UserOverviewField label="Purchased Credits"><span className="tabular-nums">{usageBalances.purchased_balance}</span></UserOverviewField>}
+          </> : plan === 'pro' ? <>
+            <UserOverviewField label="Subscription Credits"><span className="tabular-nums">{usageBalances.subscription_balance ?? '—'}</span></UserOverviewField>
+            <UserOverviewField label="Rollover Credits"><span className="tabular-nums">{usageBalances.subscription_rollover_balance ?? '—'}</span></UserOverviewField>
+            {isPositiveStoredBalance(usageBalances.purchased_balance) && <UserOverviewField label="Purchased Credits"><span className="tabular-nums">{usageBalances.purchased_balance}</span></UserOverviewField>}
+          </> : <>
+            <UserOverviewField label="All generations"><span className="tabular-nums">{user.generationCount.toLocaleString()}</span></UserOverviewField>
+            <UserOverviewField label="Recent image jobs"><span className="tabular-nums">{recentImages ?? '—'}</span></UserOverviewField>
+            <UserOverviewField label="Recent video jobs"><span className="tabular-nums">{recentVideos ?? '—'}</span></UserOverviewField>
+          </>}
         </UserOverviewSection>
         <details className="group border-b border-[var(--studio-border-subtle)] py-5"><summary className="flex cursor-pointer list-none items-center gap-3 text-start [&::-webkit-details-marker]:hidden"><ChevronRight className="h-4 w-4 text-[var(--studio-text-secondary)] transition-transform group-open:rotate-90" aria-hidden="true" /><span><strong className="block text-[12px] font-semibold text-white">Technical details</strong><span className="mt-0.5 block text-[10.5px] text-[var(--studio-text-muted)]">IDs and raw account references</span></span></summary><div className="mt-4 rounded-xl border border-[var(--studio-border-subtle)] bg-black/15 p-3"><TechnicalId label={t('common.userId')} value={user.id} /><p className="mt-2 text-[11px] text-[var(--studio-text-secondary)]">Credit balance: <span className="tabular-nums text-white">{balance ?? '—'}</span></p><p className="mt-1 text-[11px] text-[var(--studio-text-secondary)]">Payment records: <span className="tabular-nums text-white">{user.paymentOrderCount}</span></p></div></details>
       </div>}

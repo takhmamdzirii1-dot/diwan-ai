@@ -124,6 +124,12 @@ export type AdminUserRow = {
   plan: string;
   isOwner: boolean;
   creditBalance: string | null;
+  subscriptionBalance: string | null;
+  subscriptionRolloverBalance: string | null;
+  purchasedBalance: string | null;
+  freeImageRemaining: number | null;
+  freeVideoRemaining: number | null;
+  liteVideoRemaining: number | null;
   creditsUsed: string;
   generationCount: number;
   paymentOrderCount: number;

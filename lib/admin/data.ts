@@ -471,13 +471,13 @@ export async function getAdminUsers(query = ''): Promise<AdminDataResult<AdminUs
   if (!client) return unavailable(empty);
   try {
     const [auth, credits, usage, generations, executions, paymentOrders, entitlements] = await Promise.all([
-      allAuthUsers(client), allRows(client, 'credits', 'user_id,balance'),
+      allAuthUsers(client), allRows(client, 'credits', 'user_id,balance,subscription_balance,subscription_rollover_balance,purchased_balance,free_image_remaining,free_video_remaining,lite_video_remaining'),
       allRows(client, 'usage_records', 'user_id,credits_charged'), allRows(client, 'generations', 'user_id'),
       allRows(client, 'ai_executions', 'user_id'),
       allRows(client, 'payment_orders', 'user_id'),
       allRows(client, 'user_entitlements', 'user_id,plan_name,status,starts_at,ends_at'),
     ]);
-    const balances = new Map(credits.map((row) => [row.user_id, numericString(row.balance)]));
+    const balances = new Map(credits.map((row) => [row.user_id, row]));
     const usageByUser = new Map<string, bigint>();
     usage.forEach((row) => usageByUser.set(row.user_id,
       (usageByUser.get(row.user_id) ?? 0n) + BigInt(numericString(row.credits_charged))));
@@ -502,9 +502,16 @@ export async function getAdminUsers(query = ''): Promise<AdminDataResult<AdminUs
       .filter((user) => !normalizedQuery || user.email?.toLowerCase().includes(normalizedQuery) || user.id.includes(normalizedQuery))
       .slice(0, 100).map((user) => {
         const bannedUntil = user.banned_until ? new Date(user.banned_until).getTime() : 0;
+        const userBalances = balances.get(user.id);
         return {
           id: user.id, email: user.email ?? '—', plan: plansByUser.get(user.id)?.name ?? 'Free',
-          isOwner: isOwnerUser(user), creditBalance: balances.get(user.id) ?? null,
+          isOwner: isOwnerUser(user), creditBalance: userBalances ? numericString(userBalances.balance) : null,
+          subscriptionBalance: userBalances ? numericString(userBalances.subscription_balance) : null,
+          subscriptionRolloverBalance: userBalances ? numericString(userBalances.subscription_rollover_balance) : null,
+          purchasedBalance: userBalances ? numericString(userBalances.purchased_balance) : null,
+          freeImageRemaining: userBalances?.free_image_remaining == null ? null : Number(userBalances.free_image_remaining),
+          freeVideoRemaining: userBalances?.free_video_remaining == null ? null : Number(userBalances.free_video_remaining),
+          liteVideoRemaining: userBalances?.lite_video_remaining == null ? null : Number(userBalances.lite_video_remaining),
           creditsUsed: (usageByUser.get(user.id) ?? 0n).toString(), generationCount: generationsByUser.get(user.id) ?? 0,
           paymentOrderCount: paymentsByUser.get(user.id) ?? 0,
           status: bannedUntil > now ? 'suspended' : user.email_confirmed_at ? 'active' : 'unconfirmed',
