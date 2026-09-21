@@ -225,6 +225,7 @@ export type AdminPaymentPlan = {
   kind: 'credit_pack' | 'subscription';
   priceDzd: number;
   unifiedCredits: number;
+  subscriptionCreditAllowance: number | null;
   includedVideoAllowance: number | null;
   active: boolean;
   displayOrder: number;

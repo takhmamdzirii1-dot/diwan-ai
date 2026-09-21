@@ -656,12 +656,14 @@ begin
       case when tg_op = 'INSERT' then null else jsonb_build_object(
         'name', old.name, 'kind', old.kind, 'price_dzd', old.price_dzd,
         'unified_credits', old.unified_credits,
+        'subscription_credit_allowance', old.subscription_credit_allowance,
         'included_video_allowance', old.included_video_allowance, 'active', old.active,
         'display_order', old.display_order, 'featured', old.featured
       ) end,
       jsonb_build_object(
         'name', new.name, 'kind', new.kind, 'price_dzd', new.price_dzd,
         'unified_credits', new.unified_credits,
+        'subscription_credit_allowance', new.subscription_credit_allowance,
         'included_video_allowance', new.included_video_allowance, 'active', new.active,
         'display_order', new.display_order, 'featured', new.featured
       )
@@ -674,4 +676,4 @@ $$;
 comment on column public.payment_plans.included_video_allowance is
   'Lite included-video allowance snapshotted into new payment orders.';
 
-+commit;
+commit;

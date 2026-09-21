@@ -13,6 +13,7 @@ type Draft = {
   kind: AdminPaymentPlan['kind'];
   priceDzd: string;
   unifiedCredits: string;
+  subscriptionCreditAllowance: string;
   includedVideoAllowance: string;
   active: boolean;
   displayOrder: string;
@@ -24,13 +25,14 @@ type ValidationKey = 'validationRequired' | 'validationPositive' | 'validationVi
 
 const emptyDraft: Draft = {
   slug: '', name: '', description: '', kind: 'credit_pack', priceDzd: '',
-  unifiedCredits: '', includedVideoAllowance: '', active: false, displayOrder: '0', featured: false,
+  unifiedCredits: '', subscriptionCreditAllowance: '', includedVideoAllowance: '', active: false, displayOrder: '0', featured: false,
 };
 
 function toDraft(plan: AdminPaymentPlan): Draft {
   return {
     slug: plan.slug, name: plan.name, description: plan.description ?? '', kind: plan.kind,
     priceDzd: String(plan.priceDzd), unifiedCredits: String(plan.unifiedCredits),
+    subscriptionCreditAllowance: plan.subscriptionCreditAllowance == null ? '' : String(plan.subscriptionCreditAllowance),
     includedVideoAllowance: plan.includedVideoAllowance == null ? '' : String(plan.includedVideoAllowance),
     active: plan.active, displayOrder: String(plan.displayOrder), featured: plan.featured,
   };
@@ -41,10 +43,13 @@ function sortPlans(plans: AdminPaymentPlan[]) {
 }
 
 function normalizeDraft(draft: Draft) {
+  const isLite = draft.slug.trim().toLowerCase() === 'lite';
   return {
     slug: draft.slug.trim().toLowerCase(), name: draft.name.trim(),
     description: draft.description.trim() || null, kind: draft.kind,
-    priceDzd: Number(draft.priceDzd), unifiedCredits: Number(draft.unifiedCredits),
+    priceDzd: Number(draft.priceDzd),
+    unifiedCredits: Number(isLite ? draft.subscriptionCreditAllowance : draft.unifiedCredits),
+    subscriptionCreditAllowance: isLite ? Number(draft.subscriptionCreditAllowance) : null,
     includedVideoAllowance: draft.includedVideoAllowance.trim() === '' ? null : Number(draft.includedVideoAllowance),
     active: draft.active, displayOrder: Number(draft.displayOrder), featured: draft.featured,
   };
@@ -59,8 +64,9 @@ function validateDraft(draft: Draft, existingSlugs: Set<string>, originalSlug?: 
   if (!draft.name.trim()) return 'validationRequired';
   if (!/^[a-z0-9_]{1,80}$/.test(slug)) return 'validationSlug';
   if (slug !== originalSlug && existingSlugs.has(slug)) return 'validationDuplicateSlug';
-  if (!isWholeNumber(draft.priceDzd) || Number(draft.priceDzd) <= 0
-    || !isWholeNumber(draft.unifiedCredits) || Number(draft.unifiedCredits) <= 0) return 'validationPositive';
+  if (!isWholeNumber(draft.priceDzd) || Number(draft.priceDzd) <= 0) return 'validationPositive';
+  const credits = slug === 'lite' ? draft.subscriptionCreditAllowance : draft.unifiedCredits;
+  if (!isWholeNumber(credits) || Number(credits) <= 0) return 'validationPositive';
   if (slug === 'lite' && (!isWholeNumber(draft.includedVideoAllowance)
     || Number(draft.includedVideoAllowance) < 0 || Number(draft.includedVideoAllowance) > 4)) return 'validationVideoAllowance';
   if (slug !== 'lite' && draft.includedVideoAllowance.trim() !== '') return 'validationVideoAllowance';
@@ -74,6 +80,7 @@ function planMatchesDraft(plan: AdminPaymentPlan, draft: Draft) {
   return plan.slug === normalized.slug && plan.name === normalized.name
     && plan.description === normalized.description && plan.kind === normalized.kind
     && plan.priceDzd === normalized.priceDzd && plan.unifiedCredits === normalized.unifiedCredits
+    && (plan.slug !== 'lite' || plan.subscriptionCreditAllowance === normalized.subscriptionCreditAllowance)
     && plan.includedVideoAllowance === normalized.includedVideoAllowance
     && plan.active === normalized.active && plan.displayOrder === normalized.displayOrder
     && plan.featured === normalized.featured;
@@ -101,10 +108,15 @@ function PlanFields({ idPrefix, value, existing, onChange }: {
           value={value.priceDzd} onChange={(event) => onChange({ ...value, priceDzd: event.target.value })} />
         <FieldHelp>{t('priceHelp')}</FieldHelp>
       </label>
-      <label htmlFor={`${idPrefix}-credits`} className={label}>{t('planCredits')}
+      <label htmlFor={`${idPrefix}-credits`} className={label}>{value.slug.trim().toLowerCase() === 'lite' ? 'Subscription Credits' : t('planCredits')}
         <input id={`${idPrefix}-credits`} required className={input} type="number" min="1" step="1" inputMode="numeric"
-          value={value.unifiedCredits} onChange={(event) => onChange({ ...value, unifiedCredits: event.target.value })} />
-        <FieldHelp>{t('creditsHelp')}</FieldHelp>
+          value={value.slug.trim().toLowerCase() === 'lite' ? value.subscriptionCreditAllowance : value.unifiedCredits}
+          onChange={(event) => onChange(value.slug.trim().toLowerCase() === 'lite'
+            ? { ...value, subscriptionCreditAllowance: event.target.value, unifiedCredits: event.target.value }
+            : { ...value, unifiedCredits: event.target.value })} />
+        <FieldHelp>{value.slug.trim().toLowerCase() === 'lite'
+          ? 'Credits granted to new Lite periods. Existing orders and periods keep their snapshots.'
+          : t('creditsHelp')}</FieldHelp>
       </label>
       {value.slug.trim().toLowerCase() === 'lite' && <label htmlFor={`${idPrefix}-included-videos`} className={label}>Included Videos
         <input id={`${idPrefix}-included-videos`} required className={input} type="number" min="0" max="4" step="1" inputMode="numeric"
@@ -214,6 +226,10 @@ export default function AdminPaymentPlans({ plans }: { plans: AdminPaymentPlan[]
       return;
     }
 
+    if (original?.slug === 'lite' && !window.confirm(
+      `Save Lite for future orders?\nPrice: ${original.priceDzd} → ${draft.priceDzd} DA\nSubscription Credits: ${original.subscriptionCreditAllowance} → ${draft.subscriptionCreditAllowance}\nIncluded Videos: ${original.includedVideoAllowance} → ${draft.includedVideoAllowance}\nExisting orders and periods will not change.`
+    )) return;
+
     setPending(scope); setFeedback(null);
     try {
       const response = await fetch(id ? `/api/admin/payments/plans/${id}` : '/api/admin/payments/plans', {
@@ -260,7 +276,7 @@ export default function AdminPaymentPlans({ plans }: { plans: AdminPaymentPlan[]
           </div>
           <div className="grid shrink-0 grid-cols-2 items-center gap-3 text-end sm:gap-5">
             <div><p dir="ltr" className="text-[13px] font-semibold tabular-nums text-white">{plan.priceDzd.toLocaleString(locale)} DA</p><p className="text-[10px] font-medium text-[var(--studio-text-muted)]">{t('priceDzd')}</p></div>
-            <div><p className="text-[13px] font-semibold tabular-nums text-white">{plan.unifiedCredits.toLocaleString(locale)}</p><p className="text-[10px] font-medium text-[var(--studio-text-muted)]">{t('planCredits')}</p></div>
+            <div><p className="text-[13px] font-semibold tabular-nums text-white">{(plan.slug === 'lite' ? plan.subscriptionCreditAllowance ?? plan.unifiedCredits : plan.unifiedCredits).toLocaleString(locale)}</p><p className="text-[10px] font-medium text-[var(--studio-text-muted)]">{plan.slug === 'lite' ? 'Subscription Credits' : t('planCredits')}</p></div>
           </div>
           <div className="flex shrink-0 flex-col gap-1 sm:flex-row"><button type="button" disabled={index === 0 || pending !== null || hasUnsavedPlans} title={t('moveUp', { name: plan.name })} aria-label={t('moveUp', { name: plan.name })} onClick={(event) => { event.preventDefault(); event.stopPropagation(); void move(plan.id, -1); }} className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 text-white/45 hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"><ArrowUp className="h-3.5 w-3.5" aria-hidden="true" /></button><button type="button" disabled={index === catalogPlans.length - 1 || pending !== null || hasUnsavedPlans} title={t('moveDown', { name: plan.name })} aria-label={t('moveDown', { name: plan.name })} onClick={(event) => { event.preventDefault(); event.stopPropagation(); void move(plan.id, 1); }} className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 text-white/45 hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"><ArrowDown className="h-3.5 w-3.5" aria-hidden="true" /></button></div>
         </summary>

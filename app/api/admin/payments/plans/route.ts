@@ -24,6 +24,7 @@ function serializePlan(data: any) {
   return {
     id: data.id, slug: data.slug, name: data.name, description: data.description,
     kind: data.kind, priceDzd: data.price_dzd, unifiedCredits: Number(data.unified_credits),
+    subscriptionCreditAllowance: data.subscription_credit_allowance == null ? null : Number(data.subscription_credit_allowance),
     includedVideoAllowance: data.included_video_allowance == null ? null : Number(data.included_video_allowance),
     active: data.active, displayOrder: data.display_order, featured: data.featured,
   };
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
     price_dzd: plan.priceDzd, unified_credits: plan.unifiedCredits,
     included_video_allowance: plan.includedVideoAllowance, active: plan.active,
     display_order: plan.displayOrder, featured: plan.featured, updated_by: access.user.id,
-  }).select('id,slug,name,description,kind,price_dzd,unified_credits,included_video_allowance,active,display_order,featured').single();
+  }).select('id,slug,name,description,kind,price_dzd,unified_credits,subscription_credit_allowance,included_video_allowance,active,display_order,featured').single();
   if (error) return NextResponse.json({ error: error.code === '23505' ? 'PAYMENT_PLAN_SLUG_EXISTS' : 'PAYMENT_PLAN_CREATE_FAILED' }, { status: 409 });
   revalidatePath('/admin/payments');
   revalidatePath('/admin/audit');

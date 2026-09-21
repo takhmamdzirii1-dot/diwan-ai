@@ -710,14 +710,23 @@ export async function getAdminPaymentPlans(): Promise<AdminDataResult<AdminPayme
   const client = await requireAdminDataAccess();
   if (!client) return unavailable([]);
   try {
-    const { data, error } = await client.from('payment_plans')
-      .select('id,slug,name,description,kind,price_dzd,unified_credits,included_video_allowance,active,display_order,featured')
+    const current = await client.from('payment_plans')
+      .select('id,slug,name,description,kind,price_dzd,unified_credits,subscription_credit_allowance,included_video_allowance,active,display_order,featured')
       .order('display_order').order('created_at');
+    const missingVideoColumn = current.error?.code === '42703'
+      && current.error.message.includes('included_video_allowance');
+    const { data, error } = missingVideoColumn
+      ? await client.from('payment_plans')
+        .select('id,slug,name,description,kind,price_dzd,unified_credits,subscription_credit_allowance,active,display_order,featured')
+        .order('display_order').order('created_at')
+      : current;
     if (error) throw error;
     return { available: true, data: (data ?? []).map((plan) => ({
       id: plan.id, slug: plan.slug, name: plan.name, description: plan.description,
       kind: plan.kind, priceDzd: plan.price_dzd, unifiedCredits: Number(plan.unified_credits),
-      includedVideoAllowance: plan.included_video_allowance == null ? null : Number(plan.included_video_allowance),
+      subscriptionCreditAllowance: plan.subscription_credit_allowance == null ? null : Number(plan.subscription_credit_allowance),
+      includedVideoAllowance: 'included_video_allowance' in plan && plan.included_video_allowance != null
+        ? Number(plan.included_video_allowance) : null,
       active: plan.active, displayOrder: plan.display_order, featured: plan.featured,
     })) };
   } catch (error) {
