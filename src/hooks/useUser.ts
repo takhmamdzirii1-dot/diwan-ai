@@ -80,9 +80,15 @@ async function fetchVerifiedBalance(userId: string, force = false) {
 
   try {
     const { data, error } = await supabase
-      .from('credits')
-      .select('balance,subscription_balance,purchased_balance,free_image_remaining,free_video_remaining,lite_video_remaining')
-      .eq('user_id', userId)
+      .rpc('get_current_credit_account')
+      .returns<{
+        balance: number;
+        subscription_balance: number;
+        purchased_balance: number;
+        free_image_remaining: number;
+        free_video_remaining: number;
+        lite_video_remaining: number;
+      }[]>()
       .maybeSingle();
 
     if (requestRevision !== balanceRevision || snapshot.user?.id !== userId) return;
