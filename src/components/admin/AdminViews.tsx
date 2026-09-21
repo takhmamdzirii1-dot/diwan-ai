@@ -290,9 +290,11 @@ function UserOverviewField({ label, children }: { label: string; children: React
   return <div className="grid min-h-10 items-center gap-2 border-b border-[var(--studio-border-subtle)] py-2 last:border-0 sm:grid-cols-[145px_minmax(0,1fr)]"><span className="text-[11.5px] text-[var(--studio-text-secondary)]">{label}</span><div className="min-w-0 text-[12px] font-medium text-white">{children}</div></div>;
 }
 
-function RemainingAllowance({ remaining, total }: { remaining: number | null; total: number }) {
-  const valid = remaining !== null && Number.isFinite(remaining) && remaining >= 0 && remaining <= total;
-  return <div className="max-w-xs"><span className="tabular-nums">{remaining ?? '—'} / {total}</span>{valid && <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/10" aria-hidden="true"><div className="h-full rounded-full bg-emerald-300/75" style={{ width: `${remaining / total * 100}%` }} /></div>}</div>;
+function RemainingAllowance({ remaining, total }: { remaining: number | string | null; total?: number | null }) {
+  const current = remaining === null ? null : Number(remaining);
+  const valid = current !== null && total != null && Number.isSafeInteger(current)
+    && Number.isSafeInteger(total) && total > 0 && current >= 0 && current <= total;
+  return <div className="max-w-xs"><span className="tabular-nums">{remaining ?? '—'}{total != null && ` / ${total}`}</span>{valid && <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/10" aria-hidden="true"><div className="h-full rounded-full bg-emerald-300/75" style={{ width: `${current / total * 100}%` }} /></div>}</div>;
 }
 
 function isPositiveStoredBalance(value: string | null) {
@@ -400,19 +402,19 @@ function AdminUserDetail({ user, onClose, onStatusChanged, onCreditChanged }: {
             <UserOverviewField label="Videos remaining"><RemainingAllowance remaining={usageBalances.free_video_remaining} total={1} /></UserOverviewField>
             <p className="pt-3 text-[11px] text-[var(--studio-text-muted)]">Free includes a one-time trial allowance of 5 images and 1 video.</p>
           </> : plan === 'lite' ? <>
-            <UserOverviewField label="Subscription Credits"><span className="tabular-nums">{usageBalances.subscription_balance ?? '—'}</span></UserOverviewField>
-            <UserOverviewField label="Included Videos remaining"><span className="tabular-nums">{usageBalances.lite_video_remaining ?? '—'}</span></UserOverviewField>
-            {isPositiveStoredBalance(usageBalances.purchased_balance) && <UserOverviewField label="Purchased Credits"><span className="tabular-nums">{usageBalances.purchased_balance}</span></UserOverviewField>}
+            <UserOverviewField label="Subscription Credits"><RemainingAllowance remaining={usageBalances.subscription_balance} /></UserOverviewField>
+            <UserOverviewField label="Included Videos remaining"><RemainingAllowance remaining={usageBalances.lite_video_remaining} /></UserOverviewField>
+            {isPositiveStoredBalance(usageBalances.purchased_balance) && <UserOverviewField label="Purchased Credits"><RemainingAllowance remaining={usageBalances.purchased_balance} /></UserOverviewField>}
             <p className="pt-3 text-[11px] text-[var(--studio-text-muted)]">Included videos are separate from Subscription Credits.</p>
           </> : plan === 'pro' ? <>
-            <UserOverviewField label="Subscription Credits"><span className="tabular-nums">{usageBalances.subscription_balance ?? '—'}</span></UserOverviewField>
-            <UserOverviewField label="Rollover Credits"><span className="tabular-nums">{usageBalances.subscription_rollover_balance ?? '—'}</span></UserOverviewField>
-            <UserOverviewField label="Purchased Credits"><span className="tabular-nums">{usageBalances.purchased_balance ?? '—'}</span></UserOverviewField>
+            <UserOverviewField label="Subscription Credits"><RemainingAllowance remaining={usageBalances.subscription_balance} /></UserOverviewField>
+            <UserOverviewField label="Rollover Credits"><RemainingAllowance remaining={usageBalances.subscription_rollover_balance} /></UserOverviewField>
+            <UserOverviewField label="Purchased Credits"><RemainingAllowance remaining={usageBalances.purchased_balance} /></UserOverviewField>
           </> : <>
-            <UserOverviewField label="Current Credits"><span className="tabular-nums">{usageBalances.balance ?? '—'}</span></UserOverviewField>
-            <UserOverviewField label="Subscription Credits"><span className="tabular-nums">{usageBalances.subscription_balance ?? '—'}</span></UserOverviewField>
-            <UserOverviewField label="Rollover Credits"><span className="tabular-nums">{usageBalances.subscription_rollover_balance ?? '—'}</span></UserOverviewField>
-            <UserOverviewField label="Purchased Credits"><span className="tabular-nums">{usageBalances.purchased_balance ?? '—'}</span></UserOverviewField>
+            <UserOverviewField label="Current Credits"><RemainingAllowance remaining={usageBalances.balance} /></UserOverviewField>
+            <UserOverviewField label="Subscription Credits"><RemainingAllowance remaining={usageBalances.subscription_balance} /></UserOverviewField>
+            <UserOverviewField label="Rollover Credits"><RemainingAllowance remaining={usageBalances.subscription_rollover_balance} /></UserOverviewField>
+            <UserOverviewField label="Purchased Credits"><RemainingAllowance remaining={usageBalances.purchased_balance} /></UserOverviewField>
           </>}
         </UserOverviewSection>
         <details className="group border-b border-[var(--studio-border-subtle)] py-5"><summary className="flex cursor-pointer list-none items-center gap-3 text-start [&::-webkit-details-marker]:hidden"><ChevronRight className="h-4 w-4 text-[var(--studio-text-secondary)] transition-transform group-open:rotate-90" aria-hidden="true" /><span><strong className="block text-[12px] font-semibold text-white">Technical details</strong><span className="mt-0.5 block text-[10.5px] text-[var(--studio-text-muted)]">IDs and raw account references</span></span></summary><div className="mt-4 rounded-xl border border-[var(--studio-border-subtle)] bg-black/15 p-3"><TechnicalId label={t('common.userId')} value={user.id} /><p className="mt-2 text-[11px] text-[var(--studio-text-secondary)]">Credit balance: <span className="tabular-nums text-white">{balance ?? '—'}</span></p><p className="mt-1 text-[11px] text-[var(--studio-text-secondary)]">Payment records: <span className="tabular-nums text-white">{user.paymentOrderCount}</span></p></div></details>
