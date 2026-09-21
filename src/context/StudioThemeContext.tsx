@@ -52,7 +52,7 @@ export function StudioThemeProvider({
         dir={locale === 'ar' ? 'rtl' : 'ltr'}
         data-studio-theme={theme}
         suppressHydrationWarning
-        className="studio-overlay-root min-h-screen bg-[var(--studio-canvas)] text-[var(--studio-text-primary)]"
+        className="studio-overlay-root min-h-screen bg-[var(--studio-canvas)] text-[var(--studio-text-primary)] [--section-padding:0px]"
       >
         {children}
       </div>
