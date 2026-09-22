@@ -31,7 +31,7 @@ export default async function MarketingLocaleLayout({
     <div lang={locale} dir={direction} className="min-h-screen bg-[#16181A]">
       <DocumentLocale locale={locale} scrollSmooth />
       <NextIntlClientProvider locale={locale} messages={messages}>
-        <ModalProvider>
+        <ModalProvider checkoutThemeLocale={locale}>
           <AmbientMotionBackground />
           {children}
         </ModalProvider>

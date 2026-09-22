@@ -21,9 +21,11 @@ function isStudioTheme(value: string | null): value is StudioTheme {
 export function StudioThemeProvider({
   children,
   locale,
+  modalOnly = false,
 }: {
   children: React.ReactNode;
   locale: string;
+  modalOnly?: boolean;
 }) {
   const [theme, setThemeState] = useState<StudioTheme>('neutral');
 
@@ -52,7 +54,9 @@ export function StudioThemeProvider({
         dir={locale === 'ar' ? 'rtl' : 'ltr'}
         data-studio-theme={theme}
         suppressHydrationWarning
-        className="studio-overlay-root min-h-screen bg-[var(--studio-canvas)] text-[var(--studio-text-primary)] [--section-padding:0px]"
+        className={modalOnly
+          ? 'studio-overlay-root contents [--section-padding:0px]'
+          : 'studio-overlay-root min-h-screen bg-[var(--studio-canvas)] text-[var(--studio-text-primary)] [--section-padding:0px]'}
       >
         {children}
       </div>

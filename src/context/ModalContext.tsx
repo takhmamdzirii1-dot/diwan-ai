@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AuthModal from '../components/AuthModal';
 import TopUpModal, { type TopUpPlan } from '../components/TopUpModal';
+import { StudioThemeProvider } from './StudioThemeContext';
 
 export interface ModalContextType {
   isAuthModalOpen: boolean;
@@ -21,7 +22,7 @@ const DEFAULT_TOPUP_PLAN: TopUpPlan = {
 
 const ModalContext = createContext<ModalContextType | undefined>(undefined);
 
-export function ModalProvider({ children }: { children: React.ReactNode }) {
+export function ModalProvider({ children, checkoutThemeLocale }: { children: React.ReactNode; checkoutThemeLocale?: string }) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
@@ -93,12 +94,17 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
       />
 
       {/* Permanently Mounted Top-Up Modal */}
-      <TopUpModal
+      {checkoutThemeLocale ? <StudioThemeProvider locale={checkoutThemeLocale} modalOnly><TopUpModal
         isOpen={isTopUpModalOpen}
         onClose={closeTopUpModal}
         plan={topUpPlan}
         onSuccess={closeTopUpModal}
-      />
+      /></StudioThemeProvider> : <TopUpModal
+        isOpen={isTopUpModalOpen}
+        onClose={closeTopUpModal}
+        plan={topUpPlan}
+        onSuccess={closeTopUpModal}
+      />}
     </ModalContext.Provider>
   );
 }
