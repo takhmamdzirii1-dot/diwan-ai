@@ -5,13 +5,13 @@ import { useRouter } from 'next/navigation';
 import { Loader2, Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
-export default function AdminModelCreate() {
+export default function AdminModelCreate({ initial }: { initial?: { displayName: string; modality: 'chat' | 'image' | 'video' } }) {
   const t = useTranslations('Admin.models.create');
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [stableId, setStableId] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [modality, setModality] = useState<'chat' | 'image' | 'video'>('chat');
+  const [displayName, setDisplayName] = useState(initial?.displayName ?? '');
+  const [modality, setModality] = useState<'chat' | 'image' | 'video'>(initial?.modality ?? 'chat');
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
   const valid = /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(stableId.trim()) && displayName.trim().length > 0;
@@ -30,7 +30,7 @@ export default function AdminModelCreate() {
     } finally { setSaving(false); }
   };
   return <div className="relative">
-    <button type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)} className="inline-flex h-9 items-center gap-2 rounded-lg bg-white px-3 text-[12px] font-semibold text-black hover:bg-white/90 focus-visible:ring-2 focus-visible:ring-white/40"><Plus className="h-4 w-4" />{t('action')}</button>
+    <button type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)} className="inline-flex h-9 items-center gap-2 rounded-lg bg-white px-3 text-[12px] font-semibold text-black hover:bg-white/90 focus-visible:ring-2 focus-visible:ring-white/40"><Plus className="h-4 w-4" />{initial ? 'Configure model' : t('action')}</button>
     {open && <div className="absolute end-0 top-11 z-30 grid w-[min(600px,calc(100vw-2rem))] gap-2 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] p-4 shadow-xl sm:grid-cols-3 sm:items-end">
       <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">{t('stableId')}<input value={stableId} onChange={(event) => setStableId(event.target.value.toLowerCase())} placeholder="my-model" className="h-9 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] text-white" /></label>
       <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">{t('displayName')}<input value={displayName} onChange={(event) => setDisplayName(event.target.value)} className="h-9 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] text-white" /></label>

@@ -692,6 +692,8 @@ export default function StudioDashboard({
                         creditCost: model.verifiedCreditCost,
                         requiredPlan: model.enabled && !model.planAccessible ? model.requiredPlan : null,
                         iconUrl: model.iconUrl,
+                        provider: model.provider,
+                        allowedPlans: model.allowedPlans,
                         visionInput: 'visionInput' in model.capabilities && model.capabilities.visionInput,
                         fileInput: 'fileInput' in model.capabilities && model.capabilities.fileInput,
                       }))}

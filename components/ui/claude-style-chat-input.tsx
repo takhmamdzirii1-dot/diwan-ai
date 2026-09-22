@@ -1,13 +1,10 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Plus, ChevronDown, Square, X, FileText, Loader2, Check, Archive, Sparkles, Image as ImageIcon, ArrowUp, LockKeyhole } from "lucide-react";
+import { Plus, Square, X, FileText, Loader2, Archive, Image as ImageIcon, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useTranslations } from 'next-intl';
-import type { StudioAvailability } from '@/src/config/studio-registry';
-import type { ModelPlanCode } from '@/lib/models/plan-entitlements';
-import type { StudioModality } from '@/src/config/studio-registry';
-import useUser from '@/src/hooks/useUser';
+import { ModelPicker as ModelSelector, type ChatModelOption } from "./model-picker";
+export { ModelPicker as ModelSelector, type ChatModelOption } from "./model-picker";
 
 /* ------------------------------------------------------------------
    VANTRA glass adaptation of the Claude chat composer.
@@ -19,19 +16,6 @@ export interface AttachedFile {
     type: string;
     preview: string | null;
     uploadStatus: string;
-}
-
-export interface ChatModelOption {
-    id: string;
-    name: string;
-    availability: StudioAvailability;
-    enabled: boolean;
-    requiresAuth?: boolean;
-    iconUrl?: string;
-    visionInput?: boolean;
-    fileInput?: boolean;
-    creditCost?: number;
-    requiredPlan?: ModelPlanCode | null;
 }
 
 export interface ClaudeSendPayload {
@@ -138,161 +122,6 @@ const PastedContentCard: React.FC<{ content: { id: string; content: string }; on
         </div>
     );
 };
-
-/* --- Model Selector (Claude-style, glass, grouped) --- */
-export const ModelSelector: React.FC<{
-    models: ChatModelOption[];
-    selectedModel: string;
-    onSelect: (id: string) => void;
-    onSignInClick?: () => void;
-    dropdownPosition?: 'top' | 'bottom';
-    menuLabel?: string;
-    emptyLabel?: string;
-    modality?: StudioModality;
-}> = ({ models, selectedModel, onSelect, onSignInClick, dropdownPosition = 'top', menuLabel, emptyLabel, modality }) => {
-    const t = useTranslations('studio.models');
-    const [isOpen, setIsOpen] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
-
-    const currentModel = models.find(m => m.id === selectedModel) || models[0];
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
-    useEffect(() => {
-        if (!isOpen) return;
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') setIsOpen(false);
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen]);
-
-    const handlePick = (model: ChatModelOption) => {
-        if (!model.enabled || model.requiredPlan || !['available', 'beta'].includes(model.availability)) return;
-        if (model.requiresAuth && onSignInClick) {
-            setIsOpen(false);
-            onSignInClick();
-            return;
-        }
-        onSelect(model.id);
-        setIsOpen(false);
-    };
-
-    const renderItem = (model: ChatModelOption) => {
-      const selectable = model.enabled && !model.requiredPlan && ['available', 'beta'].includes(model.availability);
-      const planLabel = model.requiredPlan
-        ? model.requiredPlan.charAt(0).toUpperCase() + model.requiredPlan.slice(1)
-        : null;
-      return (
-        <button
-            key={model.id}
-            type="button"
-            role="option"
-            aria-selected={selectedModel === model.id}
-            disabled={!selectable}
-            onClick={() => handlePick(model)}
-            className={cn(
-                "flex h-10 w-full items-center justify-between gap-3 rounded-lg border px-2.5 text-start transition-[color,background-color,border-color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-reduce:transition-none",
-                selectable ? "cursor-pointer hover:bg-[var(--studio-hover)]" : "cursor-not-allowed opacity-45",
-                selectedModel === model.id
-                    ? "border-[var(--studio-border-strong)] bg-[var(--studio-selected)]"
-                    : "border-transparent"
-            )}
-        >
-            <div className="flex min-w-0 items-center gap-2.5">
-              {model.iconUrl ? <img src={model.iconUrl} alt="" referrerPolicy="no-referrer" className="h-5 w-5 shrink-0 rounded-md border border-white/10 object-cover" /> : <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/[0.035]"><Sparkles className="h-3 w-3 text-white/65" /></span>}
-              <span className="truncate text-[12.5px] font-medium text-white/90">{model.name}</span>
-            </div>
-            {model.requiredPlan ? (
-              <span className="flex shrink-0 items-center gap-1.5 text-[10.5px] font-semibold text-white/55">
-                <LockKeyhole className="h-3 w-3" aria-hidden="true" />
-                {t('requiresPlan', { plan: planLabel })}
-              </span>
-            ) : <span className="flex shrink-0 items-center gap-2">
-              {typeof model.creditCost === 'number' && <span className="text-[10.5px] text-white/45">
-                {model.creditCost === 0 ? t('noCreditCost') : t('creditCost', { count: model.creditCost })}
-              </span>}
-              {selectedModel === model.id && <Check className="h-3.5 w-3.5 shrink-0 text-white" />}
-            </span>}
-        </button>
-      );
-    };
-
-    return (
-        <div className="relative" ref={dropdownRef}>
-            <button
-                type="button"
-                onClick={() => currentModel && setIsOpen(!isOpen)}
-                disabled={!currentModel}
-                aria-haspopup="listbox"
-                aria-expanded={isOpen}
-                aria-label={`${t('label')}: ${currentModel?.name ?? t('label')}`}
-                className={cn(
-                    "relative inline-flex h-8 max-w-[220px] shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border bg-[var(--studio-surface-raised)] px-2.5 text-xs transition-[color,background-color,border-color,transform] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:cursor-not-allowed disabled:text-[var(--studio-text-disabled)] motion-reduce:transition-none",
-                    isOpen
-                        ? "bg-[var(--studio-selected)] border-[var(--studio-border-strong)] text-white"
-                        : "border-[var(--studio-border)] text-[var(--studio-text-secondary)] hover:border-[var(--studio-border-strong)] hover:text-white"
-                )}
-            >
-                {currentModel?.iconUrl ? <img src={currentModel.iconUrl} alt="" referrerPolicy="no-referrer" className="h-4 w-4 shrink-0 rounded object-cover" /> : currentModel ? <Sparkles className="h-3.5 w-3.5 shrink-0 text-white/65" /> : null}
-                <span className="select-none truncate font-medium">{currentModel?.name ?? emptyLabel ?? t('label')}</span>
-                <ChevronDown className={cn("w-3.5 h-3.5 opacity-60 shrink-0 transition-transform duration-150 motion-reduce:transition-none", isOpen && "rotate-180")} />
-            </button>
-            {modality && currentModel && !currentModel.requiredPlan && (
-              <GenerationUsagePreview modality={modality} creditCost={currentModel.creditCost ?? 0} />
-            )}
-
-            {isOpen && (
-                <div className={cn(
-                    "absolute end-0 z-50 flex max-h-[360px] w-[270px] max-w-[calc(100vw-2rem)] flex-col overflow-y-auto rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-elevated)] p-1.5 shadow-[var(--studio-shadow)] backdrop-blur-xl studio-menu-enter custom-scrollbar-thin",
-                    dropdownPosition === 'top'
-                        ? "bottom-full mb-2 origin-bottom-right"
-                        : "top-full mt-2 origin-top-right"
-                )} role="listbox" aria-label={menuLabel ?? t('menuLabel')}>
-                    {models.map(renderItem)}
-                </div>
-            )}
-        </div>
-    );
-};
-
-function GenerationUsagePreview({ modality, creditCost }: { modality: StudioModality; creditCost: number }) {
-    const t = useTranslations('studio.models');
-    const {
-      user, balance, balanceStatus, planCode, planStatus,
-      freeImageRemaining, freeVideoRemaining, liteVideoRemaining,
-    } = useUser({ loadBalance: true, loadPlan: true });
-
-    if (!user || balanceStatus !== 'ready' || planStatus !== 'ready') return null;
-    if (planCode === 'free' && modality === 'image') {
-      return <p className="mt-1.5 text-[10.5px] text-[var(--studio-text-muted)]">{t('freeImagesRemaining', { count: freeImageRemaining ?? 0 })}</p>;
-    }
-    if (planCode === 'free' && modality === 'video') {
-      return <p className="mt-1.5 text-[10.5px] text-[var(--studio-text-muted)]">{t('freeVideosRemaining', { count: freeVideoRemaining ?? 0 })}</p>;
-    }
-    if (planCode === 'lite' && modality === 'video') {
-      return <p className="mt-1.5 text-[10.5px] text-[var(--studio-text-muted)]">{t('includedVideoRemaining', { count: liteVideoRemaining ?? 0 })}</p>;
-    }
-    if (creditCost <= 0 || balance === null) return null;
-
-    return (
-      <p className="mt-1.5 text-[10.5px] text-[var(--studio-text-muted)]">
-        {t('creditPreview', {
-          cost: creditCost,
-          balance,
-          after: Math.max(0, balance - creditCost),
-        })}
-      </p>
-    );
-}
 
 /* --- Main Composer --- */
 export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({

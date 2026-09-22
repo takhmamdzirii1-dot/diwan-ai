@@ -88,6 +88,7 @@ export type AdminProviderRow = {
 
 export type AdminModelRow = {
   key: string;
+  catalogOnly?: boolean;
   provider: string;
   modelId: string;
   displayName: string;

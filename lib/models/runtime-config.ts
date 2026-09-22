@@ -3,6 +3,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { PROVIDER_REGISTRY } from '@/lib/ai/image-providers/router';
 import { PROVIDER_CATALOG_MODELS } from '@/lib/models/provider-catalog';
+import { CATALOG_MODELS, findCatalogModel, modelBrand, modelIconUrl } from '@/src/config/model-catalog';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
 import { providerConfigurationSummary } from '@/lib/ai/providers/registry';
 import { emptyModelCapabilities, type ModelCapabilities } from '@/lib/models/capabilities';
@@ -291,7 +292,7 @@ export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<S
   const routeReady = new Set((routesResult.data ?? [])
     .filter((row) => row.enabled && providerReady.get(String(row.provider_id)))
     .map((row) => String(row.model_key)));
-  return models
+  const studioModels = models
     .filter((model) => !model.archived && model.visibleInStudio)
     .sort((a, b) => a.modality.localeCompare(b.modality) || a.sortOrder - b.sortOrder)
     .map((model) => {
@@ -302,6 +303,7 @@ export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<S
         .includes(model.availability)
         ? model.availability
         : null;
+      const brand = modelBrand(model.displayName, model.modality, model.provider);
       return {
         id: model.modelId,
         displayName: model.displayName,
@@ -317,13 +319,33 @@ export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<S
         fallbackAvailable: false,
         displayOrder: model.sortOrder,
         shortDescription: model.shortDescription ?? undefined,
-        iconUrl: model.mediaUrl ?? undefined,
+        iconUrl: model.mediaUrl ?? modelIconUrl(brand),
         category: model.category ?? undefined,
         availabilityLabel: model.availabilityLabel ?? undefined,
         capabilities: model.capabilities,
         allowedPlans: model.allowedPlans,
       } satisfies StudioRuntimeModelDefinition;
     });
+  // Catalog-only rows have no provider model ID, route, price, or plan access.
+  // Their UI keys cannot pass runtime model resolution and they stay disabled.
+  return [...studioModels, ...CATALOG_MODELS
+    .filter((item) => !studioModels.some((model) =>
+      findCatalogModel(model.displayName, model.modality)?.key === item.key))
+    .map((item): StudioRuntimeModelDefinition => ({
+      id: item.key,
+      displayName: item.displayName,
+      provider: modelBrand(item.displayName, item.modality).name,
+      modality: item.modality,
+      enabled: false,
+      availability: 'unavailable',
+      verifiedCapabilities: [],
+      supportedControls: [],
+      fallbackAvailable: false,
+      displayOrder: 1000,
+      allowedPlans: [],
+      iconUrl: modelIconUrl(modelBrand(item.displayName, item.modality)),
+      capabilities: emptyModelCapabilities(item.modality),
+    }))];
 }
 
 export async function requireEffectiveRuntimeModel(modelId: string, modality: StudioModality) {

@@ -49,7 +49,8 @@
       "includedVideoRemaining": "Vidéo incluse · {count} sur 4 restantes",
       "connectedChat": "Connecté au Chat",
       "notSelectable": "Pas encore sélectionnable",
-      "requiresPlan": "Nécessite {plan}"
+      "requiresPlan": "Nécessite {plan}",
+      "picker": {"search":"Rechercher des modèles ou des marques","recent":"Récents","allModels":"Tous les modèles","unconfigured":"Non configuré","noResults":"Aucun modèle correspondant","close":"Fermer le sélecteur de modèles","plan":{"free":"Gratuit","lite":"Lite","pro":"Pro","max":"Max"}}
     },
     "settings": {
       "title": "Paramètres",

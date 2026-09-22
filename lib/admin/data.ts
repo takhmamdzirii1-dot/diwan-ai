@@ -27,6 +27,8 @@ import type {
 } from './types';
 import { isMissingCustomerPricing } from './model-economics';
 import { deriveProviderTelemetry } from './provider-telemetry';
+import { CATALOG_MODELS, findCatalogModel, modelBrand, modelIconUrl } from '@/src/config/model-catalog';
+import { emptyModelCapabilities } from '@/lib/models/capabilities';
 
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 10;
@@ -111,8 +113,8 @@ function providerCostState(provider: string, actualCost: CostAmount | null): Adm
   return definition && ['free', 'user_associated', 'byop'].includes(definition.pricing) ? 'free' : 'unknown';
 }
 
-function buildAdminModelRows(models: readonly EffectiveRuntimeModel[], latestCostByModel: Map<string, CostAmount>): AdminModelRow[] {
-  return models.map((model) => {
+function buildAdminModelRows(models: readonly EffectiveRuntimeModel[], latestCostByModel: Map<string, CostAmount>, includeCatalog = false): AdminModelRow[] {
+  const operationalRows = models.map((model) => {
     const configuredProviderCost = model.providerCostStatus === 'known'
       && model.providerCostMinor && model.providerCostCurrency
       ? { currency: model.providerCostCurrency, minor: model.providerCostMinor }
@@ -125,7 +127,9 @@ function buildAdminModelRows(models: readonly EffectiveRuntimeModel[], latestCos
       providerCostState: model.providerCostStatus ?? providerCostState(model.provider, providerCost),
       creditPrice: model.customerCreditPrice, priority: model.routingRole,
       activationSupported: model.activationSupported, persisted: model.persisted, updatedAt: model.updatedAt,
-      shortDescription: model.shortDescription, mediaUrl: model.mediaUrl, category: model.category,
+      shortDescription: model.shortDescription,
+      mediaUrl: model.mediaUrl ?? modelIconUrl(modelBrand(model.displayName, model.modality, model.provider)) ?? null,
+      category: model.category,
       sortOrder: model.sortOrder, visibleInStudio: model.visibleInStudio,
       availabilityLabel: model.availabilityLabel,
       capabilities: model.capabilities,
@@ -134,6 +138,21 @@ function buildAdminModelRows(models: readonly EffectiveRuntimeModel[], latestCos
       routes: [], providerOptions: [], audit: [],
     };
   });
+  if (!includeCatalog) return operationalRows;
+  const catalogRows: AdminModelRow[] = CATALOG_MODELS
+    .filter((item) => !models.some((model) =>
+      model.modality === item.modality && findCatalogModel(model.displayName, model.modality)?.key === item.key))
+    .map((item) => ({
+      key: item.key, catalogOnly: true, provider: '', modelId: '', displayName: item.displayName,
+      modality: item.modality, enabled: false, availability: 'unconfigured', providerCost: null,
+      providerCostState: 'unknown', creditPrice: null, priority: 'unassigned',
+      activationSupported: false, persisted: false, updatedAt: null,
+      shortDescription: null, mediaUrl: modelIconUrl(modelBrand(item.displayName, item.modality)) ?? null,
+      category: null, sortOrder: 1000, visibleInStudio: false, availabilityLabel: null,
+      capabilities: emptyModelCapabilities(item.modality), allowedPlans: [], archived: false,
+      routes: [], providerOptions: [], audit: [],
+    }));
+  return [...operationalRows, ...catalogRows];
 }
 
 export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewData>> {
@@ -451,7 +470,7 @@ export async function getAdminModels(): Promise<AdminDataResult<AdminModelRow[]>
     }).filter((entry) => entry.provider && !entry.config?.archived);
     const rows = buildAdminModelRows(
       client ? await getEffectiveRuntimeModels(client) : applyModelRuntimeOverrides([]),
-      latestCostsByModel(costs),
+      latestCostsByModel(costs), true,
     ).map((model) => ({
       ...model,
       audit: (modelAudits.data ?? []).filter((audit) => audit.resource_id === model.key).map((audit) => ({
