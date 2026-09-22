@@ -26,6 +26,7 @@ import type {
   CostAmount,
 } from './types';
 import { isMissingCustomerPricing } from './model-economics';
+import { deriveProviderTelemetry } from './provider-telemetry';
 
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 10;
@@ -326,12 +327,15 @@ export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewD
 export async function getAdminProviders(): Promise<AdminDataResult<AdminProviderRow[]>> {
   const client = await requireAdminDataAccess();
   try {
-    const [attempts, costs, runtimeConfigs, routes] = client ? await Promise.all([
+    const [attempts, costs, runtimeConfigs, routes, runtimeAudit] = client ? await Promise.all([
       allRows(client, 'provider_attempts', 'provider,state,error_message,started_at,finished_at'),
-      allRows(client, 'provider_cost_records', 'provider,actual_cost_minor,currency,created_at'),
+      allRows(client, 'provider_cost_records', 'provider,provider_model,actual_cost_minor,currency,created_at'),
       allRows(client, 'provider_runtime_configs', 'provider_id,display_name,adapter_type,base_endpoint,archived,enabled,priority,emergency_disabled,daily_spend_limit_minor,spend_currency,last_error_code,last_checked_at'),
-      allRows(client, 'model_provider_routes', 'model_key,model_id,provider_id,provider_model_id'),
-    ]) : [[], [], [], []];
+      allRows(client, 'model_provider_routes', 'id,model_key,model_id,modality,provider_id,provider_model_id,enabled,priority,fallback'),
+      client.from('admin_audit_log').select('id,action,resource_id,previous_state,new_state,created_at')
+        .eq('resource_type', 'provider').order('created_at', { ascending: false }).limit(500)
+        .then(({ data, error }: { data: any[] | null; error: any }) => error ? [] : data ?? []),
+    ]) : [[], [], [], [], []];
     const groupedCosts = costs.length >= PAGE_SIZE * MAX_PAGES ? new Map<string, CostAmount[]>() : groupCosts(costs);
     const configByProvider = new Map(runtimeConfigs.map((row) => [String(row.provider_id), row]));
     const providerIds = [...new Set([
@@ -386,10 +390,14 @@ export async function getAdminProviders(): Promise<AdminDataResult<AdminProvider
         .map((route) => {
           const key = String(route.model_key);
           const providerModelId = String(route.provider_model_id);
-          return { key, name: MODEL_NAMES.get(key) ?? MODEL_NAMES.get(providerModelId) ?? key, providerModelId };
-        })
-        .filter((route, index, all) => all.findIndex((candidate) => candidate.key === route.key
-          && candidate.providerModelId === route.providerModelId) === index);
+          return {
+            key, name: MODEL_NAMES.get(key) ?? MODEL_NAMES.get(providerModelId) ?? key, providerModelId,
+            routeId: String(route.id), modality: String(route.modality), enabled: Boolean(route.enabled),
+            fallback: Boolean(route.fallback), priority: Number(route.priority),
+          };
+        });
+      const telemetry = deriveProviderTelemetry(provider.id, attempts, costs, MODEL_NAMES,
+        attempts.length < PAGE_SIZE * MAX_PAGES && costs.length < PAGE_SIZE * MAX_PAGES);
       return {
         id: provider.id, name: provider.name, modalities: provider.modalities,
         adapterType: provider.adapterType, baseEndpoint: provider.baseEndpoint,
@@ -398,10 +406,15 @@ export async function getAdminProviders(): Promise<AdminDataResult<AdminProvider
         testSupported: provider.testSupported,
         enabled: provider.enabled, status, role: provider.role,
         requestCount: providerAttempts.length, failures: failures.length,
+        ...telemetry,
         averageLatencyMs: completedDurations.length
           ? Math.round(completedDurations.reduce((sum, value) => sum + value, 0) / completedDurations.length) : null,
         lastActivityAt: provider.lastRuntimeCheck ?? lastAttempt?.finished_at ?? lastAttempt?.started_at ?? null,
         associatedModels,
+        history: runtimeAudit.filter((event) => String(event.resource_id) === provider.id)
+          .map((event) => ({ id: String(event.id), action: String(event.action), at: String(event.created_at),
+            previousState: event.previous_state as Record<string, unknown> | null,
+            newState: event.new_state as Record<string, unknown> | null })),
         accumulatedCosts: groupedCosts.get(provider.id.toLowerCase()) ?? [],
         lastError: provider.lastRuntimeError ?? lastFailure?.error_message ?? null,
         configured: provider.configured,
@@ -732,16 +745,12 @@ export async function getAdminPaymentPlans(): Promise<AdminDataResult<AdminPayme
   const client = await requireAdminDataAccess();
   if (!client) return unavailable([]);
   try {
-    const current = await client.from('payment_plans')
-      .select('id,slug,name,description,kind,price_dzd,unified_credits,subscription_credit_allowance,included_video_allowance,active,display_order,featured,public_visible,eligibility_required,frozen')
-      .order('display_order').order('created_at');
-    const missingVideoColumn = current.error?.code === '42703'
-      && current.error.message.includes('included_video_allowance');
-    const { data, error } = missingVideoColumn
-      ? await client.from('payment_plans')
-        .select('id,slug,name,description,kind,price_dzd,unified_credits,subscription_credit_allowance,active,display_order,featured,public_visible,eligibility_required,frozen')
-        .order('display_order').order('created_at')
-      : current;
+    const [{ data, error }, audit] = await Promise.all([
+      client.from('payment_plans').select('*').order('display_order').order('created_at'),
+      client.from('admin_audit_log')
+        .select('id,action,resource_id,previous_state,new_state,created_at')
+        .eq('resource_type', 'plan').order('created_at', { ascending: false }).limit(500),
+    ]);
     if (error) throw error;
     return { available: true, data: (data ?? []).map((plan) => ({
       id: plan.id, slug: plan.slug, name: plan.name, description: plan.description,
@@ -750,7 +759,16 @@ export async function getAdminPaymentPlans(): Promise<AdminDataResult<AdminPayme
       includedVideoAllowance: 'included_video_allowance' in plan && plan.included_video_allowance != null
         ? Number(plan.included_video_allowance) : null,
       active: plan.active, displayOrder: plan.display_order, featured: plan.featured,
-      publicVisible: plan.public_visible, eligibilityRequired: plan.eligibility_required, frozen: plan.frozen,
+      publicVisible: typeof plan.public_visible === 'boolean' ? plan.public_visible : undefined,
+      eligibilityRequired: typeof plan.eligibility_required === 'boolean' ? plan.eligibility_required : undefined,
+      frozen: typeof plan.frozen === 'boolean' ? plan.frozen : undefined,
+      planCode: plan.plan_code == null ? null : String(plan.plan_code),
+      accessPeriodDays: plan.access_period_days == null ? null : Number(plan.access_period_days),
+      createdAt: plan.created_at ?? null, updatedAt: plan.updated_at ?? null,
+      history: (audit.error ? [] : audit.data ?? []).filter((event) => event.resource_id === plan.id)
+        .map((event) => ({ id: String(event.id), action: String(event.action), at: String(event.created_at),
+          previousState: event.previous_state as Record<string, unknown> | null,
+          newState: event.new_state as Record<string, unknown> | null })),
     })) };
   } catch (error) {
     console.error('[admin] payment plan query failed', { message: error instanceof Error ? error.message : 'Unknown error' });

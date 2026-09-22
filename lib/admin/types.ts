@@ -55,13 +55,27 @@ export type AdminProviderRow = {
   testSupported: boolean;
   role: 'primary' | 'backup' | 'optional' | 'unassigned';
   requestCount: number;
+  successfulAttempts: number;
+  terminalAttempts: number;
+  metricsComplete: boolean;
   failures: number;
   averageLatencyMs: number | null;
   lastActivityAt: string | null;
+  lastSuccessAt: string | null;
+  lastFailureAt: string | null;
+  dailyUsage: { date: string; successful: number; failed: number; other: number; spendUsdMinor: string | null }[];
+  costByModel: { providerModelId: string; name: string; records: number; cost: CostAmount }[];
+  recentIssues: { at: string; message: string }[];
+  history: { id: string; action: string; at: string; previousState: Record<string, unknown> | null; newState: Record<string, unknown> | null }[];
   associatedModels: {
     key: string;
     name: string;
     providerModelId: string;
+    routeId: string;
+    modality: string;
+    enabled: boolean;
+    fallback: boolean;
+    priority: number;
   }[];
   accumulatedCosts: CostAmount[];
   lastError: string | null;
@@ -241,4 +255,9 @@ export type AdminPaymentPlan = {
   publicVisible?: boolean;
   eligibilityRequired?: boolean;
   frozen?: boolean;
+  planCode?: string | null;
+  accessPeriodDays?: number | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  history?: { id: string; action: string; at: string; previousState: Record<string, unknown> | null; newState: Record<string, unknown> | null }[];
 };
