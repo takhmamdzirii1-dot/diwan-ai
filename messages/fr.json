@@ -186,6 +186,7 @@
     "returnToStudio": "Continuer vers VANTRA Studio"
   },
   "payments": {
+    "subscribeTo": "S’abonner à {plan}",
     "returnCheckingTitle": "Confirmation de votre paiement",
     "returnCheckingDescription": "Nous vérifions le résultat du paiement en toute sécurité. Cela peut prendre un moment.",
     "returnSuccessTitle": "Paiement confirmé",
