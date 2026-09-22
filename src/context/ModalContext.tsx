@@ -37,9 +37,7 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const openTopUpModal = useCallback((plan?: TopUpPlan) => {
-    if (plan) {
-      setTopUpPlan(plan);
-    }
+    setTopUpPlan(plan ?? DEFAULT_TOPUP_PLAN);
     setIsTopUpModalOpen(true);
   }, []);
 

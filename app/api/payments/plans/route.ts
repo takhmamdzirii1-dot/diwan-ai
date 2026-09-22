@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
 import { getEffectiveRuntimeModels } from '@/lib/models/runtime-config';
 import { estimatePlanOutcomes } from '@/lib/payments/outcome-estimates';
+import { PAYMENT_GATEWAYS } from '@/lib/payments/gateways';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,5 +40,13 @@ export async function GET() {
       // The public catalog remains available if model presentation data is temporarily unavailable.
     }
   }
-  return NextResponse.json({ plans, proOutcomeEstimates });
+  return NextResponse.json({
+    plans, proOutcomeEstimates,
+    gatewayAvailability: {
+      baridimob: PAYMENT_GATEWAYS.baridimob.isConfigured(),
+      ccp: PAYMENT_GATEWAYS.ccp.isConfigured(),
+      edahabia: PAYMENT_GATEWAYS.edahabia.isConfigured(),
+      cib: PAYMENT_GATEWAYS.cib.isConfigured(),
+    },
+  });
 }
