@@ -58,7 +58,7 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, dr
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState<string[]>([]);
   const [recent, setRecent] = useState<RecentByModality>(emptyRecent);
-  const [anchor, setAnchor] = useState<{ top: number; left: number; height: number } | null>(null);
+  const [anchor, setAnchor] = useState<{ top?: number; bottom?: number; left: number; height: number } | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
@@ -78,8 +78,11 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, dr
       const below = innerHeight - rect.bottom - 24;
       const placeAbove = dropdownPosition === 'top' ? above >= 280 || above >= below : below < 280 && above > below;
       const height = Math.min(540, Math.max(220, placeAbove ? above : below));
-      setAnchor({ top: placeAbove ? rect.top - height - 8 : rect.bottom + 8,
-        left: Math.max(16, Math.min(rect.left, innerWidth - width - 16)), height });
+      // Above: pin the panel bottom ~10px over the trigger so it grows upward
+      // instead of floating high; below: open directly under the trigger.
+      setAnchor(placeAbove
+        ? { bottom: innerHeight - rect.top + 10, left: Math.max(16, Math.min(rect.left, innerWidth - width - 16)), height }
+        : { top: rect.bottom + 8, left: Math.max(16, Math.min(rect.left, innerWidth - width - 16)), height });
     };
     update();
     requestAnimationFrame(() => searchInput.current?.focus());
@@ -163,7 +166,7 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, dr
     <div ref={panel} role="dialog" aria-label={menuLabel ?? t('menuLabel')}
       style={{ backgroundColor: 'color-mix(in srgb, var(--studio-popover) 96%, transparent)',
         ...(anchor && typeof window !== 'undefined' && window.innerWidth >= 640
-          ? { top: anchor.top, left: anchor.left, maxHeight: anchor.height } : {}) }}
+          ? { top: anchor.top, bottom: anchor.bottom, left: anchor.left, maxHeight: anchor.height } : {}) }}
       className="fixed inset-x-0 bottom-0 z-[110] flex max-h-[min(85dvh,620px)] flex-col overflow-hidden rounded-t-2xl border border-[var(--studio-border)] bg-[var(--studio-popover)] text-[var(--studio-text-primary)] shadow-lg sm:inset-x-auto sm:bottom-auto sm:w-[min(408px,calc(100vw-32px))] sm:rounded-2xl sm:max-h-[540px]">
       <div className="shrink-0 border-b border-[var(--studio-border)] bg-[var(--studio-popover)] p-3">
         <div className="mb-2 flex items-center justify-between sm:hidden"><span className="text-sm font-semibold">{menuLabel ?? t('menuLabel')}</span><button type="button" onClick={close} aria-label={t('picker.close')} className="flex h-9 w-9 items-center justify-center rounded-lg"><X className="h-4 w-4" /></button></div>

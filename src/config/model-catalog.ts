@@ -109,7 +109,14 @@ export function findCatalogModel(displayName: string, modality: StudioModality, 
     && normalizeName(model.displayName) === normalizeName(canonicalName || displayName)) ?? null;
 }
 
-export function modelBrand(displayName: string, modality: StudioModality, provider?: string | null, modelId?: string | null, brandName?: string | null) {
+/**
+ * Studio Brand resolution — presentation grouping only.
+ *
+ * Order: explicit saved Admin Brand → canonical catalog Brand → legacy alias
+ * Brand → Other. Execution provider, provider route, backend ID, and icon
+ * must NEVER create a Brand group.
+ */
+export function modelBrand(displayName: string, modality: StudioModality, _provider?: string | null, modelId?: string | null, brandName?: string | null) {
   const selectedBrand = brandName?.trim();
   if (selectedBrand) {
     const listedBrand = findCatalogModel(displayName, modality, modelId);
@@ -119,13 +126,11 @@ export function modelBrand(displayName: string, modality: StudioModality, provid
     return Object.values(MODEL_BRANDS).find((brand) => brand.name.toLowerCase() === selectedBrand.toLowerCase())
       ?? { name: selectedBrand, icon: null };
   }
-  const alias = modelId && LEGACY_MODEL_ALIASES[modelId];
-  if (alias) return MODEL_BRANDS[alias.brandId];
   const listed = findCatalogModel(displayName, modality, modelId);
   if (listed) return MODEL_BRANDS[listed.brandId];
-  const providerName = provider?.toLowerCase() ?? '';
-  return Object.values(MODEL_BRANDS).find((brand) => brand.name.toLowerCase() === providerName)
-    ?? { name: providerName === 'vantra' ? 'Other' : provider || 'Other', icon: null };
+  const alias = modelId && LEGACY_MODEL_ALIASES[modelId];
+  if (alias) return MODEL_BRANDS[alias.brandId];
+  return { name: 'Other', icon: null };
 }
 
 export function modelIconUrl(brand: { icon: string | null }) {
