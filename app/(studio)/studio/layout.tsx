@@ -12,6 +12,7 @@ import { getStudioRuntimeModels } from '../../../lib/models/runtime-config';
 import { emptyModelCapabilities } from '../../../lib/models/capabilities';
 import { STUDIO_MODELS } from '../../../src/config/studio-registry';
 import { StudioThemeProvider } from '../../../src/context/StudioThemeContext';
+import { loadMessages } from '../../../i18n/messages';
 
 export const metadata: Metadata = {
   title: 'VANTRA Studio',
@@ -32,6 +33,13 @@ export default async function StudioRootLayout({ children }: { children: React.R
   const locale = preference === 'fr' || preference === 'ar' ? preference : 'en';
   const translated = locale === 'fr' ? studioFrench : locale === 'ar' ? studioArabic : {};
   const messages = mergeMessages(studioMessages, translated);
+  const sharedPayments = (await loadMessages(locale)).payments;
+  messages.payments = {
+    ...messages.payments,
+    ...sharedPayments,
+    status: { ...messages.payments.status, ...sharedPayments.status },
+    errors: { ...messages.payments.errors, ...sharedPayments.errors },
+  };
   const models = await getStudioRuntimeModels().catch(() => STUDIO_MODELS.map((model) => ({
     ...model,
     enabled: false,

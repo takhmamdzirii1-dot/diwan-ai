@@ -48,7 +48,7 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   const selectedPlan = useMemo(() => plans.find((item) => item.id === selectedPlanId) ?? null, [plans, selectedPlanId]);
   const checkoutTitle = selectedPlan?.kind === 'subscription'
-    ? t('subscribeTo', { plan: selectedPlan.name }) : t('title');
+    ? t('activatePlan', { plan: selectedPlan.name }) : t('title');
   const manual = method === 'baridimob' || method === 'ccp';
   const instantAvailable = available.edahabia || available.cib;
   const translateError = (code: string) => t.has('errors.' + code) ? t('errors.' + code) : t('errors.generic');

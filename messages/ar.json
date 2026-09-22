@@ -186,7 +186,7 @@
     "returnToStudio": "المتابعة إلى VANTRA Studio"
   },
   "payments": {
-    "subscribeTo": "الاشتراك في {plan}",
+    "activatePlan": "تفعيل {plan}",
     "returnCheckingTitle": "جارٍ تأكيد الدفع",
     "returnCheckingDescription": "نتحقق من نتيجة الدفع بأمان. قد يستغرق الأمر لحظة.",
     "returnSuccessTitle": "تم تأكيد الدفع",

@@ -205,7 +205,7 @@
     "returnToStudio": "Continue to VANTRA Studio"
   },
   "payments": {
-    "subscribeTo": "Subscribe to {plan}",
+    "activatePlan": "Activate {plan}",
     "returnCheckingTitle": "Confirming your payment",
     "returnCheckingDescription": "We're checking the payment result securely. This can take a moment.",
     "returnSuccessTitle": "Payment confirmed",
