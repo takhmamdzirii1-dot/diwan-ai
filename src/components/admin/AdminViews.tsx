@@ -196,7 +196,7 @@ export function ModelsView({ result }: { result: AdminDataResult<AdminModelRow[]
   const [editSection, setEditSection] = useState<'identity' | 'routing' | 'pricing' | 'configuration' | null>(null);
   useEffect(() => setModels(result.data), [result.data]);
   const providers = [...new Set(models.flatMap((model) => [model.provider, ...model.routes.map((route) => route.providerId)]))].filter(Boolean).sort();
-  const brandOf = (model: AdminModelRow) => modelBrand(model.displayName, model.modality as 'chat' | 'image' | 'video', model.provider).name;
+  const brandOf = (model: AdminModelRow) => modelBrand(model.displayName, model.modality as 'chat' | 'image' | 'video', model.provider, model.modelId).name;
   const brands = [...new Set(models.map(brandOf))].sort();
   const statusOf = (model: AdminModelRow) => model.catalogOnly || model.availability === 'provider_config_required' ? 'unconfigured' : model.enabled ? 'enabled' : 'disabled';
   const filtered = models.filter((model) => {

@@ -303,7 +303,7 @@ export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<S
         .includes(model.availability)
         ? model.availability
         : null;
-      const brand = modelBrand(model.displayName, model.modality, model.provider);
+      const brand = modelBrand(model.displayName, model.modality, model.provider, model.modelId);
       return {
         id: model.modelId,
         displayName: model.displayName,
@@ -330,7 +330,7 @@ export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<S
   // Their UI keys cannot pass runtime model resolution and they stay disabled.
   return [...studioModels, ...CATALOG_MODELS
     .filter((item) => !studioModels.some((model) =>
-      findCatalogModel(model.displayName, model.modality)?.key === item.key))
+      findCatalogModel(model.displayName, model.modality, model.id)?.key === item.key))
     .map((item): StudioRuntimeModelDefinition => ({
       id: item.key,
       displayName: item.displayName,

@@ -3,30 +3,33 @@ import type { StudioModality } from './studio-registry';
 /** Presentation metadata only. Catalog keys are never provider/backend model IDs. */
 export const MODEL_BRANDS = {
   openai: { name: 'OpenAI', icon: 'openai.svg' },
-  claude: { name: 'Claude', icon: 'claude.svg' },
-  google: { name: 'Google', icon: 'gemini.svg' },
-  googleImage: { name: 'Google', icon: 'nanobanana.svg' },
+  claude: { name: 'Claude', icon: 'claude-color.svg' },
+  google: { name: 'Google', icon: 'gemini-color.svg' },
+  googleImage: { name: 'Google', icon: 'nanobanana-color.svg' },
   xai: { name: 'xAI', icon: 'grok.svg' },
-  meta: { name: 'Meta', icon: 'metaai.svg' },
-  qwen: { name: 'Qwen', icon: 'qwen.svg' },
-  zai: { name: 'Z.ai / GLM', icon: 'chatglm.svg' },
-  deepseek: { name: 'DeepSeek', icon: 'deepseek.svg' },
-  kimi: { name: 'Kimi', icon: 'kimi.svg' },
-  minimax: { name: 'MiniMax', icon: 'minimax.svg' },
-  stepfun: { name: 'StepFun', icon: 'stepfun.svg' },
-  mistral: { name: 'Mistral', icon: 'mistral.svg' },
-  cohere: { name: 'Cohere', icon: null },
-  microsoft: { name: 'Microsoft', icon: null },
-  bytedance: { name: 'ByteDance', icon: 'bytedance.svg' },
-  kling: { name: 'Kling / Kuaishou', icon: 'kling.svg' },
+  meta: { name: 'Meta', icon: 'metaai-color.svg' },
+  qwen: { name: 'Qwen', icon: 'qwen-color.svg' },
+  zai: { name: 'Z.ai / GLM', icon: 'chatglm-color.svg' },
+  deepseek: { name: 'DeepSeek', icon: 'deepseek-color.svg' },
+  kimi: { name: 'Kimi', icon: 'kimi-color.svg' },
+  minimax: { name: 'MiniMax', icon: 'minimax-color.svg' },
+  stepfun: { name: 'StepFun', icon: 'stepfun-color.svg' },
+  mistral: { name: 'Mistral', icon: 'mistral-color.svg' },
+  cohere: { name: 'Cohere', icon: 'commanda-color.svg' },
+  microsoft: { name: 'Microsoft', icon: 'azureai-color.svg' },
+  bytedance: { name: 'ByteDance', icon: 'bytedance-color.svg' },
+  kling: { name: 'Kling / Kuaishou', icon: 'kling-color.svg' },
   runway: { name: 'Runway', icon: 'runway.svg' },
   bfl: { name: 'Black Forest Labs', icon: 'flux.svg' },
-  alibaba: { name: 'Alibaba', icon: 'alibaba.svg' },
-  luma: { name: 'Luma AI', icon: 'luma.svg' },
-  adobe: { name: 'Adobe', icon: 'adobefirefly.svg' },
+  alibaba: { name: 'Alibaba', icon: 'alibaba-color.svg' },
+  luma: { name: 'Luma AI', icon: 'luma-color.svg' },
+  adobe: { name: 'Adobe', icon: 'adobefirefly-color.svg' },
   recraft: { name: 'Recraft', icon: 'recraft.svg' },
   ideogram: { name: 'Ideogram', icon: 'ideogram.svg' },
-  stability: { name: 'Stability AI', icon: 'stability.svg' },
+  stability: { name: 'Stability AI', icon: 'stability-color.svg' },
+  tencent: { name: 'Tencent / Hunyuan', icon: 'hunyuan-color.svg' },
+  pruna: { name: 'Pruna AI', icon: 'prunaai-color.svg' },
+  agnes: { name: 'Agnes AI', icon: 'agnesai.svg' },
   nvidia: { name: 'NVIDIA', icon: null },
   poolside: { name: 'Poolside', icon: null },
   pollinations: { name: 'Pollinations', icon: null },
@@ -74,6 +77,25 @@ const groups: readonly { modality: StudioModality; brandId: ModelBrandId; names:
 ];
 
 const normalizeName = (name: string) => name.toLowerCase().replace(/\+/g, 'plus').replace(/[^a-z0-9]+/g, '');
+// Stable legacy IDs identify the underlying brand even when Admin changes a visible name.
+// A catalogName is set only for a verified equivalent, so the picker does not duplicate it.
+const LEGACY_MODEL_ALIASES: Record<string, { brandId: ModelBrandId; catalogName?: string }> = {
+  'vantra-glm-5.3-flash': { brandId: 'zai' },
+  'vantra-hy3': { brandId: 'tencent' },
+  'vantra-deepseek-v4-flash': { brandId: 'deepseek', catalogName: 'DeepSeek V4-Flash' },
+  'vantra-qwen-3.8-flash': { brandId: 'qwen', catalogName: 'Qwen 3.8 Flash' },
+  'vantra-qwen-3.8-flash-next': { brandId: 'qwen' },
+  'vantra-muse-image': { brandId: 'meta', catalogName: 'Muse Image' },
+  'vantra-h3-max': { brandId: 'minimax', catalogName: 'MiniMax H3 Max' },
+  'vantra-h3-max-turbo': { brandId: 'minimax' },
+  'vantra-p-video': { brandId: 'pruna' },
+  'vantra-p-video-2': { brandId: 'pruna' },
+  'vantra-p-video-2-pro': { brandId: 'pruna' },
+  'vantra-z-image': { brandId: 'alibaba' },
+  'vantra-flux-klein': { brandId: 'bfl' },
+  'vantra-agnes-3.0-flash': { brandId: 'agnes' },
+  'vantra-mai-image-2.6-flash': { brandId: 'microsoft' },
+};
 export const CATALOG_MODELS: readonly CatalogModel[] = groups.flatMap(({ modality, brandId, names }) =>
   names.map((displayName) => ({
     key: `catalog:${modality}:${brandId}:${normalizeName(displayName)}`,
@@ -82,17 +104,20 @@ export const CATALOG_MODELS: readonly CatalogModel[] = groups.flatMap(({ modalit
     modality,
   })));
 
-export function findCatalogModel(displayName: string, modality: StudioModality) {
+export function findCatalogModel(displayName: string, modality: StudioModality, modelId?: string | null) {
+  const canonicalName = modelId && LEGACY_MODEL_ALIASES[modelId]?.catalogName;
   return CATALOG_MODELS.find((model) => model.modality === modality
-    && normalizeName(model.displayName) === normalizeName(displayName)) ?? null;
+    && normalizeName(model.displayName) === normalizeName(canonicalName || displayName)) ?? null;
 }
 
-export function modelBrand(displayName: string, modality: StudioModality, provider?: string | null) {
-  const listed = findCatalogModel(displayName, modality);
+export function modelBrand(displayName: string, modality: StudioModality, provider?: string | null, modelId?: string | null) {
+  const alias = modelId && LEGACY_MODEL_ALIASES[modelId];
+  if (alias) return MODEL_BRANDS[alias.brandId];
+  const listed = findCatalogModel(displayName, modality, modelId);
   if (listed) return MODEL_BRANDS[listed.brandId];
   const providerName = provider?.toLowerCase() ?? '';
   return Object.values(MODEL_BRANDS).find((brand) => brand.name.toLowerCase() === providerName)
-    ?? { name: provider || 'Other', icon: null };
+    ?? { name: providerName === 'vantra' ? 'Other' : provider || 'Other', icon: null };
 }
 
 export function modelIconUrl(brand: { icon: string | null }) {

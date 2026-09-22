@@ -128,7 +128,7 @@ function buildAdminModelRows(models: readonly EffectiveRuntimeModel[], latestCos
       creditPrice: model.customerCreditPrice, priority: model.routingRole,
       activationSupported: model.activationSupported, persisted: model.persisted, updatedAt: model.updatedAt,
       shortDescription: model.shortDescription,
-      mediaUrl: model.mediaUrl ?? modelIconUrl(modelBrand(model.displayName, model.modality, model.provider)) ?? null,
+      mediaUrl: model.mediaUrl ?? modelIconUrl(modelBrand(model.displayName, model.modality, model.provider, model.modelId)) ?? null,
       category: model.category,
       sortOrder: model.sortOrder, visibleInStudio: model.visibleInStudio,
       availabilityLabel: model.availabilityLabel,
@@ -141,7 +141,7 @@ function buildAdminModelRows(models: readonly EffectiveRuntimeModel[], latestCos
   if (!includeCatalog) return operationalRows;
   const catalogRows: AdminModelRow[] = CATALOG_MODELS
     .filter((item) => !models.some((model) =>
-      model.modality === item.modality && findCatalogModel(model.displayName, model.modality)?.key === item.key))
+      model.modality === item.modality && findCatalogModel(model.displayName, model.modality, model.modelId)?.key === item.key))
     .map((item) => ({
       key: item.key, catalogOnly: true, provider: '', modelId: '', displayName: item.displayName,
       modality: item.modality, enabled: false, availability: 'unconfigured', providerCost: null,

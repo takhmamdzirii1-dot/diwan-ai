@@ -38,7 +38,7 @@ function readRecent(): RecentByModality {
 }
 
 function brandIcon(model: ChatModelOption, modality: StudioModality) {
-  return model.iconUrl ?? modelIconUrl(modelBrand(model.name, modality, model.provider));
+  return model.iconUrl ?? modelIconUrl(modelBrand(model.name, modality, model.provider, model.id));
 }
 
 export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, dropdownPosition = 'top', menuLabel, emptyLabel, modality = 'chat' }: {
@@ -106,13 +106,13 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, dr
 
   const groups = useMemo(() => {
     const matches = models.filter((model) => {
-      const brand = modelBrand(model.name, modality, model.provider).name;
+      const brand = modelBrand(model.name, modality, model.provider, model.id).name;
       const term = search.trim().toLocaleLowerCase();
       return !term || `${model.name} ${brand}`.toLocaleLowerCase().includes(term);
     });
     const byBrand = new Map<string, ChatModelOption[]>();
     matches.forEach((model) => {
-      const brand = modelBrand(model.name, modality, model.provider).name;
+      const brand = modelBrand(model.name, modality, model.provider, model.id).name;
       byBrand.set(brand, [...(byBrand.get(brand) ?? []), model]);
     });
     return [...byBrand.entries()];
@@ -135,7 +135,7 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, dr
     return MODEL_PLAN_CODES.find((plan) => plans.includes(plan)) ?? null;
   };
   const row = (model: ChatModelOption) => {
-    const brand = modelBrand(model.name, modality, model.provider);
+    const brand = modelBrand(model.name, modality, model.provider, model.id);
     const icon = brandIcon(model, modality);
     const selectable = model.enabled && !model.requiredPlan && ['available', 'beta'].includes(model.availability);
     const plans = model.allowedPlans ?? [];
@@ -177,9 +177,9 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, dr
     </div>
   </>;
   return <div className="relative inline-flex min-w-0 items-center">
-    <button ref={trigger} type="button" onClick={() => { setSearch(''); setExpanded([modelBrand(current?.name ?? '', modality, current?.provider).name]); setOpen((value) => !value); }} disabled={!current} aria-haspopup="dialog" aria-expanded={open} aria-label={`${t('label')}: ${current?.name ?? t('label')}`}
+    <button ref={trigger} type="button" onClick={() => { setSearch(''); setExpanded([modelBrand(current?.name ?? '', modality, current?.provider, current?.id).name]); setOpen((value) => !value); }} disabled={!current} aria-haspopup="dialog" aria-expanded={open} aria-label={`${t('label')}: ${current?.name ?? t('label')}`}
       className="inline-flex h-9 max-w-[230px] items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-2.5 text-[12px] text-[var(--studio-text-primary)] hover:border-[var(--studio-border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] disabled:opacity-50">
-      {current && <ModelBrandIcon url={brandIcon(current, modality)} name={modelBrand(current.name, modality, current.provider).name} size={20} />}<span className="truncate font-medium">{current?.name ?? emptyLabel ?? t('label')}</span><ChevronDown className="h-3.5 w-3.5 shrink-0 text-[var(--studio-text-muted)]" />
+      {current && <ModelBrandIcon url={brandIcon(current, modality)} name={modelBrand(current.name, modality, current.provider, current.id).name} size={20} />}<span className="truncate font-medium">{current?.name ?? emptyLabel ?? t('label')}</span><ChevronDown className="h-3.5 w-3.5 shrink-0 text-[var(--studio-text-muted)]" />
     </button>
     {open && typeof document !== 'undefined' && createPortal(picker, document.querySelector('.studio-overlay-root') ?? document.body)}
   </div>;
