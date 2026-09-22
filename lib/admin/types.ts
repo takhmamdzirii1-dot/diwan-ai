@@ -238,4 +238,7 @@ export type AdminPaymentPlan = {
   active: boolean;
   displayOrder: number;
   featured: boolean;
+  publicVisible?: boolean;
+  eligibilityRequired?: boolean;
+  frozen?: boolean;
 };

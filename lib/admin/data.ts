@@ -733,13 +733,13 @@ export async function getAdminPaymentPlans(): Promise<AdminDataResult<AdminPayme
   if (!client) return unavailable([]);
   try {
     const current = await client.from('payment_plans')
-      .select('id,slug,name,description,kind,price_dzd,unified_credits,subscription_credit_allowance,included_video_allowance,active,display_order,featured')
+      .select('id,slug,name,description,kind,price_dzd,unified_credits,subscription_credit_allowance,included_video_allowance,active,display_order,featured,public_visible,eligibility_required,frozen')
       .order('display_order').order('created_at');
     const missingVideoColumn = current.error?.code === '42703'
       && current.error.message.includes('included_video_allowance');
     const { data, error } = missingVideoColumn
       ? await client.from('payment_plans')
-        .select('id,slug,name,description,kind,price_dzd,unified_credits,subscription_credit_allowance,active,display_order,featured')
+        .select('id,slug,name,description,kind,price_dzd,unified_credits,subscription_credit_allowance,active,display_order,featured,public_visible,eligibility_required,frozen')
         .order('display_order').order('created_at')
       : current;
     if (error) throw error;
@@ -750,6 +750,7 @@ export async function getAdminPaymentPlans(): Promise<AdminDataResult<AdminPayme
       includedVideoAllowance: 'included_video_allowance' in plan && plan.included_video_allowance != null
         ? Number(plan.included_video_allowance) : null,
       active: plan.active, displayOrder: plan.display_order, featured: plan.featured,
+      publicVisible: plan.public_visible, eligibilityRequired: plan.eligibility_required, frozen: plan.frozen,
     })) };
   } catch (error) {
     console.error('[admin] payment plan query failed', { message: error instanceof Error ? error.message : 'Unknown error' });

@@ -5,18 +5,16 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { AlertTriangle, ChevronDown, ChevronRight, Copy, CreditCard, Database, ExternalLink, ImageIcon, MessageCircle, MoreHorizontal, Search, UserRound, Video, X } from 'lucide-react';
-import RunwareProviderTest, { type ProviderTestCopy } from '@/src/components/internal/RunwareProviderTest';
 import AdminPaymentActions from './AdminPaymentActions';
-import AdminPaymentPlans from './AdminPaymentPlans';
 import AdminUserActions from './AdminUserActions';
 import AdminCreditAdjustment from './AdminCreditAdjustment';
 import AdminModelControls from './AdminModelControls';
-import AdminProviderControls from './AdminProviderControls';
 import AdminModelRouteControls from './AdminModelRouteControls';
 import AdminModelPresentationControls from './AdminModelPresentationControls';
 import AdminModelCapabilitiesControls from './AdminModelCapabilitiesControls';
 import AdminModelCreate from './AdminModelCreate';
-import AdminProviderCreate from './AdminProviderCreate';
+import { RemainingProvidersView, RemainingRuntimeView, RemainingAuditView } from './AdminRemainingViews';
+import { RemainingPlansView } from './AdminRemainingPlans';
 import AdminModelLifecycleControls from './AdminModelLifecycleControls';
 import type {
   AdminAuditRow, AdminDataResult, AdminJobRow, AdminJobsData, AdminModelRow, AdminPaymentRow,
@@ -177,31 +175,7 @@ function DetailSection({ title, children }: { title: string; children: React.Rea
   return <section className="rounded-lg border border-[var(--studio-border-subtle)] bg-black/15 p-3"><h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-secondary)]">{title}</h3><div className="space-y-2 text-[12.5px]">{children}</div></section>;
 }
 
-export function ProvidersView({ result }: { result: AdminDataResult<AdminProviderRow[]> }) {
-  const t = useTranslations('Admin');
-  const [providers, setProviders] = useState(result.data);
-  const [editingProvider, setEditingProvider] = useState<string | null>(null);
-  const [tab, setTab] = useState<'overview' | 'models' | 'runtime' | 'diagnostics'>('overview');
-  useEffect(() => setProviders(result.data), [result.data]);
-  const configured = providers.filter((row) => row.enabled).length;
-  const attention = providers.filter((row) => row.status === 'misconfigured' || row.status === 'unavailable').length;
-  const selected = providers.find((row) => row.id === editingProvider);
-  const providerTestCopy: ProviderTestCopy = {
-    provider: t('providerTest.provider'), prompt: t('providerTest.prompt'), promptPlaceholder: t('providerTest.promptPlaceholder'), generate: t('providerTest.generate'), generating: t('providerTest.generating'), result: t('providerTest.result'), resultAlt: t('providerTest.resultAlt'), summary: t('providerTest.summary'), summaryHelp: t('providerTest.summaryHelp'), emptyTitle: t('providerTest.emptyTitle'), emptyDescription: t('providerTest.emptyDescription'), genericError: t('providerTest.genericError'),
-  };
-  return <><PageHeader title={t('providers.title')} description={t('providers.description')} compact><div className="flex gap-2"><Badge>{t('providers.configuredCount', { count: configured })}</Badge>{attention > 0 && <Badge tone="danger">{t('providers.attentionCount', { count: attention })}</Badge>}</div></PageHeader>{!result.available && <Notice reason={result.reason} />}
-    <AdminProviderCreate />
-    {providers.length ? <TableFrame><table className={adminTableClass}>
-      <thead className="border-b border-[var(--studio-border)]"><tr><th className="w-[20%]">{t('providers.name')}</th><th className="w-[14%]">{t('providers.modality')}</th><th className="w-[12%]">{t('providers.health')}</th><th className="w-[12%]">{t('providers.routing')}</th><th className="w-[8%] text-end">{t('providers.models')}</th><th className="w-[14%] text-end">{t('providers.cost')}</th><th className="w-[8%] text-end">{t('providers.failures')}</th><th className="w-[12%]">{t('providers.lastActivity')}</th></tr></thead>
-      <tbody>{providers.map((row) => <tr key={row.id} className="border-b border-[var(--studio-border-subtle)] last:border-0"><td><button type="button" onClick={() => { setEditingProvider(row.id); setTab('overview'); }} className="max-w-full truncate text-start font-semibold text-white hover:underline focus-visible:ring-2 focus-visible:ring-white/50">{row.name}</button></td><td className="truncate text-[var(--studio-text-secondary)]" title={row.modalities.join(', ')}>{row.modalities.map((value) => t.has(`modality.${value}`) ? t(`modality.${value}`) : value).join(' · ')}</td><td><Status value={row.status} /></td><td><Badge tone={row.enabled && !row.emergencyDisabled ? 'success' : 'neutral'}>{t(row.enabled && !row.emergencyDisabled ? 'common.enabled' : 'common.disabled')}</Badge></td><td className="text-end tabular-nums">{row.associatedModels.length}</td><td className="text-end tabular-nums text-[var(--studio-text-secondary)]">{row.accumulatedCosts.length ? row.accumulatedCosts.map((cost) => <div key={cost.currency}><Cost value={cost} /></div>) : '—'}</td><td className={`text-end tabular-nums ${row.failures ? 'text-red-100' : 'text-[var(--studio-text-secondary)]'}`}>{row.failures}</td><td className="text-[var(--studio-text-secondary)]"><DateValue value={row.lastActivityAt} compact /></td></tr>)}</tbody>
-    </table></TableFrame> : <Empty label={t('providers.noProviders')} />}
-    {selected && <DetailDrawer title={selected.name} onClose={() => setEditingProvider(null)}><div className="mb-3 flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{(['overview', 'models', 'runtime', 'diagnostics'] as const).map((value) => <button key={value} type="button" aria-pressed={tab === value} onClick={() => setTab(value)} className={`min-h-8 shrink-0 rounded-lg border px-2.5 text-[11px] font-medium ${tab === value ? 'border-white bg-white text-black' : 'border-[var(--studio-border)] text-[var(--studio-text-secondary)]'}`}>{t(`providers.tabs.${value}`)}</button>)}</div>
-      {tab === 'overview' && <div className="space-y-3 text-[13px]"><p><strong>{t('providers.health')}:</strong> <Status value={selected.status} /></p><p><strong>Adapter:</strong> {selected.adapterType}</p><p><strong>Credential:</strong> <Badge tone={selected.configured ? 'success' : 'warning'}>{selected.configured ? 'Configured' : 'Missing'}</Badge></p><p><strong>{t('providers.routing')}:</strong> {t(selected.enabled && !selected.emergencyDisabled ? 'common.enabled' : 'common.disabled')}</p><p><strong>{t('providers.requests')}:</strong> <span className="tabular-nums">{selected.requestCount}</span></p><p><strong>Routes:</strong> <span className="tabular-nums">{selected.routeCount}</span></p><p><strong>{t('providers.failures')}:</strong> <span className="tabular-nums">{selected.failures}</span></p><p><strong>{t('providers.cost')}:</strong> {selected.accumulatedCosts.length ? selected.accumulatedCosts.map((cost) => <span key={cost.currency} className="ms-2"><Cost value={cost} /></span>) : '—'}</p><p><strong>{t('providers.lastActivity')}:</strong> <DateValue value={selected.lastActivityAt} /></p>{selected.lastError && <p className="text-red-100">{selected.lastError}</p>}<TechnicalDetails><TechnicalId label={t('common.internalId')} value={selected.id} />{selected.baseEndpoint && <TechnicalId label="Base endpoint" value={selected.baseEndpoint} />}</TechnicalDetails></div>}
-      {tab === 'models' && <div className="space-y-2">{selected.associatedModels.length ? selected.associatedModels.map((model) => <div key={`${model.key}:${model.providerModelId}`} className="rounded-lg border border-[var(--studio-border)] px-3 py-2"><p className="text-[13px] font-semibold text-white">{model.name}</p><TechnicalDetails><TechnicalId label={t('common.internalId')} value={model.key} /><TechnicalId label={t('models.providerModelId')} value={model.providerModelId} /></TechnicalDetails></div>) : <Empty label={t('common.noneRecorded')} />}<Link href="/admin/models" prefetch={false} className="inline-block pt-2 text-[12px] underline">{t('nav.models')}</Link></div>}
-      {tab === 'runtime' && <AdminProviderControls provider={selected} onSaved={(config) => setProviders((current) => current.map((item) => item.id === config.providerId ? { ...item, name: config.displayName, adapterType: config.adapterType, baseEndpoint: config.baseEndpoint, archived: config.archived, enabled: config.enabled, configured: config.configured, priority: config.priority, emergencyDisabled: config.emergencyDisabled, dailySpendLimitMinor: config.dailySpendLimitMinor, spendCurrency: config.spendCurrency, role: config.enabled && !config.emergencyDisabled ? (config.priority <= 20 ? 'primary' : 'backup') : 'unassigned', status: config.archived || !config.enabled ? 'disabled' : !config.configured ? 'misconfigured' : 'ready' } : item))} />}
-      {tab === 'diagnostics' && <div className="space-y-3"><div className="grid gap-2 sm:grid-cols-2"><Metric label={t('providers.requests')} value={selected.requestCount} /><Metric label={t('providers.failures')} value={selected.failures} /><Metric label={t('providers.latency')} value={selected.averageLatencyMs == null ? '—' : t('common.milliseconds', { value: selected.averageLatencyMs })} /><Metric label={t('providers.lastActivity')} value={<span className="text-[13px]"><DateValue value={selected.lastActivityAt} compact /></span>} /></div>{selected.lastError && <div className="rounded-lg border border-red-400/20 bg-red-400/[0.05] p-3 text-[12px] text-red-100"><strong>{t('providers.lastError')}:</strong> {selected.lastError}</div>}{selected.id === 'runware' ? <><p className="text-[12px] text-[var(--studio-text-secondary)]">{t('providers.testDescription')}</p><RunwareProviderTest copy={providerTestCopy} /></> : <p className="text-[12px] text-[var(--studio-text-secondary)]">{t('providers.noDiagnostics')}</p>}</div>}
-    </DetailDrawer>}</>;
-}
+export function ProvidersView({ result }: { result: AdminDataResult<AdminProviderRow[]> }) { return <RemainingProvidersView result={result} />; }
 
 export function ModelsView({ result }: { result: AdminDataResult<AdminModelRow[]> }) {
   const [models, setModels] = useState(result.data);
@@ -571,32 +545,9 @@ export function JobsView({ result, filters }: { result: AdminDataResult<AdminJob
     </WorkspaceDrawer>}</>;
 }
 
-export function RuntimeLimitsView({ result }: { result: AdminDataResult<AdminProviderRow[]> }) {
-  const t = useTranslations('Admin');
-  const [providers, setProviders] = useState(result.data);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  useEffect(() => setProviders(result.data), [result.data]);
-  const selected = providers.find((row) => row.id === selectedId);
-  return <><PageHeader title={t('runtime.title')} description={t('runtime.description')} compact />{!result.available && <Notice reason={result.reason} />}
-    <TableFrame><table className={adminTableClass}><thead><tr><th>{t('providers.name')}</th><th>{t('providers.routing')}</th><th>{t('providers.killSwitch')}</th><th className="text-end">{t('providers.priority')}</th><th>{t('providers.spendLimit')}</th><th>{t('users.actions')}</th></tr></thead><tbody>{providers.map((row) => <tr key={row.id} className="border-t border-[var(--studio-border-subtle)]"><td className="font-semibold text-white">{row.name}</td><td><Badge tone={row.enabled ? 'success' : 'neutral'}>{t(row.enabled ? 'common.enabled' : 'common.disabled')}</Badge></td><td><Badge tone={row.emergencyDisabled ? 'danger' : 'neutral'}>{t(row.emergencyDisabled ? 'providers.emergencyOn' : 'providers.emergencyOff')}</Badge></td><td className="text-end tabular-nums">{row.priority}</td><td className="tabular-nums">{row.dailySpendLimitMinor == null ? t('providers.noLimit') : `${row.dailySpendLimitMinor} ${row.spendCurrency ?? ''}`}</td><td><button type="button" onClick={() => setSelectedId(row.id)} className="text-[12px] font-semibold text-white underline">{t('providers.manage')}</button></td></tr>)}</tbody></table></TableFrame>
-    {selected && <DetailDrawer title={selected.name} onClose={() => setSelectedId(null)}><AdminProviderControls provider={selected} onSaved={(config) => setProviders((current) => current.map((item) => item.id === config.providerId ? { ...item, ...config } : item))} /></DetailDrawer>}
-  </>;
-}
-
-export function AuditView({ result }: { result: AdminDataResult<AdminAuditRow[]> }) {
-  const t = useTranslations('Admin');
-  return <><PageHeader title={t('audit.title')} description={t('audit.description')} compact />{!result.available && <Notice reason={result.reason} />}
-    {result.data.length ? <TableFrame><table className={adminTableClass}><thead><tr><th className="w-[20%]">{t('audit.time')}</th><th className="w-[25%]">{t('audit.admin')}</th><th className="w-[25%]">{t('audit.action')}</th><th className="w-[30%]">{t('audit.resource')}</th></tr></thead><tbody>{result.data.map((row) => { const summary = t.has(`audit.actions.${row.action}`) ? t(`audit.actions.${row.action}`) : humanizeIdentifier(row.action); return <tr key={`${row.resourceType}:${row.id}`} className="border-t border-[var(--studio-border-subtle)]"><td><DateValue value={row.createdAt} /></td><td className="truncate">{row.actor ?? '—'}</td><td><span className="font-medium text-white">{summary}</span></td><td><span className="font-medium capitalize text-white">{t.has(`audit.resources.${row.resourceType}`) ? t(`audit.resources.${row.resourceType}`) : humanizeIdentifier(row.resource)}</span><TechnicalDetails><TechnicalId label={t('common.internalId')} value={row.resourceId} />{row.detail && <p className="mt-2 break-words text-[10.5px] text-[var(--studio-text-secondary)]">{row.detail}</p>}{(row.previousState || row.newState) && <div className="mt-2 grid gap-2 text-[10.5px]"><div><p className="font-semibold text-[var(--studio-text-secondary)]">{t('audit.previousState')}</p><pre className="mt-1 whitespace-pre-wrap break-all">{JSON.stringify(row.previousState, null, 2) ?? '—'}</pre></div><div><p className="font-semibold text-[var(--studio-text-secondary)]">{t('audit.newState')}</p><pre className="mt-1 whitespace-pre-wrap break-all">{JSON.stringify(row.newState, null, 2) ?? '—'}</pre></div></div>}</TechnicalDetails></td></tr>; })}</tbody></table></TableFrame> : <Empty label={t('audit.empty')} />}
-    <p className="mt-3 text-[11px] text-[var(--studio-text-muted)]">{t('audit.scope')}</p>
-  </>;
-}
-
-export function PlansPricingView({ result }: { result: AdminDataResult<AdminPaymentPlan[]> }) {
-  const t = useTranslations('Admin');
-  const locale = useLocale();
-  return <><PageHeader compact title={t('payments.plansPageTitle')} description={t('payments.plansPageDescription')}><Link href={`/${locale}#pricing`} target="_blank" prefetch={false} className="inline-flex h-10 items-center gap-2 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] px-3.5 text-[12px] font-semibold text-[var(--studio-text-secondary)] hover:border-[var(--studio-border-strong)] hover:text-white">{t('payments.previewPricing')}<ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /></Link></PageHeader>
-    {!result.available && <Notice reason={result.reason} />}<AdminPaymentPlans plans={result.data} /></>;
-}
+export function RuntimeLimitsView({ result }: { result: AdminDataResult<AdminProviderRow[]> }) { return <RemainingRuntimeView result={result} />; }
+export function AuditView({ result }: { result: AdminDataResult<AdminAuditRow[]> }) { return <RemainingAuditView result={result} />; }
+export function PlansPricingView({ result }: { result: AdminDataResult<AdminPaymentPlan[]> }) { return <RemainingPlansView result={result} />; }
 
 export function PaymentsView({ result }: { result: AdminDataResult<AdminPaymentRow[]>; initialStatus?: string }) {
   const locale = useLocale();

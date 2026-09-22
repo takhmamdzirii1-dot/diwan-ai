@@ -12,6 +12,7 @@ const schema = z.object({
   subscriptionCreditAllowance: z.number().int().positive().safe().nullable().optional().default(null), active: z.boolean(),
   includedVideoAllowance: z.number().int().min(0).max(4).nullable().optional().default(null),
   displayOrder: z.number().int().min(-10000).max(10000), featured: z.boolean(),
+  publicVisible: z.boolean().optional(), eligibilityRequired: z.boolean().optional(),
 }).superRefine((plan, context) => {
   if ((plan.slug === 'lite') !== (plan.includedVideoAllowance !== null)) {
     context.addIssue({ code: 'custom', path: ['includedVideoAllowance'], message: 'Lite requires an included-video allowance; other plans must leave it empty.' });
@@ -42,8 +43,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     price_dzd: plan.priceDzd, unified_credits: plan.unifiedCredits,
     ...(existing.plan_code === 'lite' ? { subscription_credit_allowance: plan.subscriptionCreditAllowance } : {}),
     included_video_allowance: plan.includedVideoAllowance, active: plan.active,
-    display_order: plan.displayOrder, featured: plan.featured, updated_by: access.user.id,
-  }).eq('id', id).select('id,slug,name,description,kind,price_dzd,unified_credits,subscription_credit_allowance,included_video_allowance,active,display_order,featured').maybeSingle();
+    display_order: plan.displayOrder, featured: plan.featured,
+    ...(plan.publicVisible === undefined ? {} : { public_visible: plan.publicVisible }),
+    ...(plan.eligibilityRequired === undefined ? {} : { eligibility_required: plan.eligibilityRequired }),
+    updated_by: access.user.id,
+  }).eq('id', id).select('id,slug,name,description,kind,price_dzd,unified_credits,subscription_credit_allowance,included_video_allowance,active,display_order,featured,public_visible,eligibility_required,frozen').maybeSingle();
   if (error) return NextResponse.json({ error: error.code === '23505' ? 'PAYMENT_PLAN_SLUG_EXISTS' : 'PAYMENT_PLAN_UPDATE_FAILED' }, { status: 409 });
   if (!data) return NextResponse.json({ error: 'PAYMENT_PLAN_NOT_FOUND' }, { status: 404 });
   revalidatePath('/admin/payments');
@@ -55,5 +59,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     subscriptionCreditAllowance: data.subscription_credit_allowance == null ? null : Number(data.subscription_credit_allowance),
     includedVideoAllowance: data.included_video_allowance == null ? null : Number(data.included_video_allowance),
     active: data.active, displayOrder: data.display_order, featured: data.featured,
+    publicVisible: data.public_visible, eligibilityRequired: data.eligibility_required, frozen: data.frozen,
   } });
 }
