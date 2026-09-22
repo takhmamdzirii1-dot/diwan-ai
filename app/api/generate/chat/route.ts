@@ -6,7 +6,7 @@ import { DEFAULT_CHAT_MODEL } from '../../../../src/config/studio-registry';
 import { requireEntitledRuntimeModel, resolveCurrentModelPlan } from '@/lib/models/plan-entitlements.server';
 import { modelPlanErrorPayload } from '@/lib/models/plan-entitlements';
 import { isValidChatWeight } from '@/lib/chat/chat-usage';
-import { consumeChatUsage, precheckChatUsage } from '@/lib/chat/chat-usage.server';
+import { finalizeChatUsage, precheckChatUsage, reserveChatUsage } from '@/lib/chat/chat-usage.server';
 import { createChatLanguageModel, classifyProviderFailure } from '@/lib/ai/providers/chat';
 import { resolveProviderRoutes } from '@/lib/ai/providers/routes';
 import {
@@ -216,33 +216,76 @@ export async function POST(request: Request) {
     if (execution.idempotent) {
       return NextResponse.json({ error: 'REQUEST_ALREADY_PROCESSED' }, { status: 409 });
     }
-    // Chat is credit-free: no reservation. Weighted usage is recorded only
-    // after a successful provider completion (see recordChatUsage below), so
-    // failed provider requests never consume usage. The atomic consume RPC
-    // re-checks allowances, making retries idempotent via the operation key.
+    // Atomic reservation BEFORE provider dispatch: capacity is held under
+    // the per-user lock, so concurrent requests cannot all pass a precheck
+    // and overshoot the windows. Same-key retries return the live
+    // reservation without reserving twice.
+    try {
+      const reservation = await reserveChatUsage({
+        userId: user.id,
+        operationKey,
+        executionId: execution.executionId,
+        modelKey: runtimeModel.key,
+        modelId: runtimeModel.modelId,
+        planCode,
+        weight,
+      });
+      if (!reservation.allowed) {
+        const code = reservation.reason === 'limits_unconfigured'
+          ? 'CHAT_LIMITS_UNCONFIGURED'
+          : 'CHAT_LIMIT_REACHED';
+        try {
+          await finalizeGeneration({
+            executionId: execution.executionId,
+            userId: user.id,
+            reservationId: null,
+            operationKey,
+            payloadHash,
+            terminalStatus: 'failed',
+            customerCharge: 0,
+            errorCode: code,
+            failureOwner: code === 'CHAT_LIMIT_REACHED' ? 'customer' : 'vantra',
+            failureCategory: 'usage_limit',
+            attemptCount: 0,
+          });
+        } catch (recordError) {
+          console.error('[chat-generation] limit refusal record failed', {
+            executionId: execution.executionId,
+            code: recordError instanceof Error ? recordError.message : 'EXECUTION_FAILURE_RECORD_FAILED',
+          });
+        }
+        if (code === 'CHAT_LIMITS_UNCONFIGURED') {
+          return NextResponse.json({ error: code }, { status: 409 });
+        }
+        return NextResponse.json({
+          error: code,
+          level: reservation.level,
+          state: reservation.state,
+          nextAvailableAt: reservation.snapshot.nextAvailableAt,
+        }, { status: 429 });
+      }
+    } catch (reserveError) {
+      const code = reserveError instanceof Error ? reserveError.message : 'CHAT_RESERVE_FAILED';
+      return NextResponse.json({ error: code }, { status: 503 });
+    }
 
     let outputStarted = false;
     let providerStarted = false;
     let completedStream = false;
-    let usageRecorded = false;
-    const recordChatUsage = async () => {
-      if (usageRecorded) return;
+    let usageSettled = false;
+    // Settle exactly once per terminal path; the RPC itself is idempotent,
+    // so the after() safety net can call this unconditionally.
+    const settleChatUsage = async (outcome: 'completed' | 'released') => {
+      if (usageSettled) return;
       try {
-        await consumeChatUsage({
-          userId: user.id,
-          operationKey,
-          executionId: execution.executionId,
-          modelKey: runtimeModel.key,
-          modelId: runtimeModel.modelId,
-          planCode,
-          weight,
-        });
-        usageRecorded = true;
+        await finalizeChatUsage(operationKey, outcome);
+        usageSettled = true;
       } catch (usageError) {
-        console.error('[chat-generation] weighted usage record failed', {
+        console.error('[chat-generation] weighted usage settle failed', {
           executionId: execution.executionId,
           operationKey,
-          code: usageError instanceof Error ? usageError.message : 'CHAT_USAGE_RECORD_FAILED',
+          outcome,
+          code: usageError instanceof Error ? usageError.message : 'CHAT_USAGE_SETTLE_FAILED',
         });
       }
     };
@@ -304,7 +347,7 @@ export async function POST(request: Request) {
       try {
         if (finalizationPromise) {
           await finalizationPromise;
-          if (completedStream) await recordChatUsage();
+          await settleChatUsage(completedStream ? 'completed' : 'released');
           return;
         }
         const cancelled = request.signal.aborted;
@@ -316,6 +359,9 @@ export async function POST(request: Request) {
           failureOwner: cancelled ? 'customer' : 'provider',
           failureCategory: cancelled ? 'user_cancel' : 'stream_interrupted',
         });
+        // Interrupted before any terminal callback: the reservation was
+        // never earned, so release it.
+        await settleChatUsage('released');
       } catch (finalizationError) {
         console.error('[chat-generation] deferred finalization failed', {
           executionId: execution.executionId,
@@ -334,6 +380,7 @@ export async function POST(request: Request) {
           failureOwner: 'customer',
           failureCategory: 'pre_execution_cancel',
         });
+        await settleChatUsage('released');
         return NextResponse.json({ error: 'REQUEST_CANCELLED' }, { status: 499 });
       }
       await markGenerationStreaming(
@@ -388,9 +435,11 @@ export async function POST(request: Request) {
               failureOwner: failed ? 'provider' : null,
               failureCategory: failed ? 'stream_failure' : null,
             });
-            // Only successful completions consume weighted usage. Provider
-            // failures, cancellations, and interrupted streams record nothing.
-            if (!failed) await recordChatUsage();
+            // Only successful completions earn the reservation. Provider
+            // failures, cancellations, and interrupted streams release it,
+            // so held capacity is never consumed without output.
+            if (!failed) await settleChatUsage('completed');
+            else await settleChatUsage('released');
           } catch (finalizationError) {
             console.error('[chat-generation] finalization failed', {
               executionId: execution.executionId,
@@ -419,6 +468,7 @@ export async function POST(request: Request) {
             : providerStarted ? 'provider' : 'vantra',
           failureCategory: providerStarted ? 'provider_execution' : 'pre_execution',
         });
+        await settleChatUsage('released');
       } catch (rollbackError) {
         console.error('[chat-generation] rollback failed', {
           executionId: execution.executionId,

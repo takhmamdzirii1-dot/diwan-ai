@@ -14,10 +14,11 @@ import {
   type ChatLevel,
   type ChatPlanLimits,
   type ChatUsageState,
+  type ChatWindowRecord,
   type ChatWindowSnapshot,
 } from './chat-usage';
 
-export type ChatAdmissionReason = 'ok' | 'already_recorded' | 'limit_reached' | 'limits_unconfigured';
+export type ChatAdmissionReason = 'ok' | 'already_recorded' | 'already_reserved' | 'limit_reached' | 'limits_unconfigured';
 
 export interface ChatAdmission {
   allowed: boolean;
@@ -29,11 +30,11 @@ export interface ChatAdmission {
   snapshot: ChatWindowSnapshot;
 }
 
-interface WindowSums {
+interface WindowView {
   fiveHourUsed: number;
   weeklyUsed: number;
-  oldest5h: string | null;
-  oldest7d: string | null;
+  records5h: ChatWindowRecord[];
+  records7d: ChatWindowRecord[];
 }
 
 function adminClient() {
@@ -43,8 +44,10 @@ function adminClient() {
 }
 
 function toReason(reason: string, duplicate: boolean): ChatAdmissionReason {
-  if (duplicate || reason === 'already_recorded') return 'already_recorded';
+  if (reason === 'already_recorded') return 'already_recorded';
+  if (reason === 'already_reserved') return 'already_reserved';
   if (reason === 'limit_reached') return 'limit_reached';
+  if (duplicate) return 'already_recorded';
   if (reason === 'limits_unconfigured' || reason === 'invalid_weight') return 'limits_unconfigured';
   return 'ok';
 }
@@ -65,37 +68,55 @@ export async function getChatPlanLimits(): Promise<Record<string, ChatPlanLimits
   return limits;
 }
 
-function windowSums(rows: { weight: number; created_at: string }[], nowMs: number): WindowSums {
-  const fiveHourCutoff = nowMs - CHAT_WINDOW_5H_MS;
-  let fiveHourUsed = 0;
-  let weeklyUsed = 0;
-  let oldest5h: string | null = null;
-  let oldest7d: string | null = null;
-  for (const row of rows) {
-    const at = new Date(row.created_at).getTime();
-    if (!Number.isFinite(at) || at > nowMs) continue;
-    weeklyUsed += row.weight;
-    if (!oldest7d) oldest7d = row.created_at;
-    if (at > fiveHourCutoff) {
-      fiveHourUsed += row.weight;
-      if (!oldest5h) oldest5h = row.created_at;
-    }
-  }
-  return { fiveHourUsed, weeklyUsed, oldest5h, oldest7d };
+interface UsageRow {
+  weight: number;
+  createdAtMs: number;
+  live: boolean;
+  completed: boolean;
 }
 
-export async function getChatWindowUsage(userId: string, nowMs: number = Date.now()): Promise<WindowSums> {
+/**
+ * Window view mirroring the reserve RPC: held capacity counts completed
+ * usage plus live (non-expired) reservations; the release walk uses
+ * completed records only, exactly like the RPC.
+ */
+function windowView(rows: UsageRow[], nowMs: number): WindowView {
+  const fiveHourCutoff = nowMs - CHAT_WINDOW_5H_MS;
+  const held = rows.filter((row) => row.completed || row.live);
+  const completedAsc = rows
+    .filter((row) => row.completed)
+    .sort((a, b) => a.createdAtMs - b.createdAtMs);
+  return {
+    fiveHourUsed: held.filter((row) => row.createdAtMs > fiveHourCutoff).reduce((n, row) => n + row.weight, 0),
+    weeklyUsed: held.reduce((n, row) => n + row.weight, 0),
+    records5h: completedAsc
+      .filter((row) => row.createdAtMs > fiveHourCutoff)
+      .map((row) => ({ createdAtMs: row.createdAtMs, weight: row.weight })),
+    records7d: completedAsc.map((row) => ({ createdAtMs: row.createdAtMs, weight: row.weight })),
+  };
+}
+
+export async function getChatWindowView(userId: string, nowMs: number = Date.now()): Promise<WindowView> {
   const weekAgo = new Date(nowMs - CHAT_WINDOW_7D_MS).toISOString();
   const { data, error } = await adminClient()
     .from('chat_usage_records')
-    .select('weight,created_at')
+    .select('weight,created_at,status,expires_at')
     .eq('user_id', userId)
     .gte('created_at', weekAgo)
     .order('created_at', { ascending: true })
     .limit(10_000);
   if (error) throw new Error('CHAT_USAGE_UNAVAILABLE');
-  return windowSums(
-    (data ?? []).map((row) => ({ weight: Number(row.weight) || 0, created_at: String(row.created_at) })),
+  return windowView(
+    (data ?? []).map((row) => {
+      const createdAtMs = new Date(String(row.created_at)).getTime();
+      const expiresAt = row.expires_at == null ? null : new Date(String(row.expires_at)).getTime();
+      return {
+        weight: Number(row.weight) || 0,
+        createdAtMs: Number.isFinite(createdAtMs) ? createdAtMs : nowMs,
+        completed: String(row.status) === 'completed',
+        live: String(row.status) !== 'completed' && (expiresAt == null || expiresAt > nowMs),
+      };
+    }),
     nowMs
   );
 }
@@ -103,14 +124,13 @@ export async function getChatWindowUsage(userId: string, nowMs: number = Date.no
 function admission(
   planCode: ModelPlanCode,
   limits: ChatPlanLimits | null,
-  sums: WindowSums,
-  weight: number,
+  view: WindowView,
   decision: { allowed: boolean; nextAvailableAt: string | null },
   duplicate: boolean,
   reason: ChatAdmissionReason
 ): ChatAdmission {
-  const util5 = windowUtilization(sums.fiveHourUsed, limits?.fiveHour ?? null);
-  const util7 = windowUtilization(sums.weeklyUsed, limits?.weekly ?? null);
+  const util5 = windowUtilization(view.fiveHourUsed, limits?.fiveHour ?? null);
+  const util7 = windowUtilization(view.weeklyUsed, limits?.weekly ?? null);
   return {
     allowed: decision.allowed,
     duplicate,
@@ -119,8 +139,8 @@ function admission(
     level: chatLevelForPlan(planCode),
     state: decision.allowed ? chatUsageState(util5, util7) : 'limit',
     snapshot: {
-      fiveHourUsed: sums.fiveHourUsed,
-      weeklyUsed: sums.weeklyUsed,
+      fiveHourUsed: view.fiveHourUsed,
+      weeklyUsed: view.weeklyUsed,
       fiveHourLimit: limits?.fiveHour ?? null,
       weeklyLimit: limits?.weekly ?? null,
       nextAvailableAt: decision.nextAvailableAt,
@@ -128,7 +148,7 @@ function admission(
   };
 }
 
-/** Read-only allowance check. Never inserts; the atomic consume RPC re-checks. */
+/** Read-only allowance check. Never inserts; the atomic reserve RPC re-checks. */
 export async function precheckChatUsage(args: {
   userId: string;
   planCode: ModelPlanCode;
@@ -137,19 +157,19 @@ export async function precheckChatUsage(args: {
 }): Promise<ChatAdmission> {
   const nowMs = args.nowMs ?? Date.now();
   const limits = (await getChatPlanLimits())[args.planCode] ?? null;
-  const sums = await getChatWindowUsage(args.userId, nowMs);
+  const view = await getChatWindowView(args.userId, nowMs);
   if (!limits) {
-    return admission(args.planCode, null, sums, args.weight,
+    return admission(args.planCode, null, view,
       { allowed: false, nextAvailableAt: null }, false, 'limits_unconfigured');
   }
-  const decision = evaluateChatWindows(sums, limits, args.weight, nowMs);
-  return admission(args.planCode, limits, sums, args.weight, {
+  const decision = evaluateChatWindows(view, limits, args.weight);
+  return admission(args.planCode, limits, view, {
     allowed: decision.allowed,
     nextAvailableAt: decision.allowed ? null : decision.nextAvailableAt,
   }, false, decision.allowed ? 'ok' : 'limit_reached');
 }
 
-type ConsumeArgs = {
+type ReserveArgs = {
   userId: string;
   operationKey: string;
   executionId: string | null;
@@ -160,12 +180,12 @@ type ConsumeArgs = {
 };
 
 /**
- * Atomic consume. Serialized per user inside Postgres; the same operation
- * key can be replayed safely (retries never double-charge). Call only after
- * a successful provider completion — failures must never reach this path.
+ * Atomic reserve BEFORE provider dispatch. Holds 5h/7d capacity under the
+ * per-user advisory lock; replays of the same operation key return the live
+ * reservation without reserving twice.
  */
-export async function consumeChatUsage(args: ConsumeArgs): Promise<ChatAdmission> {
-  const { data, error } = await adminClient().rpc('consume_chat_usage', {
+export async function reserveChatUsage(args: ReserveArgs): Promise<ChatAdmission> {
+  const { data, error } = await adminClient().rpc('reserve_chat_usage', {
     p_user_id: args.userId,
     p_operation_key: args.operationKey,
     p_execution_id: args.executionId,
@@ -174,7 +194,7 @@ export async function consumeChatUsage(args: ConsumeArgs): Promise<ChatAdmission
     p_plan_code: args.planCode,
     p_weight: args.weight,
   });
-  if (error) throw new Error(error.message || 'CHAT_USAGE_RECORD_FAILED');
+  if (error) throw new Error(error.message || 'CHAT_RESERVE_FAILED');
   const result = data as {
     allowed?: unknown; duplicate?: unknown; reason?: unknown;
     five_hour_used?: unknown; weekly_used?: unknown;
@@ -185,21 +205,39 @@ export async function consumeChatUsage(args: ConsumeArgs): Promise<ChatAdmission
     fiveHour: result.five_hour_limit == null ? null : Number(result.five_hour_limit),
     weekly: result.weekly_limit == null ? null : Number(result.weekly_limit),
   };
-  const sums: WindowSums = {
+  const view: WindowView = {
     fiveHourUsed: Number(result.five_hour_used) || 0,
     weeklyUsed: Number(result.weekly_used) || 0,
-    oldest5h: null,
-    oldest7d: null,
+    records5h: [],
+    records7d: [],
   };
   const duplicate = result.duplicate === true;
   const nextAvailableAt = result.next_available_at == null ? null : String(result.next_available_at);
-  return admission(args.planCode, limits, sums, args.weight, {
+  return admission(args.planCode, limits, view, {
     allowed: result.allowed === true,
     nextAvailableAt: result.allowed === true ? null : nextAvailableAt,
   }, duplicate, toReason(String(result.reason ?? ''), duplicate));
 }
 
-/** Resolve plan + weight + limits context for a metered chat model. */
+/**
+ * Settle a reservation. 'completed' counts the request exactly once;
+ * 'released' deletes it so failures, cancels, and interruptions never
+ * consume usage. Safe to retry: unknown keys and repeats are no-ops.
+ */
+export async function finalizeChatUsage(
+  operationKey: string,
+  outcome: 'completed' | 'released'
+): Promise<void> {
+  const { data, error } = await adminClient().rpc('finalize_chat_usage', {
+    p_operation_key: operationKey,
+    p_outcome: outcome,
+  });
+  if (error) throw new Error(error.message || 'CHAT_FINALIZE_FAILED');
+  const result = data as { ok?: unknown } | null;
+  if (!result || result.ok !== true) throw new Error('CHAT_FINALIZE_FAILED');
+}
+
+/** Resolve plan + weight context for a metered chat model. */
 export async function resolveChatUsageContext(args: {
   userId: string;
   modelKey: string;
@@ -221,15 +259,15 @@ export async function getChatUsageState(userId: string): Promise<{
   const planCode = await resolveCurrentModelPlan(userId);
   const nowMs = Date.now();
   const limits = (await getChatPlanLimits())[planCode] ?? null;
-  const sums = await getChatWindowUsage(userId, nowMs);
+  const view = await getChatWindowView(userId, nowMs);
   const level = chatLevelForPlan(planCode);
   if (!limits) return { level, state: 'limit', nextAvailableAt: null };
   const state = chatUsageState(
-    windowUtilization(sums.fiveHourUsed, limits.fiveHour),
-    windowUtilization(sums.weeklyUsed, limits.weekly)
+    windowUtilization(view.fiveHourUsed, limits.fiveHour),
+    windowUtilization(view.weeklyUsed, limits.weekly)
   );
   if (state !== 'limit') return { level, state, nextAvailableAt: null };
   // At the limit: probe with zero added weight to surface the binding window's roll-off.
-  const probe = evaluateChatWindows(sums, limits, 0, nowMs);
+  const probe = evaluateChatWindows(view, limits, 0);
   return { level, state, nextAvailableAt: probe.nextAvailableAt };
 }

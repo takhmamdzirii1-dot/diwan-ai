@@ -63,33 +63,79 @@ export function chatUsageState(util5h: number, utilWeek: number): ChatUsageState
 }
 
 /**
- * Shared allow/deny decision. Mirrors the consume_chat_usage RPC: allow when
- * neither post-add utilization exceeds 1, bind to the hotter window, and
- * report the oldest record of the binding window as next availability.
+ * A window record in ascending creation order (ties keep insertion order).
+ */
+export interface ChatWindowRecord {
+  createdAtMs: number;
+  weight: number;
+}
+
+/**
+ * Earliest timestamp at which enough weighted capacity has expired for the
+ * requested weight. Walks records oldest-first accumulating freed weight —
+ * expiring one old record is often insufficient when weights differ, so the
+ * cutoff advances until the cumulative freed weight covers the need.
+ * Returns null when the need can never be met (single weight above limit).
+ * Mirrors the reserve_chat_usage RPC walk exactly.
+ */
+export function computeWindowRelease(
+  recordsAsc: readonly ChatWindowRecord[],
+  windowMs: number,
+  used: number,
+  limit: number | null,
+  weight: number
+): string | null {
+  if (limit == null) return null;
+  const needed = used + weight - limit;
+  if (needed <= 0) return null;
+  // Oldest-first, like the RPC's ORDER BY created_at (ties keep insertion order).
+  const ordered = [...recordsAsc].sort((a, b) => a.createdAtMs - b.createdAtMs);
+  let freed = 0;
+  for (const record of ordered) {
+    freed += record.weight;
+    if (freed >= needed) return new Date(record.createdAtMs + windowMs).toISOString();
+  }
+  return null;
+}
+
+/**
+ * Shared allow/deny decision. Mirrors the reserve_chat_usage RPC: allow when
+ * the weight fits both finite windows; otherwise bind to the later of the
+ * two per-window availabilities (a window that can never free enough binds
+ * with no countdown).
  */
 export function evaluateChatWindows(
-  snapshot: { fiveHourUsed: number; weeklyUsed: number; oldest5h: string | null; oldest7d: string | null },
+  snapshot: {
+    fiveHourUsed: number;
+    weeklyUsed: number;
+    records5h: readonly ChatWindowRecord[];
+    records7d: readonly ChatWindowRecord[];
+  },
   limits: ChatPlanLimits,
-  weight: number,
-  nowMs: number = Date.now()
+  weight: number
 ): { allowed: boolean; bindingWindow: ChatWindowName; nextAvailableAt: string | null } {
-  const post5 = snapshot.fiveHourUsed + weight;
-  const post7 = snapshot.weeklyUsed + weight;
-  const util5 = windowUtilization(post5, limits.fiveHour);
-  const util7 = windowUtilization(post7, limits.weekly);
-  const bindingWindow: ChatWindowName = util5 >= util7 ? 'five_hour' : 'weekly';
-  if (util5 <= 1 && util7 <= 1) {
-    return { allowed: true, bindingWindow, nextAvailableAt: null };
+  const need5 = limits.fiveHour != null && snapshot.fiveHourUsed + weight > limits.fiveHour;
+  const need7 = limits.weekly != null && snapshot.weeklyUsed + weight > limits.weekly;
+  if (!need5 && !need7) {
+    const util5 = windowUtilization(snapshot.fiveHourUsed, limits.fiveHour);
+    const util7 = windowUtilization(snapshot.weeklyUsed, limits.weekly);
+    return { allowed: true, bindingWindow: util5 >= util7 ? 'five_hour' : 'weekly', nextAvailableAt: null };
   }
-  const oldest = bindingWindow === 'five_hour' ? snapshot.oldest5h : snapshot.oldest7d;
-  const windowMs = bindingWindow === 'five_hour' ? CHAT_WINDOW_5H_MS : CHAT_WINDOW_7D_MS;
-  if (!oldest) return { allowed: false, bindingWindow, nextAvailableAt: null };
-  const next = new Date(new Date(oldest).getTime() + windowMs).getTime();
-  return {
-    allowed: false,
-    bindingWindow,
-    nextAvailableAt: new Date(Math.max(next, nowMs)).toISOString(),
-  };
+  const next5 = need5
+    ? computeWindowRelease(snapshot.records5h, CHAT_WINDOW_5H_MS, snapshot.fiveHourUsed, limits.fiveHour, weight)
+    : null;
+  const next7 = need7
+    ? computeWindowRelease(snapshot.records7d, CHAT_WINDOW_7D_MS, snapshot.weeklyUsed, limits.weekly, weight)
+    : null;
+  if (need5 && need7) {
+    if (next5 == null) return { allowed: false, bindingWindow: 'five_hour', nextAvailableAt: null };
+    if (next7 == null) return { allowed: false, bindingWindow: 'weekly', nextAvailableAt: null };
+    return next5 >= next7
+      ? { allowed: false, bindingWindow: 'five_hour', nextAvailableAt: next5 }
+      : { allowed: false, bindingWindow: 'weekly', nextAvailableAt: next7 };
+  }
+  if (need5) return { allowed: false, bindingWindow: 'five_hour', nextAvailableAt: next5 };
+  return { allowed: false, bindingWindow: 'weekly', nextAvailableAt: next7 };
 }
 
 /** Calm countdown text for "More Chat capacity becomes available in …".
