@@ -12,7 +12,7 @@ export default function GoPreview({ onPrimary }: { onPrimary: () => void }) {
 
   return (
     <section id="preview" className="relative scroll-mt-20">
-      <div className="mx-auto max-w-[1120px] px-6 py-14 md:py-20">
+      <div className="mx-auto max-w-[1120px] px-6 py-10 md:py-14">
         <p className="text-center text-[11px] font-semibold uppercase tracking-[0.28em] text-white/40">
           {t('label')}
         </p>
@@ -24,10 +24,14 @@ export default function GoPreview({ onPrimary }: { onPrimary: () => void }) {
         </p>
 
         <div
-          className="mx-auto mt-10 max-w-[860px] overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0b0c0e]"
+          className="relative mx-auto mt-8 max-w-[960px] overflow-hidden rounded-2xl border border-white/10 bg-[#0b0c0e] shadow-[0_32px_90px_-48px_rgba(255,255,255,0.22)]"
           role="img"
           aria-label={t('title')}
         >
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent"
+          />
           <div className="flex items-center gap-1.5 border-b border-white/[0.06] px-4 py-3" aria-hidden="true">
             <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
             <span className="h-2.5 w-2.5 rounded-full bg-white/15" />

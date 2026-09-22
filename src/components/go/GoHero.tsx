@@ -32,7 +32,7 @@ export default function GoHero({
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-[420px] max-w-[900px] bg-[radial-gradient(ellipse_55%_60%_at_50%_0%,rgba(255,255,255,0.07),transparent_70%)]"
       />
-      <div className="relative mx-auto max-w-[880px] px-6 pb-14 pt-28 text-center sm:pt-32 md:pb-20 md:pt-36">
+      <div className="relative mx-auto max-w-[880px] px-6 pb-10 pt-24 text-center sm:pt-28 md:pb-14 md:pt-28">
         <p className="mx-auto inline-flex min-h-9 items-center rounded-full border border-white/10 bg-white/[0.04] px-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/60">
           {t('eyebrow')}
         </p>
@@ -42,7 +42,7 @@ export default function GoHero({
         <p className="mx-auto mt-6 max-w-[52ch] text-base leading-relaxed text-white/55 md:text-lg">
           {t('sub')}
         </p>
-        <div className="mt-9 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+        <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
           <button
             type="button"
             onClick={onPrimary}
@@ -58,7 +58,7 @@ export default function GoHero({
             {t('secondary')}
           </button>
         </div>
-        <div className="mx-auto mt-12 grid max-w-[560px] grid-cols-3 gap-2.5 sm:gap-3" aria-label={t('eyebrow')}>
+        <div className="mx-auto mt-10 grid max-w-[560px] grid-cols-3 gap-2.5 sm:gap-3" aria-label={t('eyebrow')}>
           {modalities.map(({ icon: Icon, label }) => (
             <div
               key={label}

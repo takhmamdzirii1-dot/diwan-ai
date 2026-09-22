@@ -17,7 +17,7 @@ export default function GoFaq() {
 
   return (
     <section id="faq" className="relative scroll-mt-20">
-      <div className="mx-auto grid max-w-[1120px] grid-cols-1 gap-10 px-6 py-14 md:grid-cols-[minmax(0,0.5fr)_minmax(0,1fr)] md:gap-14 md:py-20">
+      <div className="mx-auto grid max-w-[1120px] grid-cols-1 gap-10 px-6 py-10 md:grid-cols-[minmax(0,0.5fr)_minmax(0,1fr)] md:gap-14 md:py-14">
         <div className="self-start md:sticky md:top-24">
           <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/40">
             {t('label')}

@@ -17,7 +17,7 @@ import GoTrust from './GoTrust';
 import { useModal } from '../../context/ModalContext';
 import useUser from '../../hooks/useUser';
 import { captureLandingAttribution } from '../../lib/attribution';
-import { VARIANT_SECONDARY_TARGET, type GoVariant } from '../../go/variants';
+import { VARIANT_SECONDARY_TARGET, VARIANT_SECTIONS, type GoSectionKey, type GoVariant } from '../../go/variants';
 
 /**
  * Paid-ads landing composer. One architecture for every variant:
@@ -74,6 +74,29 @@ export default function GoLanding({ variant }: { variant: GoVariant }) {
     [tNav]
   );
 
+  /**
+   * Shared homepage sections keep their own rhythm untouched; landing-only
+   * compress wrappers tighten them for paid traffic without affecting the
+   * homepage. Each section below still renders exactly once.
+   */
+  const sections: Record<GoSectionKey, React.ReactNode> = {
+    benefits: <GoBenefits variant={variant} />,
+    preview: <GoPreview onPrimary={handlePrimaryAction} />,
+    proof: <GoProof />,
+    how: (
+      <div className="-mt-10 -mb-14 md:-mt-12 md:-mb-16">
+        <HowItWorks />
+      </div>
+    ),
+    pricing: (
+      <div className="-my-8 md:-my-12">
+        <GlobalPricing onGetStarted={handlePricingAction} />
+      </div>
+    ),
+    trust: <GoTrust />,
+    faq: <GoFaq />,
+  };
+
   return (
     <div className="landing-grid-background min-h-screen text-white antialiased">
       <LandingHeader
@@ -91,14 +114,12 @@ export default function GoLanding({ variant }: { variant: GoVariant }) {
           onPrimary={handlePrimaryAction}
           onSecondary={handleSecondaryAction}
         />
-        <GoBenefits variant={variant} />
-        <GoPreview onPrimary={handlePrimaryAction} />
-        <GoProof />
-        <HowItWorks />
-        <GlobalPricing onGetStarted={handlePricingAction} />
-        <GoTrust />
-        <GoFaq />
-        <FinalCta onGetStarted={handlePrimaryAction} />
+        {VARIANT_SECTIONS[variant].map((key) => (
+          <React.Fragment key={key}>{sections[key]}</React.Fragment>
+        ))}
+        <div className="-mt-10 -mb-8 md:-mt-14 md:-mb-10">
+          <FinalCta onGetStarted={handlePrimaryAction} />
+        </div>
       </main>
 
       <GlobalFooter />

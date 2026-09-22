@@ -24,6 +24,26 @@ export const VARIANT_SECONDARY_TARGET: Record<GoVariant, string> = {
   creators: 'how',
 };
 
+export type GoSectionKey =
+  | 'benefits'
+  | 'preview'
+  | 'proof'
+  | 'how'
+  | 'pricing'
+  | 'trust'
+  | 'faq';
+
+/**
+ * Section composition order per variant — same shared components, different
+ * conversion emphasis. Hero opens and the final CTA closes every variant.
+ * ai-in-dzd answers price first; creators leads with the workflow visual.
+ */
+export const VARIANT_SECTIONS: Record<GoVariant, readonly GoSectionKey[]> = {
+  'all-ai': ['benefits', 'preview', 'proof', 'how', 'pricing', 'trust', 'faq'],
+  'ai-in-dzd': ['benefits', 'pricing', 'preview', 'proof', 'how', 'trust', 'faq'],
+  creators: ['preview', 'benefits', 'proof', 'how', 'pricing', 'trust', 'faq'],
+};
+
 /**
  * Recognizable brands for the capability-proof strip. Derived from the
  * canonical MODEL_BRANDS system (local /brand/models icons) — never a

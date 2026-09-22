@@ -12,7 +12,7 @@ export default function GoTrust() {
 
   return (
     <section className="relative" aria-label={t('label')}>
-      <div className="mx-auto max-w-[1120px] px-6 py-14 md:py-20">
+      <div className="mx-auto max-w-[1120px] px-6 py-10 md:py-14">
         <p className="text-center text-[11px] font-semibold uppercase tracking-[0.28em] text-white/40">
           {t('label')}
         </p>
