@@ -50,7 +50,7 @@
       "connectedChat": "Connected for Chat",
       "notSelectable": "Not selectable yet",
       "requiresPlan": "Requires {plan}",
-      "picker": {"search":"Search models or brands","recent":"Recent","allModels":"All models","unconfigured":"Unconfigured","noResults":"No matching models","close":"Close model picker","plan":{"free":"Free","lite":"Lite","pro":"Pro","max":"Max"}}
+      "picker": {"search":"Search models or brands","recent":"Recent","allModels":"All models","unconfigured":"Unconfigured","noResults":"No matching models","modelsCount":"{count, plural, one {# model} other {# models}}","close":"Close model picker","plan":{"free":"Free","lite":"Lite","pro":"Pro","max":"Max"}}
     },
     "settings": {
       "title": "Settings",

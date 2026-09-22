@@ -50,7 +50,7 @@
       "connectedChat": "Connecté au Chat",
       "notSelectable": "Pas encore sélectionnable",
       "requiresPlan": "Nécessite {plan}",
-      "picker": {"search":"Rechercher des modèles ou des marques","recent":"Récents","allModels":"Tous les modèles","unconfigured":"Non configuré","noResults":"Aucun modèle correspondant","close":"Fermer le sélecteur de modèles","plan":{"free":"Gratuit","lite":"Lite","pro":"Pro","max":"Max"}}
+      "picker": {"search":"Rechercher des modèles ou des marques","recent":"Récents","allModels":"Tous les modèles","unconfigured":"Non configuré","noResults":"Aucun modèle correspondant","modelsCount":"{count, plural, one {# modèle} other {# modèles}}","close":"Fermer le sélecteur de modèles","plan":{"free":"Gratuit","lite":"Lite","pro":"Pro","max":"Max"}}
     },
     "settings": {
       "title": "Paramètres",

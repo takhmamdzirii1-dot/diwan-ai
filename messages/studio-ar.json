@@ -50,7 +50,7 @@
       "connectedChat": "متصل بالدردشة",
       "notSelectable": "غير قابل للاختيار حالياً",
       "requiresPlan": "يتطلب خطة {plan}",
-      "picker": {"search":"ابحث عن نموذج أو شركة","recent":"الأخيرة","allModels":"كل النماذج","unconfigured":"غير مهيأ","noResults":"لا توجد نماذج مطابقة","close":"إغلاق اختيار النماذج","plan":{"free":"مجاني","lite":"Lite","pro":"Pro","max":"Max"}}
+      "picker": {"search":"ابحث عن نموذج أو شركة","recent":"الأخيرة","allModels":"كل النماذج","unconfigured":"غير مهيأ","noResults":"لا توجد نماذج مطابقة","modelsCount":"{count} من النماذج","close":"إغلاق اختيار النماذج","plan":{"free":"مجاني","lite":"Lite","pro":"Pro","max":"Max"}}
     },
     "settings": {
       "title": "الإعدادات",
