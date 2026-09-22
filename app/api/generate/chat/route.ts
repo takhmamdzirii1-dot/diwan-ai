@@ -3,8 +3,10 @@ import { createClient } from '../../../../src/lib/supabase/server';
 import { streamText } from 'ai';
 
 import { DEFAULT_CHAT_MODEL } from '../../../../src/config/studio-registry';
-import { requireEntitledRuntimeModel } from '@/lib/models/plan-entitlements.server';
+import { requireEntitledRuntimeModel, resolveCurrentModelPlan } from '@/lib/models/plan-entitlements.server';
 import { modelPlanErrorPayload } from '@/lib/models/plan-entitlements';
+import { isValidChatWeight } from '@/lib/chat/chat-usage';
+import { consumeChatUsage, precheckChatUsage } from '@/lib/chat/chat-usage.server';
 import { createChatLanguageModel, classifyProviderFailure } from '@/lib/ai/providers/chat';
 import { resolveProviderRoutes } from '@/lib/ai/providers/routes';
 import {
@@ -13,7 +15,6 @@ import {
   hashGenerationPayload,
   markGenerationStreaming,
   recordProviderResult,
-  reserveGenerationCredits,
   resolveOperationKey,
 } from '@/lib/credits/generation-finance';
 import {
@@ -147,9 +148,36 @@ export async function POST(request: Request) {
     if (unsupportedAttachment) {
       return NextResponse.json({ error: 'MODEL_CAPABILITY_UNSUPPORTED' }, { status: 409 });
     }
-    const cost = runtimeModel.customerCreditPrice;
-    if (cost == null) {
-      return NextResponse.json({ error: 'MODEL_CUSTOMER_PRICE_UNCONFIGURED' }, { status: 409 });
+    // Weighted Chat Usage Engine: chat never touches the VANTRA Credits
+    // ledger. The model's customer weight meters rolling 5-hour / weekly
+    // allowances instead. A missing weight fails closed (Admin-unconfigured).
+    let planCode: Awaited<ReturnType<typeof resolveCurrentModelPlan>>;
+    let weight: number;
+    try {
+      planCode = await resolveCurrentModelPlan(user.id);
+      weight = runtimeModel.customerCreditPrice ?? NaN;
+      if (!isValidChatWeight(weight)) throw new Error('CHAT_WEIGHT_UNCONFIGURED');
+      const admission = await precheckChatUsage({ userId: user.id, planCode, weight });
+      if (!admission.allowed) {
+        if (admission.reason === 'limits_unconfigured') {
+          return NextResponse.json({ error: 'CHAT_LIMITS_UNCONFIGURED' }, { status: 409 });
+        }
+        return NextResponse.json({
+          error: 'CHAT_LIMIT_REACHED',
+          level: admission.level,
+          state: admission.state,
+          nextAvailableAt: admission.snapshot.nextAvailableAt,
+        }, { status: 429 });
+      }
+    } catch (usageError) {
+      const code = usageError instanceof Error ? usageError.message : 'CHAT_USAGE_CHECK_FAILED';
+      if (code === 'CHAT_WEIGHT_UNCONFIGURED' || code === 'CHAT_LIMITS_UNCONFIGURED') {
+        return NextResponse.json({ error: code }, { status: 409 });
+      }
+      if (code === 'CHAT_LIMIT_REACHED') {
+        return NextResponse.json({ error: code }, { status: 429 });
+      }
+      throw usageError;
     }
     const routes = await resolveProviderRoutes(runtimeModel);
     let route = routes[0];
@@ -161,7 +189,7 @@ export async function POST(request: Request) {
         break;
       } catch {
         // Adapter construction performs no provider request, so trying the next
-        // same-model route is safe before credits are reserved.
+        // same-model route is safe before execution begins.
       }
     }
     if (!languageModel) {
@@ -188,46 +216,36 @@ export async function POST(request: Request) {
     if (execution.idempotent) {
       return NextResponse.json({ error: 'REQUEST_ALREADY_PROCESSED' }, { status: 409 });
     }
-    let reservation: Awaited<ReturnType<typeof reserveGenerationCredits>> = null;
-    try {
-      reservation = await reserveGenerationCredits({
-        userId: user.id,
-        operationKey,
-        payloadHash,
-        model: runtimeModel,
-        route,
-      });
-    } catch (reservationError) {
-      const code = reservationError instanceof Error
-        ? reservationError.message
-        : 'CREDIT_RESERVATION_FAILED';
-      try {
-        await finalizeGeneration({
-          executionId: execution.executionId,
-          userId: user.id,
-          reservationId: null,
-          operationKey,
-          payloadHash,
-          terminalStatus: 'failed',
-          customerCharge: 0,
-          errorCode: code,
-          failureOwner: /INSUFFICIENT_CREDITS|INVALID_/.test(code) ? 'customer' : 'vantra',
-          failureCategory: 'pre_execution',
-          attemptCount: 0,
-        });
-      } catch (recordError) {
-        console.error('[chat-generation] reservation failure record failed', {
-          executionId: execution.executionId,
-          code: recordError instanceof Error ? recordError.message : 'EXECUTION_FAILURE_RECORD_FAILED',
-        });
-      }
-      const status = /INSUFFICIENT_CREDITS/.test(code) ? 402
-        : /IDEMPOTENCY_CONFLICT|INVALID_/.test(code) ? 400 : 503;
-      return NextResponse.json({ error: code }, { status });
-    }
+    // Chat is credit-free: no reservation. Weighted usage is recorded only
+    // after a successful provider completion (see recordChatUsage below), so
+    // failed provider requests never consume usage. The atomic consume RPC
+    // re-checks allowances, making retries idempotent via the operation key.
 
     let outputStarted = false;
     let providerStarted = false;
+    let completedStream = false;
+    let usageRecorded = false;
+    const recordChatUsage = async () => {
+      if (usageRecorded) return;
+      try {
+        await consumeChatUsage({
+          userId: user.id,
+          operationKey,
+          executionId: execution.executionId,
+          modelKey: runtimeModel.key,
+          modelId: runtimeModel.modelId,
+          planCode,
+          weight,
+        });
+        usageRecorded = true;
+      } catch (usageError) {
+        console.error('[chat-generation] weighted usage record failed', {
+          executionId: execution.executionId,
+          operationKey,
+          code: usageError instanceof Error ? usageError.message : 'CHAT_USAGE_RECORD_FAILED',
+        });
+      }
+    };
     let finalizationPromise: Promise<void> | null = null;
     const finalizeOnce = (details: {
       terminalStatus: GenerationTerminalState;
@@ -236,24 +254,24 @@ export async function POST(request: Request) {
       failureOwner?: GenerationFailureOwner;
       failureCategory?: string | null;
       usage?: Record<string, unknown>;
-      authoritativeConsumedCredits?: number | null;
     }) => {
       if (finalizationPromise) return finalizationPromise;
+      // Chat never consumes VANTRA Credits: the terminal customer charge is
+      // always zero. Metering happens through weighted usage instead.
       const customerCharge = resolveTerminalCustomerCharge({
         state: details.terminalStatus,
-        configuredCharge: cost,
-        authoritativeConsumedCredits: details.authoritativeConsumedCredits,
+        configuredCharge: 0,
       });
       finalizationPromise = (async () => {
         await finalizeGeneration({
           executionId: execution.executionId,
           userId: user.id,
-          reservationId: reservation?.reservationId ?? null,
+          reservationId: null,
           operationKey,
           payloadHash,
           terminalStatus: details.terminalStatus,
           customerCharge,
-          usageAuthoritative: details.authoritativeConsumedCredits != null,
+          usageAuthoritative: false,
           finishReason: details.finishReason,
           errorCode: details.errorCode,
           failureOwner: details.failureOwner,
@@ -261,6 +279,7 @@ export async function POST(request: Request) {
           actualUsage: {
             provider: route.providerId,
             providerModel: route.providerModelId,
+            chatWeight: weight,
             ...(details.usage ?? {}),
           },
           attemptCount: providerStarted ? 1 : 0,
@@ -285,6 +304,7 @@ export async function POST(request: Request) {
       try {
         if (finalizationPromise) {
           await finalizationPromise;
+          if (completedStream) await recordChatUsage();
           return;
         }
         const cancelled = request.signal.aborted;
@@ -319,7 +339,7 @@ export async function POST(request: Request) {
       await markGenerationStreaming(
         execution.executionId,
         user.id,
-        reservation?.reservationId ?? null
+        null
       );
       providerStarted = true;
       const result = await streamText({
@@ -351,6 +371,9 @@ export async function POST(request: Request) {
               return;
             }
             const failed = finishReason === 'error' || !outputStarted;
+            if (!failed) {
+              completedStream = true;
+            }
             await finalizeOnce({
               terminalStatus: failed
                 ? failureStateForInterruptedStream(outputStarted)
@@ -365,6 +388,9 @@ export async function POST(request: Request) {
               failureOwner: failed ? 'provider' : null,
               failureCategory: failed ? 'stream_failure' : null,
             });
+            // Only successful completions consume weighted usage. Provider
+            // failures, cancellations, and interrupted streams record nothing.
+            if (!failed) await recordChatUsage();
           } catch (finalizationError) {
             console.error('[chat-generation] finalization failed', {
               executionId: execution.executionId,
@@ -413,7 +439,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     const code = error?.message || 'INTERNAL_SERVER_ERROR';
     const status = /INSUFFICIENT_CREDITS/.test(code) ? 402
-      : /RATE_LIMITED|CONCURRENCY_LIMITED/.test(code) ? 429
+      : /CHAT_LIMIT_REACHED|RATE_LIMITED|CONCURRENCY_LIMITED/.test(code) ? 429
         : /INVALID_|IDEMPOTENCY_CONFLICT/.test(code) ? 400
           : /UNAVAILABLE|NO_CONFIGURED_PROVIDER_ROUTE/.test(code) ? 503 : 500;
     return NextResponse.json(

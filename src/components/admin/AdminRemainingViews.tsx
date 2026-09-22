@@ -45,6 +45,73 @@ function Drawer({ title, subtitle, tabs, active, onTab, onClose, children }: { t
 function Pager({ count, page, setPage, size = 10 }: { count: number; page: number; setPage: (page: number) => void; size?: number }) { const pages = Math.max(1, Math.ceil(count / size)); return <div className="flex items-center justify-between border-t border-[var(--studio-border)] px-4 py-3 text-[11px] text-[var(--studio-text-secondary)]"><span>Showing {count ? page * size + 1 : 0}–{Math.min(count, (page + 1) * size)} of {count}</span><div className="flex items-center gap-2"><button disabled={page === 0} onClick={() => setPage(page - 1)} className="rounded-lg border border-[var(--studio-border)] px-2 py-1 disabled:opacity-40">Previous</button><span>{page + 1} / {pages}</span><button disabled={page >= pages - 1} onClick={() => setPage(page + 1)} className="rounded-lg border border-[var(--studio-border)] px-2 py-1 disabled:opacity-40">Next</button></div></div>; }
 function NoData({ text }: { text: string }) { return <div className={`${card} px-6 py-12 text-center text-[13px] text-[var(--studio-text-secondary)]`}>{text}</div>; }
 
+type ChatLimitRow = { planCode: string; fiveHourLimit: number | null; weeklyLimit: number | null; fallbackEnabled: boolean; updatedAt: string };
+
+/** Owner-only live view of the weighted-chat allowances (raw units stay server-side). */
+function ChatLimitsLive() {
+  const [rows, setRows] = useState<ChatLimitRow[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let live = true;
+    fetch('/api/admin/chat-limits', { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json().catch(() => null) : null))
+      .then((body) => {
+        if (!live) return;
+        if (!body || !Array.isArray(body.limits)) setFailed(true);
+        else setRows(body.limits);
+      })
+      .catch(() => { if (live) setFailed(true); });
+    return () => { live = false; };
+  }, []);
+  const byPlan = new Map((rows ?? []).map((row) => [row.planCode, row]));
+  const number = (value: number | null) => value == null ? 'Unlimited' : value.toLocaleString('en');
+  return <div className={`${card} overflow-x-auto`}>
+    <div className="border-b border-[var(--studio-border)] p-5"><h2 className="text-[16px] font-semibold">Chat Limits</h2><p className="mt-1 text-[12px] text-[var(--studio-text-secondary)]">Internal VANTRA weighted units, not API tokens.</p></div>
+    <table className={`${table} min-w-[680px]`}><thead><tr><th>Plan</th><th>5-hour limit</th><th>Weekly limit</th><th>Fallback</th><th>Status</th></tr></thead>
+      <tbody>{failed
+        ? <tr><td colSpan={5} className="px-3 py-6 text-center text-[12px] text-[var(--studio-text-secondary)]">Chat allowances are unavailable. Apply the chat usage migration, then refresh.</td></tr>
+        : ['free', 'lite', 'pro', 'max'].map((plan) => {
+          const row = byPlan.get(plan);
+          const status = !rows ? 'Loading' : !row ? 'Unconfigured' : plan === 'max' ? 'Frozen' : 'Configured';
+          return <tr key={plan} className="border-t border-[var(--studio-border-subtle)]"><td className="font-semibold">{plan === 'max' ? 'Max' : plan[0].toUpperCase() + plan.slice(1)}</td><td>{!rows ? dash : row ? number(row.fiveHourLimit) : dash}</td><td>{!rows ? dash : row ? number(row.weeklyLimit) : dash}</td><td>{!rows ? dash : row?.fallbackEnabled ? 'Enabled' : 'Disabled'}</td><td>{pill(status, status === 'Configured' ? 'success' : 'neutral')}</td></tr>;
+        })}</tbody>
+    </table>
+  </div>;
+}
+
+type ChatUsageRow = { id: string; userId: string; operationKey: string; executionId: string | null; modelKey: string; modelId: string; planCode: string; weight: number; createdAt: string };
+
+/** Owner-only weighted-chat debug ledger: user, model, weight, plan, time, references. */
+function ChatUsageLive() {
+  const [records, setRecords] = useState<ChatUsageRow[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(0);
+  useEffect(() => {
+    let live = true;
+    fetch('/api/admin/chat-usage?limit=200', { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json().catch(() => null) : null))
+      .then((body) => {
+        if (!live) return;
+        if (!body || !Array.isArray(body.records)) setFailed(true);
+        else setRecords(body.records);
+      })
+      .catch(() => { if (live) setFailed(true); });
+    return () => { live = false; };
+  }, []);
+  const term = query.trim().toLowerCase();
+  const filtered = (records ?? []).filter((row) => !term || `${row.userId} ${row.modelId} ${row.modelKey} ${row.operationKey}`.toLowerCase().includes(term));
+  const short = (value: string) => value.length > 14 ? `${value.slice(0, 6)}…${value.slice(-4)}` : value;
+  return <div className="space-y-3">
+    <label className="relative block"><Search className="absolute left-3 top-3 h-4 w-4 text-[var(--studio-text-muted)]" /><input aria-label="Search chat usage" placeholder="Search by user, model, or operation key" value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} className={`${control} w-full pl-9`} /></label>
+    <div className={`${card} overflow-x-auto`}><table className={`${table} min-w-[880px]`}><thead className="border-b border-[var(--studio-border)]"><tr><th>Time</th><th>User</th><th>Model</th><th>Plan</th><th>Weight</th><th>Reference</th></tr></thead>
+      <tbody>{failed
+        ? <tr><td colSpan={6} className="px-3 py-6 text-center text-[12px] text-[var(--studio-text-secondary)]">Chat usage is unavailable. Apply the chat usage migration, then refresh.</td></tr>
+        : filtered.slice(page * 10, (page + 1) * 10).map((row) => <tr key={row.id} className="border-t border-[var(--studio-border-subtle)]"><td>{date(row.createdAt)}</td><td className="max-w-[170px] truncate" title={row.userId}>{short(row.userId)}</td><td className="max-w-[200px] truncate" title={`${row.modelKey} · ${row.modelId}`}>{row.modelId}</td><td className="capitalize">{row.planCode}</td><td className="tabular-nums">{row.weight}</td><td className="max-w-[170px] truncate" title={row.operationKey}>{short(row.operationKey)}</td></tr>)}</tbody>
+    </table>{!failed && <Pager count={filtered.length} page={page} setPage={setPage} />}</div>
+  </div>;
+}
+
 export function RemainingProvidersView({ result }: { result: AdminDataResult<AdminProviderRow[]> }) {
   const t = useTranslations('Admin');
   const [providers, setProviders] = useState(result.data);
@@ -97,28 +164,20 @@ export function RemainingRuntimeView({ result }: { result: AdminDataResult<Admin
     {heading('Limits & Fallback', 'Control chat allowances, provider routing and safety settings.')}
     {!result.available && <NoData text="Runtime data is unavailable. The layout remains ready for configured providers." />}
     <nav aria-label="Limits sections" className="mb-5 flex flex-wrap gap-6 border-b border-[var(--studio-border)]">
-      {['Chat Limits', 'Provider Routing', 'Fallback', 'Safety & Capacity'].map((value) =>
+      {['Chat Limits', 'Chat Usage', 'Provider Routing', 'Fallback', 'Safety & Capacity'].map((value) =>
         <button type="button" key={value} onClick={() => setTab(value)} className={`h-11 border-b-2 text-[12px] font-medium ${tab === value ? 'border-[var(--studio-accent)] text-[var(--studio-text-primary)]' : 'border-transparent text-[var(--studio-text-secondary)] hover:text-[var(--studio-text-primary)]'}`}>{value}</button>)}
     </nav>
 
     {tab === 'Chat Limits' && <>
-      <div className={`${card} overflow-x-auto`}>
-        <div className="border-b border-[var(--studio-border)] p-5"><h2 className="text-[16px] font-semibold">Chat Limits</h2><p className="mt-1 text-[12px] text-[var(--studio-text-secondary)]">Internal VANTRA weighted units, not API tokens.</p></div>
-        <table className={`${table} min-w-[680px]`}><thead><tr><th>Plan</th><th>5-hour limit</th><th>Weekly limit</th><th>Fallback</th><th>Status</th></tr></thead>
-          <tbody>{[
-            ['Free', '120', '800', 'Disabled', 'Configured'],
-            ['Lite', '200', '1,300', 'Disabled', 'Configured'],
-            ['Pro', '250', '3,000', 'Not configured', 'Configured'],
-            ['Max', dash, dash, dash, 'Frozen'],
-          ].map((row) => <tr key={row[0]} className="border-t border-[var(--studio-border-subtle)]"><td className="font-semibold">{row[0]}</td><td>{row[1]}</td><td>{row[2]}</td><td>{row[3]}</td><td>{pill(row[4], row[4] === 'Configured' ? 'success' : 'neutral')}</td></tr>)}</tbody>
-        </table>
-      </div>
+      <ChatLimitsLive />
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         <div className={`${card} p-4`}><h3 className="text-[13px] font-semibold">Weighted units</h3><p className="mt-2 text-[12px] text-[var(--studio-text-secondary)]">Chat limits use internal VANTRA units. They do not represent provider API tokens.</p></div>
         <div className={`${card} p-4`}><h3 className="text-[13px] font-semibold">Time windows</h3><p className="mt-2 text-[12px] text-[var(--studio-text-secondary)]">The displayed allowances apply per five-hour and weekly window where configured.</p></div>
         <div className={`${card} p-4`}><h3 className="text-[13px] font-semibold">Fallback policy</h3><p className="mt-2 text-[12px] text-[var(--studio-text-secondary)]">Automatic fallback routing is not enabled. Provider route flags remain visible for inspection.</p></div>
       </div>
     </>}
+
+    {tab === 'Chat Usage' && <ChatUsageLive />}
 
     {tab === 'Provider Routing' && <>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><p className="text-[12px] text-[var(--studio-text-secondary)]">{visible.length} providers · runtime configuration</p><label className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-[var(--studio-text-muted)]" /><input aria-label="Search routing providers" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search provider" className={`${control} pl-9`} /></label></div>

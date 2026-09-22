@@ -131,6 +131,13 @@
       "copied": "Copied",
       "copyMessage": "Copy response",
       "retryResponse": "Retry response",
+      "chatCapacityHigh": "High Chat usage",
+      "chatCapacityNear": "Near Chat limit",
+      "chatCapacityLimit": "Chat limit reached",
+      "chatCapacityAvailableIn": "More Chat capacity becomes available in {wait}.",
+      "chatLevelStandard": "Standard Chat",
+      "chatLevelExtended": "Extended Chat",
+      "chatLevelHigh": "High-usage Chat",
       "starters": {
         "writeCode": {
           "title": "Write code",

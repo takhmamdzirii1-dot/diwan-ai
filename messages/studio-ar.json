@@ -131,6 +131,13 @@
       "copied": "تم النسخ",
       "copyMessage": "نسخ الإجابة",
       "retryResponse": "إعادة الإجابة",
+      "chatCapacityHigh": "استخدام مرتفع للدردشة",
+      "chatCapacityNear": "اقتربت من حد الدردشة",
+      "chatCapacityLimit": "تم بلوغ حد الدردشة",
+      "chatCapacityAvailableIn": "ستتوفر سعة دردشة إضافية خلال {wait}.",
+      "chatLevelStandard": "دردشة عادية",
+      "chatLevelExtended": "دردشة موسعة",
+      "chatLevelHigh": "دردشة مكثفة",
       "starters": {
         "writeCode": {
           "title": "اكتب كوداً",

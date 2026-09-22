@@ -9,6 +9,8 @@ import { useModal } from '../../context/ModalContext';
 import { ClaudeChatInput } from '@/components/ui/claude-style-chat-input';
 import DashboardSidebar from './DashboardSidebar';
 import MessageBubble from './MessageBubble';
+import ChatCapacityHint from './ChatCapacityHint';
+import { formatCapacityWait } from '@/lib/chat/chat-usage';
 import ImageCanvas, { type ImageGenerationResult, type ImageRequestDraft } from './ImageCanvas';
 import SettingsModal from './StudioSettingsDialog';
 import PrunaMotionStudio, { type VideoGenerationResult, type VideoRequestDraft } from './PrunaMotionStudio';
@@ -77,6 +79,7 @@ export default function StudioDashboard({
   const defaultChatModel = chatModels.find(isModelSelectable) ?? chatModels[0] ?? null;
   const [selectedModelId, setSelectedModelId] = useState(defaultChatModel?.id ?? '');
   const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null);
+  const [chatExchanges, setChatExchanges] = useState(0);
   const sendStartRef = useRef<number>(0);
 
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -152,6 +155,7 @@ export default function StudioDashboard({
     api: '/api/generate/chat',
     onFinish: () => {
       if (sendStartRef.current) setLastLatencyMs(performance.now() - sendStartRef.current);
+      setChatExchanges((count) => count + 1);
       refreshBalance();
     },
     onError: () => {},
@@ -633,9 +637,19 @@ export default function StudioDashboard({
                               <p className="text-[13px] text-white/80 leading-relaxed">
                                 {(() => {
                                   try {
-                                    return error?.message?.includes('{')
-                                      ? JSON.parse(error.message).error || error.message
-                                      : error?.message || t('errorFallback');
+                                    if (!error?.message?.includes('{')) return error?.message || t('errorFallback');
+                                    const body = JSON.parse(error.message) as {
+                                      error?: string; nextAvailableAt?: string | null;
+                                    };
+                                    // Weighted chat limits speak calmly: no codes,
+                                    // weights, or numeric allowances customer-side.
+                                    if (body.error === 'CHAT_LIMIT_REACHED') {
+                                      const wait = formatCapacityWait(body.nextAvailableAt ?? null);
+                                      return wait
+                                        ? t('chatCapacityAvailableIn', { wait })
+                                        : t('chatCapacityLimit');
+                                    }
+                                    return body.error || error.message;
                                   } catch {
                                     return error?.message || t('errorFallback');
                                   }
@@ -679,7 +693,8 @@ export default function StudioDashboard({
                 </div>
 
                 {/* 3rd (Bottom): Floating composer over the fading message timeline */}
-                <div ref={composerRef} className="absolute bottom-0 left-0 flex w-full justify-center bg-transparent p-4 pb-6 pointer-events-none">
+                <div ref={composerRef} className="absolute bottom-0 left-0 flex w-full flex-col items-center justify-end bg-transparent p-4 pb-6 pointer-events-none">
+                  <ChatCapacityHint refreshSignal={chatExchanges} />
                   <div className="pointer-events-auto mx-auto w-full max-w-4xl px-6">
                     <ClaudeChatInput
                       onSendMessage={handleSend}
