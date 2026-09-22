@@ -17,6 +17,8 @@ interface LandingHeaderProps {
   onOpenStudio: () => void;
   /** Logged-out primary CTA — opens the signup modal (matches hero Start Free) */
   onStartFree: () => void;
+  /** Optional anchor-nav override (paid landing pages). Defaults to homepage sections. */
+  navLinks?: readonly { id: string; label: string }[];
 }
 
 /** Nav links → landing section anchors */
@@ -33,10 +35,14 @@ const LOCALES = ['fr', 'ar', 'en'] as const;
 
 /** Auth-aware glass header. Transparent at top, frosted after scroll.
  *  Desktop: brand · centered nav · auth actions. Mobile: brand · Start Free · menu. */
-export default function LandingHeader({ user, authLoading, onSignIn, onOpenStudio, onStartFree }: LandingHeaderProps) {
+export default function LandingHeader({ user, authLoading, onSignIn, onOpenStudio, onStartFree, navLinks }: LandingHeaderProps) {
   const t = useTranslations('navigation');
   const locale = useLocale();
   const pathname = usePathname();
+  const links = React.useMemo(
+    () => navLinks ?? NAV_LINKS.map((l) => ({ id: l.id, label: t(l.key) })),
+    [navLinks, t]
+  );
   const [routeHash, setRouteHash] = useState('');
   const [scrolled, setScrolled] = useState(false);
   const [active, setActive] = useState<string | null>(null);
@@ -60,7 +66,7 @@ export default function LandingHeader({ user, authLoading, onSignIn, onOpenStudi
   /* Active-section tracking — IntersectionObserver band around viewport middle.
      Last intersecting element in DOM order wins (the #models grid sits inside #showcase). */
   useEffect(() => {
-    const els = NAV_LINKS
+    const els = links
       .map((l) => document.getElementById(l.id))
       .filter((el): el is HTMLElement => !!el)
       .sort((a, b) =>
@@ -84,7 +90,7 @@ export default function LandingHeader({ user, authLoading, onSignIn, onOpenStudi
     );
     els.forEach((el) => io.observe(el));
     return () => io.disconnect();
-  }, []);
+  }, [links]);
 
   /* Close the mobile menu if the viewport grows past the desktop breakpoint */
   useEffect(() => {
@@ -113,7 +119,7 @@ export default function LandingHeader({ user, authLoading, onSignIn, onOpenStudi
   const primaryBtn =
     'h-11 md:h-9 rounded-xl bg-white text-black text-[12.5px] font-semibold hover:bg-gray-200 transition-colors cursor-pointer active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]';
 
-  const navLink = (l: (typeof NAV_LINKS)[number], onNavigate?: () => void) => (
+  const navLink = (l: { id: string; label: string }, onNavigate?: () => void) => (
     <a
       key={l.id}
       href={`#${l.id}`}
@@ -124,7 +130,7 @@ export default function LandingHeader({ user, authLoading, onSignIn, onOpenStudi
         active === l.id ? 'text-white' : 'text-white/65 hover:text-white'
       )}
     >
-      {t(l.key)}
+      {l.label}
       <span
         aria-hidden="true"
         className={cn(
@@ -196,7 +202,7 @@ export default function LandingHeader({ user, authLoading, onSignIn, onOpenStudi
 
         {/* Desktop nav — optically centered between brand and actions */}
         <nav aria-label={t('primaryLabel')} className="hidden xl:flex shrink-0 items-center gap-3 2xl:gap-5 mx-auto whitespace-nowrap">
-          {NAV_LINKS.map((l) => navLink(l))}
+          {links.map((l) => navLink(l))}
         </nav>
 
         {/* Desktop auth actions */}
@@ -280,7 +286,7 @@ export default function LandingHeader({ user, authLoading, onSignIn, onOpenStudi
             className="xl:hidden absolute top-full inset-x-0 max-h-[calc(100svh-64px)] overflow-y-auto bg-[#050505]/95 backdrop-blur-xl border-b border-white/[0.08]"
           >
             <nav aria-label={t('mobileLabel')} className="px-6 py-4 flex flex-col">
-              {NAV_LINKS.map((l) => (
+              {links.map((l) => (
                 <div key={l.id} className="flex min-h-11 items-center">
                   {navLink(l, () => setMenuOpen(false))}
                 </div>

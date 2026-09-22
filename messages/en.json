@@ -204,6 +204,81 @@
     "invalidResetLink": "This reset link is invalid or has expired. Request a new one.",
     "returnToStudio": "Continue to VANTRA Studio"
   },
+  "go": {
+    "nav": { "how": "How it works", "models": "Models", "pricing": "Pricing", "faq": "FAQ" },
+    "hero": {
+      "all-ai": {
+        "eyebrow": "Chat · Image · Video in one place",
+        "headline": "Every AI model you need, in one workspace",
+        "sub": "Stop paying for separate AI tools. Chat, create images and generate video with leading models from a single VANTRA account.",
+        "cta": "Start free",
+        "secondary": "See how it works",
+        "metaTitle": "VANTRA | Every AI model in one workspace",
+        "metaDesc": "Chat, image and video AI models in one VANTRA workspace. Start free, pay locally in Algerian dinars."
+      },
+      "ai-in-dzd": {
+        "eyebrow": "Pay in Algerian dinars",
+        "headline": "Leading AI models, priced in DA",
+        "sub": "Access Chat, Image and Video AI with simple VANTRA plans and local payment in Algerian dinars. No international card needed.",
+        "cta": "Start free",
+        "secondary": "See plans",
+        "metaTitle": "VANTRA | AI models with local DA payment",
+        "metaDesc": "Use leading Chat, Image and Video AI models with simple plans and local payment in Algerian dinars."
+      },
+      "creators": {
+        "eyebrow": "Made for creators",
+        "headline": "Write, design and produce from one workspace",
+        "sub": "Scripts, visuals and video from one VANTRA workspace. Chat, image and video models together, built for how creators actually work.",
+        "cta": "Try VANTRA free",
+        "secondary": "See how it works",
+        "metaTitle": "VANTRA | The AI workspace for creators",
+        "metaDesc": "Chat, image and video creation from one VANTRA workspace. Start free and create your first piece today."
+      }
+    },
+    "benefitsLabel": "Why VANTRA",
+    "benefitItems": {
+      "workspace": { "title": "One workspace, many models", "text": "Leading Chat, Image and Video models live side by side. One balance, one account, zero juggling." },
+      "together": { "title": "Chat, image and video together", "text": "Draft the idea, generate the visual, produce the clip — without leaving your workspace." },
+      "localpay": { "title": "Pay locally in DA", "text": "Simple plans in Algerian dinars with local payment methods. No international card required." },
+      "switch": { "title": "Switch models freely", "text": "Pick the best model for each task. No separate subscriptions, no extra logins to manage." }
+    },
+    "preview": {
+      "label": "Product preview",
+      "title": "One workspace for everything you make",
+      "sub": "A calm Studio for Chat, Image and Video. This preview is illustrative — your real generations start after free signup.",
+      "cta": "Try VANTRA free",
+      "microcopy": "Free trial · No card required",
+      "chatTitle": "Chat",
+      "chatSample": "Write a launch caption for my new product…",
+      "imageTitle": "Image",
+      "imageNote": "Product visual, studio light",
+      "videoTitle": "Video",
+      "videoNote": "15s promo clip"
+    },
+    "proof": { "label": "Model capability proof", "note": "A selection of the model families available inside VANTRA. Availability depends on your plan." },
+    "trust": {
+      "label": "Trust",
+      "title": "Clear terms, local payment",
+      "items": [
+        { "title": "Pay in Algerian dinars", "text": "BaridiMob and CCP manual transfer, verified by our team before anything activates." },
+        { "title": "No automatic renewal", "text": "One payment covers 30 days. Nothing renews on its own — you decide every time." },
+        { "title": "Free trial to start", "text": "Try VANTRA free with a one-time trial. No card required to explore." },
+        { "title": "Reviewed payments", "text": "Every manual payment is reviewed before credits or plan access are added." }
+      ]
+    },
+    "faq": {
+      "label": "FAQ",
+      "title": "Questions, answered",
+      "subtitle": "The essentials before you start.",
+      "items": [
+        { "question": "What can I use VANTRA for?", "answer": "Chat, image generation and video generation from one workspace, all spending from a single Unified Credit balance." },
+        { "question": "Do I need several AI subscriptions?", "answer": "No. One VANTRA plan gives you access to multiple leading models, so you can stop stacking separate subscriptions." },
+        { "question": "How does payment work?", "answer": "Pay in Algerian dinars using the local methods shown at checkout. Manual transfers are verified by our team before activation." },
+        { "question": "Is there automatic renewal?", "answer": "No. One payment covers 30 days and nothing renews automatically. You repurchase only when you want to." },
+        { "question": "What happens after the free trial?", "answer": "The free trial is a one-time allowance. When it ends, pick a plan to keep creating — your account and history stay intact." }
+      ]
+    }
+  },
   "payments": {
     "activatePlan": "Activate {plan}",
     "returnCheckingTitle": "Confirming your payment",

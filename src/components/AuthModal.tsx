@@ -6,6 +6,7 @@ import { X, Mail, Lock, User, ArrowRight, Loader2, AlertCircle, CheckCircle2 } f
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { readAttribution } from '../lib/attribution';
 import { VantraLogo } from './VantraLogo';
 
 export interface AuthModalProps {
@@ -148,6 +149,7 @@ export default function AuthModal({
           router.replace('/studio/chat');
         }
       } else {
+        const attribution = readAttribution();
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -156,6 +158,7 @@ export default function AuthModal({
             data: {
               full_name: fullName.trim() || undefined,
               language: locale,
+              ...(attribution ? { acquisition: attribution } : {}),
             },
           },
         });
