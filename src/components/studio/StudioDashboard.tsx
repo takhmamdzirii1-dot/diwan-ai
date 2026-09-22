@@ -693,6 +693,7 @@ export default function StudioDashboard({
                         requiredPlan: model.enabled && !model.planAccessible ? model.requiredPlan : null,
                         iconUrl: model.iconUrl,
                         provider: model.provider,
+                        brand: model.brand,
                         allowedPlans: model.allowedPlans,
                         visionInput: 'visionInput' in model.capabilities && model.capabilities.visionInput,
                         fileInput: 'fileInput' in model.capabilities && model.capabilities.fileInput,

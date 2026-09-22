@@ -21,6 +21,7 @@ const createSchema = z.object({
   stableId: z.string().trim().min(3).max(80).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   displayName: z.string().trim().min(1).max(80),
   modality: z.enum(['chat', 'image', 'video']),
+  brand: z.string().trim().max(60).optional(),
 }).strict();
 
 const lifecycleSchema = z.object({
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
     routing_role: 'unassigned',
     customer_credit_price: null,
     customer_display_name: parsed.data.displayName,
+    customer_category: parsed.data.brand?.length ? parsed.data.brand : null,
     customer_sort_order: 100,
     studio_visible: false,
     capabilities: emptyModelCapabilities(parsed.data.modality),

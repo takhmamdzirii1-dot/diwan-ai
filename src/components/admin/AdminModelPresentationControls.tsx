@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { AdminModelRow } from '@/lib/admin/types';
+import { MODEL_BRANDS } from '@/src/config/model-catalog';
 
 type Presentation = Pick<AdminModelRow,
   'key' | 'displayName' | 'shortDescription' | 'mediaUrl' | 'category' |
@@ -71,7 +72,8 @@ export default function AdminModelPresentationControls({ model, onSaved }: {
     <div className="mb-3 flex items-center gap-3"><span role="img" aria-label={t('mediaPreview')} className="h-11 w-11 shrink-0 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] bg-contain bg-center bg-no-repeat" style={previewUrl ? { backgroundImage: `url(${JSON.stringify(previewUrl)})` } : undefined} /><div><p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-[var(--studio-text-muted)]">{t('customerPresentation')}</p><p className="mt-0.5 text-[11px] text-[var(--studio-text-secondary)]">{previewUrl ? t('mediaPreviewAvailable') : t('mediaPreviewEmpty')}</p></div></div>
     <div className="grid gap-3 sm:grid-cols-2">
       <label className={labelClass}>{t('displayName')}<input value={displayName} maxLength={80} onChange={(event) => { setDisplayName(event.target.value); setFeedback(null); }} className={inputClass} /></label>
-      <label className={labelClass}>{t('category')}<input value={category} maxLength={60} onChange={(event) => { setCategory(event.target.value); setFeedback(null); }} placeholder={t('categoryPlaceholder')} className={inputClass} /></label>
+      <label className={labelClass}>{t('brand')}<input value={category} maxLength={60} list="vantra-model-brand-list" autoComplete="off" onChange={(event) => { setCategory(event.target.value); setFeedback(null); }} placeholder={t('brandPlaceholder')} className={inputClass} /><datalist id="vantra-model-brand-list">{[...new Set(Object.values(MODEL_BRANDS).map((brand) => brand.name))].sort().map((name) => <option key={name} value={name} />)}</datalist></label>
+      <p className="-mt-1 text-[10.5px] font-normal normal-case tracking-normal text-[var(--studio-text-muted)] sm:col-span-2">{t('brandHelp')}</p>
       <label className={`${labelClass} md:col-span-2`}>{t('shortDescription')}<input value={description} maxLength={240} onChange={(event) => { setDescription(event.target.value); setFeedback(null); }} className={inputClass} /></label>
       <label className={labelClass}>{t('availabilityLabel')}<input value={availabilityLabel} maxLength={60} onChange={(event) => { setAvailabilityLabel(event.target.value); setFeedback(null); }} className={inputClass} /></label>
       <label className={`${labelClass} md:col-span-2`}>{t('mediaUrl')}<input value={mediaUrl} maxLength={500} onChange={(event) => { setMediaUrl(event.target.value); setFeedback(null); }} placeholder="/brand/model.svg or https://…" className={inputClass} /></label>

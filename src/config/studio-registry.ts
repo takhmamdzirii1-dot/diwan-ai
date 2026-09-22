@@ -27,6 +27,7 @@ export interface StudioModelDefinition {
 }
 
 export interface StudioRuntimeModelDefinition extends StudioModelDefinition {
+  brand?: string;
   shortDescription?: string;
   iconUrl?: string;
   category?: string;
@@ -100,8 +101,8 @@ export const STUDIO_MODELS: readonly StudioModelDefinition[] = [
     displayName: 'Flux',
     provider: 'Pollinations',
     modality: 'image',
-    enabled: true,
-    availability: 'beta',
+    enabled: false,
+    availability: 'unavailable',
     verifiedCapabilities: ['Text to image'],
     supportedControls: [],
     fallbackAvailable: true,

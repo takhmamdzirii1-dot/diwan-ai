@@ -17,6 +17,7 @@ export interface ChatModelOption {
   requiresAuth?: boolean;
   iconUrl?: string;
   provider?: string;
+  brand?: string;
   allowedPlans?: readonly ModelPlanCode[];
   visionInput?: boolean;
   fileInput?: boolean;
@@ -38,7 +39,7 @@ function readRecent(): RecentByModality {
 }
 
 function brandIcon(model: ChatModelOption, modality: StudioModality) {
-  return model.iconUrl ?? modelIconUrl(modelBrand(model.name, modality, model.provider, model.id));
+  return model.iconUrl ?? modelIconUrl(modelBrand(model.name, modality, model.provider, model.id, model.brand));
 }
 
 export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, dropdownPosition = 'top', menuLabel, emptyLabel, modality = 'chat' }: {
@@ -60,7 +61,8 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, dr
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
-  const current = models.find((model) => model.id === selectedModel) ?? models.find((model) => model.enabled) ?? models[0];
+  const visibleModels = useMemo(() => models.filter((model) => model.enabled && ['available', 'beta'].includes(model.availability)), [models]);
+  const current = visibleModels.find((model) => model.id === selectedModel) ?? visibleModels[0];
 
   useEffect(() => setRecent(readRecent()), []);
   useEffect(() => {
@@ -70,11 +72,11 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, dr
     const update = () => {
       const rect = trigger.current?.getBoundingClientRect();
       if (!rect) return;
-      const width = Math.min(460, innerWidth - 32);
+      const width = Math.min(408, innerWidth - 32);
       const above = rect.top - 24;
       const below = innerHeight - rect.bottom - 24;
       const placeAbove = dropdownPosition === 'top' ? above >= 280 || above >= below : below < 280 && above > below;
-      const height = Math.min(560, Math.max(220, placeAbove ? above : below));
+      const height = Math.min(540, Math.max(220, placeAbove ? above : below));
       setAnchor({ top: placeAbove ? rect.top - height - 8 : rect.bottom + 8,
         left: Math.max(16, Math.min(rect.left, innerWidth - width - 16)), height });
     };
@@ -105,19 +107,19 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, dr
   }, [open, dropdownPosition]);
 
   const groups = useMemo(() => {
-    const matches = models.filter((model) => {
-      const brand = modelBrand(model.name, modality, model.provider, model.id).name;
+    const matches = visibleModels.filter((model) => {
+      const brand = modelBrand(model.name, modality, model.provider, model.id, model.brand).name;
       const term = search.trim().toLocaleLowerCase();
       return !term || `${model.name} ${brand}`.toLocaleLowerCase().includes(term);
     });
     const byBrand = new Map<string, ChatModelOption[]>();
     matches.forEach((model) => {
-      const brand = modelBrand(model.name, modality, model.provider, model.id).name;
+      const brand = modelBrand(model.name, modality, model.provider, model.id, model.brand).name;
       byBrand.set(brand, [...(byBrand.get(brand) ?? []), model]);
     });
     return [...byBrand.entries()];
-  }, [models, modality, search]);
-  const recentModels = recent[modality].map((id) => models.find((model) => model.id === id)).filter((model): model is ChatModelOption => Boolean(model));
+  }, [visibleModels, modality, search]);
+  const recentModels = recent[modality].map((id) => visibleModels.find((model) => model.id === id)).filter((model): model is ChatModelOption => Boolean(model));
   const close = useCallback(() => { setOpen(false); setSearch(''); trigger.current?.focus(); }, []);
   const pick = (model: ChatModelOption) => {
     if (!model.enabled || model.requiredPlan || !['available', 'beta'].includes(model.availability)) return;
@@ -135,14 +137,14 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, dr
     return MODEL_PLAN_CODES.find((plan) => plans.includes(plan)) ?? null;
   };
   const row = (model: ChatModelOption) => {
-    const brand = modelBrand(model.name, modality, model.provider, model.id);
+    const brand = modelBrand(model.name, modality, model.provider, model.id, model.brand);
     const icon = brandIcon(model, modality);
     const selectable = model.enabled && !model.requiredPlan && ['available', 'beta'].includes(model.availability);
     const plans = model.allowedPlans ?? [];
     const access = tier(plans);
     return <button key={model.id} type="button" disabled={!selectable} onClick={() => pick(model)}
       aria-current={selectedModel === model.id ? 'true' : undefined}
-      className={`flex min-h-12 w-full items-center gap-2.5 rounded-lg border px-2.5 text-start text-[13px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] sm:min-h-11 ${selectable ? 'hover:bg-[var(--studio-hover)]' : 'cursor-not-allowed'} ${selectedModel === model.id ? 'border-[var(--studio-border-strong)] bg-[var(--studio-selected)]' : 'border-transparent'}`}>
+      className={`flex min-h-12 w-full items-center gap-2.5 rounded-lg border px-2.5 text-start text-[12.5px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] sm:min-h-10 ${selectable ? 'hover:bg-[var(--studio-hover)]' : 'cursor-not-allowed'} ${selectedModel === model.id ? 'border-[var(--studio-border-strong)] bg-[var(--studio-selected)]' : 'border-transparent'}`}>
       <ModelBrandIcon url={icon} name={brand.name} />
       <span className={`min-w-0 flex-1 truncate font-medium ${selectable ? 'text-[var(--studio-text-primary)]' : 'text-[var(--studio-text-secondary)]'}`}>{model.name}</span>
       {model.requiredPlan && <LockKeyhole aria-label={t('requiresPlan', { plan: model.requiredPlan })} className="h-3.5 w-3.5 shrink-0 text-[var(--studio-text-secondary)]" />}
@@ -155,8 +157,10 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, dr
   const picker = <>
     <div className="fixed inset-0 z-[109] bg-[var(--studio-overlay)] sm:hidden" onClick={close} aria-hidden="true" />
     <div ref={panel} role="dialog" aria-label={menuLabel ?? t('menuLabel')}
-      style={anchor && typeof window !== 'undefined' && window.innerWidth >= 640 ? { top: anchor.top, left: anchor.left, maxHeight: anchor.height } : undefined}
-      className="fixed inset-x-0 bottom-0 z-[110] flex max-h-[min(85dvh,620px)] flex-col overflow-hidden rounded-t-2xl border border-[var(--studio-border)] bg-[var(--studio-popover)] text-[var(--studio-text-primary)] shadow-[var(--studio-shadow)] sm:inset-x-auto sm:bottom-auto sm:w-[min(460px,calc(100vw-32px))] sm:rounded-2xl">
+      style={{ backgroundColor: 'color-mix(in srgb, var(--studio-popover) 96%, transparent)',
+        ...(anchor && typeof window !== 'undefined' && window.innerWidth >= 640
+          ? { top: anchor.top, left: anchor.left, maxHeight: anchor.height } : {}) }}
+      className="fixed inset-x-0 bottom-0 z-[110] flex max-h-[min(85dvh,620px)] flex-col overflow-hidden rounded-t-2xl border border-[var(--studio-border)] bg-[var(--studio-popover)] text-[var(--studio-text-primary)] shadow-lg sm:inset-x-auto sm:bottom-auto sm:w-[min(408px,calc(100vw-32px))] sm:rounded-2xl sm:max-h-[540px]">
       <div className="shrink-0 border-b border-[var(--studio-border)] bg-[var(--studio-popover)] p-3">
         <div className="mb-2 flex items-center justify-between sm:hidden"><span className="text-sm font-semibold">{menuLabel ?? t('menuLabel')}</span><button type="button" onClick={close} aria-label={t('picker.close')} className="flex h-9 w-9 items-center justify-center rounded-lg"><X className="h-4 w-4" /></button></div>
         <label className="flex h-10 items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface)] px-3 focus-within:border-[var(--studio-border-strong)]"><Search className="h-4 w-4 shrink-0 text-[var(--studio-text-muted)]" /><span className="sr-only">{t('picker.search')}</span><input ref={searchInput} value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('picker.search')} className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-[var(--studio-text-muted)]" /></label>
@@ -167,7 +171,7 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, dr
           {groups.length ? groups.map(([brandName, items]) => {
             const openGroup = Boolean(search) || expanded.includes(brandName);
             const icon = brandIcon(items[0], modality);
-            return <div key={brandName} className="mt-0.5"><button type="button" aria-expanded={openGroup} onClick={() => setExpanded((current) => openGroup ? current.filter((name) => name !== brandName) : [...current, brandName])} className="flex h-10 w-full items-center gap-2 rounded-lg px-2 text-start hover:bg-[var(--studio-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]">
+            return <div key={brandName} className="mt-0.5"><button type="button" aria-expanded={openGroup} onClick={() => setExpanded((current) => openGroup ? current.filter((name) => name !== brandName) : [...current, brandName])} className="flex h-11 w-full items-center gap-2 rounded-lg px-2 text-start hover:bg-[var(--studio-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] sm:h-9">
               <ModelBrandIcon url={icon} name={brandName} size={20} />
               <span className="min-w-0 flex-1 truncate text-[12px] font-semibold">{brandName}</span><span className="text-[11px] text-[var(--studio-text-muted)]">{items.length}</span><ChevronRight className={`h-4 w-4 text-[var(--studio-text-muted)] transition-transform duration-150 ${openGroup ? 'rotate-90' : ''}`} />
             </button>{openGroup && <div className="ms-2 border-s border-[var(--studio-border-subtle)] ps-1">{items.map(row)}</div>}</div>;
@@ -177,9 +181,9 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, dr
     </div>
   </>;
   return <div className="relative inline-flex min-w-0 items-center">
-    <button ref={trigger} type="button" onClick={() => { setSearch(''); setExpanded([modelBrand(current?.name ?? '', modality, current?.provider, current?.id).name]); setOpen((value) => !value); }} disabled={!current} aria-haspopup="dialog" aria-expanded={open} aria-label={`${t('label')}: ${current?.name ?? t('label')}`}
+    <button ref={trigger} type="button" onClick={() => { setSearch(''); setExpanded([modelBrand(current?.name ?? '', modality, current?.provider, current?.id, current?.brand).name]); setOpen((value) => !value); }} disabled={!current} aria-haspopup="dialog" aria-expanded={open} aria-label={`${t('label')}: ${current?.name ?? t('label')}`}
       className="inline-flex h-9 max-w-[230px] items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-2.5 text-[12px] text-[var(--studio-text-primary)] hover:border-[var(--studio-border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] disabled:opacity-50">
-      {current && <ModelBrandIcon url={brandIcon(current, modality)} name={modelBrand(current.name, modality, current.provider, current.id).name} size={20} />}<span className="truncate font-medium">{current?.name ?? emptyLabel ?? t('label')}</span><ChevronDown className="h-3.5 w-3.5 shrink-0 text-[var(--studio-text-muted)]" />
+      {current && <ModelBrandIcon url={brandIcon(current, modality)} name={modelBrand(current.name, modality, current.provider, current.id, current.brand).name} size={20} />}<span className="truncate font-medium">{current?.name ?? emptyLabel ?? t('label')}</span><ChevronDown className="h-3.5 w-3.5 shrink-0 text-[var(--studio-text-muted)]" />
     </button>
     {open && typeof document !== 'undefined' && createPortal(picker, document.querySelector('.studio-overlay-root') ?? document.body)}
   </div>;

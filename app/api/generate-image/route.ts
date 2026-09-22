@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { generateWithPollinations } from '@/lib/ai/image-providers/pollinations';
 import { generateWithMock } from '@/lib/ai/image-providers/mock';
 import { createClient } from '@/lib/supabase/server';
-import { getUserPollinationsConnection } from '@/lib/ai/provider-connections';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -18,11 +16,10 @@ const RATIO_DIMENSIONS: Record<string, { width: number; height: number }> = {
 };
 
 const PROVIDER_MODELS: Record<string, Set<string>> = {
-  pollinations: new Set(['flux', 'turbo', 'kontext']),
   mock: new Set(['placeholder']),
 };
 const ALLOWED_RATIOS = new Set(Object.keys(RATIO_DIMENSIONS));
-const ALLOWED_PROVIDERS = new Set(['pollinations', 'mock']);
+const ALLOWED_PROVIDERS = new Set(['mock']);
 
 /** App-level abuse guard: 1 generation / 5s per caller, 1 concurrent.
  *  In-memory by design (single-region instance); swap for Upstash/Supabase
@@ -62,10 +59,9 @@ export async function POST(request: Request) {
 
   const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : '';
   const provider = typeof body.provider === 'string' ? body.provider : 'mock';
-  const model = typeof body.model === 'string' ? body.model : 'flux';
+  const model = typeof body.model === 'string' ? body.model : 'placeholder';
   const ratio = typeof body.ratio === 'string' ? body.ratio : '1:1';
   const count = Math.min(Number(body.count) || 1, MAX_COUNT);
-  const imageUrl = typeof body.imageUrl === 'string' ? body.imageUrl : undefined;
 
   if (!prompt) return NextResponse.json({ error: 'A prompt is required' }, { status: 400 });
   if (prompt.length > MAX_PROMPT_LEN) {
@@ -103,43 +99,6 @@ export async function POST(request: Request) {
   try {
     const dims = RATIO_DIMENSIONS[ratio];
 
-    if (provider === 'pollinations') {
-      const connection = userId ? await getUserPollinationsConnection(userId) : null;
-      const pollinationsToken = connection && !connection.expired ? connection.token : undefined;
-      const result = await generateWithPollinations({
-        prompt,
-        model,
-        width: dims.width,
-        height: dims.height,
-        userId: userId ?? undefined,
-        imageUrl,
-        token: pollinationsToken ?? undefined,
-      });
-
-      if (!result.success) {
-        const status = /rate limit/i.test(result.error || '') ? 429 : 502;
-        return NextResponse.json({ error: result.error }, { status });
-      }
-
-      // Analytics only — no prompt/image retention beyond the response.
-      console.info(
-        `[image-gen] user=${userId ?? 'guest'} provider=pollinations model=${model} ` +
-          `ratio=${ratio} ms=${Date.now() - started} ok=true`
-      );
-
-      return NextResponse.json({
-        provider: 'pollinations',
-        model,
-        ratio,
-        count: 1,
-        creditsUsed: 0, // free tier — user-funded ecosystem, not VANTRA credits
-        images: [{ url: result.imageData, width: dims.width, height: dims.height }],
-        reconnectRequired: connection?.expired ?? false,
-        requestId: result.requestId,
-      });
-    }
-
-    // provider === 'mock'
     const result = await generateWithMock({
       prompt,
       width: dims.width,

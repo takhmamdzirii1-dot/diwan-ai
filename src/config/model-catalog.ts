@@ -32,7 +32,6 @@ export const MODEL_BRANDS = {
   agnes: { name: 'Agnes AI', icon: 'agnesai.svg' },
   nvidia: { name: 'NVIDIA', icon: null },
   poolside: { name: 'Poolside', icon: null },
-  pollinations: { name: 'Pollinations', icon: null },
 } as const;
 
 export type ModelBrandId = keyof typeof MODEL_BRANDS;
@@ -110,7 +109,16 @@ export function findCatalogModel(displayName: string, modality: StudioModality, 
     && normalizeName(model.displayName) === normalizeName(canonicalName || displayName)) ?? null;
 }
 
-export function modelBrand(displayName: string, modality: StudioModality, provider?: string | null, modelId?: string | null) {
+export function modelBrand(displayName: string, modality: StudioModality, provider?: string | null, modelId?: string | null, brandName?: string | null) {
+  const selectedBrand = brandName?.trim();
+  if (selectedBrand) {
+    const listedBrand = findCatalogModel(displayName, modality, modelId);
+    if (listedBrand && MODEL_BRANDS[listedBrand.brandId].name.toLowerCase() === selectedBrand.toLowerCase()) {
+      return MODEL_BRANDS[listedBrand.brandId];
+    }
+    return Object.values(MODEL_BRANDS).find((brand) => brand.name.toLowerCase() === selectedBrand.toLowerCase())
+      ?? { name: selectedBrand, icon: null };
+  }
   const alias = modelId && LEGACY_MODEL_ALIASES[modelId];
   if (alias) return MODEL_BRANDS[alias.brandId];
   const listed = findCatalogModel(displayName, modality, modelId);

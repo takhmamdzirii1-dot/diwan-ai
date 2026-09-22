@@ -56,6 +56,7 @@ export default function MotionStudio({ models, onGenerate }: { models: StudioRun
     enabled: model.enabled,
     iconUrl: model.iconUrl,
     provider: model.provider,
+    brand: model.brand,
     allowedPlans: model.allowedPlans,
     creditCost: model.verifiedCreditCost,
     requiredPlan: model.enabled && !model.planAccessible ? model.requiredPlan : null,

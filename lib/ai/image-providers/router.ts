@@ -1,35 +1,24 @@
 /**
  * Provider router — the single entry point the UI talks to.
  *
- * `generateImageViaRouter()` runs **in the browser** and dispatches:
- *   - puter        → client-side Puter.js (User-Pays, keyless)
- *   - pollinations → POST /api/generate-image (server route → Pollinations, free tier)
- *   - mock         → POST /api/generate-image (offline placeholder)
- *
- * Fallback policy:
- *   - free ↔ free auto-fallback is allowed (pollinations ⇄ mock)
- *   - user_associated (Puter) NEVER silently falls back to a VANTRA-funded
- *     provider — the user explicitly picked their wallet.
+ * Legacy preview router. Retired provider IDs fail closed; historical records
+ * remain readable through their stored provider identifiers.
  */
 
 import type { ImageGenerateParams, ImageGenerationResult, ProviderMeta } from './types';
-import { pollinationsMeta } from './pollinations';
-import { puterMeta } from './puter';
 import { mockMeta } from './mock';
 import { runwareMeta } from './runware-meta';
 
 export const PROVIDER_REGISTRY = {
-  [puterMeta.id]: puterMeta,
-  [pollinationsMeta.id]: pollinationsMeta,
   [mockMeta.id]: mockMeta,
   [runwareMeta.id]: runwareMeta,
 } satisfies Record<string, ProviderMeta>;
 
-/** Providers exposed by the existing end-user picker. Runware remains owner-test only. */
-export const PROVIDER_ORDER = ['puter', 'pollinations', 'mock'] as const;
+/** Providers exposed by the legacy preview picker. Runware remains owner-test only. */
+export const PROVIDER_ORDER = ['mock'] as const;
 export type ProviderId = keyof typeof PROVIDER_REGISTRY | 'auto';
 
-export const AUTO_FALLBACK_CHAIN: string[] = ['pollinations', 'mock'];
+export const AUTO_FALLBACK_CHAIN: string[] = ['mock'];
 
 function providerModels(provider: string): { id: string; name: string }[] {
   return PROVIDER_REGISTRY[provider]?.models ?? [];
@@ -42,8 +31,7 @@ export function listProviderOptions() {
 
 export function modelsForProvider(provider: string): { id: string; name: string }[] {
   if (provider === 'auto') {
-    // Auto = Pollinations first (free), so surface its models.
-    return providerModels('pollinations');
+    return providerModels('mock');
   }
   return providerModels(provider);
 }
@@ -73,40 +61,9 @@ export async function generateImageViaRouter(
   payload: RouterPayload
 ): Promise<{ images: { url: string }[]; provider: string; userFunded: boolean; requestId?: string }> {
   const { provider = 'auto', ...params } = payload;
+  if (provider !== 'auto' && provider !== 'mock') throw new Error('Provider unavailable');
 
-  // ── Puter: client-side, User-Pays, no silent fallback ──
-  if (provider === 'puter') {
-    const mod = await import('./puter');
-    const result = await mod.generateWithPuter(params);
-    if (!result.success) throw new Error(result.error || 'Puter generation failed');
-    return {
-      images: [{ url: result.imageUrl! }],
-      provider: 'puter',
-      userFunded: true,
-      requestId: result.requestId,
-    };
-  }
-
-  // ── Pollinations: free server route ──
-  if (provider === 'pollinations') {
-    try {
-      const data = await callApiRoute({ ...params, provider: 'pollinations' });
-      const imgs = (data.images || []).map((im) => ({ url: im.url }));
-      if (imgs.length === 0) throw new Error(data.error || 'No image returned');
-      return { images: imgs, provider: 'pollinations', userFunded: false, requestId: data.requestId };
-    } catch (err) {
-      // Free ↔ free auto-fallback only
-      const msg = err instanceof Error ? err.message : '';
-      const fallbackToMock = !/credit|auth/i.test(msg);
-      if (!fallbackToMock) throw err;
-      const data = await callApiRoute({ ...params, provider: 'mock' });
-      const imgs = (data.images || []).map((im) => ({ url: im.url }));
-      if (imgs.length === 0) throw new Error(data.error || 'No image returned');
-      return { images: imgs, provider: 'mock', userFunded: false };
-    }
-  }
-
-  // ── Mock (explicit or unknown ids) ──
+  // The remaining legacy preview route is intentionally isolated from billing.
   const data = await callApiRoute({ ...params, provider: 'mock' });
   const imgs = (data.images || []).map((im) => ({ url: im.url }));
   if (imgs.length === 0) throw new Error(data.error || 'No image returned');

@@ -3,7 +3,8 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { PROVIDER_REGISTRY } from '@/lib/ai/image-providers/router';
 import { PROVIDER_CATALOG_MODELS } from '@/lib/models/provider-catalog';
-import { CATALOG_MODELS, findCatalogModel, modelBrand, modelIconUrl } from '@/src/config/model-catalog';
+import { isRetiredModelReference } from '@/lib/models/retired-providers';
+import { modelBrand, modelIconUrl } from '@/src/config/model-catalog';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
 import { providerConfigurationSummary } from '@/lib/ai/providers/registry';
 import { emptyModelCapabilities, type ModelCapabilities } from '@/lib/models/capabilities';
@@ -237,7 +238,8 @@ export function applyModelRuntimeOverrides(overrides: readonly ModelRuntimeOverr
   return [...MODEL_REGISTRY_REFERENCES, ...dynamicModels].map((model): EffectiveRuntimeModel => {
     const override = overrideByKey.get(model.key);
     const archived = override?.archived ?? false;
-    const enabled = !archived && model.activationSupported && (override ? override.enabled : model.baseEnabled);
+    const retired = isRetiredModelReference(model);
+    const enabled = !retired && !archived && model.activationSupported && (override ? override.enabled : model.baseEnabled);
     let routingRole = override?.routingRole ?? model.baseRoutingRole;
     if (!override && explicitPrimaryModalities.has(model.modality) && routingRole === 'primary') {
       routingRole = 'unassigned';
@@ -257,11 +259,11 @@ export function applyModelRuntimeOverrides(overrides: readonly ModelRuntimeOverr
       mediaUrl: override?.customerMediaUrl ?? null,
       category: override?.customerCategory ?? null,
       sortOrder: override?.customerSortOrder ?? model.baseSortOrder,
-      visibleInStudio: override?.studioVisible ?? model.baseVisibleInStudio,
+      visibleInStudio: !retired && (override?.studioVisible ?? model.baseVisibleInStudio),
       availabilityLabel: override?.customerAvailabilityLabel ?? null,
       capabilities: override?.capabilities ?? model.baseCapabilities,
       allowedPlans: override ? override.allowedPlans : [...model.baseAllowedPlans],
-      archived,
+      archived: archived || retired,
       persisted: Boolean(override),
       updatedAt: override?.updatedAt ?? null,
     };
@@ -293,7 +295,7 @@ export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<S
     .filter((row) => row.enabled && providerReady.get(String(row.provider_id)))
     .map((row) => String(row.model_key)));
   const studioModels = models
-    .filter((model) => !model.archived && model.visibleInStudio)
+    .filter((model) => !model.archived && model.visibleInStudio && model.enabled)
     .sort((a, b) => a.modality.localeCompare(b.modality) || a.sortOrder - b.sortOrder)
     .map((model) => {
       const billableReady = model.customerCreditPrice != null;
@@ -303,11 +305,12 @@ export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<S
         .includes(model.availability)
         ? model.availability
         : null;
-      const brand = modelBrand(model.displayName, model.modality, model.provider, model.modelId);
+      const adminBrand = model.category?.trim() ? model.category.trim() : null;
+      const brand = modelBrand(model.displayName, model.modality, model.provider, model.modelId, adminBrand);
       return {
         id: model.modelId,
         displayName: model.displayName,
-        provider: model.category ?? 'VANTRA',
+        provider: model.provider,
         modality: model.modality,
         enabled: selectable,
         availability: selectable
@@ -318,6 +321,7 @@ export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<S
         supportedControls: [],
         fallbackAvailable: false,
         displayOrder: model.sortOrder,
+        brand: adminBrand ?? brand.name,
         shortDescription: model.shortDescription ?? undefined,
         iconUrl: model.mediaUrl ?? modelIconUrl(brand),
         category: model.category ?? undefined,
@@ -325,27 +329,9 @@ export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<S
         capabilities: model.capabilities,
         allowedPlans: model.allowedPlans,
       } satisfies StudioRuntimeModelDefinition;
-    });
-  // Catalog-only rows have no provider model ID, route, price, or plan access.
-  // Their UI keys cannot pass runtime model resolution and they stay disabled.
-  return [...studioModels, ...CATALOG_MODELS
-    .filter((item) => !studioModels.some((model) =>
-      findCatalogModel(model.displayName, model.modality, model.id)?.key === item.key))
-    .map((item): StudioRuntimeModelDefinition => ({
-      id: item.key,
-      displayName: item.displayName,
-      provider: modelBrand(item.displayName, item.modality).name,
-      modality: item.modality,
-      enabled: false,
-      availability: 'unavailable',
-      verifiedCapabilities: [],
-      supportedControls: [],
-      fallbackAvailable: false,
-      displayOrder: 1000,
-      allowedPlans: [],
-      iconUrl: modelIconUrl(modelBrand(item.displayName, item.modality)),
-      capabilities: emptyModelCapabilities(item.modality),
-    }))];
+    })
+    .filter((model) => model.enabled);
+  return studioModels;
 }
 
 export async function requireEffectiveRuntimeModel(modelId: string, modality: StudioModality) {

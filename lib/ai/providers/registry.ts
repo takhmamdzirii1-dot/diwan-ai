@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { validateProviderEndpoint } from './endpoint-security';
+import { isRetiredProviderId } from '@/lib/models/retired-providers';
 
 export type ProviderModality = 'chat' | 'image' | 'video';
 export type ProviderAdapterKind =
@@ -39,8 +40,6 @@ const definitions = [
   { id: 'orca_router', name: 'Orca Router', modalities: ['chat'], adapter: 'openai-compatible-chat', apiKeyEnv: ['ORCAROUTER_API_KEY', 'ORCA_ROUTER_API_KEY'], fixedBaseUrl: 'https://api.orcarouter.ai/v1' },
   { id: 'pruna_ai', name: 'Pruna AI', modalities: ['video'], adapter: 'pruna-video', apiKeyEnv: ['PRUNA_API_KEY', 'PRUNA_AI_API_KEY'], baseUrlEnv: 'PRUNA_BASE_URL', fixedBaseUrl: 'https://api.pruna.ai/v1' },
   { id: 'microsoft_foundry', name: 'Microsoft Foundry', modalities: ['image'], adapter: 'microsoft-foundry-image', apiKeyEnv: ['AZURE_API_KEY', 'MICROSOFT_FOUNDRY_API_KEY'], baseUrlEnv: 'AZURE_ENDPOINT', deploymentEnv: 'MAI_IMAGE_DEPLOYMENT_NAME' },
-  { id: 'pollinations', name: 'Pollinations', modalities: ['image'], adapter: 'not-connected', apiKeyEnv: [] },
-  { id: 'puter', name: 'Puter', modalities: ['image'], adapter: 'not-connected', apiKeyEnv: [] },
 ] as const satisfies readonly ServerProviderDefinition[];
 
 export const SERVER_PROVIDER_REGISTRY: readonly ServerProviderDefinition[] = definitions;
@@ -52,6 +51,7 @@ export function getServerProvider(providerId: string) {
 export const ADMIN_CONFIGURABLE_ADAPTERS = ['openai-compatible-chat'] as const;
 
 export function resolveServerProvider(providerId: string, runtime?: ProviderRuntimeDescriptor | null) {
+  if (isRetiredProviderId(providerId)) return null;
   const registered = getServerProvider(providerId);
   if (registered) {
     const endpointOverride = registered.adapter === 'openai-compatible-chat'

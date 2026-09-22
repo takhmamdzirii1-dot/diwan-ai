@@ -29,6 +29,7 @@ import { isMissingCustomerPricing } from './model-economics';
 import { deriveProviderTelemetry } from './provider-telemetry';
 import { CATALOG_MODELS, findCatalogModel, modelBrand, modelIconUrl } from '@/src/config/model-catalog';
 import { emptyModelCapabilities } from '@/lib/models/capabilities';
+import { isRetiredModelReference, isRetiredProviderId } from '@/lib/models/retired-providers';
 
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 10;
@@ -360,7 +361,7 @@ export async function getAdminProviders(): Promise<AdminDataResult<AdminProvider
     const providerIds = [...new Set([
       ...SERVER_PROVIDER_REGISTRY.map((provider) => provider.id),
       ...runtimeConfigs.map((row) => String(row.provider_id)),
-    ])];
+    ])].filter((id) => !isRetiredProviderId(id) && !configByProvider.get(id)?.archived);
     const definitions = providerIds.map((providerId) => {
       const config = configByProvider.get(providerId);
       const provider = resolveServerProvider(providerId, config);
@@ -464,12 +465,13 @@ export async function getAdminModels(): Promise<AdminDataResult<AdminModelRow[]>
     const providerDefinitions = [...new Set([
       ...SERVER_PROVIDER_REGISTRY.map((provider) => provider.id),
       ...providerConfigs.map((row) => String(row.provider_id)),
-    ])].map((id) => {
+    ])].filter((id) => !isRetiredProviderId(id)).map((id) => {
       const config = providerConfigs.find((row) => String(row.provider_id) === id);
       return { id, config, provider: resolveServerProvider(id, config) };
     }).filter((entry) => entry.provider && !entry.config?.archived);
     const rows = buildAdminModelRows(
-      client ? await getEffectiveRuntimeModels(client) : applyModelRuntimeOverrides([]),
+      (client ? await getEffectiveRuntimeModels(client) : applyModelRuntimeOverrides([]))
+        .filter((model) => !isRetiredModelReference(model)),
       latestCostsByModel(costs), true,
     ).map((model) => ({
       ...model,
@@ -790,7 +792,9 @@ export async function getAdminPaymentPlans(): Promise<AdminDataResult<AdminPayme
           newState: event.new_state as Record<string, unknown> | null })),
     })) };
   } catch (error) {
-    console.error('[admin] payment plan query failed', { message: error instanceof Error ? error.message : 'Unknown error' });
+    console.error('[admin] payment plan query failed', {
+      message: error && typeof error === 'object' && 'message' in error ? String(error.message) : 'Unknown error',
+    });
     return failed([]);
   }
 }

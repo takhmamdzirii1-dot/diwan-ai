@@ -57,6 +57,7 @@ export default function ImageCanvas({ models, onGenerate, onOpenLibrary }: { mod
     enabled: model.enabled,
     iconUrl: model.iconUrl,
     provider: model.provider,
+    brand: model.brand,
     allowedPlans: model.allowedPlans,
     creditCost: model.verifiedCreditCost,
     requiredPlan: model.enabled && !model.planAccessible ? model.requiredPlan : null,
