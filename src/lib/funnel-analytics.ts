@@ -3,7 +3,8 @@
 type FunnelEvent = 'trial_started' | 'trial_expired' | 'free_media_exhausted' | 'paywall_shown'
   | 'pro_accepted' | 'pro_declined' | 'lite_shown' | 'lite_accepted' | 'lite_declined'
   | 'checkout_started' | 'payment_method_selected' | 'payment_submitted'
-  | 'payment_approved' | 'payment_rejected';
+  | 'payment_approved' | 'payment_rejected'
+  | 'model_locked_clicked' | 'model_trial_used' | 'model_trial_exhausted' | 'media_upgrade_prompt_shown';
 
 export function trackFunnelEvent(event: FunnelEvent, key: string, metadata?: Record<string, string | number | boolean | null>) {
   return fetch('/api/analytics/funnel', {

@@ -36,6 +36,7 @@ export interface ClaudeChatInputProps {
     placeholder?: string;
     autoFocus?: boolean;
     onSignInClick?: () => void;
+    onModelAccessRequest?: (model: ChatModelOption) => void;
     className?: string;
 }
 
@@ -134,6 +135,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
     placeholder = "How can I help you today?",
     autoFocus = false,
     onSignInClick,
+    onModelAccessRequest,
     className,
 }) => {
     const [message, setMessage] = useState("");
@@ -526,6 +528,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                     selectedModel={selectedModelId || models[0]?.id}
                                     onSelect={(id) => onSelectModel?.(id)}
                                     onSignInClick={onSignInClick}
+                                    onAccessRequest={onModelAccessRequest}
                                     dropdownPosition="top"
                                     modality="chat"
                                 />

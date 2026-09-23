@@ -89,10 +89,12 @@ export default function PrunaMotionStudio({
   models,
   onGenerate,
   onOpenLibrary,
+  onModelAccessRequest,
 }: {
   models: StudioRuntimeModelDefinition[];
   onGenerate?: (draft: VideoRequestDraft) => Promise<VideoGenerationResult>;
   onOpenLibrary?: () => void;
+  onModelAccessRequest?: (model: ChatModelOption) => void;
 }) {
   const t = useTranslations('studio.video');
   const executionT = useTranslations('studio.videoExecution');
@@ -127,6 +129,8 @@ export default function PrunaMotionStudio({
     allowedPlans: model.allowedPlans,
     creditCost: model.verifiedCreditCost,
     requiredPlan: model.enabled && !model.planAccessible ? model.requiredPlan : null,
+    accessState: model.accessState,
+    trialAllowance: model.trialAllowance,
   }));
   const selectedModel = models.find((model) => model.id === modelId);
   const capabilities = selectedModel?.capabilities as VideoModelCapabilities | undefined;
@@ -247,6 +251,7 @@ export default function PrunaMotionStudio({
       setResult(await onGenerate(draft));
     } catch (cause) {
       const code = cause instanceof Error ? cause.message : 'VIDEO_GENERATION_FAILED';
+      if (code === 'ACCESS_PROMPTED') return;
       setError(code === 'INSUFFICIENT_CREDITS'
         ? executionT('insufficientCredits')
         : code === 'AUTHENTICATION_REQUIRED'
@@ -303,7 +308,7 @@ export default function PrunaMotionStudio({
           <ImageUploadField label={t('startImage')} inputRef={fileInputRef} previewUrl={sourceImageUrl} chooseLabel={t('chooseStartImage')} selectedLabel={t('selectedStartImage')} replaceLabel={t('replaceStartImage')} removeLabel={t('removeStartImage')} addLabel={t('addStartImage')} onChoose={chooseSourceImage} onRemove={clearSourceImage} />
           <ImageUploadField label={t('endImage')} inputRef={endFileInputRef} previewUrl={endImageUrl} chooseLabel={t('chooseEndImage')} selectedLabel={t('selectedEndImage')} replaceLabel={t('replaceEndImage')} removeLabel={t('removeEndImage')} addLabel={t('addEndImage')} onChoose={chooseEndImage} onRemove={clearEndImage} />
         </div>}
-        <div className="space-y-2"><FieldLabel>{t('model')}</FieldLabel><ModelSelector models={modelOptions} selectedModel={modelId} onSelect={setModelId} dropdownPosition="bottom" menuLabel={modelsT('videoMenuLabel')} emptyLabel={modelsT('noModels')} modality="video" /></div>
+        <div className="space-y-2"><FieldLabel>{t('model')}</FieldLabel><ModelSelector models={modelOptions} selectedModel={modelId} onSelect={setModelId} onAccessRequest={onModelAccessRequest} dropdownPosition="bottom" menuLabel={modelsT('videoMenuLabel')} emptyLabel={modelsT('noModels')} modality="video" /></div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {capabilities && capabilities.durations.length > 0 && <label className="space-y-2"><FieldLabel htmlFor="video-duration">{t('duration')}</FieldLabel><select id="video-duration" value={duration} onChange={(event) => setDuration(Number(event.target.value) as ModelVideoDuration)} className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white">{capabilities.durations.map((value) => <option key={value} value={value}>{t('durationSeconds', { value })}</option>)}</select></label>}
           {sourceMode === 'text' && capabilities && capabilities.aspectRatios.length > 0 && <label className="space-y-2"><FieldLabel htmlFor="video-aspect">{t('aspectRatio')}</FieldLabel><select id="video-aspect" value={aspectRatio} onChange={(event) => setAspectRatio(event.target.value as ModelAspectRatio)} className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white">{capabilities.aspectRatios.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>}

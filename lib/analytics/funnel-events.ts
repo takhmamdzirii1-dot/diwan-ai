@@ -8,6 +8,7 @@ export const FUNNEL_EVENTS = [
   'pro_accepted', 'pro_declined', 'lite_shown', 'lite_accepted', 'lite_declined',
   'checkout_started', 'payment_method_selected', 'payment_submitted',
   'payment_approved', 'payment_rejected',
+  'model_locked_clicked', 'model_trial_used', 'model_trial_exhausted', 'media_upgrade_prompt_shown',
 ] as const;
 export type FunnelEvent = typeof FUNNEL_EVENTS[number];
 

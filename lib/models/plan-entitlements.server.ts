@@ -4,10 +4,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
 import { requireEffectiveRuntimeModel } from '@/lib/models/runtime-config';
 import {
-  assertModelPlanAccess,
   normalizeModelPlanCode,
   type ModelPlanCode,
 } from '@/lib/models/plan-entitlements';
+import { resolveConfiguredModelAccess } from '@/lib/models/model-access';
+import { ModelPlanAccessError } from '@/lib/models/plan-entitlements';
 import type { StudioModality } from '@/src/config/studio-registry';
 
 type PlanRelation = { plan_code?: unknown } | { plan_code?: unknown }[] | null;
@@ -39,8 +40,21 @@ export async function requireEntitledRuntimeModel(
   modelId: string,
   modality: StudioModality
 ) {
+  const resolved = await resolveRuntimeModelAccess(userId, modelId, modality);
+  return resolved.model;
+}
+
+export async function resolveRuntimeModelAccess(
+  userId: string,
+  modelId: string,
+  modality: StudioModality
+) {
   const model = await requireEffectiveRuntimeModel(modelId, modality);
   const currentPlan = await resolveCurrentModelPlan(userId);
-  assertModelPlanAccess(model.allowedPlans, currentPlan);
-  return model;
+  const access = resolveConfiguredModelAccess(model.planAccess, currentPlan);
+  if (access.state === 'locked') throw new ModelPlanAccessError(access.requiredPlan);
+  if (access.state === 'trial' && access.trialAllowance == null) {
+    throw new ModelPlanAccessError(access.requiredPlan, 'MODEL_TRIAL_UNCONFIGURED');
+  }
+  return { model, currentPlan, access };
 }

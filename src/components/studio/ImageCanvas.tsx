@@ -32,7 +32,7 @@ function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.R
   return <label htmlFor={htmlFor} className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/55">{children}</label>;
 }
 
-export default function ImageCanvas({ models, onGenerate, onOpenLibrary }: { models: StudioRuntimeModelDefinition[]; onGenerate?: (draft: ImageRequestDraft) => Promise<ImageGenerationResult>; onOpenLibrary?: () => void }) {
+export default function ImageCanvas({ models, onGenerate, onOpenLibrary, onModelAccessRequest }: { models: StudioRuntimeModelDefinition[]; onGenerate?: (draft: ImageRequestDraft) => Promise<ImageGenerationResult>; onOpenLibrary?: () => void; onModelAccessRequest?: (model: ChatModelOption) => void }) {
   const t = useTranslations('studio.image');
   const modelsT = useTranslations('studio.models');
   const libraryT = useTranslations('studio.library');
@@ -61,6 +61,8 @@ export default function ImageCanvas({ models, onGenerate, onOpenLibrary }: { mod
     allowedPlans: model.allowedPlans,
     creditCost: model.verifiedCreditCost,
     requiredPlan: model.enabled && !model.planAccessible ? model.requiredPlan : null,
+    accessState: model.accessState,
+    trialAllowance: model.trialAllowance,
   }));
   const selectedModel = models.find((model) => model.id === modelId);
   const capabilities = selectedModel?.capabilities as ImageModelCapabilities | undefined;
@@ -125,6 +127,7 @@ export default function ImageCanvas({ models, onGenerate, onOpenLibrary }: { mod
       setResult(await onGenerate(draft));
     } catch (cause) {
       const code = cause instanceof Error ? cause.message : 'IMAGE_GENERATION_FAILED';
+      if (code === 'ACCESS_PROMPTED') return;
       setError(code === 'INSUFFICIENT_CREDITS'
         ? t('errors.insufficientCredits')
         : code === 'AUTHENTICATION_REQUIRED'
@@ -186,7 +189,7 @@ export default function ImageCanvas({ models, onGenerate, onOpenLibrary }: { mod
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
                 <FieldLabel>{t('model')}</FieldLabel>
-                <ModelSelector models={modelOptions} selectedModel={modelId} onSelect={setModelId} dropdownPosition="bottom" menuLabel={modelsT('imageMenuLabel')} emptyLabel={modelsT('noModels')} modality="image" />
+                <ModelSelector models={modelOptions} selectedModel={modelId} onSelect={setModelId} onAccessRequest={onModelAccessRequest} dropdownPosition="bottom" menuLabel={modelsT('imageMenuLabel')} emptyLabel={modelsT('noModels')} modality="image" />
               </div>
               {capabilities && capabilities.aspectRatios.length > 0 && <div className="space-y-2 sm:col-span-2"><FieldLabel>{t('aspectRatio')}</FieldLabel><div className="flex flex-wrap gap-2">{capabilities.aspectRatios.map((ratio) => <button key={ratio} type="button" aria-pressed={aspectRatio === ratio} onClick={() => setAspectRatio(ratio)} className={cn('min-h-9 rounded-lg border px-3 text-[12px] font-semibold transition-colors duration-150 motion-reduce:transition-none', aspectRatio === ratio ? 'border-[var(--studio-accent)] bg-[var(--studio-accent)] text-[var(--studio-accent-contrast)]' : 'border-[var(--studio-border)] text-[var(--studio-text-secondary)] hover:text-[var(--studio-text-primary)]')}>{ratio}</button>)}</div></div>}
             </div>

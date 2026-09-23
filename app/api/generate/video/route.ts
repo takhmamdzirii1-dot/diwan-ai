@@ -13,7 +13,7 @@ import {
   waitForPrunaPrediction,
 } from '@/lib/ai/providers/media';
 import { resolveProviderRoutes } from '@/lib/ai/providers/routes';
-import { requireEntitledRuntimeModel } from '@/lib/models/plan-entitlements.server';
+import { resolveRuntimeModelAccess } from '@/lib/models/plan-entitlements.server';
 import { modelPlanErrorPayload } from '@/lib/models/plan-entitlements';
 import type { VideoModelCapabilities } from '@/lib/models/capabilities';
 import {
@@ -28,8 +28,10 @@ import {
 } from '@/lib/credits/generation-finance';
 import { resolveTerminalCustomerCharge } from '@/lib/credits/generation-policy';
 import { persistGeneratedMedia } from '@/lib/ai/library-media';
-import { requireStudioGenerationAccess } from '@/lib/access/trial-access';
+import { requireMediaGenerationAccess } from '@/lib/access/trial-access';
 import { recordFunnelEvent } from '@/lib/analytics/funnel-events';
+import { finalizeModelTrialAccess, reserveModelTrialAccess } from '@/lib/models/model-trial.server';
+import { runtimeAccessReasonForError } from '@/lib/models/model-access';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -38,7 +40,7 @@ const MAX_MULTIPART_BYTES = PRUNA_SOURCE_IMAGE_MAX_BYTES * 2 + 64 * 1024;
 
 function safeResponseCode(code: string) {
   if (/INSUFFICIENT_CREDITS/.test(code)) return 'INSUFFICIENT_CREDITS';
-  if (/FREE_VIDEO_TRIAL_EXHAUSTED|LITE_VIDEO_ALLOWANCE_EXHAUSTED|PAID_MEDIA_ACCESS_REQUIRED/.test(code)) {
+  if (/FREE_VIDEO_TRIAL_EXHAUSTED|FREE_MEDIA_EXPIRED|PAID_PLAN_REACTIVATION_REQUIRED|LITE_VIDEO_ALLOWANCE_EXHAUSTED|PAID_MEDIA_ACCESS_REQUIRED|MODEL_TRIAL_EXHAUSTED|MODEL_TRIAL_UNCONFIGURED/.test(code)) {
     return code;
   }
   if (/MODEL_CUSTOMER_PRICE_UNCONFIGURED/.test(code)) return code;
@@ -50,7 +52,7 @@ function safeResponseCode(code: string) {
 }
 
 function responseStatus(code: string) {
-  if (/INSUFFICIENT_CREDITS|FREE_VIDEO_TRIAL_EXHAUSTED|LITE_VIDEO_ALLOWANCE_EXHAUSTED|PAID_MEDIA_ACCESS_REQUIRED/.test(code)) return 402;
+  if (/INSUFFICIENT_CREDITS|FREE_VIDEO_TRIAL_EXHAUSTED|FREE_MEDIA_EXPIRED|PAID_PLAN_REACTIVATION_REQUIRED|LITE_VIDEO_ALLOWANCE_EXHAUSTED|PAID_MEDIA_ACCESS_REQUIRED|MODEL_TRIAL_EXHAUSTED/.test(code)) return 402;
   if (/AUTHENTICATION_REQUIRED/.test(code)) return 401;
   if (/INVALID_|UNSUPPORTED_/.test(code)) return 400;
   if (/MODEL_CUSTOMER_PRICE_UNCONFIGURED|MODEL_NOT_AVAILABLE|REQUEST_ALREADY_PROCESSED/.test(code)) return 409;
@@ -70,11 +72,11 @@ export async function POST(request: Request) {
   const user = await authenticatedUser(request);
   if (!user) return NextResponse.json({ error: 'AUTHENTICATION_REQUIRED' }, { status: 401 });
   try {
-    await requireStudioGenerationAccess(user);
+    await requireMediaGenerationAccess(user);
   } catch (cause) {
     const code = cause instanceof Error ? cause.message : 'STUDIO_ACCESS_UNAVAILABLE';
-    if (code === 'FREE_TRIAL_EXPIRED' || code === 'PAID_PLAN_REACTIVATION_REQUIRED') {
-      return NextResponse.json({ error: code }, { status: 403 });
+    if (code === 'FREE_MEDIA_EXPIRED' || code === 'PAID_PLAN_REACTIVATION_REQUIRED') {
+      return NextResponse.json({ error: code, reason: runtimeAccessReasonForError(code) }, { status: 403 });
     }
     return NextResponse.json({ error: 'STUDIO_ACCESS_UNAVAILABLE' }, { status: 503 });
   }
@@ -105,14 +107,16 @@ export async function POST(request: Request) {
   }
 
   let runtimeModel;
+  let resolvedAccess;
   try {
     const requestedModel = typeof body.modelId === 'string' ? body.modelId.trim() : '';
-    runtimeModel = await requireEntitledRuntimeModel(user.id, requestedModel, 'video');
+    resolvedAccess = await resolveRuntimeModelAccess(user.id, requestedModel, 'video');
+    runtimeModel = resolvedAccess.model;
   } catch (cause) {
     const accessError = modelPlanErrorPayload(cause);
     if (accessError) return NextResponse.json(accessError, { status: 403 });
     const code = cause instanceof Error ? cause.message : 'MODEL_RUNTIME_CONFIG_UNAVAILABLE';
-    return NextResponse.json({ error: safeResponseCode(code) }, { status: responseStatus(code) });
+    return NextResponse.json({ error: safeResponseCode(code), reason: runtimeAccessReasonForError(code) }, { status: responseStatus(code) });
   }
 
   let input;
@@ -136,7 +140,7 @@ export async function POST(request: Request) {
     if (!route) throw new Error('NO_CONFIGURED_PROVIDER_ROUTE');
   } catch (cause) {
     const code = cause instanceof Error ? cause.message : 'NO_CONFIGURED_PROVIDER_ROUTE';
-    return NextResponse.json({ error: safeResponseCode(code) }, { status: responseStatus(code) });
+    return NextResponse.json({ error: safeResponseCode(code), reason: runtimeAccessReasonForError(code) }, { status: responseStatus(code) });
   }
 
   let operationKey: string;
@@ -170,7 +174,7 @@ export async function POST(request: Request) {
     });
   } catch (cause) {
     const code = cause instanceof Error ? cause.message : 'EXECUTION_GUARD_FAILED';
-    return NextResponse.json({ error: safeResponseCode(code) }, { status: responseStatus(code) });
+    return NextResponse.json({ error: safeResponseCode(code), reason: runtimeAccessReasonForError(code) }, { status: responseStatus(code) });
   }
   if (execution.idempotent) {
     return NextResponse.json({ error: 'REQUEST_ALREADY_PROCESSED' }, { status: 409 });
@@ -181,16 +185,25 @@ export async function POST(request: Request) {
     reservation = await reserveGenerationCredits({
       userId: user.id, operationKey, payloadHash, model: runtimeModel, route,
     });
+    await reserveModelTrialAccess({
+      userId: user.id, modelKey: runtimeModel.key, modelId: runtimeModel.modelId,
+      modality: 'video', planCode: resolvedAccess.currentPlan,
+      accessState: resolvedAccess.access.state, operationKey,
+      reservationId: reservation?.reservationId ?? null,
+    });
   } catch (cause) {
     const code = cause instanceof Error ? cause.message : 'CREDIT_RESERVATION_FAILED';
     if (code === 'FREE_VIDEO_TRIAL_EXHAUSTED') {
       await recordFunnelEvent({ userId: user.id, event: 'free_media_exhausted', key: 'video', metadata: { modality: 'video' } });
     }
+    if (code === 'MODEL_TRIAL_EXHAUSTED') {
+      await recordFunnelEvent({ userId: user.id, event: 'model_trial_exhausted', key: `${runtimeModel.modelId}:${resolvedAccess.currentPlan}`, metadata: { model: runtimeModel.modelId, modality: 'video', plan: resolvedAccess.currentPlan } });
+    }
     try {
       await finalizeGeneration({
         executionId: execution.executionId,
         userId: user.id,
-        reservationId: null,
+        reservationId: reservation?.reservationId ?? null,
         operationKey,
         payloadHash,
         terminalStatus: 'failed',
@@ -206,7 +219,7 @@ export async function POST(request: Request) {
         code: recordError instanceof Error ? recordError.message : 'EXECUTION_FAILURE_RECORD_FAILED',
       });
     }
-    return NextResponse.json({ error: safeResponseCode(code) }, { status: responseStatus(code) });
+    return NextResponse.json({ error: safeResponseCode(code), reason: runtimeAccessReasonForError(code) }, { status: responseStatus(code) });
   }
 
   const startedAt = Date.now();
@@ -284,6 +297,10 @@ export async function POST(request: Request) {
       financialResult = await finalizeGeneration(finalizeArgs);
     }
     if (financialResult.state !== 'completed') throw new Error('EXECUTION_FINALIZATION_FAILED');
+    await finalizeModelTrialAccess({ userId: user.id, operationKey, outcome: 'completed' });
+    if (resolvedAccess.access.state === 'trial') {
+      await recordFunnelEvent({ userId: user.id, event: 'model_trial_used', key: operationKey, metadata: { model: runtimeModel.modelId, modality: 'video', plan: resolvedAccess.currentPlan } });
+    }
     await recordProviderResult(route.providerId, true);
     return NextResponse.json({
       video: { src: libraryAsset.src, mimeType: libraryAsset.mimeType },
@@ -321,6 +338,7 @@ export async function POST(request: Request) {
     if (failureOwner === 'provider') {
       await recordProviderResult(route.providerId, false, internalCode);
     }
+    await finalizeModelTrialAccess({ userId: user.id, operationKey, outcome: 'released' });
     return NextResponse.json(
       { error: safeResponseCode(internalCode) },
       { status: responseStatus(internalCode) }

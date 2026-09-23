@@ -2,7 +2,7 @@ import 'server-only';
 
 import type { User } from '@supabase/supabase-js';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
-import { deriveStudioAccess, type AccessEntitlement, type StudioAccessState } from '@/lib/access/trial-state';
+import { deriveStudioAccess, generationAccessError, type AccessEntitlement, type StudioAccessState } from '@/lib/access/trial-state';
 export type { StudioAccessState } from '@/lib/access/trial-state';
 
 export async function getStudioAccess(user: User): Promise<StudioAccessState> {
@@ -23,7 +23,14 @@ export async function getStudioAccess(user: User): Promise<StudioAccessState> {
 
 export async function requireStudioGenerationAccess(user: User) {
   const access = await getStudioAccess(user);
-  if (access.kind === 'trial_expired') throw new Error('FREE_TRIAL_EXPIRED');
-  if (access.kind === 'paid_lapsed') throw new Error('PAID_PLAN_REACTIVATION_REQUIRED');
+  const error = generationAccessError(access, 'chat');
+  if (error) throw new Error(error);
+  return access;
+}
+
+export async function requireMediaGenerationAccess(user: User) {
+  const access = await getStudioAccess(user);
+  const error = generationAccessError(access, 'image');
+  if (error) throw new Error(error);
   return access;
 }

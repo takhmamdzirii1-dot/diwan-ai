@@ -35,6 +35,9 @@ export interface StudioRuntimeModelDefinition extends StudioModelDefinition {
   capabilities: import('@/lib/models/capabilities').ModelCapabilities;
   planAccessible?: boolean;
   requiredPlan?: ModelPlanCode | null;
+  accessState?: import('@/lib/models/model-access').ModelAccessState;
+  trialAllowance?: number | null;
+  planAccess?: import('@/lib/models/model-access').ModelPlanAccessMap;
 }
 
 /**

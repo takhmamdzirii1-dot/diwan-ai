@@ -7,6 +7,17 @@ import { emptyModelCapabilities } from '@/lib/models/capabilities';
 import { resolveRuntimeModelReference } from '@/lib/models/runtime-config';
 import { providerConfigurationSummary } from '@/lib/ai/providers/registry';
 import { isHierarchicalAllowedPlans, MODEL_PLAN_CODES } from '@/lib/models/plan-entitlements';
+import { MODEL_ACCESS_STATES } from '@/lib/models/model-access';
+
+const modelPlanAccessSchema = z.object({
+  planCode: z.enum(MODEL_PLAN_CODES),
+  state: z.enum(MODEL_ACCESS_STATES),
+  trialAllowance: z.number().int().positive().nullable(),
+}).strict().superRefine((value, context) => {
+  if (value.state !== 'trial' && value.trialAllowance != null) {
+    context.addIssue({ code: 'custom', path: ['trialAllowance'], message: 'Allowance is valid for trial access only' });
+  }
+});
 
 const schema = z.object({
   modelKey: z.string().trim().min(1).max(300),
@@ -14,8 +25,12 @@ const schema = z.object({
   routingRole: z.enum(['primary', 'backup', 'unassigned']),
   customerCreditPrice: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).nullable(),
   allowedPlans: z.array(z.enum(MODEL_PLAN_CODES)).min(1).max(MODEL_PLAN_CODES.length),
+  planAccess: z.array(modelPlanAccessSchema).length(MODEL_PLAN_CODES.length).optional(),
 }).strict().refine((value) => new Set(value.allowedPlans).size === value.allowedPlans.length
-  && isHierarchicalAllowedPlans(value.allowedPlans), { path: ['allowedPlans'] });
+  && isHierarchicalAllowedPlans(value.allowedPlans), { path: ['allowedPlans'] })
+  .refine((value) => !value.planAccess
+    || new Set(value.planAccess.map((item) => item.planCode)).size === MODEL_PLAN_CODES.length,
+  { path: ['planAccess'] });
 
 const createSchema = z.object({
   stableId: z.string().trim().min(3).max(80).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
@@ -118,6 +133,26 @@ export async function PATCH(request: Request) {
         && providerConfigurationSummary(providerId, providers?.find((provider) => provider.provider_id === providerId)).configured);
     if (!readyRoute) return NextResponse.json({ error: 'MODEL_REQUIRES_CONFIGURED_ROUTE' }, { status: 409 });
   }
+  if (parsed.data.planAccess) {
+    const included = parsed.data.planAccess.filter((item) => item.state === 'included').map((item) => item.planCode);
+    if (included.length !== parsed.data.allowedPlans.length || included.some((plan) => !parsed.data.allowedPlans.includes(plan))) {
+      return NextResponse.json({ error: 'INVALID_MODEL_CONFIG' }, { status: 400 });
+    }
+    const { error: accessError } = await client.from('model_plan_access_configs').upsert(
+      parsed.data.planAccess.map((item) => ({
+        model_key: registryModel.key,
+        plan_code: item.planCode,
+        access_state: item.state,
+        trial_allowance: item.state === 'trial' ? item.trialAllowance : null,
+        updated_by: access.user.id,
+      })),
+      { onConflict: 'model_key,plan_code' },
+    );
+    if (accessError) {
+      console.error('[admin models] access update failed', { code: accessError.code, modelKey: registryModel.key });
+      return NextResponse.json({ error: ['42P01', 'PGRST204', 'PGRST205'].includes(accessError.code) ? 'MODEL_ACCESS_SCHEMA_REQUIRED' : 'MODEL_ACCESS_UPDATE_FAILED' }, { status: 503 });
+    }
+  }
   const { data, error } = await client.rpc('admin_upsert_model_runtime_config_v2', {
     p_model_key: registryModel.key,
     p_model_id: registryModel.modelId,
@@ -149,6 +184,7 @@ export async function PATCH(request: Request) {
       routingRole: row.routing_role,
       customerCreditPrice: row.customer_credit_price == null ? null : Number(row.customer_credit_price),
       allowedPlans: row.allowed_plans,
+      ...(parsed.data.planAccess ? { planAccess: Object.fromEntries(parsed.data.planAccess.map((item) => [item.planCode, { state: item.state, trialAllowance: item.state === 'trial' ? item.trialAllowance : null }])) } : {}),
       updatedAt: row.updated_at,
     },
   });

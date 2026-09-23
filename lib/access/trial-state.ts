@@ -20,6 +20,12 @@ export type AccessEntitlement = {
   payment_plans: { plan_code: string | null; name: string } | Array<{ plan_code: string | null; name: string }> | null;
 };
 
+export function generationAccessError(access: StudioAccessState, modality: 'chat' | 'image' | 'video') {
+  if (access.kind === 'paid_lapsed') return 'PAID_PLAN_REACTIVATION_REQUIRED' as const;
+  if (access.kind === 'trial_expired' && modality !== 'chat') return 'FREE_MEDIA_EXPIRED' as const;
+  return null;
+}
+
 export function trialExpiresAt(createdAt: string) {
   const started = new Date(createdAt);
   return new Date(started.getTime() + FREE_TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();

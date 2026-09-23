@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { deriveStudioAccess, trialExpiresAt, type AccessEntitlement } from '../lib/access/trial-state';
+import { deriveStudioAccess, generationAccessError, trialExpiresAt, type AccessEntitlement } from '../lib/access/trial-state';
 
 const createdAt = '2026-09-01T00:00:00.000Z';
 
@@ -14,6 +14,13 @@ test('media counters do not alter the time based Chat trial state', () => {
   // Media exhaustion is enforced by the existing credit reservation RPCs;
   // this access state intentionally depends only on time and paid access.
   assert.equal(deriveStudioAccess({ createdAt, now: new Date('2026-09-05T00:00:00Z') }).kind, 'trial_active');
+});
+
+test('day eight keeps Chat open while media generation expires', () => {
+  const access = deriveStudioAccess({ createdAt, now: new Date('2026-09-09T00:00:00Z') });
+  assert.equal(generationAccessError(access, 'chat'), null);
+  assert.equal(generationAccessError(access, 'image'), 'FREE_MEDIA_EXPIRED');
+  assert.equal(generationAccessError(access, 'video'), 'FREE_MEDIA_EXPIRED');
 });
 
 test('active paid access overrides the free trial clock', () => {
@@ -32,6 +39,7 @@ test('previously paid users use the reactivation path after access expires', () 
   const state = deriveStudioAccess({ createdAt, now: new Date('2026-09-20T00:00:00Z'), entitlements: [entitlement] });
   assert.equal(state.kind, 'paid_lapsed');
   assert.equal(state.paidPlanCode, 'pro');
+  assert.equal(generationAccessError(state, 'chat'), 'PAID_PLAN_REACTIVATION_REQUIRED');
 });
 
 test('persists Lite-offer funnel state from auth metadata', () => {

@@ -50,7 +50,7 @@
       "connectedChat": "متصل بالدردشة",
       "notSelectable": "غير قابل للاختيار حالياً",
       "requiresPlan": "يتطلب خطة {plan}",
-      "picker": {"search":"ابحث عن نموذج أو شركة","recent":"الأخيرة","allModels":"كل النماذج","unconfigured":"غير مهيأ","noResults":"لا توجد نماذج مطابقة","modelsCount":"{count} من النماذج","close":"إغلاق اختيار النماذج","plan":{"free":"مجاني","lite":"Lite","pro":"Pro","max":"Max"}}
+      "picker": {"search":"ابحث عن نموذج أو شركة","recent":"الأخيرة","allModels":"كل النماذج","unconfigured":"غير مهيأ","noResults":"لا توجد نماذج مطابقة","modelsCount":"{count} من النماذج","close":"إغلاق اختيار النماذج","trial":"تجريبي","trialDetail":"يتوفر وصول تجريبي","includedWith":"مشمول مع {plan} والخطط الأعلى","plan":{"free":"مجاني","lite":"Lite","pro":"Pro","max":"Max"}}
     },
     "settings": {
       "title": "الإعدادات",
@@ -289,14 +289,21 @@
       "negativePlaceholder": "يُستخدم فقط إذا كان النموذج المتصل يدعمه"
     },
     "paywall": {
+      "close": "إغلاق عرض التفعيل",
+      "mediaExpiredTitle": "انتهت تجربتك المجانية للوسائط",
+      "mediaExpiredSupport": "تبقى الدردشة متاحة في خطتك المجانية. فعّل خطة لمواصلة إنشاء الصور والفيديوهات.",
+      "modelLockedTitle": "تفعيل الوصول إلى {model}",
+      "modelLockedSupport": "يتطلب هذا النموذج خطة {plan} أو خطة أعلى.",
+      "modelTrialExhaustedTitle": "استخدمت وصولك التجريبي إلى {model}",
+      "seeAnotherOption": "عرض خيار آخر",
       "expiredTitle": "انتهت تجربتك المجانية.",
       "expiredSupport": "فعّل خطة لمواصلة استخدام الدردشة والصور والفيديو في VANTRA.",
       "reactivateTitle": "إعادة تفعيل VANTRA",
       "reactivateSupport": "فعّل خطتك من جديد لمواصلة استخدام الاستوديو. ما زال سجلك ورصيدك المحفوظ متاحين.",
-      "imageExhaustedTitle": "استخدمت رصيد الصور التجريبي بالكامل",
-      "imageExhaustedSupport": "فعّل خطة لإنشاء المزيد من الصور. تبقى الدردشة متاحة حتى نهاية التجربة.",
-      "videoExhaustedTitle": "استخدمت رصيد الفيديو التجريبي بالكامل",
-      "videoExhaustedSupport": "فعّل خطة لإنشاء المزيد من الفيديوهات. تبقى الدردشة متاحة حتى نهاية التجربة.",
+      "imageExhaustedTitle": "لقد استخدمت رصيد الصور المجاني",
+      "imageExhaustedSupport": "فعّل خطة لإنشاء المزيد من الصور. تبقى الدردشة متاحة ضمن الخطة المجانية.",
+      "videoExhaustedTitle": "لقد استخدمت رصيد الفيديو المجاني",
+      "videoExhaustedSupport": "فعّل خطة لإنشاء المزيد من الفيديوهات. تبقى الدردشة متاحة ضمن الخطة المجانية.",
       "bankedCredits": "لديك {credits} من أرصدة VANTRA المحفوظة. يلزم وجود خطة مدفوعة نشطة لاستخدامها.",
       "recommended": "موصى بها",
       "reactivation": "إعادة التفعيل",

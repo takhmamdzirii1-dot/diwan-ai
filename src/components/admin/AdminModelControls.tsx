@@ -5,12 +5,13 @@ import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { AdminModelRow } from '@/lib/admin/types';
 import { MODEL_PLAN_CODES, type ModelPlanCode } from '@/lib/models/plan-entitlements';
+import { includedPlans, MODEL_ACCESS_STATES, type ModelAccessState, type ModelPlanAccessMap } from '@/lib/models/model-access';
 
 type EditableModel = Pick<AdminModelRow,
-  'key' | 'displayName' | 'modality' | 'enabled' | 'priority' | 'creditPrice' | 'activationSupported' | 'allowedPlans'>;
+  'key' | 'displayName' | 'modality' | 'enabled' | 'priority' | 'creditPrice' | 'activationSupported' | 'allowedPlans' | 'planAccess'>;
 
-function editableAllowedPlans(plans: readonly ModelPlanCode[]) {
-  return MODEL_PLAN_CODES.filter((plan) => plan === 'max' || plans.includes(plan));
+function clonePlanAccess(access: ModelPlanAccessMap): ModelPlanAccessMap {
+  return Object.fromEntries(MODEL_PLAN_CODES.map((plan) => [plan, { ...access[plan] }])) as ModelPlanAccessMap;
 }
 
 export default function AdminModelControls({ model, mode = 'pricing', onSaved }: {
@@ -22,6 +23,7 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
     routingRole: AdminModelRow['priority'];
     customerCreditPrice: number | null;
     allowedPlans: ModelPlanCode[];
+    planAccess: ModelPlanAccessMap;
     updatedAt: string;
   }) => void;
 }) {
@@ -29,7 +31,7 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
   const [enabled, setEnabled] = useState(model.enabled);
   const [routingRole, setRoutingRole] = useState(model.priority);
   const [price, setPrice] = useState(model.creditPrice == null ? '' : String(model.creditPrice));
-  const [allowedPlans, setAllowedPlans] = useState<ModelPlanCode[]>(editableAllowedPlans(model.allowedPlans));
+  const [planAccess, setPlanAccess] = useState<ModelPlanAccessMap>(() => clonePlanAccess(model.planAccess));
   const [saving, setSaving] = useState(false);
   const [confirmingPrice, setConfirmingPrice] = useState(false);
   const cancelConfirmationRef = useRef<HTMLButtonElement>(null);
@@ -40,7 +42,7 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
     setEnabled(model.enabled);
     setRoutingRole(model.priority);
     setPrice(model.creditPrice == null ? '' : String(model.creditPrice));
-    setAllowedPlans(editableAllowedPlans(model.allowedPlans));
+    setPlanAccess(clonePlanAccess(model.planAccess));
     setFeedback(null);
     setConfirmingPrice(false);
   }, [model.key]);
@@ -55,7 +57,8 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
     return Number.isSafeInteger(value) ? value : undefined;
   }, [price]);
   const dirty = mode === 'pricing' ? enabled !== model.enabled || normalizedPrice !== model.creditPrice
-    : mode === 'plans' ? MODEL_PLAN_CODES.some((plan) => allowedPlans.includes(plan) !== model.allowedPlans.includes(plan))
+    : mode === 'plans' ? MODEL_PLAN_CODES.some((plan) => planAccess[plan].state !== model.planAccess[plan].state
+      || planAccess[plan].trialAllowance !== model.planAccess[plan].trialAllowance)
       : routingRole !== model.priority;
 
   const requestSave = () => {
@@ -82,7 +85,8 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
           enabled,
           routingRole: enabled ? routingRole : 'unassigned',
           customerCreditPrice: mode === 'pricing' ? normalizedPrice : model.creditPrice,
-          allowedPlans,
+          allowedPlans: includedPlans(planAccess),
+          ...(mode === 'plans' ? { planAccess: MODEL_PLAN_CODES.map((planCode) => ({ planCode, ...planAccess[planCode] })) } : {}),
         }),
       });
       const body = await response.json().catch(() => ({}));
@@ -144,25 +148,40 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
     </label>}
     {mode === 'plans' && <fieldset className="sm:col-span-2">
       <legend className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">{t('planAccessLabel')}</legend>
-      <div className="grid grid-cols-2 gap-2">
-        {MODEL_PLAN_CODES.map((plan) => <label key={plan} className="flex min-h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-semibold text-white">
-          <input
-            type="checkbox"
-            checked={allowedPlans.includes(plan)}
+      <div className="grid gap-2 sm:grid-cols-2">
+        {MODEL_PLAN_CODES.map((plan) => <div key={plan} className="grid gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] p-3">
+          <div className="flex items-center justify-between gap-3"><span className="text-[12px] font-semibold text-white">{t(`plan.${plan}`)}</span>{plan === 'max' && <span className="text-[10px] text-[var(--studio-text-muted)]">{t('maxFrozen')}</span>}</div>
+          <select
+            aria-label={`${t(`plan.${plan}`)} access`}
+            value={planAccess[plan].state}
             disabled={plan === 'max'}
             onChange={(event) => {
-              const planIndex = MODEL_PLAN_CODES.indexOf(plan);
-              setAllowedPlans((current) => MODEL_PLAN_CODES.filter((candidate, candidateIndex) =>
-                candidate === 'max' || (event.target.checked
-                  ? current.includes(candidate) || candidateIndex >= planIndex
-                  : current.includes(candidate) && candidateIndex > planIndex)));
+              const state = event.target.value as ModelAccessState;
+              setPlanAccess((current) => ({ ...current, [plan]: { state, trialAllowance: state === 'trial' ? current[plan].trialAllowance : null } }));
               setFeedback(null);
             }}
-            className="h-4 w-4 accent-white"
-          />
-          {t(`plan.${plan}`)}{plan === 'max' ? ` · ${t('maxFrozen')}` : ''}
-        </label>)}
+            className={controlClass}
+          >
+            {MODEL_ACCESS_STATES.map((state) => <option key={state} value={state}>{state[0].toUpperCase() + state.slice(1)}</option>)}
+          </select>
+          {planAccess[plan].state === 'trial' && <label className="grid gap-1 text-[10px] font-medium text-[var(--studio-text-muted)]">
+            Trial allowance
+            <input
+              value={planAccess[plan].trialAllowance ?? ''}
+              inputMode="numeric"
+              placeholder="Required before runtime access"
+              onChange={(event) => {
+                const value = event.target.value.trim();
+                const allowance = /^\d+$/.test(value) && Number(value) > 0 ? Number(value) : null;
+                setPlanAccess((current) => ({ ...current, [plan]: { state: 'trial', trialAllowance: allowance } }));
+                setFeedback(null);
+              }}
+              className={controlClass}
+            />
+          </label>}
+        </div>)}
       </div>
+      <p className="mt-2 text-[11px] leading-relaxed text-[var(--studio-text-muted)]">Trial access fails closed until a positive allowance is configured. Brand and execution routing remain independent.</p>
     </fieldset>}
     <div className="flex min-w-32 flex-col items-stretch gap-1.5">
       <button

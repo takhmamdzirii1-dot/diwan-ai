@@ -9,6 +9,7 @@ import {
   STUDIO_MODELS,
 } from '@/src/config/studio-registry';
 import { applyModelRuntimeOverrides, getEffectiveRuntimeModels, type EffectiveRuntimeModel } from '@/lib/models/runtime-config';
+import { defaultModelPlanAccess } from '@/lib/models/model-access';
 import { getSupabaseAdminClient } from './supabase-admin';
 import type {
   AdminActivity,
@@ -135,6 +136,7 @@ function buildAdminModelRows(models: readonly EffectiveRuntimeModel[], latestCos
       availabilityLabel: model.availabilityLabel,
       capabilities: model.capabilities,
       allowedPlans: model.allowedPlans,
+      planAccess: model.planAccess,
       archived: model.archived,
       routes: [], providerOptions: [], audit: [],
     };
@@ -150,7 +152,8 @@ function buildAdminModelRows(models: readonly EffectiveRuntimeModel[], latestCos
       activationSupported: false, persisted: false, updatedAt: null,
       shortDescription: null, mediaUrl: modelIconUrl(modelBrand(item.displayName, item.modality)) ?? null,
       category: null, sortOrder: 1000, visibleInStudio: false, availabilityLabel: null,
-      capabilities: emptyModelCapabilities(item.modality), allowedPlans: [], archived: false,
+      capabilities: emptyModelCapabilities(item.modality), allowedPlans: [],
+      planAccess: defaultModelPlanAccess(item.displayName, item.modality, []), archived: false,
       routes: [], providerOptions: [], audit: [],
     }));
   return [...operationalRows, ...catalogRows];

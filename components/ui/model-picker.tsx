@@ -8,6 +8,7 @@ import type { StudioAvailability, StudioModality } from '@/src/config/studio-reg
 import { modelBrand, modelIconUrl } from '@/src/config/model-catalog';
 import { ModelBrandIcon } from './model-brand-icon';
 import { isHierarchicalAllowedPlans, MODEL_PLAN_CODES, type ModelPlanCode } from '@/lib/models/plan-entitlements';
+import type { ModelAccessState } from '@/lib/models/model-access';
 
 export interface ChatModelOption {
   id: string;
@@ -23,6 +24,8 @@ export interface ChatModelOption {
   fileInput?: boolean;
   creditCost?: number;
   requiredPlan?: ModelPlanCode | null;
+  accessState?: ModelAccessState;
+  trialAllowance?: number | null;
 }
 
 type RecentByModality = Record<StudioModality, string[]>;
@@ -43,11 +46,12 @@ function brandIcon(model: ChatModelOption, modality: StudioModality) {
   return model.iconUrl ?? modelIconUrl(modelBrand(model.name, modality, model.provider, model.id, model.brand));
 }
 
-export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, dropdownPosition = 'top', menuLabel, emptyLabel, modality = 'chat' }: {
+export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, onAccessRequest, dropdownPosition = 'top', menuLabel, emptyLabel, modality = 'chat' }: {
   models: ChatModelOption[];
   selectedModel: string;
   onSelect: (id: string) => void;
   onSignInClick?: () => void;
+  onAccessRequest?: (model: ChatModelOption) => void;
   dropdownPosition?: 'top' | 'bottom';
   menuLabel?: string;
   emptyLabel?: string;
@@ -127,7 +131,12 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, dr
   const recentModels = recent[modality].map((id) => visibleModels.find((model) => model.id === id)).filter((model): model is ChatModelOption => Boolean(model));
   const close = useCallback(() => { setOpen(false); setSearch(''); trigger.current?.focus(); }, []);
   const pick = (model: ChatModelOption) => {
-    if (!model.enabled || model.requiredPlan || !['available', 'beta'].includes(model.availability)) return;
+    if (!model.enabled || !['available', 'beta'].includes(model.availability)) return;
+    if (model.accessState === 'locked' || model.requiredPlan) {
+      close();
+      onAccessRequest?.(model);
+      return;
+    }
     if (model.requiresAuth && onSignInClick) { close(); onSignInClick(); return; }
     onSelect(model.id);
     const latest = readRecent();
@@ -144,20 +153,23 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, dr
   const row = (model: ChatModelOption, variant: 'nested' | 'flat' = 'nested') => {
     const brand = modelBrand(model.name, modality, model.provider, model.id, model.brand);
     const icon = brandIcon(model, modality);
-    const selectable = model.enabled && !model.requiredPlan && ['available', 'beta'].includes(model.availability);
+    const runnable = model.enabled && model.accessState !== 'locked' && !model.requiredPlan && ['available', 'beta'].includes(model.availability);
+    const interactive = model.enabled && ['available', 'beta'].includes(model.availability);
     const plans = model.allowedPlans ?? [];
     const access = tier(plans);
-    return <button key={model.id} type="button" disabled={!selectable} onClick={() => pick(model)}
+    return <button key={model.id} type="button" disabled={!interactive} onClick={() => pick(model)}
+      title={model.accessState === 'trial' ? t('picker.trialDetail') : model.requiredPlan ? t('picker.includedWith', { plan: t(`picker.plan.${model.requiredPlan}`) }) : undefined}
       aria-current={selectedModel === model.id ? 'true' : undefined}
-      className={`flex min-h-12 w-full items-center gap-2.5 rounded-lg border px-2.5 text-start text-[12.5px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] sm:min-h-11 ${selectable ? 'hover:bg-[var(--studio-hover)]' : 'cursor-not-allowed'} ${selectedModel === model.id ? 'border-[var(--studio-border-strong)] bg-[var(--studio-selected)]' : 'border-transparent'}`}>
+      className={`flex min-h-12 w-full items-center gap-2.5 rounded-lg border px-2.5 text-start text-[12.5px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] sm:min-h-11 ${interactive ? 'hover:bg-[var(--studio-hover)]' : 'cursor-not-allowed'} ${selectedModel === model.id ? 'border-[var(--studio-border-strong)] bg-[var(--studio-selected)]' : 'border-transparent'}`}>
       <ModelBrandIcon url={icon} name={brand.name} />
       {variant === 'flat'
-        ? <span className="min-w-0 flex-1"><span className={`block truncate font-medium ${selectable ? 'text-[var(--studio-text-primary)]' : 'text-[var(--studio-text-secondary)]'}`}>{model.name}</span><span className="block truncate text-[10.5px] text-[var(--studio-text-muted)]">{brand.name}</span></span>
-        : <span className={`min-w-0 flex-1 truncate font-medium ${selectable ? 'text-[var(--studio-text-primary)]' : 'text-[var(--studio-text-secondary)]'}`}>{model.name}</span>}
-      {model.requiredPlan && <LockKeyhole aria-label={t('requiresPlan', { plan: model.requiredPlan })} className="h-3.5 w-3.5 shrink-0 text-[var(--studio-text-secondary)]" />}
-      {access ? <span className="shrink-0 rounded-md border border-[var(--studio-border)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--studio-text-secondary)]">{t(`picker.plan.${access}`)}</span>
+        ? <span className="min-w-0 flex-1"><span className={`block truncate font-medium ${runnable ? 'text-[var(--studio-text-primary)]' : 'text-[var(--studio-text-secondary)]'}`}>{model.name}</span><span className="block truncate text-[10.5px] text-[var(--studio-text-muted)]">{brand.name}</span></span>
+        : <span className={`min-w-0 flex-1 truncate font-medium ${runnable ? 'text-[var(--studio-text-primary)]' : 'text-[var(--studio-text-secondary)]'}`}>{model.name}</span>}
+      {model.accessState === 'trial' && <span className="shrink-0 rounded-md border border-[var(--studio-border-strong)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--studio-text-secondary)]">{t('picker.trial')}</span>}
+      {(model.accessState === 'locked' || model.requiredPlan) && <><LockKeyhole aria-label={t('requiresPlan', { plan: model.requiredPlan ? t(`picker.plan.${model.requiredPlan}`) : '' })} className="h-3.5 w-3.5 shrink-0 text-[var(--studio-text-secondary)]" />{model.requiredPlan && <span className="shrink-0 rounded-md border border-[var(--studio-border)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--studio-text-secondary)]">{t(`picker.plan.${model.requiredPlan}`)}</span>}</>}
+      {!model.accessState && (access ? <span className="shrink-0 rounded-md border border-[var(--studio-border)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--studio-text-secondary)]">{t(`picker.plan.${access}`)}</span>
         : plans.length ? <span className="flex shrink-0 gap-0.5">{MODEL_PLAN_CODES.filter((plan) => plans.includes(plan)).map((plan) => <span key={plan} className="rounded border border-[var(--studio-border)] px-1 text-[9px] text-[var(--studio-text-secondary)]">{t(`picker.plan.${plan}`)}</span>)}</span>
-          : <span className="shrink-0 text-[10px] text-[var(--studio-text-muted)]">{t('picker.unconfigured')}</span>}
+          : <span className="shrink-0 text-[10px] text-[var(--studio-text-muted)]">{t('picker.unconfigured')}</span>)}
       {selectedModel === model.id && <Check className="h-4 w-4 shrink-0 text-[var(--studio-text-primary)]" aria-hidden="true" />}
     </button>;
   };

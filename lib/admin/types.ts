@@ -110,6 +110,7 @@ export type AdminModelRow = {
   availabilityLabel: string | null;
   capabilities: import('@/lib/models/capabilities').ModelCapabilities;
   allowedPlans: import('@/lib/models/plan-entitlements').ModelPlanCode[];
+  planAccess: import('@/lib/models/model-access').ModelPlanAccessMap;
   archived: boolean;
   routes: AdminModelRoute[];
   providerOptions: AdminModelProviderOption[];

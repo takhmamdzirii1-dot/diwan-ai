@@ -15,6 +15,12 @@ import {
   type ModelPlanCode,
 } from '@/lib/models/plan-entitlements';
 import {
+  applyStoredModelPlanAccess,
+  defaultModelPlanAccess,
+  type ModelPlanAccessMap,
+  type StoredModelPlanAccess,
+} from '@/lib/models/model-access';
+import {
   DEFAULT_CHAT_MODEL,
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
@@ -81,6 +87,7 @@ export type EffectiveRuntimeModel = RegistryModelReference & {
   availabilityLabel: string | null;
   capabilities: ModelCapabilities;
   allowedPlans: ModelPlanCode[];
+  planAccess: ModelPlanAccessMap;
   archived: boolean;
   persisted: boolean;
   updatedAt: string | null;
@@ -208,7 +215,22 @@ export async function loadModelRuntimeOverrides(client: SupabaseClient, modelKey
   return (data ?? []).map(mapOverride);
 }
 
-export function applyModelRuntimeOverrides(overrides: readonly ModelRuntimeOverride[]) {
+export async function loadModelPlanAccess(client: SupabaseClient) {
+  const { data, error } = await client.from('model_plan_access_configs')
+    .select('model_key,plan_code,access_state,trial_allowance');
+  if (error) {
+    if (['42P01', 'PGRST204', 'PGRST205'].includes(error.code)) return [];
+    throw error;
+  }
+  return (data ?? []).map((row): StoredModelPlanAccess => ({
+    modelKey: String(row.model_key),
+    planCode: row.plan_code as ModelPlanCode,
+    state: row.access_state,
+    trialAllowance: row.trial_allowance == null ? null : Number(row.trial_allowance),
+  }));
+}
+
+export function applyModelRuntimeOverrides(overrides: readonly ModelRuntimeOverride[], storedAccess: readonly StoredModelPlanAccess[] = []) {
   const overrideByKey = new Map(overrides.map((override) => [override.modelKey, override]));
   const explicitPrimaryModalities = new Set(
     overrides
@@ -246,6 +268,11 @@ export function applyModelRuntimeOverrides(overrides: readonly ModelRuntimeOverr
     }
     if (!enabled) routingRole = 'unassigned';
 
+    const allowedPlans = override ? override.allowedPlans : [...model.baseAllowedPlans];
+    const planAccess = applyStoredModelPlanAccess(
+      defaultModelPlanAccess(override?.customerDisplayName ?? model.displayName, model.modality, allowedPlans),
+      storedAccess.filter((row) => row.modelKey === model.key)
+    );
     return {
       ...model,
       displayName: override?.customerDisplayName ?? model.displayName,
@@ -262,7 +289,8 @@ export function applyModelRuntimeOverrides(overrides: readonly ModelRuntimeOverr
       visibleInStudio: !retired && (override?.studioVisible ?? model.baseVisibleInStudio),
       availabilityLabel: override?.customerAvailabilityLabel ?? null,
       capabilities: override?.capabilities ?? model.baseCapabilities,
-      allowedPlans: override ? override.allowedPlans : [...model.baseAllowedPlans],
+      allowedPlans,
+      planAccess,
       archived: archived || retired,
       persisted: Boolean(override),
       updatedAt: override?.updatedAt ?? null,
@@ -273,7 +301,11 @@ export function applyModelRuntimeOverrides(overrides: readonly ModelRuntimeOverr
 export async function getEffectiveRuntimeModels(client?: SupabaseClient) {
   const serverClient = client ?? getSupabaseAdminClient();
   if (!serverClient) throw new Error('MODEL_RUNTIME_CONFIG_UNAVAILABLE');
-  return applyModelRuntimeOverrides(await loadModelRuntimeOverrides(serverClient));
+  const [overrides, access] = await Promise.all([
+    loadModelRuntimeOverrides(serverClient),
+    loadModelPlanAccess(serverClient),
+  ]);
+  return applyModelRuntimeOverrides(overrides, access);
 }
 
 export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<StudioRuntimeModelDefinition[]> {
@@ -328,6 +360,7 @@ export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<S
         availabilityLabel: model.availabilityLabel ?? undefined,
         capabilities: model.capabilities,
         allowedPlans: model.allowedPlans,
+        planAccess: model.planAccess,
       } satisfies StudioRuntimeModelDefinition;
     })
     .filter((model) => model.enabled);

@@ -50,7 +50,7 @@
       "connectedChat": "Connecté au Chat",
       "notSelectable": "Pas encore sélectionnable",
       "requiresPlan": "Nécessite {plan}",
-      "picker": {"search":"Rechercher des modèles ou des marques","recent":"Récents","allModels":"Tous les modèles","unconfigured":"Non configuré","noResults":"Aucun modèle correspondant","modelsCount":"{count, plural, one {# modèle} other {# modèles}}","close":"Fermer le sélecteur de modèles","plan":{"free":"Gratuit","lite":"Lite","pro":"Pro","max":"Max"}}
+      "picker": {"search":"Rechercher des modèles ou des marques","recent":"Récents","allModels":"Tous les modèles","unconfigured":"Non configuré","noResults":"Aucun modèle correspondant","modelsCount":"{count, plural, one {# modèle} other {# modèles}}","close":"Fermer le sélecteur de modèles","trial":"Essai","trialDetail":"Accès d’essai disponible","includedWith":"Inclus avec {plan} et les formules supérieures","plan":{"free":"Gratuit","lite":"Lite","pro":"Pro","max":"Max"}}
     },
     "settings": {
       "title": "Paramètres",
@@ -289,14 +289,21 @@
       "negativePlaceholder": "Utilisé uniquement si le modèle connecté le prend en charge"
     },
     "paywall": {
+      "close": "Fermer l’offre d’activation",
+      "mediaExpiredTitle": "Votre essai média gratuit est terminé",
+      "mediaExpiredSupport": "Chat reste disponible avec votre formule Gratuite. Activez une formule pour continuer à créer des images et des vidéos.",
+      "modelLockedTitle": "Activer l’accès à {model}",
+      "modelLockedSupport": "Ce modèle nécessite l’accès {plan} ou une formule supérieure.",
+      "modelTrialExhaustedTitle": "Votre accès d’essai à {model} est épuisé",
+      "seeAnotherOption": "Voir une autre option",
       "expiredTitle": "Votre essai gratuit est terminé.",
       "expiredSupport": "Activez une formule pour continuer à utiliser Chat, Image et Vidéo dans VANTRA.",
       "reactivateTitle": "Réactiver VANTRA",
       "reactivateSupport": "Activez à nouveau votre formule pour continuer dans Studio. Votre historique et vos crédits conservés sont toujours disponibles.",
-      "imageExhaustedTitle": "Votre quota d’images d’essai est épuisé",
-      "imageExhaustedSupport": "Activez une formule pour créer plus d’images. Chat reste disponible jusqu’à la fin de votre essai.",
-      "videoExhaustedTitle": "Votre quota de vidéos d’essai est épuisé",
-      "videoExhaustedSupport": "Activez une formule pour créer plus de vidéos. Chat reste disponible jusqu’à la fin de votre essai.",
+      "imageExhaustedTitle": "Vous avez utilisé votre quota gratuit d’images",
+      "imageExhaustedSupport": "Activez une formule pour créer plus d’images. Chat reste disponible avec la formule Gratuite.",
+      "videoExhaustedTitle": "Vous avez utilisé votre quota gratuit de vidéos",
+      "videoExhaustedSupport": "Activez une formule pour créer plus de vidéos. Chat reste disponible avec la formule Gratuite.",
       "bankedCredits": "Vous avez {credits} crédits VANTRA conservés. Une formule payante active est requise pour les utiliser.",
       "recommended": "Recommandé",
       "reactivation": "Réactivation",

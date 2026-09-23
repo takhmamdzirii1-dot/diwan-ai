@@ -1,3 +1,5 @@
+import { resolveConfiguredModelAccess } from '@/lib/models/model-access';
+
 export const MODEL_PLAN_CODES = ['free', 'lite', 'pro', 'max'] as const;
 export type ModelPlanCode = (typeof MODEL_PLAN_CODES)[number];
 
@@ -66,15 +68,26 @@ export function applyModelPlanAccess<T extends { allowedPlans: readonly ModelPla
   model: T,
   currentPlan: ModelPlanCode
 ) {
+  if ('planAccess' in model && model.planAccess) {
+    const configured = resolveConfiguredModelAccess(model.planAccess as import('@/lib/models/model-access').ModelPlanAccessMap, currentPlan);
+    return {
+      ...model,
+      planAccessible: configured.state !== 'locked',
+      requiredPlan: configured.requiredPlan,
+      accessState: configured.state,
+      trialAllowance: configured.trialAllowance,
+    };
+  }
   const access = resolveModelPlanAccess(model.allowedPlans, currentPlan);
-  return { ...model, planAccessible: access.allowed, requiredPlan: access.requiredPlan };
+  return { ...model, planAccessible: access.allowed, requiredPlan: access.requiredPlan, accessState: access.allowed ? 'included' as const : 'locked' as const, trialAllowance: null };
 }
 
 export class ModelPlanAccessError extends Error {
-  readonly code = 'MODEL_PLAN_ACCESS_REQUIRED';
+  readonly code: 'MODEL_PLAN_ACCESS_REQUIRED' | 'MODEL_TRIAL_UNCONFIGURED';
 
-  constructor(readonly requiredPlan: ModelPlanCode | null) {
-    super('MODEL_PLAN_ACCESS_REQUIRED');
+  constructor(readonly requiredPlan: ModelPlanCode | null, code: 'MODEL_PLAN_ACCESS_REQUIRED' | 'MODEL_TRIAL_UNCONFIGURED' = 'MODEL_PLAN_ACCESS_REQUIRED') {
+    super(code);
+    this.code = code;
     this.name = 'ModelPlanAccessError';
   }
 }
@@ -90,6 +103,6 @@ export function assertModelPlanAccess(
 
 export function modelPlanErrorPayload(cause: unknown) {
   return cause instanceof ModelPlanAccessError
-    ? { error: cause.code, requiredPlan: cause.requiredPlan }
+    ? { error: cause.code, reason: cause.code === 'MODEL_TRIAL_UNCONFIGURED' ? 'trial_unconfigured' : 'plan_required', requiredPlan: cause.requiredPlan }
     : null;
 }

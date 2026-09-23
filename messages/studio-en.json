@@ -50,7 +50,7 @@
       "connectedChat": "Connected for Chat",
       "notSelectable": "Not selectable yet",
       "requiresPlan": "Requires {plan}",
-      "picker": {"search":"Search models or brands","recent":"Recent","allModels":"All models","unconfigured":"Unconfigured","noResults":"No matching models","modelsCount":"{count, plural, one {# model} other {# models}}","close":"Close model picker","plan":{"free":"Free","lite":"Lite","pro":"Pro","max":"Max"}}
+      "picker": {"search":"Search models or brands","recent":"Recent","allModels":"All models","unconfigured":"Unconfigured","noResults":"No matching models","modelsCount":"{count, plural, one {# model} other {# models}}","close":"Close model picker","trial":"Trial","trialDetail":"Trial access available","includedWith":"Included with {plan} and higher plans","plan":{"free":"Free","lite":"Lite","pro":"Pro","max":"Max"}}
     },
     "settings": {
       "title": "Settings",
@@ -289,14 +289,21 @@
       "negativePlaceholder": "Used only when a connected model supports it"
     },
     "paywall": {
+      "close": "Close activation offer",
+      "mediaExpiredTitle": "Your free media trial has ended",
+      "mediaExpiredSupport": "Chat is still available on your Free plan. Activate a plan to keep creating images and videos.",
+      "modelLockedTitle": "Activate access to {model}",
+      "modelLockedSupport": "This model requires {plan} access or higher.",
+      "modelTrialExhaustedTitle": "Your trial access to {model} is used",
+      "seeAnotherOption": "See another option",
       "expiredTitle": "Your free trial has ended.",
       "expiredSupport": "Activate a plan to keep using Chat, Image and Video in VANTRA.",
       "reactivateTitle": "Reactivate VANTRA",
       "reactivateSupport": "Activate your plan again to keep using Studio. Your history and banked credits are still here.",
-      "imageExhaustedTitle": "Your trial image allowance is used",
-      "imageExhaustedSupport": "Activate a plan to create more images. Chat remains available until your trial ends.",
-      "videoExhaustedTitle": "Your trial video allowance is used",
-      "videoExhaustedSupport": "Activate a plan to create more videos. Chat remains available until your trial ends.",
+      "imageExhaustedTitle": "You've used your free image allowance",
+      "imageExhaustedSupport": "Activate a plan to create more images. Chat remains available on Free.",
+      "videoExhaustedTitle": "You've used your free video allowance",
+      "videoExhaustedSupport": "Activate a plan to create more videos. Chat remains available on Free.",
       "bankedCredits": "You have {credits} banked VANTRA Credits. An active paid plan is required to use them.",
       "recommended": "Recommended",
       "reactivation": "Reactivation",

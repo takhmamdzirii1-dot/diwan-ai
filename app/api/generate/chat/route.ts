@@ -3,13 +3,16 @@ import { createClient } from '../../../../src/lib/supabase/server';
 import { streamText } from 'ai';
 
 import { DEFAULT_CHAT_MODEL } from '../../../../src/config/studio-registry';
-import { requireEntitledRuntimeModel, resolveCurrentModelPlan } from '@/lib/models/plan-entitlements.server';
+import { resolveRuntimeModelAccess } from '@/lib/models/plan-entitlements.server';
 import { modelPlanErrorPayload } from '@/lib/models/plan-entitlements';
 import { isValidChatWeight } from '@/lib/chat/chat-usage';
 import { finalizeChatUsage, precheckChatUsage, reserveChatUsage } from '@/lib/chat/chat-usage.server';
 import { createChatLanguageModel, classifyProviderFailure } from '@/lib/ai/providers/chat';
 import { resolveProviderRoutes } from '@/lib/ai/providers/routes';
 import { requireStudioGenerationAccess } from '@/lib/access/trial-access';
+import { finalizeModelTrialAccess, reserveModelTrialAccess } from '@/lib/models/model-trial.server';
+import { recordFunnelEvent } from '@/lib/analytics/funnel-events';
+import { runtimeAccessReasonForError } from '@/lib/models/model-access';
 import {
   beginGenerationExecution,
   finalizeGeneration,
@@ -51,7 +54,7 @@ export async function POST(request: Request) {
     } catch (cause) {
       const code = cause instanceof Error ? cause.message : 'STUDIO_ACCESS_UNAVAILABLE';
       if (code === 'FREE_TRIAL_EXPIRED' || code === 'PAID_PLAN_REACTIVATION_REQUIRED') {
-        return NextResponse.json({ error: code }, { status: 403 });
+        return NextResponse.json({ error: code, reason: runtimeAccessReasonForError(code) }, { status: 403 });
       }
       return NextResponse.json({ error: 'STUDIO_ACCESS_UNAVAILABLE' }, { status: 503 });
     }
@@ -129,15 +132,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'A registered model is required' }, { status: 400 });
     }
     let runtimeModel;
+    let resolvedAccess;
     try {
-      runtimeModel = await requireEntitledRuntimeModel(user.id, requestedModel, 'chat');
+      resolvedAccess = await resolveRuntimeModelAccess(user.id, requestedModel, 'chat');
+      runtimeModel = resolvedAccess.model;
     } catch (cause) {
       const accessError = modelPlanErrorPayload(cause);
       if (accessError) return NextResponse.json(accessError, { status: 403 });
       const code = cause instanceof Error ? cause.message : 'MODEL_RUNTIME_CONFIG_UNAVAILABLE';
       const status = code === 'MODEL_NOT_REGISTERED' ? 400
         : /MODEL_RUNTIME_CONFIG_UNAVAILABLE|PLAN_ENTITLEMENT_UNAVAILABLE/.test(code) ? 503 : 409;
-      return NextResponse.json({ error: code }, { status });
+      return NextResponse.json({ error: code, reason: runtimeAccessReasonForError(code) }, { status });
     }
     const chatCapabilities = runtimeModel.capabilities;
     if (!('streaming' in chatCapabilities) || !chatCapabilities.streaming) {
@@ -161,10 +166,9 @@ export async function POST(request: Request) {
     // Weighted Chat Usage Engine: chat never touches the VANTRA Credits
     // ledger. The model's customer weight meters rolling 5-hour / weekly
     // allowances instead. A missing weight fails closed (Admin-unconfigured).
-    let planCode: Awaited<ReturnType<typeof resolveCurrentModelPlan>>;
+    let planCode = resolvedAccess.currentPlan;
     let weight: number;
     try {
-      planCode = await resolveCurrentModelPlan(user.id);
       weight = runtimeModel.customerCreditPrice ?? NaN;
       if (!isValidChatWeight(weight)) throw new Error('CHAT_WEIGHT_UNCONFIGURED');
       const admission = await precheckChatUsage({ userId: user.id, planCode, weight });
@@ -230,6 +234,7 @@ export async function POST(request: Request) {
     // the per-user lock, so concurrent requests cannot all pass a precheck
     // and overshoot the windows. Same-key retries return the live
     // reservation without reserving twice.
+    let chatReserved = false;
     try {
       const reservation = await reserveChatUsage({
         userId: user.id,
@@ -274,9 +279,24 @@ export async function POST(request: Request) {
           nextAvailableAt: reservation.snapshot.nextAvailableAt,
         }, { status: 429 });
       }
+      chatReserved = true;
+      await reserveModelTrialAccess({
+        userId: user.id, modelKey: runtimeModel.key, modelId: runtimeModel.modelId,
+        modality: 'chat', planCode: resolvedAccess.currentPlan,
+        accessState: resolvedAccess.access.state, operationKey, reservationId: null,
+      });
     } catch (reserveError) {
       const code = reserveError instanceof Error ? reserveError.message : 'CHAT_RESERVE_FAILED';
-      return NextResponse.json({ error: code }, { status: 503 });
+      if (chatReserved) await finalizeChatUsage(operationKey, 'released').catch(() => null);
+      await finalizeGeneration({
+        executionId: execution.executionId, userId: user.id, reservationId: null,
+        operationKey, payloadHash, terminalStatus: 'failed', customerCharge: 0,
+        errorCode: code, failureOwner: 'customer', failureCategory: 'model_access', attemptCount: 0,
+      }).catch(() => null);
+      if (code === 'MODEL_TRIAL_EXHAUSTED') {
+        await recordFunnelEvent({ userId: user.id, event: 'model_trial_exhausted', key: `${runtimeModel.modelId}:${resolvedAccess.currentPlan}`, metadata: { model: runtimeModel.modelId, modality: 'chat', plan: resolvedAccess.currentPlan } });
+      }
+      return NextResponse.json({ error: code, reason: code === 'MODEL_TRIAL_EXHAUSTED' ? 'trial_exhausted' : 'trial_unconfigured' }, { status: /MODEL_TRIAL_/.test(code) ? 403 : 503 });
     }
 
     let outputStarted = false;
@@ -289,6 +309,10 @@ export async function POST(request: Request) {
       if (usageSettled) return;
       try {
         await finalizeChatUsage(operationKey, outcome);
+        await finalizeModelTrialAccess({ userId: user.id, operationKey, outcome });
+        if (outcome === 'completed' && resolvedAccess.access.state === 'trial') {
+          await recordFunnelEvent({ userId: user.id, event: 'model_trial_used', key: operationKey, metadata: { model: runtimeModel.modelId, modality: 'chat', plan: resolvedAccess.currentPlan } });
+        }
         usageSettled = true;
       } catch (usageError) {
         console.error('[chat-generation] weighted usage settle failed', {

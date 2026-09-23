@@ -23,7 +23,9 @@ import { isModelSelectable } from '@/src/config/studio-registry';
 import { applyModelPlanAccess } from '@/lib/models/plan-entitlements';
 import { useTranslations } from 'next-intl';
 import { useStudioAccess } from '@/src/hooks/useStudioAccess';
-import TrialPaywall from './TrialPaywall';
+import ActivationOffer, { type ActivationPrompt, type ActivationReason } from './ActivationOffer';
+import type { ChatModelOption } from '@/components/ui/model-picker';
+import { trackFunnelEvent } from '@/src/lib/funnel-analytics';
 
 type CenterMode = 'chat' | 'image' | 'video' | 'library';
 
@@ -66,15 +68,28 @@ export default function StudioDashboard({
   const reduceMotion = useReducedMotion();
   const t = useTranslations('studio.chat');
   const sidebarT = useTranslations('studio.sidebar');
-  const { user, refreshBalance, planCode, planStatus, purchasedBalance, freeImageRemaining, freeVideoRemaining } = useUser({ loadPlan: true, loadBalance: true });
+  const { user, refreshBalance, planCode, planStatus } = useUser({ loadPlan: true, loadBalance: true });
   const { openAuthModal } = useModal();
   const { access } = useStudioAccess(Boolean(user));
-  const generationLocked = access?.kind === 'trial_expired' || access?.kind === 'paid_lapsed';
-  const freeImageExhausted = access?.kind === 'trial_active' && planCode === 'free' && freeImageRemaining === 0;
-  const freeVideoExhausted = access?.kind === 'trial_active' && planCode === 'free' && freeVideoRemaining === 0;
+  const [activationPrompt, setActivationPrompt] = useState<ActivationPrompt | null>(null);
 
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const showActivation = useCallback((reason: ActivationReason, modality: 'chat' | 'image' | 'video', model?: { id: string; name: string; requiredPlan?: import('@/lib/models/plan-entitlements').ModelPlanCode | null }) => {
+    if (model && (reason === 'model_locked' || reason === 'model_trial_exhausted')) {
+      void trackFunnelEvent('model_locked_clicked', `${model.id}:${planCode}`, { model: model.id, modality, currentPlan: planCode, requiredPlan: model.requiredPlan ?? '', accessState: reason });
+    }
+    setActivationPrompt({
+      reason, modality, modelId: model?.id, modelName: model?.name,
+      currentPlan: planCode, requiredPlan: model?.requiredPlan,
+      renewalPlanId: access?.paidPlanId, renewalPlanName: access?.paidPlanName,
+    });
+  }, [access?.paidPlanId, access?.paidPlanName, planCode]);
+
+  const requestModelAccess = useCallback((modality: 'chat' | 'image' | 'video', model: ChatModelOption) => {
+    showActivation('model_locked', modality, { id: model.id, name: model.name, requiredPlan: model.requiredPlan });
+  }, [showActivation]);
 
   const entitledModels = useMemo(() => models.map((model) =>
     applyModelPlanAccess(model, planStatus === 'ready' ? planCode : 'free')),
@@ -164,7 +179,17 @@ export default function StudioDashboard({
       setChatExchanges((count) => count + 1);
       refreshBalance();
     },
-    onError: () => {},
+    onError: (chatError) => {
+      // Server-side trial exhaustion surfaces here (e.g. allowance ran out
+      // mid-session). Route it to the activation offer; anything else falls
+      // through to the existing inline error renderer.
+      try {
+        const body = JSON.parse(chatError.message) as { error?: string };
+        if ((body.error === 'MODEL_TRIAL_EXHAUSTED' || body.error === 'MODEL_TRIAL_UNCONFIGURED') && activeModel) {
+          showActivation('model_trial_exhausted', 'chat', { id: activeModel.id, name: activeModel.displayName, requiredPlan: activeModel.requiredPlan });
+        }
+      } catch { /* Inline renderer shows the message. */ }
+    },
   });
 
   const handleNewChat = useCallback(() => {
@@ -325,6 +350,18 @@ export default function StudioDashboard({
   const handleSend = useCallback(
     async (data: { message: string; isThinkingEnabled: boolean; files?: Array<{ file: File; preview?: string | null; type: string }> }) => {
       if (!activeModel || !isModelSelectable(activeModel)) return;
+      if (access?.kind === 'paid_lapsed') {
+        showActivation('paid_lapsed', 'chat', { id: activeModel.id, name: activeModel.displayName });
+        return;
+      }
+      if (activeModel.accessState === 'locked') {
+        showActivation('model_locked', 'chat', { id: activeModel.id, name: activeModel.displayName, requiredPlan: activeModel.requiredPlan });
+        return;
+      }
+      if (activeModel.accessState === 'trial' && activeModel.trialAllowance == null) {
+        showActivation('model_trial_exhausted', 'chat', { id: activeModel.id, name: activeModel.displayName, requiredPlan: activeModel.requiredPlan });
+        return;
+      }
       if (!user && (activeModel.verifiedCreditCost ?? 0) > 0) {
         openAuthModal('signin');
         return;
@@ -382,7 +419,7 @@ export default function StudioDashboard({
         }
       );
     },
-    [append, selectedModelId, activeSessionId, sessions, activeModel, user, openAuthModal]
+    [append, selectedModelId, activeSessionId, sessions, activeModel, user, openAuthModal, access?.kind, showActivation]
   );
 
   const handleStarter = useCallback((text: string) => {
@@ -410,8 +447,16 @@ export default function StudioDashboard({
       image?: { src?: string; mimeType?: string };
       creditsCharged?: number;
       libraryAssetId?: string;
+      requiredPlan?: import('@/lib/models/plan-entitlements').ModelPlanCode | null;
     } | null;
     if (!response.ok || !payload?.image?.src || !payload.libraryAssetId) {
+      const code = payload?.error;
+      if (code === 'FREE_MEDIA_EXPIRED') showActivation('free_media_expired', 'image');
+      else if (code === 'FREE_IMAGE_TRIAL_EXHAUSTED') showActivation('image_allowance_exhausted', 'image');
+      else if (code === 'PAID_PLAN_REACTIVATION_REQUIRED') showActivation('paid_lapsed', 'image');
+      else if (code === 'MODEL_TRIAL_EXHAUSTED' || code === 'MODEL_TRIAL_UNCONFIGURED') showActivation('model_trial_exhausted', 'image', { id: draft.modelId, name: imageModels.find((item) => item.id === draft.modelId)?.displayName ?? draft.modelId, requiredPlan: payload?.requiredPlan });
+      else if (code === 'MODEL_PLAN_ACCESS_REQUIRED') showActivation('model_locked', 'image', { id: draft.modelId, name: imageModels.find((item) => item.id === draft.modelId)?.displayName ?? draft.modelId, requiredPlan: payload?.requiredPlan });
+      if (/FREE_MEDIA_EXPIRED|FREE_IMAGE_TRIAL_EXHAUSTED|PAID_PLAN_REACTIVATION_REQUIRED|MODEL_TRIAL_|MODEL_PLAN_ACCESS_REQUIRED/.test(code ?? '')) throw new Error('ACCESS_PROMPTED');
       throw new Error(payload?.error ?? 'IMAGE_GENERATION_FAILED');
     }
     await refreshBalance();
@@ -421,7 +466,7 @@ export default function StudioDashboard({
       creditsCharged: payload.creditsCharged ?? 0,
       libraryAssetId: payload.libraryAssetId,
     };
-  }, [openAuthModal, refreshBalance, user]);
+  }, [imageModels, openAuthModal, refreshBalance, showActivation, user]);
 
   const handleVideoGenerate = useCallback(async (draft: VideoRequestDraft): Promise<VideoGenerationResult> => {
     if (!user) {
@@ -465,8 +510,16 @@ export default function StudioDashboard({
       video?: { src?: string; mimeType?: string };
       creditsCharged?: number;
       libraryAssetId?: string;
+      requiredPlan?: import('@/lib/models/plan-entitlements').ModelPlanCode | null;
     } | null;
     if (!response.ok || !payload?.video?.src || !payload.libraryAssetId) {
+      const code = payload?.error;
+      if (code === 'FREE_MEDIA_EXPIRED') showActivation('free_media_expired', 'video');
+      else if (code === 'FREE_VIDEO_TRIAL_EXHAUSTED') showActivation('video_allowance_exhausted', 'video');
+      else if (code === 'PAID_PLAN_REACTIVATION_REQUIRED') showActivation('paid_lapsed', 'video');
+      else if (code === 'MODEL_TRIAL_EXHAUSTED' || code === 'MODEL_TRIAL_UNCONFIGURED') showActivation('model_trial_exhausted', 'video', { id: draft.modelId, name: videoModels.find((item) => item.id === draft.modelId)?.displayName ?? draft.modelId, requiredPlan: payload?.requiredPlan });
+      else if (code === 'MODEL_PLAN_ACCESS_REQUIRED') showActivation('model_locked', 'video', { id: draft.modelId, name: videoModels.find((item) => item.id === draft.modelId)?.displayName ?? draft.modelId, requiredPlan: payload?.requiredPlan });
+      if (/FREE_MEDIA_EXPIRED|FREE_VIDEO_TRIAL_EXHAUSTED|PAID_PLAN_REACTIVATION_REQUIRED|MODEL_TRIAL_|MODEL_PLAN_ACCESS_REQUIRED/.test(code ?? '')) throw new Error('ACCESS_PROMPTED');
       throw new Error(payload?.error ?? 'VIDEO_GENERATION_FAILED');
     }
     await refreshBalance();
@@ -476,7 +529,7 @@ export default function StudioDashboard({
       creditsCharged: payload.creditsCharged ?? 0,
       libraryAssetId: payload.libraryAssetId,
     };
-  }, [openAuthModal, refreshBalance, user]);
+  }, [openAuthModal, refreshBalance, showActivation, user, videoModels]);
 
   const totalTokens = useMemo(
     () => Math.ceil(messages.reduce((acc, m) => acc + (m.content?.length || 0), 0) / 4),
@@ -700,7 +753,7 @@ export default function StudioDashboard({
 
                 {/* 3rd (Bottom): Floating composer over the fading message timeline */}
                 <div ref={composerRef} className="absolute bottom-0 left-0 flex w-full flex-col items-center justify-end bg-transparent p-4 pb-6 pointer-events-none">
-                  {generationLocked && access ? <div className="pointer-events-auto max-h-[70dvh] w-full"><TrialPaywall access={access} purchasedBalance={purchasedBalance ?? 0} /></div> : <>
+                  <>
                     <ChatCapacityHint refreshSignal={chatExchanges} />
                     <div className="pointer-events-auto mx-auto w-full max-w-4xl px-6">
                       <ClaudeChatInput
@@ -717,6 +770,8 @@ export default function StudioDashboard({
                         provider: model.provider,
                         brand: model.brand,
                         allowedPlans: model.allowedPlans,
+                        accessState: model.accessState,
+                        trialAllowance: model.trialAllowance,
                         visionInput: 'visionInput' in model.capabilities && model.capabilities.visionInput,
                         fileInput: 'fileInput' in model.capabilities && model.capabilities.fileInput,
                       }))}
@@ -727,9 +782,10 @@ export default function StudioDashboard({
                       placeholder={isEmpty ? t('emptyPlaceholder') : t('placeholder')}
                       autoFocus={isEmpty}
                       onSignInClick={user ? undefined : () => openAuthModal('signin')}
+                      onModelAccessRequest={(model) => requestModelAccess('chat', model)}
                       />
                     </div>
-                  </>}
+                  </>
                 </div>
               </motion.div>
             )}
@@ -737,14 +793,14 @@ export default function StudioDashboard({
           {/* ── Image Canvas ── */}
           {activeWorkspace === 'image' && (
             <motion.div key="image" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }} className="absolute inset-0">
-              {generationLocked && access ? <TrialPaywall access={access} purchasedBalance={purchasedBalance ?? 0} /> : freeImageExhausted && access ? <TrialPaywall access={access} media="image" /> : <ImageCanvas models={imageModels} onGenerate={handleImageGenerate} onOpenLibrary={() => onWorkspaceChange('library')} />}
+              <ImageCanvas models={imageModels} onGenerate={handleImageGenerate} onOpenLibrary={() => onWorkspaceChange('library')} onModelAccessRequest={(model) => requestModelAccess('image', model)} />
             </motion.div>
           )}
 
             {/* ── Motion Studio ── */}
             {activeWorkspace === 'video' && (
               <motion.div key="video" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }} className="absolute inset-0">
-                {generationLocked && access ? <TrialPaywall access={access} purchasedBalance={purchasedBalance ?? 0} /> : freeVideoExhausted && access ? <TrialPaywall access={access} media="video" /> : <PrunaMotionStudio models={videoModels} onGenerate={handleVideoGenerate} onOpenLibrary={() => onWorkspaceChange('library')} />}
+                <PrunaMotionStudio models={videoModels} onGenerate={handleVideoGenerate} onOpenLibrary={() => onWorkspaceChange('library')} onModelAccessRequest={(model) => requestModelAccess('video', model)} />
               </motion.div>
             )}
 
@@ -765,6 +821,7 @@ export default function StudioDashboard({
         onSelectChatModel={setSelectedModelId}
         models={entitledModels}
       />
+      <ActivationOffer prompt={activationPrompt} onClose={() => setActivationPrompt(null)} />
     </div>
   );
 }
