@@ -34,6 +34,9 @@ const schema = z.object({
 
 const createSchema = z.object({
   stableId: z.string().trim().min(3).max(80).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  // Real backend/provider model ID, stored exactly as entered (trimmed).
+  // Only the internal model_key below carries VANTRA namespacing.
+  modelId: z.string().trim().min(1).max(240).refine((value) => !/\s/.test(value), 'INVALID_MODEL_BACKEND_ID'),
   displayName: z.string().trim().min(1).max(80),
   modality: z.enum(['chat', 'image', 'video']),
   brand: z.string().trim().max(60).optional(),
@@ -59,7 +62,7 @@ export async function POST(request: Request) {
   const client = getSupabaseAdminClient();
   if (!client) return NextResponse.json({ error: 'ADMIN_DATA_UNAVAILABLE' }, { status: 503 });
   const modelKey = `custom:${parsed.data.modality}:${parsed.data.stableId}`;
-  const modelId = `vantra-${parsed.data.stableId}`;
+  const modelId = parsed.data.modelId;
   const { data, error } = await client.from('model_runtime_configs').insert({
     model_key: modelKey,
     model_id: modelId,

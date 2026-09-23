@@ -14,17 +14,19 @@ export default function AdminModelCreate({ initial }: { initial?: { displayName:
   const [displayName, setDisplayName] = useState(initial?.displayName ?? '');
   const [modality, setModality] = useState<'chat' | 'image' | 'video'>(initial?.modality ?? 'chat');
   const [brand, setBrand] = useState('');
+  const [backendId, setBackendId] = useState('');
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
-  const valid = /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(stableId.trim()) && displayName.trim().length > 0 && brand.trim().length <= 60;
+  const valid = /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(stableId.trim()) && displayName.trim().length > 0 && brand.trim().length <= 60
+    && backendId.trim().length > 0 && backendId.trim().length <= 240 && !/\s/.test(backendId.trim());
   const create = async () => {
     if (!valid) return;
     setSaving(true); setFeedback(null);
     try {
-      const response = await fetch('/api/admin/models', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ stableId: stableId.trim(), displayName: displayName.trim(), modality, brand: brand.trim() || undefined }) });
+      const response = await fetch('/api/admin/models', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ stableId: stableId.trim(), modelId: backendId.trim(), displayName: displayName.trim(), modality, brand: brand.trim() || undefined }) });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || !body.model) throw new Error(body.error ?? 'MODEL_CREATE_FAILED');
-      setStableId(''); setDisplayName(''); setBrand(''); setFeedback({ tone: 'success', text: t('created') });
+      setStableId(''); setDisplayName(''); setBrand(''); setBackendId(''); setFeedback({ tone: 'success', text: t('created') });
       router.refresh();
     } catch (cause) {
       const code = cause instanceof Error ? cause.message : 'MODEL_CREATE_FAILED';
@@ -38,7 +40,8 @@ export default function AdminModelCreate({ initial }: { initial?: { displayName:
       <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">{t('displayName')}<input value={displayName} onChange={(event) => setDisplayName(event.target.value)} className="h-9 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] text-white" /></label>
       <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">{t('modality')}<select value={modality} onChange={(event) => setModality(event.target.value as typeof modality)} className="h-9 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] text-white"><option value="chat">Chat</option><option value="image">Image</option><option value="video">Video</option></select></label>
       <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">{t('brand')}<input value={brand} maxLength={60} list="vantra-model-brand-create-list" autoComplete="off" onChange={(event) => setBrand(event.target.value)} placeholder="Optional" className="h-9 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] text-white" /><datalist id="vantra-model-brand-create-list">{[...new Set(Object.values(MODEL_BRANDS).map((item) => item.name))].sort().map((name) => <option key={name} value={name} />)}</datalist></label>
-      <p className="text-[10.5px] leading-relaxed text-[var(--studio-text-muted)] sm:col-span-2">{t('help')}</p>
+      <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)] sm:col-span-2">{t('backendModelId')}<input value={backendId} maxLength={240} autoComplete="off" spellCheck={false} onChange={(event) => setBackendId(event.target.value)} placeholder="agnes-3.0-flash" className="h-9 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] text-white" /></label>
+      <p className="text-[10.5px] leading-relaxed text-[var(--studio-text-muted)] sm:col-span-3">{t('help')}</p>
       <button type="button" disabled={saving || !valid} onClick={create} className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-white px-4 text-[12px] font-semibold text-black disabled:opacity-45">{saving && <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />}{saving ? t('creating') : t('submit')}</button>
       {feedback && <p role={feedback.tone === 'error' ? 'alert' : 'status'} className={`text-[10.5px] sm:col-span-3 ${feedback.tone === 'error' ? 'text-red-200' : 'text-emerald-200'}`}>{feedback.text}</p>}
     </div>}
