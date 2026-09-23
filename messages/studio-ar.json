@@ -228,6 +228,7 @@
       "description": "ابنِ مشهداً ثم اضبط الحركة والمقاس والصورة المرجعية.",
       "previewLabel": "نتيجة الفيديو",
       "modeLabel": "وضع إنشاء الفيديو",
+      "modeShort": "الوضع",
       "textToVideo": "نص إلى فيديو",
       "imageToVideo": "صورة إلى فيديو",
       "sourceImage": "الصورة المصدر",

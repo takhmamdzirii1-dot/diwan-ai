@@ -244,6 +244,7 @@
       "description": "Build a scene from a prompt, then refine its motion, format, and source image.",
       "previewLabel": "Video result",
       "modeLabel": "Video generation mode",
+      "modeShort": "Mode",
       "textToVideo": "Text to Video",
       "imageToVideo": "Image to Video",
       "prompt": "Scene prompt",

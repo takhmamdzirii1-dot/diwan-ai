@@ -250,7 +250,7 @@
 
   .studio-shell .studio-creation-preview {
     top: 0;
-    padding: 24px;
+    padding: 16px;
   }
 
   .studio-shell .studio-creation-action {
@@ -354,8 +354,7 @@
 
 /* Keep the legacy marketing section spacing from leaking into Studio creation panels. */
 @media (max-width: 1023px) {
-  .studio-shell .studio-creation-controls,
-  .studio-shell .studio-creation-preview {
+  .studio-shell .studio-creation-controls {
     padding: clamp(20px, 3.125vw, 24px);
   }
 

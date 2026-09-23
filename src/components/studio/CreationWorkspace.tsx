@@ -13,7 +13,7 @@ export default function CreationWorkspace({ controls, preview, previewLabel }: C
         <section className="studio-creation-controls min-w-0 rounded-2xl border border-[var(--studio-border-subtle)] bg-[var(--studio-surface)] p-5 sm:p-6 lg:p-6">
           {controls}
         </section>
-        <section aria-label={previewLabel} className="studio-creation-preview flex min-h-[360px] min-w-0 items-stretch justify-center rounded-2xl border border-[var(--studio-border-subtle)] bg-[var(--studio-recessed)] p-4 sm:min-h-[440px] sm:p-5 lg:sticky lg:top-0 lg:h-[calc(100dvh-112px)] lg:min-h-[500px] lg:p-5">
+        <section aria-label={previewLabel} className="studio-creation-preview flex min-h-[360px] min-w-0 items-stretch justify-center rounded-2xl border border-[var(--studio-border-subtle)] bg-[var(--studio-recessed)] p-4 sm:min-h-[440px] lg:sticky lg:top-0 lg:h-[calc(100dvh-112px)] lg:min-h-[500px]">
           {preview}
         </section>
       </div>

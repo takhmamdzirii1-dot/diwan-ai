@@ -228,6 +228,7 @@
       "description": "Construisez une scène, puis affinez le mouvement, le format et l’image source.",
       "previewLabel": "Résultat vidéo",
       "modeLabel": "Mode de création vidéo",
+      "modeShort": "Mode",
       "textToVideo": "Texte vers vidéo",
       "imageToVideo": "Image vers vidéo",
       "sourceImage": "Image source",

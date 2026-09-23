@@ -183,6 +183,13 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, on
           {groups.groups.length ? groups.groups.map(([brandName, items]) => {
             const openGroup = expanded.includes(brandName);
             const icon = brandIcon(items[0], modality);
+            if (items.length === 1) return <div key={brandName} className="mt-0.5">
+              <div className="flex h-9 w-full items-center gap-2 px-2 text-[var(--studio-text-secondary)]">
+                <ModelBrandIcon url={icon} name={brandName} size={20} />
+                <span className="min-w-0 flex-1 truncate text-[12px] font-semibold">{brandName}</span>
+              </div>
+              <div className="ms-2 rounded-lg border-s border-[var(--studio-border-subtle)] py-0.5 pe-1 ps-1">{row(items[0])}</div>
+            </div>;
             return <div key={brandName} className="mt-0.5"><button type="button" aria-expanded={openGroup} onClick={() => setExpanded((current) => openGroup ? current.filter((name) => name !== brandName) : [...current, brandName])} className="flex h-11 w-full items-center gap-2 rounded-lg px-2 text-start hover:bg-[var(--studio-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] sm:h-9">
               <ModelBrandIcon url={icon} name={brandName} size={20} />
               <span className="min-w-0 flex-1 truncate text-[12px] font-semibold">{brandName}</span><span className="shrink-0 text-[11px] text-[var(--studio-text-muted)]">{t('picker.modelsCount', { count: items.length })}</span><ChevronRight className={`h-4 w-4 shrink-0 text-[var(--studio-text-muted)] transition-transform duration-150 ${openGroup ? 'rotate-90' : ''}`} />
