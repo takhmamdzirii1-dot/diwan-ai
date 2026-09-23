@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { AlertTriangle, ChevronDown, ChevronRight, Copy, CreditCard, Database, ExternalLink, ImageIcon, MessageCircle, MoreHorizontal, Search, UserRound, Video, X } from 'lucide-react';
 import AdminPaymentActions from './AdminPaymentActions';
 import AdminUserActions from './AdminUserActions';
+import AdminUserUsage from './AdminUserUsage';
 import AdminCreditAdjustment from './AdminCreditAdjustment';
 import AdminModelControls from './AdminModelControls';
 import AdminModelRouteControls from './AdminModelRouteControls';
@@ -390,7 +391,7 @@ function AdminUserDetail({ user, onClose, onStatusChanged, onCreditChanged }: {
 }) {
   const t = useTranslations('Admin');
   const drawerRef = useRef<HTMLDialogElement>(null);
-  const [tab, setTab] = useState<'overview' | 'subscription' | 'credits' | 'payments' | 'jobs' | 'security' | 'audit'>('overview');
+  const [tab, setTab] = useState<'overview' | 'usage' | 'subscription' | 'credits' | 'payments' | 'jobs' | 'security' | 'audit'>('overview');
   const [data, setData] = useState<UserDetailData | null>(null);
   const [balance, setBalance] = useState(user.creditBalance);
   const [error, setError] = useState(false);
@@ -409,8 +410,8 @@ function AdminUserDetail({ user, onClose, onStatusChanged, onCreditChanged }: {
       .catch(() => { if (!controller.signal.aborted) setError(true); });
     return () => controller.abort();
   }, [user.id]);
-  const tabs = ['overview', 'subscription', 'credits', 'payments', 'jobs', 'security', 'audit'] as const;
-  const tabLabels = { overview: 'Overview', subscription: 'Subscription', credits: 'Credits & Ledger', payments: 'Payments', jobs: 'Jobs', security: 'Security', audit: 'Audit' } as const;
+  const tabs = ['overview', 'usage', 'subscription', 'credits', 'payments', 'jobs', 'security', 'audit'] as const;
+  const tabLabels = { overview: 'Overview', usage: 'Usage', subscription: 'Subscription', credits: 'Credits & Ledger', payments: 'Payments', jobs: 'Jobs', security: 'Security', audit: 'Audit' } as const;
   const currentEntitlement = data?.entitlements.find((item) => item.status === 'active'
     && (!item.ends_at || Date.parse(item.ends_at) > Date.now())) ?? null;
   const plan = user.plan.toLowerCase();
@@ -462,6 +463,7 @@ function AdminUserDetail({ user, onClose, onStatusChanged, onCreditChanged }: {
     </div>
 
     <div className="px-6 pb-8">
+      {tab === 'usage' && <AdminUserUsage userId={user.id} />}
       {tab === 'overview' && <div>
         <UserOverviewSection icon={<UserRound className="h-5 w-5" />} title="Account" description="Basic information and account status.">
           <UserOverviewField label="Email"><span className="flex items-center justify-between gap-2"><span className="break-all">{user.email}</span><button type="button" onClick={() => void copyValue(user.email, 'email')} aria-label="Copy email" title={copyStatus === 'email' ? 'Copied' : 'Copy email'} className="shrink-0 rounded p-1.5 text-[var(--studio-text-secondary)] hover:text-white focus-visible:ring-2 focus-visible:ring-white/50"><Copy className="h-3.5 w-3.5" /></button></span></UserOverviewField>
@@ -502,7 +504,7 @@ function AdminUserDetail({ user, onClose, onStatusChanged, onCreditChanged }: {
         <details className="group border-b border-[var(--studio-border-subtle)] py-5"><summary className="flex cursor-pointer list-none items-center gap-3 text-start [&::-webkit-details-marker]:hidden"><ChevronRight className="h-4 w-4 text-[var(--studio-text-secondary)] transition-transform group-open:rotate-90" aria-hidden="true" /><span><strong className="block text-[12px] font-semibold text-white">Technical details</strong><span className="mt-0.5 block text-[10.5px] text-[var(--studio-text-muted)]">IDs and raw account references</span></span></summary><div className="mt-4 rounded-xl border border-[var(--studio-border-subtle)] bg-black/15 p-3"><TechnicalId label={t('common.userId')} value={user.id} /><p className="mt-2 text-[11px] text-[var(--studio-text-secondary)]">Credit balance: <span className="tabular-nums text-white">{balance ?? '—'}</span></p><p className="mt-1 text-[11px] text-[var(--studio-text-secondary)]">Payment records: <span className="tabular-nums text-white">{user.paymentOrderCount}</span></p></div></details>
       </div>}
       {tab === 'security' && <div className="space-y-4 py-6"><p className="text-[12px] text-[var(--studio-text-secondary)]">{t('users.securityHelp')}</p><AdminUserActions userId={user.id} status={user.status} isOwner={user.isOwner} onChanged={onStatusChanged} /></div>}
-      {tab !== 'overview' && tab !== 'security' && (error ? <div className="pt-6"><Notice reason="query_failed" /></div> : !data ? <div role="status" aria-label={t('users.loading')} className="space-y-3 py-8 animate-pulse"><div className="h-12 rounded bg-white/[0.05]" /><div className="h-12 rounded bg-white/[0.04]" /><div className="h-12 rounded bg-white/[0.03]" /></div> : <div className="space-y-2 py-6 text-[12px]">
+      {tab !== 'overview' && tab !== 'usage' && tab !== 'security' && (error ? <div className="pt-6"><Notice reason="query_failed" /></div> : !data ? <div role="status" aria-label={t('users.loading')} className="space-y-3 py-8 animate-pulse"><div className="h-12 rounded bg-white/[0.05]" /><div className="h-12 rounded bg-white/[0.04]" /><div className="h-12 rounded bg-white/[0.03]" /></div> : <div className="space-y-2 py-6 text-[12px]">
         {tab === 'subscription' && <><div className="mb-4 border-b border-[var(--studio-border-subtle)] pb-4"><h3 className="text-[13px] font-semibold text-white">Subscription history</h3><p className="mt-1 text-[11px] text-[var(--studio-text-muted)]">Paid periods are activated through manual payments.</p></div>{data.entitlements.length ? data.entitlements.map((item) => <div key={item.id} className="grid gap-2 border-b border-[var(--studio-border-subtle)] py-3 sm:grid-cols-[minmax(0,1fr)_auto]"><div><p className="font-semibold text-white">{item.plan_name}</p><p className="mt-1 text-[var(--studio-text-muted)]"><DateValue value={item.starts_at} /> – <DateValue value={item.ends_at} /></p></div><div><Status value={item.status} /></div></div>) : <Empty label="No paid subscription periods recorded." />}</>}
         {tab === 'credits' && <><div className="grid gap-x-6 border-b border-[var(--studio-border-subtle)] pb-5 sm:grid-cols-2"><UserOverviewField label={t('users.balance')}><span className="tabular-nums">{balance ?? '—'}</span></UserOverviewField><UserOverviewField label="Subscription"><span className="tabular-nums">{usageBalances.subscription_balance ?? '—'}</span></UserOverviewField><UserOverviewField label="Rollover"><span className="tabular-nums">{usageBalances.subscription_rollover_balance ?? '—'}</span></UserOverviewField><UserOverviewField label="Purchased"><span className="tabular-nums">{usageBalances.purchased_balance ?? '—'}</span></UserOverviewField></div><div className="pt-4"><AdminCreditAdjustment userId={user.id} onAdjusted={(result) => { setBalance(result.balance); onCreditChanged(result.balance); setData((current) => current ? { ...current, balances: current.balances ? { ...current.balances, balance: result.balance } : null, ledger: [result.transaction, ...current.ledger.filter((item) => item.id !== result.transaction.id)] } : current); void fetch(`/api/admin/users/${user.id}/detail`).then((response) => response.ok ? response.json() : null).then((fresh: UserDetailData | null) => { if (fresh) setData(fresh); }).catch(() => {}); }} /></div><h3 className="pt-2 text-[12px] font-semibold text-white">Ledger history</h3>{data.ledger.length ? data.ledger.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><div><strong>{t.has(`status.${item.transaction_type}`) ? t(`status.${item.transaction_type}`) : item.transaction_type}</strong><p className="text-[var(--studio-text-muted)]">{item.reason}</p></div><div className="shrink-0 text-end tabular-nums">{item.amount}<p className="text-[var(--studio-text-muted)]"><DateValue value={item.created_at} /></p></div></div>) : <Empty />}</>}
         {tab === 'payments' && (data.payments.length ? data.payments.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[var(--studio-border-subtle)] py-2"><div><strong>{item.plan_name}</strong><div className="mt-1"><Status value={item.status} /></div></div><div className="shrink-0 text-end tabular-nums">{item.amount_dzd} DZD<p className="text-[var(--studio-text-muted)]"><DateValue value={item.created_at} /></p></div></div>) : <Empty />)}
