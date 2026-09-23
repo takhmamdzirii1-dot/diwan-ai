@@ -11,7 +11,7 @@ import type { ModelPlanCode } from '@/lib/models/plan-entitlements';
 import { trackFunnelEvent } from '@/src/lib/funnel-analytics';
 
 export type ActivationReason = 'free_media_expired' | 'image_allowance_exhausted' | 'video_allowance_exhausted'
-  | 'model_locked' | 'model_trial_exhausted' | 'paid_lapsed';
+  | 'video_duration_limit' | 'model_locked' | 'model_trial_exhausted' | 'paid_lapsed';
 export type ActivationPrompt = { reason: ActivationReason; modality: StudioModality; modelId?: string; modelName?: string; currentPlan: ModelPlanCode; requiredPlan?: ModelPlanCode | null; renewalPlanId?: string | null; renewalPlanName?: string | null };
 
 export default function ActivationOffer({ prompt, onClose }: { prompt: ActivationPrompt | null; onClose: () => void }) {
@@ -71,8 +71,8 @@ export default function ActivationOffer({ prompt, onClose }: { prompt: Activatio
     }
     onClose(); openTopUpModal({ id: selected.id });
   };
-  const title = !prompt ? '' : prompt.reason === 'free_media_expired' ? t('mediaExpiredTitle') : prompt.reason === 'image_allowance_exhausted' ? t('imageExhaustedTitle') : prompt.reason === 'video_allowance_exhausted' ? t('videoExhaustedTitle') : prompt.reason === 'model_trial_exhausted' ? t('modelTrialExhaustedTitle', { model: prompt.modelName ?? '' }) : prompt.reason === 'paid_lapsed' ? t('reactivateTitle') : t('modelLockedTitle', { model: prompt.modelName ?? '' });
-  const body = !prompt ? '' : prompt.reason === 'free_media_expired' || prompt.reason.endsWith('_exhausted') ? t('mediaExpiredSupport') : prompt.reason === 'paid_lapsed' ? t('reactivateSupport') : t('modelLockedSupport', { plan: prompt.requiredPlan ?? 'Pro' });
+  const title = !prompt ? '' : prompt.reason === 'free_media_expired' ? t('mediaExpiredTitle') : prompt.reason === 'image_allowance_exhausted' ? t('imageExhaustedTitle') : prompt.reason === 'video_allowance_exhausted' ? t('videoExhaustedTitle') : prompt.reason === 'video_duration_limit' ? t('videoDurationTitle') : prompt.reason === 'model_trial_exhausted' ? t('modelTrialExhaustedTitle', { model: prompt.modelName ?? '' }) : prompt.reason === 'paid_lapsed' ? t('reactivateTitle') : t('modelLockedTitle', { model: prompt.modelName ?? '' });
+  const body = !prompt ? '' : prompt.reason === 'free_media_expired' || prompt.reason.endsWith('_exhausted') ? t('mediaExpiredSupport') : prompt.reason === 'video_duration_limit' ? t('videoDurationSupport') : prompt.reason === 'paid_lapsed' ? t('reactivateSupport') : t('modelLockedSupport', { plan: prompt.requiredPlan ?? 'Pro' });
 
   return <AnimatePresence>{prompt && <div className="fixed inset-0 z-[120] flex items-end justify-center sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-labelledby="activation-title">
     <motion.button type="button" aria-label={t('close')} onClick={closeOffer} className="absolute inset-0 bg-[var(--studio-overlay)]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} />

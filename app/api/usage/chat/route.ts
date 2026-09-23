@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * Customer-safe chat capacity state. Exposes only the facing level
- * (Standard / Extended / High-usage Chat), the qualitative state, and the
+ * (Standard / Extended / High-usage / Highest Chat Access), the qualitative state, and the
  * next availability timestamp — never raw units, weights, or limits.
  */
 export async function GET(request: Request) {

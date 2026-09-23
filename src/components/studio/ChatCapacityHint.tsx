@@ -39,7 +39,8 @@ export default function ChatCapacityHint({ refreshSignal }: { refreshSignal: num
   if (!snapshot || snapshot.state === 'plenty') return null;
   const levelLabel = snapshot.level === 'extended'
     ? t('chatLevelExtended')
-    : snapshot.level === 'high' ? t('chatLevelHigh') : t('chatLevelStandard');
+    : snapshot.level === 'high' ? t('chatLevelHigh')
+      : snapshot.level === 'highest' ? t('chatLevelHighest') : t('chatLevelStandard');
   const stateLabel = snapshot.state === 'limit'
     ? t('chatCapacityLimit')
     : snapshot.state === 'near' ? t('chatCapacityNear') : t('chatCapacityHigh');

@@ -21,7 +21,7 @@ test('plan maps to customer-facing chat level', () => {
   assert.equal(chatLevelForPlan('free'), 'standard');
   assert.equal(chatLevelForPlan('lite'), 'extended');
   assert.equal(chatLevelForPlan('pro'), 'high');
-  assert.equal(chatLevelForPlan('max'), 'high');
+  assert.equal(chatLevelForPlan('max'), 'highest');
   assert.equal(chatLevelForPlan(normalizeModelPlanCode('unknown-plan')), 'standard');
 });
 
@@ -370,7 +370,7 @@ test('refused requests carry a weighted next availability', async () => {
 });
 
 test('plan change re-evaluates against the new limits', async () => {
-  const store = new MemoryChatStore({ pro: { fiveHour: 250, weekly: 3000 }, free: { fiveHour: 120, weekly: 800 } });
+  const store = new MemoryChatStore({ pro: { fiveHour: 600, weekly: 4000 }, free: { fiveHour: 120, weekly: 800 } });
   await store.reserve({ userId: 'u1', operationKey: 'op-pro', planCode: 'pro', weight: 200, nowMs: NOW });
   await store.finalize('op-pro', 'completed');
   const downgraded = await store.reserve({ userId: 'u1', operationKey: 'op-free', planCode: 'free', weight: 10, nowMs: NOW + 1000 });

@@ -516,10 +516,11 @@ export default function StudioDashboard({
       const code = payload?.error;
       if (code === 'FREE_MEDIA_EXPIRED') showActivation('free_media_expired', 'video');
       else if (code === 'FREE_VIDEO_TRIAL_EXHAUSTED') showActivation('video_allowance_exhausted', 'video');
+      else if (code === 'FREE_VIDEO_DURATION_LIMIT') showActivation('video_duration_limit', 'video');
       else if (code === 'PAID_PLAN_REACTIVATION_REQUIRED') showActivation('paid_lapsed', 'video');
       else if (code === 'MODEL_TRIAL_EXHAUSTED' || code === 'MODEL_TRIAL_UNCONFIGURED') showActivation('model_trial_exhausted', 'video', { id: draft.modelId, name: videoModels.find((item) => item.id === draft.modelId)?.displayName ?? draft.modelId, requiredPlan: payload?.requiredPlan });
       else if (code === 'MODEL_PLAN_ACCESS_REQUIRED') showActivation('model_locked', 'video', { id: draft.modelId, name: videoModels.find((item) => item.id === draft.modelId)?.displayName ?? draft.modelId, requiredPlan: payload?.requiredPlan });
-      if (/FREE_MEDIA_EXPIRED|FREE_VIDEO_TRIAL_EXHAUSTED|PAID_PLAN_REACTIVATION_REQUIRED|MODEL_TRIAL_|MODEL_PLAN_ACCESS_REQUIRED/.test(code ?? '')) throw new Error('ACCESS_PROMPTED');
+      if (/FREE_MEDIA_EXPIRED|FREE_VIDEO_TRIAL_EXHAUSTED|FREE_VIDEO_DURATION_LIMIT|PAID_PLAN_REACTIVATION_REQUIRED|MODEL_TRIAL_|MODEL_PLAN_ACCESS_REQUIRED/.test(code ?? '')) throw new Error('ACCESS_PROMPTED');
       throw new Error(payload?.error ?? 'VIDEO_GENERATION_FAILED');
     }
     await refreshBalance();

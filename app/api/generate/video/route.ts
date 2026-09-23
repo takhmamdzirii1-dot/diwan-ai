@@ -29,6 +29,7 @@ import {
 import { resolveTerminalCustomerCharge } from '@/lib/credits/generation-policy';
 import { persistGeneratedMedia } from '@/lib/ai/library-media';
 import { requireMediaGenerationAccess } from '@/lib/access/trial-access';
+import { freeVideoDurationAllowed } from '@/lib/access/trial-state';
 import { recordFunnelEvent } from '@/lib/analytics/funnel-events';
 import { finalizeModelTrialAccess, reserveModelTrialAccess } from '@/lib/models/model-trial.server';
 import { runtimeAccessReasonForError } from '@/lib/models/model-access';
@@ -130,6 +131,9 @@ export async function POST(request: Request) {
   } catch (cause) {
     const code = cause instanceof VideoRequestError ? cause.code : 'INVALID_VIDEO_REQUEST';
     return NextResponse.json({ error: code }, { status: 400 });
+  }
+  if (!freeVideoDurationAllowed(resolvedAccess.currentPlan, input.duration)) {
+    return NextResponse.json({ error: 'FREE_VIDEO_DURATION_LIMIT', reason: 'plan_required' }, { status: 403 });
   }
 
   let route;

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { deriveStudioAccess, generationAccessError, trialExpiresAt, type AccessEntitlement } from '../lib/access/trial-state';
+import { deriveStudioAccess, freeVideoDurationAllowed, generationAccessError, trialExpiresAt, type AccessEntitlement } from '../lib/access/trial-state';
 
 const createdAt = '2026-09-01T00:00:00.000Z';
 
@@ -21,6 +21,12 @@ test('day eight keeps Chat open while media generation expires', () => {
   assert.equal(generationAccessError(access, 'chat'), null);
   assert.equal(generationAccessError(access, 'image'), 'FREE_MEDIA_EXPIRED');
   assert.equal(generationAccessError(access, 'video'), 'FREE_MEDIA_EXPIRED');
+});
+
+test('Free video cannot exceed five seconds even when its model supports longer output', () => {
+  assert.equal(freeVideoDurationAllowed('free', 5), true);
+  assert.equal(freeVideoDurationAllowed('free', 6), false);
+  assert.equal(freeVideoDurationAllowed('pro', 15), true);
 });
 
 test('active paid access overrides the free trial clock', () => {

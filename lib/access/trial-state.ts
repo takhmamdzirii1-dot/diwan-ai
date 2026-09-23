@@ -1,4 +1,9 @@
 export const FREE_TRIAL_DAYS = 7;
+export const FREE_VIDEO_MAX_DURATION_SECONDS = 5;
+
+export function freeVideoDurationAllowed(planCode: string, durationSeconds: number) {
+  return planCode !== 'free' || durationSeconds <= FREE_VIDEO_MAX_DURATION_SECONDS;
+}
 
 export type StudioAccessKind = 'trial_active' | 'trial_expired' | 'paid_active' | 'paid_lapsed';
 

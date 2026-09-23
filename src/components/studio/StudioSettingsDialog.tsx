@@ -29,6 +29,7 @@ import {
 import { STUDIO_THEMES, useStudioTheme } from '../../context/StudioThemeContext';
 import { useModal } from '../../context/ModalContext';
 import type { PaymentPlan } from '@/lib/payments/types';
+import { useStudioAccess } from '@/src/hooks/useStudioAccess';
 
 type TabId = 'general' | 'models' | 'credits';
 type StartScreen = 'chat' | 'image' | 'video' | 'library';
@@ -441,6 +442,7 @@ function CreditsPanel() {
     loadBalance: true,
     loadPlan: true,
   });
+  const { access } = useStudioAccess(Boolean(user));
 
   useEffect(() => {
     if (!user) return;
@@ -479,10 +481,12 @@ function CreditsPanel() {
         {user && balanceStatus === 'ready' && (purchasedBalance ?? 0) > 0 && (
           <StaticRow label={t('purchasedCredits')} value={(purchasedBalance ?? 0).toLocaleString()} />
         )}
-        {user && planStatus === 'ready' && planCode === 'free' && (
+        {user && planStatus === 'ready' && planCode === 'free' && (access?.kind === 'trial_active' || access?.kind === 'trial_expired') && (
           <>
-            <StaticRow label={t('freeImages')} value={t('remainingCount', { count: freeImageRemaining ?? 0 })} />
-            <StaticRow label={t('freeVideo')} value={t('remainingCount', { count: freeVideoRemaining ?? 0 })} />
+            <StaticRow label={t('freeChatAccess')} value={t('standardChat')} />
+            <StaticRow label={t('mediaTrial')} value={access?.kind === 'trial_expired' ? t('mediaTrialEnded') : t('mediaTrialDuration')} />
+            <StaticRow label={t('freeImages')} value={access?.kind === 'trial_expired' ? t('mediaTrialEnded') : t('remainingCount', { count: freeImageRemaining ?? 0 })} />
+            <StaticRow label={t('freeVideo')} value={access?.kind === 'trial_expired' ? t('mediaTrialEnded') : t('remainingCount', { count: freeVideoRemaining ?? 0 })} />
           </>
         )}
         {user && planStatus === 'ready' && paidPlanCode === 'lite' && planAccessState !== 'EXPIRED' && (

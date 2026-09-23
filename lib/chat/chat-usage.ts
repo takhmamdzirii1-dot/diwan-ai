@@ -13,7 +13,7 @@ import type { ModelPlanCode } from '@/lib/models/plan-entitlements';
 export const CHAT_WINDOW_5H_MS = 5 * 3_600_000;
 export const CHAT_WINDOW_7D_MS = 7 * 86_400_000;
 
-export type ChatLevel = 'standard' | 'extended' | 'high';
+export type ChatLevel = 'standard' | 'extended' | 'high' | 'highest';
 export type ChatUsageState = 'plenty' | 'high' | 'near' | 'limit';
 export type ChatWindowName = 'five_hour' | 'weekly' | null;
 
@@ -30,10 +30,11 @@ export interface ChatWindowSnapshot {
   nextAvailableAt: string | null;
 }
 
-/** Customer-facing chat tier. Max rides the top tier; it is a frozen plan. */
+/** Customer-facing chat tier. Numeric weighted limits stay on the server. */
 export function chatLevelForPlan(plan: ModelPlanCode): ChatLevel {
   if (plan === 'lite') return 'extended';
-  if (plan === 'pro' || plan === 'max') return 'high';
+  if (plan === 'pro') return 'high';
+  if (plan === 'max') return 'highest';
   return 'standard';
 }
 

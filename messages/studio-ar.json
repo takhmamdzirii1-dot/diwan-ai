@@ -82,6 +82,11 @@
       "creditsDescription": "خطتك الحالية وأرصدة VANTRA والاستخدام المشمول.",
       "currentPlan": "الخطة الحالية",
       "freePlan": "مجانية",
+      "freeChatAccess": "الوصول إلى الدردشة",
+      "standardChat": "دردشة عادية",
+      "mediaTrial": "تجربة الوسائط",
+      "mediaTrialDuration": "7 أيام من إنشاء الحساب",
+      "mediaTrialEnded": "انتهت",
       "unifiedCreditsBalance": "أرصدة VANTRA المتاحة",
       "subscriptionCredits": "أرصدة الاشتراك",
       "purchasedCredits": "الأرصدة المشتراة",
@@ -138,6 +143,7 @@
       "chatLevelStandard": "دردشة عادية",
       "chatLevelExtended": "دردشة موسعة",
       "chatLevelHigh": "دردشة مكثفة",
+      "chatLevelHighest": "أعلى مستوى للوصول إلى الدردشة",
       "starters": {
         "writeCode": {
           "title": "اكتب كوداً",
@@ -304,6 +310,8 @@
       "imageExhaustedSupport": "فعّل خطة لإنشاء المزيد من الصور. تبقى الدردشة متاحة ضمن الخطة المجانية.",
       "videoExhaustedTitle": "لقد استخدمت رصيد الفيديو المجاني",
       "videoExhaustedSupport": "فعّل خطة لإنشاء المزيد من الفيديوهات. تبقى الدردشة متاحة ضمن الخطة المجانية.",
+      "videoDurationTitle": "الفيديوهات المجانية محدودة بخمس ثوانٍ",
+      "videoDurationSupport": "فعّل خطة لإنشاء فيديوهات أطول. تبقى الدردشة متاحة ضمن الخطة المجانية.",
       "bankedCredits": "لديك {credits} من أرصدة VANTRA المحفوظة. يلزم وجود خطة مدفوعة نشطة لاستخدامها.",
       "recommended": "موصى بها",
       "reactivation": "إعادة التفعيل",

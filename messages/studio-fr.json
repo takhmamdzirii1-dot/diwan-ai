@@ -82,6 +82,11 @@
       "creditsDescription": "Votre formule actuelle, vos Crédits VANTRA et votre utilisation incluse.",
       "currentPlan": "Formule actuelle",
       "freePlan": "Gratuite",
+      "freeChatAccess": "Accès Chat",
+      "standardChat": "Chat Standard",
+      "mediaTrial": "Essai média",
+      "mediaTrialDuration": "7 jours après la création du compte",
+      "mediaTrialEnded": "Terminé",
       "unifiedCreditsBalance": "Crédits VANTRA disponibles",
       "subscriptionCredits": "Crédits d’abonnement",
       "purchasedCredits": "Crédits achetés",
@@ -138,6 +143,7 @@
       "chatLevelStandard": "Chat Standard",
       "chatLevelExtended": "Chat Étendu",
       "chatLevelHigh": "Chat Intensif",
+      "chatLevelHighest": "Accès Chat maximal",
       "starters": {
         "writeCode": {
           "title": "Écrire du code",
@@ -304,6 +310,8 @@
       "imageExhaustedSupport": "Activez une formule pour créer plus d’images. Chat reste disponible avec la formule Gratuite.",
       "videoExhaustedTitle": "Vous avez utilisé votre quota gratuit de vidéos",
       "videoExhaustedSupport": "Activez une formule pour créer plus de vidéos. Chat reste disponible avec la formule Gratuite.",
+      "videoDurationTitle": "Les vidéos gratuites sont limitées à 5 secondes",
+      "videoDurationSupport": "Activez une formule pour créer des vidéos plus longues. Chat reste disponible avec la formule Gratuite.",
       "bankedCredits": "Vous avez {credits} crédits VANTRA conservés. Une formule payante active est requise pour les utiliser.",
       "recommended": "Recommandé",
       "reactivation": "Réactivation",

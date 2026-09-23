@@ -82,6 +82,11 @@
       "creditsDescription": "Your current plan, VANTRA Credits, and included usage.",
       "currentPlan": "Current plan",
       "freePlan": "Free",
+      "freeChatAccess": "Chat access",
+      "standardChat": "Standard Chat",
+      "mediaTrial": "Media trial",
+      "mediaTrialDuration": "7 days from account creation",
+      "mediaTrialEnded": "Ended",
       "unifiedCreditsBalance": "Available VANTRA Credits",
       "subscriptionCredits": "Subscription Credits",
       "purchasedCredits": "Purchased Credits",
@@ -138,6 +143,7 @@
       "chatLevelStandard": "Standard Chat",
       "chatLevelExtended": "Extended Chat",
       "chatLevelHigh": "High-usage Chat",
+      "chatLevelHighest": "Highest Chat Access",
       "starters": {
         "writeCode": {
           "title": "Write code",
@@ -304,6 +310,8 @@
       "imageExhaustedSupport": "Activate a plan to create more images. Chat remains available on Free.",
       "videoExhaustedTitle": "You've used your free video allowance",
       "videoExhaustedSupport": "Activate a plan to create more videos. Chat remains available on Free.",
+      "videoDurationTitle": "Free videos are limited to 5 seconds",
+      "videoDurationSupport": "Activate a plan to create longer videos. Chat remains available on Free.",
       "bankedCredits": "You have {credits} banked VANTRA Credits. An active paid plan is required to use them.",
       "recommended": "Recommended",
       "reactivation": "Reactivation",
