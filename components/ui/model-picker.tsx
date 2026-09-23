@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown, ChevronRight, LockKeyhole, Search, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -9,6 +9,7 @@ import { modelBrand, modelIconUrl } from '@/src/config/model-catalog';
 import { ModelBrandIcon } from './model-brand-icon';
 import { isHierarchicalAllowedPlans, MODEL_PLAN_CODES, type ModelPlanCode } from '@/lib/models/plan-entitlements';
 import type { ModelAccessState } from '@/lib/models/model-access';
+import { positionModelPicker, type PickerAnchor } from './model-picker-position';
 
 export interface ChatModelOption {
   id: string;
@@ -46,7 +47,7 @@ function brandIcon(model: ChatModelOption, modality: StudioModality) {
   return model.iconUrl ?? modelIconUrl(modelBrand(model.name, modality, model.provider, model.id, model.brand));
 }
 
-export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, onAccessRequest, dropdownPosition = 'top', menuLabel, emptyLabel, modality = 'chat' }: {
+export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, onAccessRequest, dropdownPosition = 'top', menuLabel, emptyLabel, modality = 'chat', wideTrigger = false }: {
   models: ChatModelOption[];
   selectedModel: string;
   onSelect: (id: string) => void;
@@ -56,13 +57,14 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, on
   menuLabel?: string;
   emptyLabel?: string;
   modality?: StudioModality;
+  wideTrigger?: boolean;
 }) {
   const t = useTranslations('studio.models');
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState<string[]>([]);
   const [recent, setRecent] = useState<RecentByModality>(emptyRecent);
-  const [anchor, setAnchor] = useState<{ top?: number; bottom?: number; left: number; height: number } | null>(null);
+  const [anchor, setAnchor] = useState<PickerAnchor | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
@@ -70,23 +72,12 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, on
   const current = visibleModels.find((model) => model.id === selectedModel) ?? visibleModels[0];
 
   useEffect(() => setRecent(readRecent()), []);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
     const update = () => {
       const rect = trigger.current?.getBoundingClientRect();
       if (!rect) return;
-      const width = Math.min(408, innerWidth - 32);
-      const above = rect.top - 24;
-      const below = innerHeight - rect.bottom - 24;
-      const placeAbove = dropdownPosition === 'top' ? above >= 280 || above >= below : below < 280 && above > below;
-      const height = Math.min(540, Math.max(220, placeAbove ? above : below));
-      // Above: pin the panel bottom ~10px over the trigger so it grows upward
-      // instead of floating high; below: open directly under the trigger.
-      setAnchor(placeAbove
-        ? { bottom: innerHeight - rect.top + 10, left: Math.max(16, Math.min(rect.left, innerWidth - width - 16)), height }
-        : { top: rect.bottom + 8, left: Math.max(16, Math.min(rect.left, innerWidth - width - 16)), height });
+      setAnchor(positionModelPicker(rect, innerWidth, innerHeight, dropdownPosition));
     };
     update();
     requestAnimationFrame(() => searchInput.current?.focus());
@@ -110,7 +101,6 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, on
       window.removeEventListener('scroll', update, true);
       document.removeEventListener('pointerdown', closeOnOutside);
       document.removeEventListener('keydown', closeOnEscape);
-      document.body.style.overflow = previousOverflow;
     };
   }, [open, dropdownPosition]);
 
@@ -202,11 +192,11 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, on
       </div>
     </div>
   </>;
-  return <div className="relative inline-flex min-w-0 items-center">
+  return <div className={wideTrigger ? 'flex w-full min-w-0 items-center' : 'relative inline-flex min-w-0 items-center'}>
     <button ref={trigger} type="button" onClick={() => { setSearch(''); setExpanded([]); setOpen((value) => !value); }} disabled={!current} aria-haspopup="dialog" aria-expanded={open} aria-label={`${t('label')}: ${current?.name ?? t('label')}`}
-      className="inline-flex h-9 max-w-[230px] items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-2.5 text-[12px] text-[var(--studio-text-primary)] hover:border-[var(--studio-border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] disabled:opacity-50">
+      className={`inline-flex h-10 items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-2.5 text-[12px] text-[var(--studio-text-primary)] hover:border-[var(--studio-border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] disabled:opacity-50 ${wideTrigger ? 'w-full min-w-0' : 'max-w-[230px]'}`}>
       {current && <ModelBrandIcon url={brandIcon(current, modality)} name={modelBrand(current.name, modality, current.provider, current.id, current.brand).name} size={20} />}<span className="truncate font-medium">{current?.name ?? emptyLabel ?? t('label')}</span><ChevronDown className="h-3.5 w-3.5 shrink-0 text-[var(--studio-text-muted)]" />
     </button>
-    {open && typeof document !== 'undefined' && createPortal(picker, document.querySelector('.studio-overlay-root') ?? document.body)}
+    {open && typeof document !== 'undefined' && createPortal(picker, trigger.current?.closest('.studio-overlay-root') ?? document.body)}
   </div>;
 }

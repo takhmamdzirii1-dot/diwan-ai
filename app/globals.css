@@ -199,7 +199,7 @@
 
 @media (min-width: 1024px) and (max-height: 900px) {
   .studio-shell .studio-creation-workspace {
-    grid-template-columns: minmax(400px, 430px) minmax(0, 1fr);
+    grid-template-columns: minmax(350px, 390px) minmax(0, 1fr);
     gap: 24px;
     padding: 16px 24px;
   }
@@ -287,10 +287,57 @@
 
 @media (min-width: 1024px) and (max-width: 1120px) {
   .studio-shell .studio-creation-workspace {
-    grid-template-columns: minmax(390px, 410px) minmax(0, 1fr);
+    grid-template-columns: minmax(340px, 370px) minmax(0, 1fr);
     gap: 20px;
     padding-inline: 20px;
   }
+}
+
+.studio-media-range {
+  appearance: none;
+  height: 20px;
+  outline: none;
+}
+
+.studio-media-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border: 2px solid white;
+  border-radius: 999px;
+  background: white;
+}
+
+.studio-media-range::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border: 2px solid white;
+  border-radius: 999px;
+  background: white;
+}
+
+.studio-media-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.studio-media-range::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.studio-media-scrub::-webkit-slider-runnable-track {
+  background: transparent;
+}
+
+.studio-media-scrub::-moz-range-track {
+  background: transparent;
+}
+
+.studio-media-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35);
 }
 
 .admin-root :is(button, a, input, select, textarea, summary):focus-visible {

@@ -17,6 +17,8 @@ import { ModelSelector, type ChatModelOption } from '@/components/ui/claude-styl
 import { PrimaryButton, Segmented, StateBlock } from './AppShell';
 import CreationWorkspace from './CreationWorkspace';
 import { downloadPrivateMedia } from './media-repository';
+import MediaResultRail, { type SessionResult } from './MediaResultRail';
+import StudioVideoPlayer from './StudioVideoPlayer';
 
 export type VideoRequestDraft = {
   prompt: string;
@@ -100,6 +102,7 @@ export default function PrunaMotionStudio({
   const executionT = useTranslations('studio.videoExecution');
   const modelsT = useTranslations('studio.models');
   const libraryT = useTranslations('studio.library');
+  const viewerT = useTranslations('studio.mediaViewer');
   const submitGuardRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const endFileInputRef = useRef<HTMLInputElement>(null);
@@ -117,6 +120,7 @@ export default function PrunaMotionStudio({
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<VideoGenerationResult | null>(null);
+  const [sessionResults, setSessionResults] = useState<(VideoGenerationResult & SessionResult)[]>([]);
 
   const modelOptions: ChatModelOption[] = models.map((model) => ({
     id: model.id,
@@ -245,10 +249,11 @@ export default function PrunaMotionStudio({
     if (!onGenerate || submitGuardRef.current) return;
     submitGuardRef.current = true;
     setError(null);
-    setResult(null);
     setIsSubmitting(true);
     try {
-      setResult(await onGenerate(draft));
+      const completed = await onGenerate(draft);
+      setResult(completed);
+      setSessionResults((current) => [{ ...completed, thumbnail: null }, ...current.filter((item) => item.libraryAssetId !== completed.libraryAssetId)].slice(0, 12));
     } catch (cause) {
       const code = cause instanceof Error ? cause.message : 'VIDEO_GENERATION_FAILED';
       if (code === 'ACCESS_PROMPTED') return;
@@ -303,12 +308,12 @@ export default function PrunaMotionStudio({
           }))}
           className="w-full [&>button]:flex-1"
         />}
-        <div className="space-y-2"><FieldLabel htmlFor="video-prompt">{t('prompt')}</FieldLabel><textarea id="video-prompt" value={prompt} onChange={(event) => { setPrompt(event.target.value); setError(null); }} rows={5} placeholder={t('promptPlaceholder')} className="studio-creation-prompt w-full resize-y rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3.5 py-3 text-[14px] leading-relaxed text-white outline-none transition-[border-color,background-color] duration-150 placeholder:text-white/40 hover:bg-[var(--studio-hover)] focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/40" /></div>
+        <div className="space-y-2"><div className="flex items-center justify-between gap-3"><FieldLabel htmlFor="video-prompt">{t('prompt')}</FieldLabel><span dir="ltr" aria-label={`${viewerT('characters')}: ${prompt.length} / 2000`} className={`text-[10px] tabular-nums ${prompt.length > 2000 ? 'text-red-300' : 'text-[var(--studio-text-muted)]'}`}>{prompt.length} / 2000</span></div><textarea id="video-prompt" value={prompt} onChange={(event) => { setPrompt(event.target.value); setError(null); }} rows={5} placeholder={t('promptPlaceholder')} className="studio-creation-prompt w-full resize-y rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3.5 py-3 text-[14px] leading-relaxed text-white outline-none transition-[border-color,background-color] duration-150 placeholder:text-white/40 hover:bg-[var(--studio-hover)] focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/40" /></div>
         {sourceMode === 'image' && capabilities?.imageToVideo && <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <ImageUploadField label={t('startImage')} inputRef={fileInputRef} previewUrl={sourceImageUrl} chooseLabel={t('chooseStartImage')} selectedLabel={t('selectedStartImage')} replaceLabel={t('replaceStartImage')} removeLabel={t('removeStartImage')} addLabel={t('addStartImage')} onChoose={chooseSourceImage} onRemove={clearSourceImage} />
           <ImageUploadField label={t('endImage')} inputRef={endFileInputRef} previewUrl={endImageUrl} chooseLabel={t('chooseEndImage')} selectedLabel={t('selectedEndImage')} replaceLabel={t('replaceEndImage')} removeLabel={t('removeEndImage')} addLabel={t('addEndImage')} onChoose={chooseEndImage} onRemove={clearEndImage} />
         </div>}
-        <div className="space-y-2"><FieldLabel>{t('model')}</FieldLabel><ModelSelector models={modelOptions} selectedModel={modelId} onSelect={setModelId} onAccessRequest={onModelAccessRequest} dropdownPosition="bottom" menuLabel={modelsT('videoMenuLabel')} emptyLabel={modelsT('noModels')} modality="video" /></div>
+        <div className="space-y-2"><FieldLabel>{t('model')}</FieldLabel><ModelSelector models={modelOptions} selectedModel={modelId} onSelect={setModelId} onAccessRequest={onModelAccessRequest} dropdownPosition="top" wideTrigger menuLabel={modelsT('videoMenuLabel')} emptyLabel={modelsT('noModels')} modality="video" /></div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {capabilities && capabilities.durations.length > 0 && <label className="space-y-2"><FieldLabel htmlFor="video-duration">{t('duration')}</FieldLabel><select id="video-duration" value={duration} onChange={(event) => setDuration(Number(event.target.value) as ModelVideoDuration)} className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white">{capabilities.durations.map((value) => <option key={value} value={value}>{t('durationSeconds', { value })}</option>)}</select></label>}
           {sourceMode === 'text' && capabilities && capabilities.aspectRatios.length > 0 && <label className="space-y-2"><FieldLabel htmlFor="video-aspect">{t('aspectRatio')}</FieldLabel><select id="video-aspect" value={aspectRatio} onChange={(event) => setAspectRatio(event.target.value as ModelAspectRatio)} className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white">{capabilities.aspectRatios.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>}
@@ -319,12 +324,20 @@ export default function PrunaMotionStudio({
         <div className="studio-creation-action space-y-2"><PrimaryButton type="submit" disabled={!generationAvailable} className="w-full">{isSubmitting ? t('generating') : t('generate')}</PrimaryButton>{!configurationValid && <p className="text-center text-[11.5px] font-medium text-white/60">{t('unavailableNote')}</p>}</div>
       </form>
     </>}
-    preview={<div className="flex min-h-[300px] w-full items-center justify-center lg:min-h-0">{isSubmitting
-      ? <StateBlock icon={<LoaderCircle className="h-6 w-6 animate-spin motion-reduce:animate-none" />} title={executionT('generatingTitle')} description={executionT('generatingDescription')} />
-      : result
-        ? <div className="flex w-full flex-col gap-3"><div className="flex min-h-[300px] items-center justify-center overflow-hidden rounded-xl border border-[var(--studio-border-subtle)] bg-black"><video src={result.src} controls playsInline className="max-h-[min(68vh,760px)] w-full object-contain" aria-label={executionT('resultAlt')} /></div><div className="flex flex-wrap justify-end gap-2">{result.libraryAssetId && onOpenLibrary && <button type="button" onClick={onOpenLibrary} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)]"><FolderOpen className="h-4 w-4" />{libraryT('openInLibrary')}</button>}<button type="button" onClick={downloadResult} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)]"><Download className="h-4 w-4" />{executionT('download')}</button><button type="button" onClick={() => { const draft = buildDraft(); if (draft) void generate(draft); }} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)]"><RotateCcw className="h-4 w-4" />{executionT('regenerate')}</button></div></div>
-        : error
-          ? <StateBlock icon={<Clapperboard className="h-6 w-6" />} title={executionT('errorTitle')} description={error} />
-          : <StateBlock icon={<Clapperboard className="h-6 w-6" />} title={t('emptyTitle')} description={t('emptyDescription')} />}</div>}
+    preview={<div className="flex min-h-[320px] w-full flex-col gap-3 lg:h-full lg:min-h-0">
+      <div className="flex min-h-[300px] min-w-0 flex-1 items-center justify-center overflow-hidden rounded-xl border border-[var(--studio-border-subtle)] bg-black">
+        {isSubmitting ? <StateBlock icon={<LoaderCircle className="h-6 w-6 animate-spin motion-reduce:animate-none" />} title={executionT('generatingTitle')} description={executionT('generatingDescription')} />
+          : result ? <StudioVideoPlayer key={result.libraryAssetId} src={result.src} label={executionT('resultAlt')}
+            onThumbnail={(thumbnail) => { if (thumbnail) setSessionResults((current) => current.map((item) => item.libraryAssetId === result.libraryAssetId ? { ...item, thumbnail } : item)); }} />
+            : error ? <StateBlock icon={<Clapperboard className="h-6 w-6" />} title={executionT('errorTitle')} description={error} />
+              : <StateBlock icon={<Clapperboard className="h-6 w-6" />} title={t('emptyTitle')} description={t('emptyDescription')} />}
+      </div>
+      {result && !isSubmitting && <div className="flex flex-wrap items-center justify-end gap-2">
+        {result.libraryAssetId && onOpenLibrary && <button type="button" onClick={onOpenLibrary} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)]"><FolderOpen className="h-4 w-4" />{libraryT('openInLibrary')}</button>}
+        <button type="button" onClick={downloadResult} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)]"><Download className="h-4 w-4" />{executionT('download')}</button>
+        <button type="button" onClick={() => { const draft = buildDraft(); if (draft) void generate(draft); }} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)]"><RotateCcw className="h-4 w-4" />{executionT('regenerate')}</button>
+      </div>}
+      <MediaResultRail items={sessionResults} selectedId={result?.libraryAssetId ?? ''} kind="video" onSelect={(id) => { const selected = sessionResults.find((item) => item.libraryAssetId === id); if (selected) setResult(selected); }} />
+    </div>}
   />;
 }

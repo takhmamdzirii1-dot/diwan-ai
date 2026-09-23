@@ -11,6 +11,7 @@ import CreationWorkspace from './CreationWorkspace';
 import { ModelSelector, type ChatModelOption } from '@/components/ui/claude-style-chat-input';
 import type { ImageModelCapabilities, ModelAspectRatio } from '@/lib/models/capabilities';
 import { downloadPrivateMedia } from './media-repository';
+import MediaResultRail, { captureSessionThumbnail, type SessionResult } from './MediaResultRail';
 
 export type ImageRequestDraft = {
   prompt: string;
@@ -36,6 +37,7 @@ export default function ImageCanvas({ models, onGenerate, onOpenLibrary, onModel
   const t = useTranslations('studio.image');
   const modelsT = useTranslations('studio.models');
   const libraryT = useTranslations('studio.library');
+  const viewerT = useTranslations('studio.mediaViewer');
   const reduceMotion = useReducedMotion();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [prompt, setPrompt] = useState('');
@@ -49,6 +51,7 @@ export default function ImageCanvas({ models, onGenerate, onOpenLibrary, onModel
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<ImageGenerationResult | null>(null);
+  const [sessionResults, setSessionResults] = useState<(ImageGenerationResult & SessionResult)[]>([]);
 
   const modelOptions: ChatModelOption[] = models.map((model) => ({
     id: model.id,
@@ -122,9 +125,10 @@ export default function ImageCanvas({ models, onGenerate, onOpenLibrary, onModel
     setError(null);
     if (!onGenerate) return;
     setIsSubmitting(true);
-    setResult(null);
     try {
-      setResult(await onGenerate(draft));
+      const completed = await onGenerate(draft);
+      setResult(completed);
+      setSessionResults((current) => [{ ...completed, thumbnail: null }, ...current.filter((item) => item.libraryAssetId !== completed.libraryAssetId)].slice(0, 12));
     } catch (cause) {
       const code = cause instanceof Error ? cause.message : 'IMAGE_GENERATION_FAILED';
       if (code === 'ACCESS_PROMPTED') return;
@@ -168,7 +172,7 @@ export default function ImageCanvas({ models, onGenerate, onOpenLibrary, onModel
 
           <form className="studio-creation-form space-y-5" onSubmit={submitDraft} noValidate>
             <div className="space-y-2">
-              <FieldLabel htmlFor="image-prompt">{t('prompt')}</FieldLabel>
+              <div className="flex items-center justify-between gap-3"><FieldLabel htmlFor="image-prompt">{t('prompt')}</FieldLabel><span dir="ltr" aria-label={`${viewerT('characters')}: ${prompt.length} / 2000`} className={`text-[10px] tabular-nums ${prompt.length > 2000 ? 'text-red-300' : 'text-[var(--studio-text-muted)]'}`}>{prompt.length} / 2000</span></div>
               <textarea id="image-prompt" value={prompt} onChange={(event) => { setPrompt(event.target.value); setError(null); }} rows={5} placeholder={t('promptPlaceholder')} className="studio-creation-prompt w-full resize-y rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3.5 py-3 text-[14px] leading-relaxed text-white outline-none transition-[border-color,background-color] duration-150 placeholder:text-white/40 hover:bg-[var(--studio-hover)] focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none" />
             </div>
 
@@ -189,7 +193,7 @@ export default function ImageCanvas({ models, onGenerate, onOpenLibrary, onModel
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
                 <FieldLabel>{t('model')}</FieldLabel>
-                <ModelSelector models={modelOptions} selectedModel={modelId} onSelect={setModelId} onAccessRequest={onModelAccessRequest} dropdownPosition="bottom" menuLabel={modelsT('imageMenuLabel')} emptyLabel={modelsT('noModels')} modality="image" />
+                <ModelSelector models={modelOptions} selectedModel={modelId} onSelect={setModelId} onAccessRequest={onModelAccessRequest} dropdownPosition="top" wideTrigger menuLabel={modelsT('imageMenuLabel')} emptyLabel={modelsT('noModels')} modality="image" />
               </div>
               {capabilities && capabilities.aspectRatios.length > 0 && <div className="space-y-2 sm:col-span-2"><FieldLabel>{t('aspectRatio')}</FieldLabel><div className="flex flex-wrap gap-2">{capabilities.aspectRatios.map((ratio) => <button key={ratio} type="button" aria-pressed={aspectRatio === ratio} onClick={() => setAspectRatio(ratio)} className={cn('min-h-9 rounded-lg border px-3 text-[12px] font-semibold transition-colors duration-150 motion-reduce:transition-none', aspectRatio === ratio ? 'border-[var(--studio-accent)] bg-[var(--studio-accent)] text-[var(--studio-accent-contrast)]' : 'border-[var(--studio-border)] text-[var(--studio-text-secondary)] hover:text-[var(--studio-text-primary)]')}>{ratio}</button>)}</div></div>}
             </div>
@@ -203,26 +207,23 @@ export default function ImageCanvas({ models, onGenerate, onOpenLibrary, onModel
             <div className="studio-creation-action space-y-2"><PrimaryButton type="submit" disabled={!generationAvailable || isSubmitting} className="w-full">{isSubmitting ? t('generating') : t('generate')}</PrimaryButton>{!generationAvailable && <p className="text-center text-[11.5px] font-medium text-white/60">{t('unavailableNote')}</p>}</div>
           </form>
         </>}
-      preview={<div className="flex min-h-[300px] w-full items-center justify-center lg:min-h-0">
-          {isSubmitting ? (
-            <StateBlock icon={<LoaderCircle className="h-6 w-6 animate-spin motion-reduce:animate-none" />} title={t('generatingTitle')} description={t('generatingDescription')} />
-          ) : result ? (
-            <div className="flex w-full flex-col gap-3">
-              <div className="flex min-h-[300px] items-center justify-center overflow-hidden rounded-xl border border-[var(--studio-border-subtle)] bg-[var(--studio-recessed)]">
-                <img src={result.src} alt={t('resultAlt')} className="max-h-[min(68vh,760px)] w-full object-contain" />
-              </div>
-              <div className="flex flex-wrap justify-end gap-2">
-                {result.libraryAssetId && onOpenLibrary && <button type="button" onClick={onOpenLibrary} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] transition-colors duration-150 hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] motion-reduce:transition-none"><FolderOpen className="h-4 w-4" />{libraryT('openInLibrary')}</button>}
-                <button type="button" onClick={downloadResult} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] transition-colors duration-150 hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] motion-reduce:transition-none"><Download className="h-4 w-4" />{t('download')}</button>
-                <button type="button" onClick={regenerate} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] transition-colors duration-150 hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] motion-reduce:transition-none"><RotateCcw className="h-4 w-4" />{t('regenerate')}</button>
-              </div>
-            </div>
-          ) : error ? (
-            <StateBlock icon={<ImageIcon className="h-6 w-6" />} title={t('errorTitle')} description={error} />
-          ) : (
-            <StateBlock icon={<ImageIcon className="h-6 w-6" />} title={t('emptyTitle')} description={t('emptyDescription')} />
-          )}
+      preview={<div className="flex min-h-[320px] w-full flex-col gap-3 lg:h-full lg:min-h-0">
+        <div className="flex min-h-[300px] min-w-0 flex-1 items-center justify-center overflow-hidden rounded-xl border border-[var(--studio-border-subtle)] bg-[var(--studio-canvas)]">
+          {isSubmitting ? <StateBlock icon={<LoaderCircle className="h-6 w-6 animate-spin motion-reduce:animate-none" />} title={t('generatingTitle')} description={t('generatingDescription')} />
+            : result ? <img src={result.src} alt={t('resultAlt')} onLoad={(event) => {
+              const thumbnail = captureSessionThumbnail(event.currentTarget);
+              if (thumbnail) setSessionResults((current) => current.map((item) => item.libraryAssetId === result.libraryAssetId && !item.thumbnail ? { ...item, thumbnail } : item));
+            }} className="h-full max-h-[min(72dvh,900px)] w-full object-contain lg:max-h-full" />
+              : error ? <StateBlock icon={<ImageIcon className="h-6 w-6" />} title={t('errorTitle')} description={error} />
+                : <StateBlock icon={<ImageIcon className="h-6 w-6" />} title={t('emptyTitle')} description={t('emptyDescription')} />}
+        </div>
+        {result && !isSubmitting && <div className="flex flex-wrap items-center justify-end gap-2">
+          {result.libraryAssetId && onOpenLibrary && <button type="button" onClick={onOpenLibrary} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)]"><FolderOpen className="h-4 w-4" />{libraryT('openInLibrary')}</button>}
+          <button type="button" onClick={downloadResult} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)]"><Download className="h-4 w-4" />{t('download')}</button>
+          <button type="button" onClick={regenerate} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)]"><RotateCcw className="h-4 w-4" />{t('regenerate')}</button>
         </div>}
+        <MediaResultRail items={sessionResults} selectedId={result?.libraryAssetId ?? ''} kind="image" onSelect={(id) => { const selected = sessionResults.find((item) => item.libraryAssetId === id); if (selected) setResult(selected); }} />
+      </div>}
     />
   );
 }

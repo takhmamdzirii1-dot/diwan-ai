@@ -279,6 +279,19 @@
       "signIn": "Sign in to generate a video.",
       "unavailable": "Video generation is temporarily unavailable."
     },
+    "mediaViewer": {
+      "sessionResults": "This session",
+      "showResult": "Show result {number}",
+      "play": "Play video",
+      "pause": "Pause video",
+      "mute": "Mute video",
+      "unmute": "Unmute video",
+      "volume": "Volume",
+      "seek": "Seek video",
+      "fullscreen": "Enter fullscreen",
+      "exitFullscreen": "Exit fullscreen",
+      "characters": "Characters"
+    },
     "videoControls": {
       "cameraMotion": "Camera motion",
       "camera": {

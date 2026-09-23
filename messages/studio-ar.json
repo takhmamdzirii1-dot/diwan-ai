@@ -279,6 +279,19 @@
       "signIn": "سجّل الدخول لإنشاء فيديو.",
       "unavailable": "إنشاء الفيديو غير متاح مؤقتاً."
     },
+    "mediaViewer": {
+      "sessionResults": "نتائج هذه الجلسة",
+      "showResult": "عرض النتيجة {number}",
+      "play": "تشغيل الفيديو",
+      "pause": "إيقاف الفيديو مؤقتًا",
+      "mute": "كتم الصوت",
+      "unmute": "تشغيل الصوت",
+      "volume": "مستوى الصوت",
+      "seek": "الانتقال داخل الفيديو",
+      "fullscreen": "ملء الشاشة",
+      "exitFullscreen": "الخروج من ملء الشاشة",
+      "characters": "أحرف"
+    },
     "videoControls": {
       "cameraMotion": "حركة الكاميرا",
       "camera": {

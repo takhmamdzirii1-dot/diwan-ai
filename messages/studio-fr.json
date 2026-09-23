@@ -279,6 +279,19 @@
       "signIn": "Connectez-vous pour générer une vidéo.",
       "unavailable": "La génération vidéo est temporairement indisponible."
     },
+    "mediaViewer": {
+      "sessionResults": "Cette session",
+      "showResult": "Afficher le résultat {number}",
+      "play": "Lire la vidéo",
+      "pause": "Mettre la vidéo en pause",
+      "mute": "Couper le son",
+      "unmute": "Activer le son",
+      "volume": "Volume",
+      "seek": "Avancer dans la vidéo",
+      "fullscreen": "Passer en plein écran",
+      "exitFullscreen": "Quitter le plein écran",
+      "characters": "Caractères"
+    },
     "videoControls": {
       "cameraMotion": "Mouvement de caméra",
       "camera": {
