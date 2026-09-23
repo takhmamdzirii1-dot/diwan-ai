@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/src/lib/supabase/server';
+import { recordFunnelEvent } from '@/lib/analytics/funnel-events';
 
 export const dynamic = 'force-dynamic';
 const MAX_PROOF_BYTES = 5 * 1024 * 1024;
@@ -54,5 +55,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         : 'PAYMENT_SUBMISSION_FAILED';
     return NextResponse.json({ error: safeCode }, { status: safeCode === 'PAYMENT_SUBMISSION_FAILED' ? 500 : 409 });
   }
+  await recordFunnelEvent({ userId: user.id, event: 'payment_submitted', key: id, metadata: { paymentOrderId: id } });
   return NextResponse.json({ order: data });
 }

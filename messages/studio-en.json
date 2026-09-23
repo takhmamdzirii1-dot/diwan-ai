@@ -288,6 +288,26 @@
       "negativePrompt": "Negative prompt",
       "negativePlaceholder": "Used only when a connected model supports it"
     },
+    "paywall": {
+      "expiredTitle": "Your free trial has ended.",
+      "expiredSupport": "Activate a plan to keep using Chat, Image and Video in VANTRA.",
+      "reactivateTitle": "Reactivate VANTRA",
+      "reactivateSupport": "Activate your plan again to keep using Studio. Your history and banked credits are still here.",
+      "imageExhaustedTitle": "Your trial image allowance is used",
+      "imageExhaustedSupport": "Activate a plan to create more images. Chat remains available until your trial ends.",
+      "videoExhaustedTitle": "Your trial video allowance is used",
+      "videoExhaustedSupport": "Activate a plan to create more videos. Chat remains available until your trial ends.",
+      "bankedCredits": "You have {credits} banked VANTRA Credits. An active paid plan is required to use them.",
+      "recommended": "Recommended",
+      "reactivation": "Reactivation",
+      "credits": "{credits} VANTRA Credits",
+      "oneTimeActivation": "One-time activation. No automatic renewal.",
+      "activatePro": "Activate Pro",
+      "activateLite": "Activate Lite",
+      "reactivate": "Reactivate {plan}",
+      "maybeLater": "Maybe later",
+      "stillLocked": "Studio generation remains locked. You can still open your history, Library and settings, and activate a plan at any time."
+    },
     "library": {
       "openInLibrary": "Open in Library",
       "productionErrorDescription": "Your saved creations could not be loaded.",

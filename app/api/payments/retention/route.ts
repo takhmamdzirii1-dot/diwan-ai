@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
 import { createClient } from '@/src/lib/supabase/server';
 import type { PaymentPlan } from '@/lib/payments/types';
+import { getStudioAccess } from '@/lib/access/trial-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,8 +67,26 @@ export async function GET() {
       return Array.isArray(relation) ? relation[0] : relation;
     })
     .filter((plan): plan is NonNullable<PlanRelation> => Boolean(plan));
-  const eligible = historicalPlans.some((plan) => ['lite', 'pro', 'max'].includes(plan.plan_code ?? ''));
+  const returningPaidEligible = historicalPlans.some((plan) => ['lite', 'pro', 'max'].includes(plan.plan_code ?? ''));
   const latest = historicalPlans[0] ?? null;
+
+  // Lite stays hidden in the acquisition funnel until the user explicitly
+  // declines Pro. Returning paid eligibility remains unchanged.
+  let acquisitionEligible = false;
+  if (!returningPaidEligible) {
+    const [{ data: decline }, access] = await Promise.all([
+      admin.from('admin_audit_log')
+        .select('id')
+        .eq('actor_user_id', user.id)
+        .eq('resource_type', 'user_funnel')
+        .eq('action', 'pro_declined')
+        .limit(1)
+        .maybeSingle(),
+      getStudioAccess(user).catch(() => null),
+    ]);
+    acquisitionEligible = Boolean(decline && access?.kind === 'trial_expired' && !access.hasSeenLiteOffer);
+  }
+  const eligible = returningPaidEligible || acquisitionEligible;
 
   let liteOffer: PaymentPlan | null = null;
   if (eligible) {

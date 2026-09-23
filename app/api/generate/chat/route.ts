@@ -9,6 +9,7 @@ import { isValidChatWeight } from '@/lib/chat/chat-usage';
 import { finalizeChatUsage, precheckChatUsage, reserveChatUsage } from '@/lib/chat/chat-usage.server';
 import { createChatLanguageModel, classifyProviderFailure } from '@/lib/ai/providers/chat';
 import { resolveProviderRoutes } from '@/lib/ai/providers/routes';
+import { requireStudioGenerationAccess } from '@/lib/access/trial-access';
 import {
   beginGenerationExecution,
   finalizeGeneration,
@@ -44,6 +45,15 @@ export async function POST(request: Request) {
     }
     if (!user) {
       return NextResponse.json({ error: 'AUTHENTICATION_REQUIRED' }, { status: 401 });
+    }
+    try {
+      await requireStudioGenerationAccess(user);
+    } catch (cause) {
+      const code = cause instanceof Error ? cause.message : 'STUDIO_ACCESS_UNAVAILABLE';
+      if (code === 'FREE_TRIAL_EXPIRED' || code === 'PAID_PLAN_REACTIVATION_REQUIRED') {
+        return NextResponse.json({ error: code }, { status: 403 });
+      }
+      return NextResponse.json({ error: 'STUDIO_ACCESS_UNAVAILABLE' }, { status: 503 });
     }
 
     // 2. Parse Request Body

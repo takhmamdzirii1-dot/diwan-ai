@@ -22,6 +22,8 @@ import type { StudioRuntimeModelDefinition } from '@/src/config/studio-registry'
 import { isModelSelectable } from '@/src/config/studio-registry';
 import { applyModelPlanAccess } from '@/lib/models/plan-entitlements';
 import { useTranslations } from 'next-intl';
+import { useStudioAccess } from '@/src/hooks/useStudioAccess';
+import TrialPaywall from './TrialPaywall';
 
 type CenterMode = 'chat' | 'image' | 'video' | 'library';
 
@@ -64,8 +66,12 @@ export default function StudioDashboard({
   const reduceMotion = useReducedMotion();
   const t = useTranslations('studio.chat');
   const sidebarT = useTranslations('studio.sidebar');
-  const { user, refreshBalance, planCode, planStatus } = useUser({ loadPlan: true });
+  const { user, refreshBalance, planCode, planStatus, purchasedBalance, freeImageRemaining, freeVideoRemaining } = useUser({ loadPlan: true, loadBalance: true });
   const { openAuthModal } = useModal();
+  const { access } = useStudioAccess(Boolean(user));
+  const generationLocked = access?.kind === 'trial_expired' || access?.kind === 'paid_lapsed';
+  const freeImageExhausted = access?.kind === 'trial_active' && planCode === 'free' && freeImageRemaining === 0;
+  const freeVideoExhausted = access?.kind === 'trial_active' && planCode === 'free' && freeVideoRemaining === 0;
 
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -694,9 +700,10 @@ export default function StudioDashboard({
 
                 {/* 3rd (Bottom): Floating composer over the fading message timeline */}
                 <div ref={composerRef} className="absolute bottom-0 left-0 flex w-full flex-col items-center justify-end bg-transparent p-4 pb-6 pointer-events-none">
-                  <ChatCapacityHint refreshSignal={chatExchanges} />
-                  <div className="pointer-events-auto mx-auto w-full max-w-4xl px-6">
-                    <ClaudeChatInput
+                  {generationLocked && access ? <div className="pointer-events-auto max-h-[70dvh] w-full"><TrialPaywall access={access} purchasedBalance={purchasedBalance ?? 0} /></div> : <>
+                    <ChatCapacityHint refreshSignal={chatExchanges} />
+                    <div className="pointer-events-auto mx-auto w-full max-w-4xl px-6">
+                      <ClaudeChatInput
                       onSendMessage={handleSend}
                       models={chatModels.map((model) => ({
                         id: model.id,
@@ -720,8 +727,9 @@ export default function StudioDashboard({
                       placeholder={isEmpty ? t('emptyPlaceholder') : t('placeholder')}
                       autoFocus={isEmpty}
                       onSignInClick={user ? undefined : () => openAuthModal('signin')}
-                    />
-                  </div>
+                      />
+                    </div>
+                  </>}
                 </div>
               </motion.div>
             )}
@@ -729,14 +737,14 @@ export default function StudioDashboard({
           {/* ── Image Canvas ── */}
           {activeWorkspace === 'image' && (
             <motion.div key="image" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }} className="absolute inset-0">
-              <ImageCanvas models={imageModels} onGenerate={handleImageGenerate} onOpenLibrary={() => onWorkspaceChange('library')} />
+              {generationLocked && access ? <TrialPaywall access={access} purchasedBalance={purchasedBalance ?? 0} /> : freeImageExhausted && access ? <TrialPaywall access={access} media="image" /> : <ImageCanvas models={imageModels} onGenerate={handleImageGenerate} onOpenLibrary={() => onWorkspaceChange('library')} />}
             </motion.div>
           )}
 
             {/* ── Motion Studio ── */}
             {activeWorkspace === 'video' && (
               <motion.div key="video" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }} className="absolute inset-0">
-                <PrunaMotionStudio models={videoModels} onGenerate={handleVideoGenerate} onOpenLibrary={() => onWorkspaceChange('library')} />
+                {generationLocked && access ? <TrialPaywall access={access} purchasedBalance={purchasedBalance ?? 0} /> : freeVideoExhausted && access ? <TrialPaywall access={access} media="video" /> : <PrunaMotionStudio models={videoModels} onGenerate={handleVideoGenerate} onOpenLibrary={() => onWorkspaceChange('library')} />}
               </motion.div>
             )}
 

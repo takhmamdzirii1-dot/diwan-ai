@@ -28,6 +28,8 @@ import {
 } from '@/lib/credits/generation-finance';
 import { resolveTerminalCustomerCharge } from '@/lib/credits/generation-policy';
 import { persistGeneratedMedia } from '@/lib/ai/library-media';
+import { requireStudioGenerationAccess } from '@/lib/access/trial-access';
+import { recordFunnelEvent } from '@/lib/analytics/funnel-events';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -67,6 +69,15 @@ async function authenticatedUser(request: Request) {
 export async function POST(request: Request) {
   const user = await authenticatedUser(request);
   if (!user) return NextResponse.json({ error: 'AUTHENTICATION_REQUIRED' }, { status: 401 });
+  try {
+    await requireStudioGenerationAccess(user);
+  } catch (cause) {
+    const code = cause instanceof Error ? cause.message : 'STUDIO_ACCESS_UNAVAILABLE';
+    if (code === 'FREE_TRIAL_EXPIRED' || code === 'PAID_PLAN_REACTIVATION_REQUIRED') {
+      return NextResponse.json({ error: code }, { status: 403 });
+    }
+    return NextResponse.json({ error: 'STUDIO_ACCESS_UNAVAILABLE' }, { status: 503 });
+  }
   const multipart = request.headers.get('content-type')?.toLowerCase().includes('multipart/form-data') ?? false;
   const requestLimit = multipart ? MAX_MULTIPART_BYTES : MAX_JSON_BYTES;
   if (Number(request.headers.get('content-length') ?? 0) > requestLimit) {
@@ -172,6 +183,9 @@ export async function POST(request: Request) {
     });
   } catch (cause) {
     const code = cause instanceof Error ? cause.message : 'CREDIT_RESERVATION_FAILED';
+    if (code === 'FREE_VIDEO_TRIAL_EXHAUSTED') {
+      await recordFunnelEvent({ userId: user.id, event: 'free_media_exhausted', key: 'video', metadata: { modality: 'video' } });
+    }
     try {
       await finalizeGeneration({
         executionId: execution.executionId,

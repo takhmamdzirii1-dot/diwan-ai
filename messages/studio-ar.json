@@ -288,6 +288,26 @@
       "negativePrompt": "الوصف المستبعد",
       "negativePlaceholder": "يُستخدم فقط إذا كان النموذج المتصل يدعمه"
     },
+    "paywall": {
+      "expiredTitle": "انتهت تجربتك المجانية.",
+      "expiredSupport": "فعّل خطة لمواصلة استخدام الدردشة والصور والفيديو في VANTRA.",
+      "reactivateTitle": "إعادة تفعيل VANTRA",
+      "reactivateSupport": "فعّل خطتك من جديد لمواصلة استخدام الاستوديو. ما زال سجلك ورصيدك المحفوظ متاحين.",
+      "imageExhaustedTitle": "استخدمت رصيد الصور التجريبي بالكامل",
+      "imageExhaustedSupport": "فعّل خطة لإنشاء المزيد من الصور. تبقى الدردشة متاحة حتى نهاية التجربة.",
+      "videoExhaustedTitle": "استخدمت رصيد الفيديو التجريبي بالكامل",
+      "videoExhaustedSupport": "فعّل خطة لإنشاء المزيد من الفيديوهات. تبقى الدردشة متاحة حتى نهاية التجربة.",
+      "bankedCredits": "لديك {credits} من أرصدة VANTRA المحفوظة. يلزم وجود خطة مدفوعة نشطة لاستخدامها.",
+      "recommended": "موصى بها",
+      "reactivation": "إعادة التفعيل",
+      "credits": "{credits} من أرصدة VANTRA",
+      "oneTimeActivation": "تفعيل لمرة واحدة دون تجديد تلقائي.",
+      "activatePro": "تفعيل Pro",
+      "activateLite": "تفعيل Lite",
+      "reactivate": "إعادة تفعيل {plan}",
+      "maybeLater": "ربما لاحقاً",
+      "stillLocked": "يظل الإنشاء في الاستوديو مقفلاً. يمكنك فتح السجل والمكتبة والإعدادات وتفعيل خطة في أي وقت."
+    },
     "library": {
       "openInLibrary": "فتح في المكتبة",
       "productionErrorDescription": "تعذّر تحميل إنشاءاتك المحفوظة.",

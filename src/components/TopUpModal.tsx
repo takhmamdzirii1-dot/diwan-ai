@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { ArrowLeft, Banknote, Building2, Check, CheckCircle2, Clipboard, Clock3, CreditCard, FileUp, Loader2, LockKeyhole, X } from 'lucide-react';
 import type { ManualTransferDestination, PaymentMethod, PaymentOrder, PaymentPlan } from '@/lib/payments/types';
 import { isPurchasablePlan } from '@/lib/payments/plan-catalog';
+import { trackFunnelEvent } from '@/src/lib/funnel-analytics';
 
 export interface TopUpPlan { id: string; }
 export interface TopUpModalProps { isOpen: boolean; onClose: () => void; plan?: TopUpPlan; onSuccess?: () => void; }
@@ -43,6 +44,7 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
   const [copied, setCopied] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inFlight = useRef(false);
+  const checkoutAttempt = useRef('');
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -60,6 +62,7 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
     setOrder(null); setDestination(null); setReference(''); setProof(null); setBusy(false);
     setSubmitted(false); setConfirmation(false); setGatewayFailed(false); setCopied(null); setError(null);
     setCatalogLoading(true); inFlight.current = false;
+    checkoutAttempt.current = crypto.randomUUID();
     Promise.all([
       fetch('/api/payments/plans', { cache: 'no-store' }).then(async (response) => {
         const body = await response.json();
@@ -140,6 +143,8 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
   };
   const continueMethod = () => {
     if (!selectedPlan || !available[method] || busy) return;
+    void trackFunnelEvent('checkout_started', checkoutAttempt.current, { planId: selectedPlan.id, planCode: selectedPlan.planCode });
+    void trackFunnelEvent('payment_method_selected', `${checkoutAttempt.current}:${method}`, { planId: selectedPlan.id, method });
     if (manual) void createOrder();
     else { setGatewayFailed(false); setStep(3); }
   };
@@ -205,7 +210,7 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
         </>}
       </div>
       <footer className="sticky bottom-0 z-10 shrink-0 border-t border-[var(--studio-border,#444)] bg-[var(--studio-card,#151517)] px-5 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 sm:px-6 sm:pb-4">
-        {submitted ? <button type="button" onClick={onClose} className={primary}>{t('done')}</button> : step === 1 ? <button type="button" disabled={!selectedPlan || catalogLoading} onClick={() => { setStep(2); setError(null); }} className={primary}>{t('continueToPayment')}</button> : step === 2 ? <button type="button" disabled={!selectedPlan || !available[method] || busy} onClick={continueMethod} className={primary}>{busy && <Loader2 className="h-5 w-5 animate-spin" />}{busy ? t('creatingRequest') : t('continueToDetails')}</button> : manual ? <button type="submit" form="manual-payment-form" disabled={busy || confirmation || !order || reference.trim().length < 2} className={primary}>{busy && <Loader2 className="h-5 w-5 animate-spin" />}{busy ? t('submitting') : t('submitForReview')}</button> : <button type="button" disabled={busy || !available[method]} onClick={() => void startGateway()} className={primary}>{busy && <Loader2 className="h-5 w-5 animate-spin" />}{busy ? t('redirecting') : gatewayFailed ? t('tryAgain') : t('continueToSatim')}</button>}
+        {submitted ? <button type="button" onClick={onClose} className={primary}>{t('done')}</button> : step === 1 ? <button type="button" disabled={!selectedPlan || catalogLoading} onClick={() => { if (selectedPlan) void trackFunnelEvent('checkout_started', checkoutAttempt.current, { planId: selectedPlan.id, planCode: selectedPlan.planCode }); setStep(2); setError(null); }} className={primary}>{t('continueToPayment')}</button> : step === 2 ? <button type="button" disabled={!selectedPlan || !available[method] || busy} onClick={continueMethod} className={primary}>{busy && <Loader2 className="h-5 w-5 animate-spin" />}{busy ? t('creatingRequest') : t('continueToDetails')}</button> : manual ? <button type="submit" form="manual-payment-form" disabled={busy || confirmation || !order || reference.trim().length < 2} className={primary}>{busy && <Loader2 className="h-5 w-5 animate-spin" />}{busy ? t('submitting') : t('submitForReview')}</button> : <button type="button" disabled={busy || !available[method]} onClick={() => void startGateway()} className={primary}>{busy && <Loader2 className="h-5 w-5 animate-spin" />}{busy ? t('redirecting') : gatewayFailed ? t('tryAgain') : t('continueToSatim')}</button>}
       </footer>
     </motion.div>
   </div>}</AnimatePresence>;

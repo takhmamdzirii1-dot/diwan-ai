@@ -17,6 +17,8 @@ import {
 } from '@/lib/credits/generation-finance';
 import { resolveTerminalCustomerCharge } from '@/lib/credits/generation-policy';
 import { persistGeneratedMedia } from '@/lib/ai/library-media';
+import { requireStudioGenerationAccess } from '@/lib/access/trial-access';
+import { recordFunnelEvent } from '@/lib/analytics/funnel-events';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -49,6 +51,15 @@ async function authenticatedUser(request: Request) {
 export async function POST(request: Request) {
   const user = await authenticatedUser(request);
   if (!user) return NextResponse.json({ error: 'AUTHENTICATION_REQUIRED' }, { status: 401 });
+  try {
+    await requireStudioGenerationAccess(user);
+  } catch (cause) {
+    const code = cause instanceof Error ? cause.message : 'STUDIO_ACCESS_UNAVAILABLE';
+    if (code === 'FREE_TRIAL_EXPIRED' || code === 'PAID_PLAN_REACTIVATION_REQUIRED') {
+      return NextResponse.json({ error: code }, { status: 403 });
+    }
+    return NextResponse.json({ error: 'STUDIO_ACCESS_UNAVAILABLE' }, { status: 503 });
+  }
   if (Number(request.headers.get('content-length') ?? 0) > 32_000) {
     return NextResponse.json({ error: 'REQUEST_TOO_LARGE' }, { status: 413 });
   }
@@ -130,6 +141,9 @@ export async function POST(request: Request) {
     });
   } catch (cause) {
     const code = cause instanceof Error ? cause.message : 'CREDIT_RESERVATION_FAILED';
+    if (code === 'FREE_IMAGE_TRIAL_EXHAUSTED') {
+      await recordFunnelEvent({ userId: user.id, event: 'free_media_exhausted', key: 'image', metadata: { modality: 'image' } });
+    }
     try {
       await finalizeGeneration({
         executionId: execution.executionId,

@@ -288,6 +288,26 @@
       "negativePrompt": "Prompt négatif",
       "negativePlaceholder": "Utilisé uniquement si le modèle connecté le prend en charge"
     },
+    "paywall": {
+      "expiredTitle": "Votre essai gratuit est terminé.",
+      "expiredSupport": "Activez une formule pour continuer à utiliser Chat, Image et Vidéo dans VANTRA.",
+      "reactivateTitle": "Réactiver VANTRA",
+      "reactivateSupport": "Activez à nouveau votre formule pour continuer dans Studio. Votre historique et vos crédits conservés sont toujours disponibles.",
+      "imageExhaustedTitle": "Votre quota d’images d’essai est épuisé",
+      "imageExhaustedSupport": "Activez une formule pour créer plus d’images. Chat reste disponible jusqu’à la fin de votre essai.",
+      "videoExhaustedTitle": "Votre quota de vidéos d’essai est épuisé",
+      "videoExhaustedSupport": "Activez une formule pour créer plus de vidéos. Chat reste disponible jusqu’à la fin de votre essai.",
+      "bankedCredits": "Vous avez {credits} crédits VANTRA conservés. Une formule payante active est requise pour les utiliser.",
+      "recommended": "Recommandé",
+      "reactivation": "Réactivation",
+      "credits": "{credits} crédits VANTRA",
+      "oneTimeActivation": "Activation unique. Aucun renouvellement automatique.",
+      "activatePro": "Activer Pro",
+      "activateLite": "Activer Lite",
+      "reactivate": "Réactiver {plan}",
+      "maybeLater": "Peut-être plus tard",
+      "stillLocked": "La génération Studio reste verrouillée. Vous pouvez toujours consulter votre historique, la Bibliothèque et les paramètres, puis activer une formule à tout moment."
+    },
     "library": {
       "openInLibrary": "Ouvrir dans la bibliothèque",
       "productionErrorDescription": "Impossible de charger vos créations enregistrées.",
