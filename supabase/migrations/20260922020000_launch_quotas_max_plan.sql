@@ -1,4 +1,4 @@
--- Launch quotas and MAX plan final configuration (additive).
+-- Launch quotas and MAX renewal economics (additive).
 --
 -- The chat-usage migration is already applied in production: this file only
 -- upserts values and refines the MAX renewal path. No schema reshapes, no
@@ -7,14 +7,15 @@
 -- 1. Final chat allowances (canonical source for Admin + Studio metering):
 --    Free 120/800, Lite 200/1600, Pro 300/3000, Max 500/6500.
 --    fallback_enabled is deliberately preserved per row.
--- 2. MAX catalog values: 9,900 DA / 30 days, 7,500 Media Credits per paid
---    period. Launch/visibility flags (active, public_visible,
---    eligibility_required, frozen, featured, display_order) stay exactly as
---    the owner left them; historical orders and snapshots are untouched.
--- 3. MAX renewal economics in approve_manual_payment: 7,500 base,
+-- 2. MAX renewal economics in approve_manual_payment: 7,500 base,
 --    up to 1,500 subscription-only rollover (top-up excluded structurally),
 --    9,000 subscription-balance cap at new-period start. Lite/Pro paths,
 --    checkout, fulfillment, trial, paywall, and routing are unchanged.
+--
+-- NOTE: the MAX catalog value update lives in
+-- 20260922030000_frozen_max_launch_config.sql. The MAX payment_plans row is
+-- frozen, and its BEFORE trigger rejects direct commercial updates, so the
+-- catalog change runs there under a transaction-scoped, single-token guard.
 
 begin;
 
@@ -30,35 +31,7 @@ on conflict (plan_code) do update set
   weekly_limit = excluded.weekly_limit,
   updated_at = now();
 
--- 2. MAX catalog values (visibility/launch state preserved).
-alter table public.payment_plans disable trigger payment_plan_admin_audit;
-
-do $max_plan_guard$
-declare
-  v_max_plan_count integer;
-begin
-  select count(*) into v_max_plan_count
-  from public.payment_plans
-  where plan_code = 'max';
-
-  if v_max_plan_count <> 1 then
-    raise exception 'Expected exactly one MAX payment plan, found %', v_max_plan_count;
-  end if;
-end;
-$max_plan_guard$;
-
-update public.payment_plans
-set
-  price_dzd = 9900,
-  unified_credits = 7500,
-  subscription_credit_allowance = 7500,
-  access_period_days = 30,
-  kind = 'subscription'
-where plan_code = 'max';
-
-alter table public.payment_plans enable trigger payment_plan_admin_audit;
-
--- 3. MAX renewal economics (surgical redefinition; Lite/Pro paths byte-identical).
+-- 2. MAX renewal economics (surgical redefinition; Lite/Pro paths byte-identical).
 
 create or replace function public.approve_manual_payment(
   p_payment_order_id uuid, p_actor_user_id uuid, p_review_note text default null
