@@ -93,7 +93,10 @@ export default function AdminUserUsage({ userId }: { userId: string }) {
             const remaining = item.modality === 'image' ? data.allowances.freeImageRemaining : data.allowances.freeVideoRemaining;
             return remaining == null ? null : `${total - remaining} / ${remaining}`;
           })(), Date.parse(data.allowances.freeMediaEndsAt) <= Date.now() ? `Unused allowance expired ${date(data.allowances.freeMediaEndsAt)}` : `One-time allowance ends ${date(data.allowances.freeMediaEndsAt)}`)}
-          {item.modality === 'video' && data.plan.name === 'lite' && stat('Included Lite videos', data.allowances.liteVideoRemaining, `of ${show(data.allowances.liteVideoTotal)} this period`)}
+          {item.modality === 'video' && data.plan.name === 'lite' && stat('Included Lite videos used / remaining',
+            data.allowances.liteVideoTotal == null || data.allowances.liteVideoRemaining == null ? null
+              : `${data.allowances.liteVideoTotal - data.allowances.liteVideoRemaining} / ${data.allowances.liteVideoRemaining}`,
+            `of ${show(data.allowances.liteVideoTotal)} this period`)}
         </div>
         <h4 className="mb-2 mt-4 text-[11px] font-semibold">By model</h4>
         {lines(item.breakdown.map((row) => <div key={row.model} className="flex justify-between gap-3 py-2"><span className="min-w-0 truncate">{row.model}</span><span className="shrink-0 tabular-nums">{row.successful} successful · {row.failed} failed · {show(row.credits)} credits</span></div>), `No ${item.modality} jobs in this range.`)}
