@@ -95,6 +95,32 @@ test('exception requires the single-use token and pinned identity/visibility', (
   }
 });
 
+test('bypass exists only inside the migration transaction, then is restored', () => {
+  // The token appears exactly twice: the temporary definition and the opt-in.
+  assert.equal(FROZEN_SQL.split(TOKEN).length - 1, 2);
+  // The trigger body is defined exactly once (temporary); the restore path
+  // replays the saved live definition instead of embedding a second copy.
+  assert.equal(
+    FROZEN_SQL.split('create or replace function public.protect_frozen_payment_plan').length - 1, 1
+  );
+  const order = [
+    'create temporary table _frozen_trigger_backup',
+    'TRIGGER_NOT_RECOGNIZED',
+    'TRIGGER_ALREADY_MODIFIED',
+    'create or replace function public.protect_frozen_payment_plan',
+    'update public.payment_plans',
+    'execute (select definition from _frozen_trigger_backup',
+    'TRIGGER_RESTORE_FAILED',
+    'TRIGGER_GUARD_MISSING',
+  ].map((marker) => ({ marker, index: FROZEN_SQL.indexOf(marker) }));
+  for (const { marker, index } of order) {
+    assert.ok(index >= 0, `missing stage: ${marker}`);
+  }
+  for (let i = 1; i < order.length; i++) {
+    assert.ok(order[i].index > order[i - 1].index, `out of order: ${order[i].marker}`);
+  }
+});
+
 // Executable spec of the trigger exception: mirror of the PL/pgSQL predicate.
 function frozenUpdateBypassesTrigger(args: {
   frozen: boolean;

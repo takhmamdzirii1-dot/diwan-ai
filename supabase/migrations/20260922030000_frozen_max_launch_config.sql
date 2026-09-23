@@ -1,30 +1,50 @@
--- Frozen MAX launch configuration (guarded, additive).
+-- Frozen MAX launch configuration (transaction-scoped exception only).
 --
 -- The 20260922020000 launch migration failed in production with
 -- PAYMENT_PLAN_FROZEN: the MAX payment_plans row is frozen, and its BEFORE
--- trigger rejects every commercial UPDATE, including from migrations. The
--- trigger is NOT disabled here, MAX is NOT unfrozen, and the steady-state
--- protection is unchanged.
+-- trigger rejects every commercial UPDATE, including from migrations.
 --
--- Safe mechanism: this file first revises the trigger function with a
--- narrow, transaction-scoped, single-token exception. The exception permits
--- ONLY commercial value columns, ONLY when the migration opts in with
--- SET LOCAL vantra.frozen_plan_config to the exact token below, and ONLY
--- while every identity/launch/visibility column (slug, plan_code, name,
--- description, active, featured, entitlement, public_visible,
--- eligibility_required, frozen) is provably untouched. SET LOCAL cannot leak
--- across sessions and cannot be issued through PostgREST/service clients, so
--- the path is reachable only from direct SQL. Without the token, frozen
--- behavior is byte-identical to before.
---
--- Effects (new MAX purchases snapshot these automatically; history frozen):
---   price_dzd 9900, unified_credits 7500, subscription_credit_allowance 7500,
---   access_period_days 30, kind subscription.
--- Chat limits (500/6500) live in 20260922020000 and are untouched here.
+-- This file grants NO permanent bypass. Inside a single transaction it:
+--   1. saves the live trigger definition and asserts it is the known
+--      no-exception protection (fails otherwise);
+--   2. temporarily redefines protect_frozen_payment_plan() with a narrow,
+--      single-token, transaction-scoped exception;
+--   3. SET LOCALs the token and updates ONLY the intended MAX commercial
+--      fields (price_dzd 9900, unified_credits 7500,
+--      subscription_credit_allowance 7500, access_period_days 30, kind);
+--   4. restores the saved original definition verbatim;
+--   5. re-reads the live definition and ABORTS unless it is free of any
+--      token logic and still raises PAYMENT_PLAN_FROZEN.
+-- After commit, the production trigger contains no frozen-plan bypass.
+-- The trigger is never disabled and MAX is never unfrozen. Frozen, active,
+-- public_visible, eligibility_required, identity/plan code, and all
+-- historical data are preserved.
 
 begin;
 
--- 1. Narrow trigger revision (steady-state behavior unchanged).
+-- 1. Save the live protection and refuse to proceed unless it is the known
+-- no-exception definition.
+create temporary table _frozen_trigger_backup(definition text) on commit drop;
+
+do $save_trigger$
+declare
+  v_live text;
+begin
+  select pg_get_functiondef('public.protect_frozen_payment_plan()'::regprocedure)
+    into v_live;
+  if v_live is null or v_live not like '%PAYMENT_PLAN_FROZEN%' then
+    raise exception 'TRIGGER_NOT_RECOGNIZED';
+  end if;
+  if v_live like '%frozen_plan_config%' or v_live like '%launch-quotas-max%' then
+    raise exception 'TRIGGER_ALREADY_MODIFIED';
+  end if;
+  insert into _frozen_trigger_backup(definition) values (v_live);
+end;
+$save_trigger$;
+
+-- 2. Temporary narrow exception: commercial columns only, exact token only,
+-- every identity/launch/visibility column provably untouched. Dies with
+-- this transaction (step 4 restores the saved definition regardless).
 create or replace function public.protect_frozen_payment_plan()
 returns trigger
 language plpgsql
@@ -37,14 +57,7 @@ begin
     end if;
     return old;
   end if;
-  -- Authorized launch configuration (single-token, transaction-scoped).
-  -- A migration may update a frozen plan's commercial values only when it
-  -- opts in with SET LOCAL vantra.frozen_plan_config to the exact token
-  -- below AND leaves every identity/launch/visibility column provably
-  -- untouched. SET LOCAL cannot leak across sessions, and PostgREST/service
-  -- clients cannot SET, so this path is reachable only from direct SQL
-  -- (migrations). Without the token the behavior is identical to before:
-  -- any commercial change to a frozen row still raises PAYMENT_PLAN_FROZEN.
+  -- TEMPORARY migration exception (see file header). Removed in step 4.
   if old.frozen
     and current_setting('vantra.frozen_plan_config', true) = 'launch-quotas-max-20260922'
     and new.slug is not distinct from old.slug
@@ -83,7 +96,7 @@ begin
 end;
 $$;
 
--- 2. Guarded, explicitly opted-in MAX catalog update.
+-- 3. Guarded, explicitly opted-in MAX commercial update.
 alter table public.payment_plans disable trigger payment_plan_admin_audit;
 
 do $max_plan_guard$
@@ -114,5 +127,29 @@ where plan_code = 'max';
 reset vantra.frozen_plan_config;
 
 alter table public.payment_plans enable trigger payment_plan_admin_audit;
+
+-- 4. Restore the saved original definition verbatim.
+do $restore_trigger$
+begin
+  execute (select definition from _frozen_trigger_backup limit 1);
+end;
+$restore_trigger$;
+
+-- 5. Prove the restore: abort unless the live definition is free of token
+-- logic and still guards frozen rows.
+do $verify_restore$
+declare
+  v_final text;
+begin
+  select pg_get_functiondef('public.protect_frozen_payment_plan()'::regprocedure)
+    into v_final;
+  if v_final like '%frozen_plan_config%' or v_final like '%launch-quotas-max%' then
+    raise exception 'TRIGGER_RESTORE_FAILED';
+  end if;
+  if v_final is null or v_final not like '%PAYMENT_PLAN_FROZEN%' then
+    raise exception 'TRIGGER_GUARD_MISSING';
+  end if;
+end;
+$verify_restore$;
 
 commit;
