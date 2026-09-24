@@ -7,6 +7,7 @@ import { ArrowLeft, Banknote, Building2, Check, CheckCircle2, Clipboard, Clock3,
 import type { ManualTransferDestination, PaymentMethod, PaymentOrder, PaymentPlan } from '@/lib/payments/types';
 import { isPurchasablePlan } from '@/lib/payments/plan-catalog';
 import { trackFunnelEvent } from '@/src/lib/funnel-analytics';
+import useUser from '@/src/hooks/useUser';
 
 export interface TopUpPlan { id: string; }
 export interface TopUpModalProps { isOpen: boolean; onClose: () => void; plan?: TopUpPlan; onSuccess?: () => void; }
@@ -43,6 +44,26 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
   const [gatewayFailed, setGatewayFailed] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { planCode, paidPlanCode, planName, planEndsAt, planAccessState, purchasedBalance } = useUser({ loadPlan: true, loadBalance: true });
+  // Renewal context: active paid plan (early renewal) or lapsed paid plan
+  // (reactivation with preserved purchased credits). Never auto-renews.
+  const renewalContext = useMemo(() => {
+    if (!paidPlanCode || paidPlanCode === 'free') return null;
+    const label = planName ?? (paidPlanCode[0].toUpperCase() + paidPlanCode.slice(1));
+    if (planCode !== 'free' && planAccessState !== 'EXPIRED') {
+      return { kind: 'renew' as const, planCode: paidPlanCode, label };
+    }
+    return { kind: 'reactivate' as const, planCode: paidPlanCode, label };
+  }, [paidPlanCode, planCode, planName, planAccessState]);
+  const renewalPlan = useMemo(
+    () => (renewalContext ? plans.find((item) => item.planCode === renewalContext.planCode) ?? null : null),
+    [plans, renewalContext]
+  );
+  const formatPlanDate = (iso: string) => {
+    const time = new Date(iso).getTime();
+    if (!Number.isFinite(time)) return null;
+    return new Date(time).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
+  };
   const inFlight = useRef(false);
   const checkoutAttempt = useRef('');
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -137,6 +158,13 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? 'PAYMENT_ORDER_CREATE_FAILED');
       setOrder(body.order); setDestination(body.destination); setStep(3);
+      if (renewalContext && selectedPlan.planCode === renewalContext.planCode && body.order?.id) {
+        void trackFunnelEvent(
+          renewalContext.kind === 'renew' ? 'renewal_started' : 'reactivation_started',
+          String(body.order.id),
+          { planId: selectedPlan.id, planCode: selectedPlan.planCode }
+        );
+      }
       window.dispatchEvent(new Event('vantra-payment-updated'));
     } catch (cause) { setError(translateError(cause instanceof Error ? cause.message : 'PAYMENT_ORDER_CREATE_FAILED')); }
     finally { setBusy(false); inFlight.current = false; }
@@ -193,6 +221,16 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
       </header>
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 py-4 text-base sm:flex-[0_1_auto] sm:px-6 sm:py-5">
         {submitted ? <div role="status" className={surface + ' p-6 text-center'}><Clock3 className="mx-auto h-9 w-9" /><h3 className="mt-3 text-xl font-semibold">{t('pendingTitle')}</h3><p className="mt-3 leading-relaxed text-[var(--studio-text-secondary,#bbb)]">{t('pendingDescription')}</p>{order && <p dir="ltr" className="mt-4 rounded-xl border border-[var(--studio-border,#444)] p-3 font-semibold">{order.payment_reference}</p>}</div> : <>
+          {step === 1 && renewalContext && !catalogLoading && (() => {
+            const endsDate = planEndsAt ? formatPlanDate(planEndsAt) : null;
+            const preserved = purchasedBalance ?? 0;
+            return <section aria-label={renewalContext.kind === 'renew' ? t('renewTitle', { plan: renewalContext.label }) : t('reactivateTitle', { plan: renewalContext.label })} className={surface + ' p-4'}>
+              <h3 className="text-lg font-semibold">{renewalContext.kind === 'renew' ? t('renewTitle', { plan: renewalContext.label }) : t('reactivateTitle', { plan: renewalContext.label })}</h3>
+              {endsDate && <p className="mt-1 text-base text-[var(--studio-text-secondary,#bbb)]">{renewalContext.kind === 'renew' ? t('renewsOn', { date: endsDate }) : t('expiredOn', { date: endsDate })}</p>}
+              {preserved > 0 && <p className="mt-1 text-base text-[var(--studio-text-secondary,#bbb)]">{t('purchasedPreserved', { count: preserved.toLocaleString(locale) })}</p>}
+              {renewalPlan && renewalPlan.id !== selectedPlanId && <button type="button" onClick={() => { setSelectedPlanId(renewalPlan.id); setError(null); }} className="mt-3 inline-flex min-h-12 items-center rounded-xl border border-[var(--studio-border,#444)] px-4 text-base font-semibold hover:bg-[var(--studio-hover,#29292d)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent,#fff)]">{t('renewNow')}</button>}
+            </section>;
+          })()}
           {step === 1 && <section aria-labelledby="plan-heading"><h3 id="plan-heading" className="mb-3 text-lg font-semibold">{t('selectPlan')}</h3>{catalogLoading ? <div className={surface + ' flex min-h-28 items-center justify-center'}><Loader2 className="h-6 w-6 animate-spin" aria-label={t('loadingPlans')} /></div> : plans.length ? <div role="radiogroup" aria-label={t('selectPlan')} className="space-y-3">{plans.map((item) => <button key={item.id} type="button" role="radio" aria-checked={selectedPlanId === item.id} onClick={() => { setSelectedPlanId(item.id); setError(null); }} className={'flex min-h-20 w-full items-center gap-4 rounded-2xl border-2 p-4 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent,#fff)] ' + (selectedPlanId === item.id ? 'border-[var(--studio-accent,#fff)] bg-[var(--studio-hover,#29292d)]' : 'border-[var(--studio-border,#444)] hover:bg-[var(--studio-hover,#29292d)]')}><span className="min-w-0 flex-1"><span className="block text-lg font-semibold">{item.name}</span><span className="mt-1 block text-base text-[var(--studio-text-secondary,#bbb)]">{item.unifiedCredits.toLocaleString(locale)} {t('creditsShort')}</span></span><strong dir="ltr" className="shrink-0 text-base">{item.priceDzd.toLocaleString(locale)} DA</strong></button>)}</div> : <div className={surface + ' p-5 text-center'}>{t('catalogEmpty')}</div>}</section>}
           {step > 1 && selectedPlan && <div role="group" className={surface + ' w-full p-4'} aria-label={t('selectedPlan')}>
             <div className="grid w-full gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4">

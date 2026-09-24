@@ -10,6 +10,7 @@ import { ClaudeChatInput } from '@/components/ui/claude-style-chat-input';
 import DashboardSidebar from './DashboardSidebar';
 import MessageBubble from './MessageBubble';
 import ChatCapacityHint from './ChatCapacityHint';
+import RenewalBanner from './RenewalBanner';
 import { formatCapacityWait } from '@/lib/chat/chat-usage';
 import ImageCanvas, { type ImageGenerationResult, type ImageRequestDraft } from './ImageCanvas';
 import SettingsModal from './StudioSettingsDialog';
@@ -68,8 +69,8 @@ export default function StudioDashboard({
   const reduceMotion = useReducedMotion();
   const t = useTranslations('studio.chat');
   const sidebarT = useTranslations('studio.sidebar');
-  const { user, refreshBalance, planCode, planStatus } = useUser({ loadPlan: true, loadBalance: true });
-  const { openAuthModal } = useModal();
+  const { user, refreshBalance, planCode, planStatus, planEndsAt } = useUser({ loadPlan: true, loadBalance: true });
+  const { openAuthModal, openTopUpModal } = useModal();
   const { access } = useStudioAccess(Boolean(user));
   const [activationPrompt, setActivationPrompt] = useState<ActivationPrompt | null>(null);
 
@@ -562,6 +563,11 @@ export default function StudioDashboard({
       <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative bg-[var(--studio-canvas)]">
         {/* Bottom glow — restricted to bottom half, pure white 3% */}
         <div className="absolute inset-x-0 bottom-0 h-1/2 bg-[radial-gradient(ellipse_at_bottom,rgba(255,255,255,0.03)_0%,transparent_100%)] pointer-events-none z-0" aria-hidden="true" />
+
+        {/* Renewal reminder for expiring paid plans (dismissible, all workspaces) */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-center px-16 pt-3 lg:px-6">
+          <RenewalBanner planCode={planStatus === 'ready' ? planCode : 'free'} planEndsAt={planEndsAt} onRenew={() => openTopUpModal()} />
+        </div>
 
         {/* Mobile Navigation Trigger */}
         <button

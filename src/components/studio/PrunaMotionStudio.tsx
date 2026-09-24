@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Clapperboard, Download, FolderOpen, ImagePlus, LoaderCircle, RotateCcw, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,7 @@ import { PrimaryButton, Segmented, StateBlock } from './AppShell';
 import CreationWorkspace from './CreationWorkspace';
 import { downloadPrivateMedia } from './media-repository';
 import MediaResultRail, { type SessionResult } from './MediaResultRail';
+import { useRecentLibraryResults } from './useRecentLibraryResults';
 import StudioVideoPlayer from './StudioVideoPlayer';
 
 export type VideoRequestDraft = {
@@ -126,6 +127,16 @@ export default function PrunaMotionStudio({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<VideoGenerationResult | null>(null);
   const [sessionResults, setSessionResults] = useState<(VideoGenerationResult & SessionResult)[]>([]);
+  const libraryResults = useRecentLibraryResults('video');
+  // Session results stay first and instant; recent Library assets backfill
+  // behind them so the rail survives reloads without a media refetch.
+  const railItems = useMemo(() => [...sessionResults, ...libraryResults.filter((item) =>
+    !sessionResults.some((session) => session.libraryAssetId === item.libraryAssetId))].slice(0, 12),
+  [sessionResults, libraryResults]);
+  const selectRailItem = (id: string) => {
+    const selected = railItems.find((item) => item.libraryAssetId === id);
+    if (selected) setResult({ src: selected.src, mimeType: selected.mimeType, creditsCharged: 0, libraryAssetId: selected.libraryAssetId });
+  };
 
   const modelOptions: ChatModelOption[] = models.map((model) => ({
     id: model.id,
@@ -349,7 +360,7 @@ export default function PrunaMotionStudio({
         <button type="button" onClick={downloadResult} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)]"><Download className="h-4 w-4" />{executionT('download')}</button>
         <button type="button" onClick={() => { const draft = buildDraft(); if (draft) void generate(draft); }} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)]"><RotateCcw className="h-4 w-4" />{executionT('regenerate')}</button>
       </div>}
-      <MediaResultRail items={sessionResults} selectedId={result?.libraryAssetId ?? ''} kind="video" onSelect={(id) => { const selected = sessionResults.find((item) => item.libraryAssetId === id); if (selected) setResult(selected); }} />
+      <MediaResultRail items={railItems} selectedId={result?.libraryAssetId ?? ''} kind="video" onSelect={selectRailItem} />
     </div>}
   />;
 }

@@ -89,6 +89,32 @@ test('catalog-only rows read Unconfigured, never Active', () => {
   assert.equal(modelNeedsAttention(model), false);
 });
 
+test('undecided trial allowance flags attention without inventing a value', () => {
+  const undecided = row({
+    enabled: true,
+    routes: [readyRoute],
+    planAccess: {
+      free: { state: 'trial', trialAllowance: null },
+      lite: { state: 'included', trialAllowance: null },
+      pro: { state: 'included', trialAllowance: null },
+      max: { state: 'included', trialAllowance: null },
+    },
+  });
+  assert.equal(modelStatusOf(undecided), 'enabled');
+  assert.equal(modelNeedsAttention(undecided), true);
+  const decided = row({
+    enabled: true,
+    routes: [readyRoute],
+    planAccess: {
+      free: { state: 'trial', trialAllowance: 1 },
+      lite: { state: 'included', trialAllowance: null },
+      pro: { state: 'included', trialAllowance: null },
+      max: { state: 'included', trialAllowance: null },
+    },
+  });
+  assert.equal(modelNeedsAttention(decided), false);
+});
+
 test('missing customer price flags attention on enabled models', () => {
   assert.equal(modelNeedsAttention(row({ enabled: true, creditPrice: null, routes: [readyRoute] })), true);
   assert.equal(modelNeedsAttention(row({ enabled: false, creditPrice: null, routes: [readyRoute] })), false);

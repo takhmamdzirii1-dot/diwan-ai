@@ -25,17 +25,22 @@ export function modelStatusBadgeOf(model: StatusInput): ModelRuntimeStatus | 'ar
 
 type AttentionInput = Pick<
   AdminModelRow,
-  'enabled' | 'catalogOnly' | 'creditPrice' | 'routes'
+  'enabled' | 'catalogOnly' | 'creditPrice' | 'routes' | 'planAccess'
 >;
 
 /**
  * Enabled-but-not-runnable marker. Uses only signals already shown
- * elsewhere in Admin (route readiness, customer pricing) — no new
- * semantics, no Studio visibility or access changes.
+ * elsewhere in Admin (route readiness, customer pricing, trial allowance
+ * state) — no new semantics, no Studio visibility or access changes.
+ * Trial entries without a configured allowance fail closed at runtime, so
+ * they surface here until Admin sets a value deliberately.
  */
 export function modelNeedsAttention(model: AttentionInput): boolean {
   if (!model.enabled || model.catalogOnly) return false;
   if (isMissingCustomerPricing(model)) return true;
+  if (Object.values(model.planAccess ?? {}).some(
+    (entry) => entry?.state === 'trial' && entry.trialAllowance == null
+  )) return true;
   return !model.routes.some(
     (route) => route.enabled && route.configured && route.providerEnabled
   );

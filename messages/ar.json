@@ -308,7 +308,7 @@
     "title": "تعبئة الرصيد بالدينار", "subtitle": "اختر وسيلة دفع محلية.", "close": "إغلاق نافذة التعبئة",
     "paymentMethod": "وسيلة الدفع", "baridimob": "بريدي موب", "ccp": "الحساب البريدي CCP", "manualMethod": "بريدي موب / يدوي", "manualBadge": "مراجعة يدوية",
     "edahabia": "الذهبية", "cib": "بطاقة CIB", "automaticSoon": "تلقائي · قريباً",
-    "selectPlan": "اختر خطة", "catalogEmpty": "لا توجد خطة دفع نشطة حالياً.", "selectedPlan": "الخطة المختارة", "creditsShort": "أرصدة VANTRA الموحّدة", "selectedPack": "الباقة المختارة", "creditsAdded": "أرصدة VANTRA الموحّدة", "total": "المجموع",
+    "selectPlan": "اختر خطة", "catalogEmpty": "لا توجد خطة دفع نشطة حالياً.", "renewTitle": "تجديد {plan}", "reactivateTitle": "إعادة تفعيل {plan}", "renewsOn": "تنتهي الفترة الحالية في {date}", "expiredOn": "انتهت الفترة السابقة في {date}", "purchasedPreserved": "{count} من الأرصدة المشتراة محفوظة وستعمل بعد التفعيل.", "renewNow": "جدد الآن", "selectedPlan": "الخطة المختارة", "creditsShort": "أرصدة VANTRA الموحّدة", "selectedPack": "الباقة المختارة", "creditsAdded": "أرصدة VANTRA الموحّدة", "total": "المجموع",
     "gatewayUnavailableTitle": "الدفع التلقائي غير مربوط بعد", "gatewayUnavailableDescription": "لن تطلب VANTRA رقم البطاقة أو الرمز السري أو CVV أو رمز OTP البنكي. سيتم التحقق عبر بوابة دفع رسمية فقط عند ربطها.", "useManual": "استخدام التحويل اليدوي",
     "manualReviewNotice": "تتم مراجعة التحويلات اليدوية قبل تفعيل الأرصدة أو الخطة. إنشاء الطلب لا يضيف أي رصيد.", "createRequest": "إنشاء طلب دفع",
     "transferReference": "مرجع دفع VANTRA الخاص بك", "accountHolder": "صاحب الحساب", "accountNumber": "رقم حساب CCP", "accountKey": "مفتاح CCP", "accountAddress": "عنوان الحساب",
