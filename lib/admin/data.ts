@@ -28,8 +28,10 @@ import type {
 } from './types';
 import { isMissingCustomerPricing } from './model-economics';
 import { deriveProviderTelemetry } from './provider-telemetry';
+import { providerAvailabilityReason } from './provider-availability';
+import { reconciliationFlags } from './reconciliation-flags';
 import { CATALOG_MODELS, findCatalogModel, modelBrand, modelIconUrl } from '@/src/config/model-catalog';
-import { emptyModelCapabilities } from '@/lib/models/capabilities';
+import { emptyModelCapabilities, normalizeModelSurfaceVisibility } from '@/lib/models/capabilities';
 import { isRetiredModelReference, isRetiredProviderId } from '@/lib/models/retired-providers';
 
 const PAGE_SIZE = 1000;
@@ -55,6 +57,14 @@ async function allRows(client: any, table: string, columns: string) {
     if ((data ?? []).length < PAGE_SIZE) break;
   }
   return rows;
+}
+
+async function providerModelConfigStates(client: any) {
+  const current = await client.from('model_runtime_configs')
+    .select('model_key,enabled,archived,capability_sync_status');
+  if (!current.error) return current.data ?? [];
+  const legacy = await client.from('model_runtime_configs').select('model_key,enabled,archived');
+  return legacy.error ? [] : legacy.data ?? [];
 }
 
 async function allAuthUsers(client: any) {
@@ -135,6 +145,12 @@ function buildAdminModelRows(models: readonly EffectiveRuntimeModel[], latestCos
       sortOrder: model.sortOrder, visibleInStudio: model.visibleInStudio,
       availabilityLabel: model.availabilityLabel,
       capabilities: model.capabilities,
+      capabilitySourceType: model.capabilitySourceType,
+      capabilityConfidence: model.capabilityConfidence,
+      capabilitySyncStatus: model.capabilitySyncStatus,
+      capabilitySyncError: model.capabilitySyncError,
+      capabilityLastSyncedAt: model.capabilityLastSyncedAt,
+      surfaceVisibility: model.surfaceVisibility,
       allowedPlans: model.allowedPlans,
       planAccess: model.planAccess,
       archived: model.archived,
@@ -153,6 +169,10 @@ function buildAdminModelRows(models: readonly EffectiveRuntimeModel[], latestCos
       shortDescription: null, mediaUrl: modelIconUrl(modelBrand(item.displayName, item.modality)) ?? null,
       category: null, sortOrder: 1000, visibleInStudio: false, availabilityLabel: null,
       capabilities: emptyModelCapabilities(item.modality), allowedPlans: [],
+      capabilitySourceType: 'unknown' as const, capabilityConfidence: 'unknown' as const,
+      capabilitySyncStatus: 'partial' as const, capabilitySyncError: null,
+      capabilityLastSyncedAt: null,
+      surfaceVisibility: normalizeModelSurfaceVisibility(item.modality, null),
       planAccess: defaultModelPlanAccess(item.displayName, item.modality, []), archived: false,
       routes: [], providerOptions: [], audit: [],
     }));
@@ -350,15 +370,17 @@ export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewD
 export async function getAdminProviders(): Promise<AdminDataResult<AdminProviderRow[]>> {
   const client = await requireAdminDataAccess();
   try {
-    const [attempts, costs, runtimeConfigs, routes, runtimeAudit] = client ? await Promise.all([
+    const [attempts, costs, runtimeConfigs, routes, runtimeAudit, modelConfigs, executions] = client ? await Promise.all([
       allRows(client, 'provider_attempts', 'provider,state,error_message,started_at,finished_at'),
-      allRows(client, 'provider_cost_records', 'provider,provider_model,actual_cost_minor,currency,created_at'),
+      allRows(client, 'provider_cost_records', 'reservation_id,provider,provider_model,actual_cost_minor,currency,created_at'),
       allRows(client, 'provider_runtime_configs', 'provider_id,display_name,adapter_type,base_endpoint,archived,enabled,priority,emergency_disabled,daily_spend_limit_minor,spend_currency,last_error_code,last_checked_at'),
       allRows(client, 'model_provider_routes', 'id,model_key,model_id,modality,provider_id,provider_model_id,enabled,priority,fallback'),
       client.from('admin_audit_log').select('id,action,resource_id,previous_state,new_state,created_at')
         .eq('resource_type', 'provider').order('created_at', { ascending: false }).limit(500)
         .then(({ data, error }: { data: any[] | null; error: any }) => error ? [] : data ?? []),
-    ]) : [[], [], [], [], []];
+      providerModelConfigStates(client),
+      allRows(client, 'ai_executions', 'provider_id,reservation_id,state,execution_metadata'),
+    ]) : [[], [], [], [], [], [], []];
     const groupedCosts = costs.length >= PAGE_SIZE * MAX_PAGES ? new Map<string, CostAmount[]>() : groupCosts(costs);
     const configByProvider = new Map(runtimeConfigs.map((row) => [String(row.provider_id), row]));
     const providerIds = [...new Set([
@@ -369,6 +391,7 @@ export async function getAdminProviders(): Promise<AdminDataResult<AdminProvider
       const config = configByProvider.get(providerId);
       const provider = resolveServerProvider(providerId, config);
       const connection = providerConfigurationSummary(providerId, config);
+      const connectionDetails = getProviderConnection(providerId, config);
       const enabled = Boolean(config?.enabled);
       return {
         id: providerId,
@@ -380,6 +403,11 @@ export async function getAdminProviders(): Promise<AdminDataResult<AdminProvider
         testSupported: provider?.adapter === 'openai-compatible-chat',
         enabled,
         configured: connection.configured,
+        registered: connection.registered,
+        credentialPresent: Boolean(connectionDetails?.apiKey),
+        endpointPresent: Boolean(connectionDetails?.baseUrl),
+        deploymentPresent: Boolean(connectionDetails?.deploymentName),
+        deploymentRequired: Boolean(provider?.deploymentEnv),
         priority: Number(config?.priority ?? 100),
         emergencyDisabled: Boolean(config?.emergency_disabled),
         dailySpendLimitMinor: config?.daily_spend_limit_minor == null
@@ -402,12 +430,31 @@ export async function getAdminProviders(): Promise<AdminDataResult<AdminProvider
         .filter((duration) => Number.isFinite(duration) && duration >= 0);
       const lastAttempt = providerAttempts.slice()
         .sort((a, b) => String(b.started_at).localeCompare(String(a.started_at)))[0];
+      const repeatedProviderFailure = providerAttempts.slice()
+        .sort((a, b) => String(b.started_at).localeCompare(String(a.started_at)))
+        .slice(0, 3).filter((attempt) => attempt.state === 'failed').length === 3;
+      const providerCosts = new Set(costs
+        .filter((cost) => String(cost.provider).toLowerCase() === provider.id.toLowerCase()
+          && cost.actual_cost_minor != null)
+        .map((cost) => String(cost.reservation_id)));
+      const flagCounts = new Map<string, number>();
+      for (const execution of executions.filter((item) =>
+        String(item.provider_id).toLowerCase() === provider.id.toLowerCase())) {
+        const metadata = execution.execution_metadata && typeof execution.execution_metadata === 'object'
+          ? execution.execution_metadata as Record<string, unknown> : {};
+        const attemptsRecorded = typeof metadata.attempt_count === 'number' ? metadata.attempt_count : 0;
+        const derived = reconciliationFlags({
+          stored: metadata.reconciliation_flags,
+          executionState: String(execution.state),
+          failureCategory: typeof metadata.failure_category === 'string' ? metadata.failure_category : null,
+          providerStatus: typeof metadata.provider_status === 'string' ? metadata.provider_status : null,
+          providerCostRecorded: providerCosts.has(String(execution.reservation_id)),
+          failedAttemptCount: String(execution.state) === 'failed' ? attemptsRecorded : 0,
+        });
+        for (const flag of derived) flagCounts.set(flag, (flagCounts.get(flag) ?? 0) + 1);
+      }
       const lastFailure = failures.slice()
         .sort((a, b) => String(b.finished_at ?? b.started_at).localeCompare(String(a.finished_at ?? a.started_at)))[0];
-      const runtimeFailure = provider.lastRuntimeError || lastAttempt?.state === 'failed';
-      const status: AdminProviderRow['status'] = provider.archived || !provider.enabled || provider.emergencyDisabled
-        ? 'disabled' : !provider.configured ? 'misconfigured'
-          : runtimeFailure ? 'unavailable' : 'ready';
       const associatedModels = routes
         .filter((route) => String(route.provider_id) === provider.id)
         .map((route) => {
@@ -419,6 +466,26 @@ export async function getAdminProviders(): Promise<AdminDataResult<AdminProvider
             fallback: Boolean(route.fallback), priority: Number(route.priority),
           };
         });
+      const enabledRoutes = associatedModels.filter((route) => route.enabled);
+      const routeModelKeys = new Set(enabledRoutes.map((route) => route.key));
+      const matchingModels = modelConfigs.filter((model) => routeModelKeys.has(String(model.model_key)));
+      const availability = providerAvailabilityReason({
+        enabled: provider.enabled && !provider.archived,
+        emergencyDisabled: provider.emergencyDisabled,
+        registered: provider.registered,
+        configured: provider.configured,
+        credentialPresent: provider.credentialPresent,
+        endpointPresent: provider.endpointPresent,
+        deploymentPresent: provider.deploymentPresent,
+        deploymentRequired: provider.deploymentRequired,
+        supportedRouteCount: enabledRoutes.length,
+        usableModelCount: matchingModels.filter((model) => model.enabled && !model.archived).length,
+        lastError: provider.lastRuntimeError ?? (lastAttempt?.state === 'failed' ? lastFailure?.error_message : null) ?? null,
+        capabilitySyncFailed: matchingModels.some((model) => model.capability_sync_status === 'failed'),
+      });
+      const status: AdminProviderRow['status'] = availability.code === 'runtime_disabled'
+        ? 'disabled' : ['credential_missing', 'missing_required_env', 'adapter_misconfigured'].includes(availability.code)
+          ? 'misconfigured' : availability.code === 'ready' ? 'ready' : 'unavailable';
       const telemetry = deriveProviderTelemetry(provider.id, attempts, costs, MODEL_NAMES,
         attempts.length < PAGE_SIZE * MAX_PAGES && costs.length < PAGE_SIZE * MAX_PAGES);
       return {
@@ -428,7 +495,13 @@ export async function getAdminProviders(): Promise<AdminDataResult<AdminProvider
         routeCount: routes.filter((route) => String(route.provider_id) === provider.id).length,
         testSupported: provider.testSupported,
         enabled: provider.enabled, status, role: provider.role,
+        availabilityReason: availability.reason, availabilityCode: availability.code,
+        availabilityDetail: availability.detail,
         requestCount: providerAttempts.length, failures: failures.length,
+        repeatedProviderFailure,
+        reconciliationFlags: [...flagCounts.entries()].map(([flag, count]) => ({
+          flag: flag as import('./reconciliation-flags').ReconciliationFlag, count,
+        })),
         ...telemetry,
         averageLatencyMs: completedDurations.length
           ? Math.round(completedDurations.reduce((sum, value) => sum + value, 0) / completedDurations.length) : null,
@@ -628,7 +701,7 @@ export async function getAdminJobs(filters: {
     if (generations.error) throw generations.error;
     const reservationIds = (executions.data ?? []).map((row: any) => row.reservation_id).filter(Boolean);
     const [reservations, costs, usage, outbox] = reservationIds.length ? await Promise.all([
-      client.from('credit_reservations').select('id,state').in('id', reservationIds),
+      client.from('credit_reservations').select('id,state,amount,funding_source').in('id', reservationIds),
       client.from('provider_cost_records').select('reservation_id,provider,provider_model,actual_cost_minor,currency').in('reservation_id', reservationIds),
       client.from('usage_records').select('reservation_id,credits_charged').in('reservation_id', reservationIds),
       client.from('provider_dispatch_outbox').select('id,reservation_id').in('reservation_id', reservationIds),
@@ -636,7 +709,7 @@ export async function getAdminJobs(filters: {
     for (const result of [reservations, costs, usage, outbox]) if (result.error) throw result.error;
     const outboxIds = (outbox.data ?? []).map((row: any) => row.id);
     const attempts = outboxIds.length ? await client.from('provider_attempts')
-      .select('outbox_id,provider,state,error_message,started_at,finished_at')
+      .select('outbox_id,provider,state,error_message,provider_operation_id,metadata,started_at,finished_at')
       .in('outbox_id', outboxIds).order('started_at') : { data: [], error: null };
     if (attempts.error) throw attempts.error;
     const byReservation = <T extends { reservation_id: string }>(rows: T[]) => new Map(rows.map((row) => [row.reservation_id, row]));
@@ -655,6 +728,14 @@ export async function getAdminJobs(filters: {
       const usageRecord = usageByReservation.get(row.reservation_id) as any;
       const dispatch = outboxByReservation.get(row.reservation_id) as any;
       const providerAttempts = (dispatch ? attemptByOutbox.get(dispatch.id) : []) ?? [];
+      const executionMetadata = row.execution_metadata && typeof row.execution_metadata === 'object'
+        ? row.execution_metadata as Record<string, unknown> : {};
+      const reservation = reservationById.get(row.reservation_id) as any;
+      const textMetadata = (key: string) => typeof executionMetadata[key] === 'string' ? String(executionMetadata[key]) : null;
+      const numericMetadata = (key: string) => typeof executionMetadata[key] === 'number'
+        ? numericString(executionMetadata[key]) : null;
+      const providerStatus = textMetadata('provider_status') ?? (providerAttempts.at(-1)?.metadata?.provider_status ?? null);
+      const failedAttemptCount = providerAttempts.filter((attempt) => attempt.state === 'failed').length;
       return {
         id: row.id, source: 'execution', userId: row.user_id, modality: row.modality,
         userEmail: emails.get(row.user_id) ?? null,
@@ -667,8 +748,23 @@ export async function getAdminJobs(filters: {
         latencyMs: row.completed_at ? Math.max(0, new Date(row.completed_at).getTime() - new Date(row.created_at).getTime()) : null,
         error: row.error_code, prompt: null, createdAt: row.created_at, updatedAt: row.updated_at, completedAt: row.completed_at,
         providerModelId: row.provider_model_id,
-        reservationState: (reservationById.get(row.reservation_id) as any)?.state ?? null,
-        attempts: providerAttempts.map((attempt) => ({ provider: attempt.provider, state: attempt.state, error: attempt.error_message, startedAt: attempt.started_at, finishedAt: attempt.finished_at })),
+        reservationState: reservation?.state ?? null,
+        providerStatus,
+        providerOperationId: textMetadata('provider_operation_id') ?? providerAttempts.at(-1)?.provider_operation_id ?? null,
+        fundingSource: textMetadata('funding_source') ?? reservation?.funding_source ?? null,
+        failureOwner: textMetadata('failure_owner'), failureCategory: textMetadata('failure_category'),
+        reconciliationFlags: reconciliationFlags({
+          stored: executionMetadata.reconciliation_flags,
+          executionState: String(row.state),
+          failureCategory: textMetadata('failure_category'),
+          providerStatus,
+          providerCostRecorded: cost?.actual_cost_minor != null,
+          failedAttemptCount,
+        }),
+        creditsReserved: numericMetadata('credits_reserved') ?? (reservation?.amount == null ? null : numericString(reservation.amount)),
+        creditsReleased: numericMetadata('credits_released'),
+        attempts: providerAttempts.map((attempt) => ({ provider: attempt.provider, state: attempt.state, error: attempt.error_message,
+          operationId: attempt.provider_operation_id ?? null, startedAt: attempt.started_at, finishedAt: attempt.finished_at })),
         usageMetadata: row.execution_metadata && typeof row.execution_metadata === 'object' ? row.execution_metadata : null,
       };
     });
@@ -684,7 +780,9 @@ export async function getAdminJobs(filters: {
         error: row.error_message, prompt: row.prompt,
         createdAt: row.created_at, updatedAt: row.updated_at, completedAt: null,
         providerModelId: typeof metadata.providerModel === 'string' ? metadata.providerModel : null,
-        reservationState: null, attempts: [],
+        reservationState: null, providerStatus: null, providerOperationId: null, fundingSource: null,
+        failureOwner: null, failureCategory: null, creditsReserved: null, creditsReleased: null, attempts: [],
+        reconciliationFlags: [],
         usageMetadata: null,
       };
     });

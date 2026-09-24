@@ -33,6 +33,7 @@ export interface StudioRuntimeModelDefinition extends StudioModelDefinition {
   category?: string;
   availabilityLabel?: string;
   capabilities: import('@/lib/models/capabilities').ModelCapabilities;
+  surfaceVisibility?: import('@/lib/models/capabilities').ModelSurfaceVisibility;
   planAccessible?: boolean;
   requiredPlan?: ModelPlanCode | null;
   accessState?: import('@/lib/models/model-access').ModelAccessState;

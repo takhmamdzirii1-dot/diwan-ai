@@ -15,6 +15,8 @@ const capabilities: VideoModelCapabilities = {
   cameraMotions: [],
   generatedAudio: false,
   negativePrompt: false,
+  resolutions: ['480p', '768p'],
+  generationModes: ['speed', 'quality'],
 };
 
 test('accepts only the supported Pruna text-to-video contract', () => {
@@ -49,7 +51,7 @@ test('accepts image-to-video only with a valid source and omits aspect ratio', (
     duration: 5,
     resolution: '480p',
     mode: 'speed',
-  }, { ...capabilities, imageToVideo: true }, sourceImage);
+  }, { ...capabilities, imageToVideo: true, imageToVideoResolutions: ['480p', '768p'], imageToVideoGenerationModes: ['speed', 'quality'] }, sourceImage);
   assert.equal(result.sourceMode, 'image');
   assert.equal(result.sourceImage, sourceImage);
   assert.equal(result.aspectRatio, undefined);
@@ -60,7 +62,7 @@ test('accepts image-to-video only with a valid source and omits aspect ratio', (
       modelId: 'vantra-p-video-2-pro',
       sourceMode: 'image',
       aspectRatio: '16:9',
-    }, { ...capabilities, imageToVideo: true }, sourceImage),
+    }, { ...capabilities, imageToVideo: true, imageToVideoResolutions: ['480p', '768p'], imageToVideoGenerationModes: ['speed', 'quality'] }, sourceImage),
     (error) => error instanceof VideoRequestError && error.code === 'UNSUPPORTED_VIDEO_PARAMETER'
   );
 });
@@ -75,7 +77,7 @@ test('accepts an optional valid I2V end frame', () => {
     duration: 5,
     resolution: '768p',
     mode: 'quality',
-  }, { ...capabilities, imageToVideo: true }, sourceImage, endImage);
+  }, { ...capabilities, imageToVideo: true, endImage: true, imageToVideoResolutions: ['480p', '768p'], imageToVideoGenerationModes: ['speed', 'quality'] }, sourceImage, endImage);
   assert.equal(result.sourceImage, sourceImage);
   assert.equal(result.endImage, endImage);
   assert.equal(result.aspectRatio, undefined);
@@ -136,4 +138,20 @@ test('fails closed for disabled text-to-video or unsupported values', () => {
     }, capabilities),
     (error) => error instanceof VideoRequestError && error.code === 'UNSUPPORTED_VIDEO_DURATION'
   );
+});
+
+test('unknown video options fail closed and an unsupported end frame is rejected', () => {
+  assert.throws(() => validatePrunaVideoRequest({
+    prompt: 'A test', modelId: 'vantra-p-video-2-pro', duration: 5,
+    resolution: '480p', mode: 'speed',
+  }, { ...capabilities, resolutions: undefined }),
+  (error) => error instanceof VideoRequestError && error.code === 'MODEL_CAPABILITY_UNSUPPORTED');
+  const source = new File(['start'], 'start.png', { type: 'image/png' });
+  const end = new File(['end'], 'end.png', { type: 'image/png' });
+  assert.throws(() => validatePrunaVideoRequest({
+    prompt: 'A test', modelId: 'vantra-p-video-2-pro', sourceMode: 'image',
+    duration: 5, resolution: '480p', mode: 'speed',
+  }, { ...capabilities, imageToVideo: true, imageToVideoResolutions: ['480p'],
+    imageToVideoGenerationModes: ['speed'] }, source, end),
+  (error) => error instanceof VideoRequestError && error.code === 'MODEL_CAPABILITY_UNSUPPORTED');
 });

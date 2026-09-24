@@ -18,6 +18,7 @@ import { modelPlanErrorPayload } from '@/lib/models/plan-entitlements';
 import type { VideoModelCapabilities } from '@/lib/models/capabilities';
 import {
   beginGenerationExecution,
+  beginGenerationProviderAttempt,
   finalizeGeneration,
   hashGenerationPayload,
   markGenerationStreaming,
@@ -26,7 +27,7 @@ import {
   reserveGenerationCredits,
   resolveOperationKey,
 } from '@/lib/credits/generation-finance';
-import { resolveTerminalCustomerCharge } from '@/lib/credits/generation-policy';
+import { providerFailureCategory, resolveTerminalCustomerCharge } from '@/lib/credits/generation-policy';
 import { persistGeneratedMedia } from '@/lib/ai/library-media';
 import { requireMediaGenerationAccess } from '@/lib/access/trial-access';
 import { freeVideoDurationAllowed } from '@/lib/access/trial-state';
@@ -229,16 +230,25 @@ export async function POST(request: Request) {
   const startedAt = Date.now();
   let providerStarted = false;
   let providerOperationId: string | null = null;
+  let providerStatus: string | null = null;
+  let providerAttemptCount = 0;
   try {
     await markGenerationStreaming(execution.executionId, user.id, reservation?.reservationId ?? null);
+    const attempt = await beginGenerationProviderAttempt({
+      executionId: execution.executionId, userId: user.id,
+      reservationId: reservation?.reservationId ?? null, route, attemptKey: operationKey,
+    });
+    providerAttemptCount = attempt?.attemptNumber ?? 0;
     providerStarted = true;
     const submitted = await submitPrunaVideoRoute(route, input);
     providerOperationId = submitted.providerOperationId;
+    providerStatus = submitted.rawStatus ?? 'accepted';
     await recordGenerationProviderOperation({
       executionId: execution.executionId,
       userId: user.id,
       providerOperationId,
       rawStatus: submitted.rawStatus,
+      attemptId: attempt?.attemptId,
     });
     const result = submitted.state === 'completed'
       ? submitted
@@ -247,6 +257,7 @@ export async function POST(request: Request) {
         initialDelayMs: 1_000,
         signal: request.signal,
       });
+    providerStatus = result.rawStatus ?? result.state;
     if (result.state !== 'completed' || !result.mediaUrl) {
       throw new MediaProviderError('PROVIDER_RESULT_NOT_READY', true);
     }
@@ -287,12 +298,13 @@ export async function POST(request: Request) {
         mode: input.mode,
         latencyMs,
         delivery: result.delivery,
+        provider_status: providerStatus,
         providerPricing: 'pruna-p-video-2-pro-published-2026-09-19',
       },
       providerCostMinor,
       providerCostCurrency: providerCostMinor == null ? null : 'USD',
       providerOperationId,
-      attemptCount: 1,
+      attemptCount: providerAttemptCount || 1,
     };
     let financialResult;
     try {
@@ -301,9 +313,16 @@ export async function POST(request: Request) {
       financialResult = await finalizeGeneration(finalizeArgs);
     }
     if (financialResult.state !== 'completed') throw new Error('EXECUTION_FINALIZATION_FAILED');
-    await finalizeModelTrialAccess({ userId: user.id, operationKey, outcome: 'completed' });
+    try {
+      await finalizeModelTrialAccess({ userId: user.id, operationKey, outcome: 'completed' });
+    } catch (cause) {
+      console.error('[video-generation] trial completion needs reconciliation', {
+        executionId: execution.executionId,
+        code: cause instanceof Error ? cause.message : 'MODEL_TRIAL_FINALIZATION_FAILED',
+      });
+    }
     if (resolvedAccess.access.state === 'trial') {
-      await recordFunnelEvent({ userId: user.id, event: 'model_trial_used', key: operationKey, metadata: { model: runtimeModel.modelId, modality: 'video', plan: resolvedAccess.currentPlan } });
+      await recordFunnelEvent({ userId: user.id, event: 'model_trial_used', key: operationKey, metadata: { model: runtimeModel.modelId, modality: 'video', plan: resolvedAccess.currentPlan } }).catch(() => undefined);
     }
     await recordProviderResult(route.providerId, true);
     return NextResponse.json({
@@ -328,10 +347,14 @@ export async function POST(request: Request) {
         customerCharge: 0,
         errorCode: internalCode,
         failureOwner,
-        failureCategory: providerStarted ? 'provider_execution' : 'vantra_execution',
-        actualUsage: { latencyMs: Date.now() - startedAt },
+        failureCategory: providerStarted ? providerFailureCategory(internalCode, true) : 'vantra_execution',
+        actualUsage: { latencyMs: Date.now() - startedAt,
+          provider_status: providerStatus,
+          reconciliation_flags: providerOperationId && internalCode === 'PROVIDER_RESULT_NOT_READY'
+            ? ['accepted_no_result'] : [],
+        },
         providerOperationId,
-        attemptCount: providerStarted ? 1 : 0,
+        attemptCount: providerStarted ? providerAttemptCount || 1 : 0,
       });
     } catch (finalizationError) {
       console.error('[video-generation] failure finalization failed', {

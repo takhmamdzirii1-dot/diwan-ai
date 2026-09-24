@@ -48,6 +48,9 @@ export type AdminProviderRow = {
   modalities: string[];
   enabled: boolean;
   status: 'ready' | 'disabled' | 'misconfigured' | 'unavailable';
+  availabilityReason: string;
+  availabilityCode: import('./provider-availability').ProviderAvailabilityCode;
+  availabilityDetail: string | null;
   adapterType: string;
   baseEndpoint: string | null;
   archived: boolean;
@@ -59,6 +62,8 @@ export type AdminProviderRow = {
   terminalAttempts: number;
   metricsComplete: boolean;
   failures: number;
+  repeatedProviderFailure: boolean;
+  reconciliationFlags: { flag: import('./reconciliation-flags').ReconciliationFlag; count: number }[];
   averageLatencyMs: number | null;
   lastActivityAt: string | null;
   lastSuccessAt: string | null;
@@ -109,6 +114,12 @@ export type AdminModelRow = {
   visibleInStudio: boolean;
   availabilityLabel: string | null;
   capabilities: import('@/lib/models/capabilities').ModelCapabilities;
+  capabilitySourceType: import('@/lib/models/capabilities').CapabilitySourceType;
+  capabilityConfidence: import('@/lib/models/capabilities').CapabilityConfidence;
+  capabilitySyncStatus: import('@/lib/models/capabilities').CapabilitySyncStatus;
+  capabilitySyncError: string | null;
+  capabilityLastSyncedAt: string | null;
+  surfaceVisibility: import('@/lib/models/capabilities').ModelSurfaceVisibility;
   allowedPlans: import('@/lib/models/plan-entitlements').ModelPlanCode[];
   planAccess: import('@/lib/models/model-access').ModelPlanAccessMap;
   archived: boolean;
@@ -185,7 +196,15 @@ export type AdminJobRow = {
   completedAt: string | null;
   providerModelId: string | null;
   reservationState: string | null;
-  attempts: { provider: string; state: string; error: string | null; startedAt: string; finishedAt: string | null }[];
+  providerStatus: string | null;
+  providerOperationId: string | null;
+  fundingSource: string | null;
+  failureOwner: string | null;
+  failureCategory: string | null;
+  reconciliationFlags: import('./reconciliation-flags').ReconciliationFlag[];
+  creditsReserved: string | null;
+  creditsReleased: string | null;
+  attempts: { provider: string; state: string; error: string | null; operationId: string | null; startedAt: string; finishedAt: string | null }[];
   usageMetadata: Record<string, unknown> | null;
 };
 

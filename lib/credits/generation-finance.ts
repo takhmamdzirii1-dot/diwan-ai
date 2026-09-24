@@ -122,11 +122,36 @@ export async function markGenerationStreaming(
   if (error) throw new Error(error.message || 'EXECUTION_TRANSITION_FAILED');
 }
 
+export async function beginGenerationProviderAttempt(args: {
+  executionId: string;
+  userId: string;
+  reservationId: string | null;
+  route: ResolvedProviderRoute;
+  attemptKey: string;
+}) {
+  if (!args.reservationId) return null;
+  const { data, error } = await adminClient().rpc('begin_provider_execution_attempt', {
+    p_execution_id: args.executionId,
+    p_user_id: args.userId,
+    p_reservation_id: args.reservationId,
+    p_route_key: args.route.id,
+    p_provider_id: args.route.providerId,
+    p_attempt_key: args.attemptKey,
+  });
+  // The additive migration may be applied after this deployment. Existing
+  // generation remains available until then; settlement still uses the ledger.
+  if (error && ['PGRST202', '42883'].includes(error.code)) return null;
+  if (error) throw new Error(error.message || 'PROVIDER_ATTEMPT_RECORD_FAILED');
+  const result = data as RpcJson;
+  return { attemptId: String(result.attempt_id), attemptNumber: Number(result.attempt_number) };
+}
+
 export async function recordGenerationProviderOperation(args: {
   executionId: string;
   userId: string;
   providerOperationId: string;
   rawStatus?: string;
+  attemptId?: string | null;
 }) {
   const { data, error } = await adminClient().from('ai_executions')
     .update({
@@ -142,6 +167,21 @@ export async function recordGenerationProviderOperation(args: {
     .select('id')
     .maybeSingle();
   if (error || !data) throw new Error(error?.message || 'PROVIDER_OPERATION_PERSIST_FAILED');
+  if (args.attemptId) {
+    const existing = await adminClient().from('provider_attempts')
+      .select('metadata').eq('id', args.attemptId).maybeSingle();
+    if (existing.error || !existing.data) return;
+    const attempt = await adminClient().from('provider_attempts').update({
+      provider_operation_id: args.providerOperationId,
+      state: 'submitted',
+      metadata: { ...existing.data.metadata, provider_status: args.rawStatus ?? 'submitted' },
+    }).eq('id', args.attemptId).eq('state', 'started').select('id').maybeSingle();
+    if (attempt.error) {
+      console.error('[provider-runtime] attempt submission update failed', {
+        attemptId: args.attemptId, code: attempt.error.code,
+      });
+    }
+  }
 }
 
 export async function settleGeneration(args: {

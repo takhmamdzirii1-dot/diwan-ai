@@ -60,7 +60,7 @@ export function validatePrunaVideoRequest(
   }
 
   const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : '';
-  if (!prompt || prompt.length > 2_000) throw new VideoRequestError('INVALID_PROMPT');
+  if (!prompt || prompt.length > Math.min(capabilities.maxPromptChars ?? 2_000, 2_000)) throw new VideoRequestError('INVALID_PROMPT');
   if (body.modelId !== PRUNA_VIDEO_MODEL_ID) throw new VideoRequestError('INVALID_MODEL');
 
   const requestedDuration = body.duration == null ? capabilities.durations[0] : Number(body.duration);
@@ -82,6 +82,7 @@ export function validatePrunaVideoRequest(
       || !PRUNA_SOURCE_IMAGE_TYPES.includes(endImage.type as (typeof PRUNA_SOURCE_IMAGE_TYPES)[number]))) {
       throw new VideoRequestError('INVALID_END_IMAGE');
     }
+    if (endImage != null && !capabilities.endImage) throw new VideoRequestError('MODEL_CAPABILITY_UNSUPPORTED');
   } else {
     if (sourceImage != null || endImage != null) throw new VideoRequestError('UNSUPPORTED_VIDEO_PARAMETER');
     aspectRatio = (body.aspectRatio ?? capabilities.aspectRatios[0]) as ModelAspectRatio;
@@ -93,10 +94,14 @@ export function validatePrunaVideoRequest(
   if (!PRUNA_VIDEO_RESOLUTIONS.includes(resolution)) {
     throw new VideoRequestError('UNSUPPORTED_VIDEO_RESOLUTION');
   }
+  const supportedResolutions = sourceMode === 'text' ? capabilities.resolutions : capabilities.imageToVideoResolutions;
+  if (!supportedResolutions?.includes(resolution)) throw new VideoRequestError('MODEL_CAPABILITY_UNSUPPORTED');
   const mode = (body.mode ?? 'speed') as PrunaVideoMode;
   if (!PRUNA_VIDEO_MODES.includes(mode)) {
     throw new VideoRequestError('UNSUPPORTED_VIDEO_MODE');
   }
+  const supportedModes = sourceMode === 'text' ? capabilities.generationModes : capabilities.imageToVideoGenerationModes;
+  if (!supportedModes?.includes(mode)) throw new VideoRequestError('MODEL_CAPABILITY_UNSUPPORTED');
   if (body.operationId != null && typeof body.operationId !== 'string') {
     throw new VideoRequestError('INVALID_IDEMPOTENCY_KEY');
   }

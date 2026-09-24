@@ -65,11 +65,12 @@ export function ProviderOverview({ row }: { row: AdminProviderRow }) {
     ? `${(row.successfulAttempts / row.terminalAttempts * 100).toFixed(1)}%` : row.requestCount === 0 ? 'No traffic' : dash;
   return <div className="space-y-3">
     <div className="flex items-center justify-between gap-3">
-      <div>{providerState(row)}<p className="mt-1.5 text-[11px] text-[var(--studio-text-secondary)]">{row.status === 'ready' ? 'Configured for routing.' : 'See runtime state and diagnostics below.'}</p></div>
+      <div>{providerState(row)}<p className="mt-1.5 text-[11px] text-[var(--studio-text-secondary)]">{row.availabilityReason}</p></div>
       <Link href="/admin/runtime" className="text-[11px] text-[var(--studio-text-secondary)] underline hover:text-[var(--studio-text-primary)]">Manage runtime <ArrowUpRight className="inline h-3 w-3" /></Link>
     </div>
     <Section title="Provider">
       <Row name="Status">{providerState(row)}</Row>
+      <Row name="Reason">{row.availabilityReason}</Row>
       <Row name="Adapter">{row.adapterType}</Row>
       <Row name="Credential">{row.configured ? <Chip tone="good">Configured</Chip> : <Chip tone="warn">Missing</Chip>}</Row>
       <Row name="Capabilities">{row.modalities.join(' · ') || dash}</Row>
@@ -176,11 +177,17 @@ export function ProviderDiagnostics({ row }: { row: AdminProviderRow }) {
   return <div className="space-y-4">
     <Section title="Health & Status">
       <Row name="Provider status">{providerState(row)}</Row>
+      <Row name="Why">{row.availabilityReason}</Row>
       <Row name="Adapter">{row.adapterType}</Row>
       <Row name="Credential">{row.configured ? <Chip tone="good">Configured</Chip> : <Chip tone="warn">Missing</Chip>}</Row>
       <Row name="Last successful request">{date(row.lastSuccessAt)}</Row>
       <Row name="Last failure">{date(row.lastFailureAt)}</Row>
+      <Row name="Repeated failures">{row.repeatedProviderFailure ? <Chip tone="bad">Three latest attempts failed</Chip> : 'No current pattern'}</Row>
     </Section>
+    {row.reconciliationFlags.length > 0 && <Section title="Reconciliation signals" description="Evidence-backed execution records that may need review.">
+      {row.reconciliationFlags.map((item) => <Row key={item.flag} name={item.flag.replaceAll('_', ' ')}>{item.count.toLocaleString()}</Row>)}
+    </Section>}
+    {row.availabilityDetail && <details className={`${card} p-3 text-[11px] text-[var(--studio-text-secondary)]`}><summary className="cursor-pointer font-semibold">Technical detail</summary><p className="mt-2 break-words">{row.availabilityDetail}</p></details>}
     <div><div className="mb-2 flex items-center gap-2"><CircleAlert className="h-4 w-4 text-[var(--studio-text-secondary)]" /><h3 className="text-[13px] font-semibold">Recent Issues</h3></div><div className={`${card} divide-y divide-[var(--studio-border-subtle)]`}>{row.recentIssues.length ? row.recentIssues.map((issue, index) => <div key={`${issue.at}:${index}`} className="grid grid-cols-[95px_1fr] gap-3 px-3 py-3 text-[11px]"><span className="text-[var(--studio-text-muted)]">{date(issue.at)}</span><span className="break-words text-red-200">{issue.message}</span></div>) : <p className="p-5 text-center text-[11px] text-[var(--studio-text-secondary)]">No failed provider attempts in the loaded records.</p>}</div></div>
     <Section title="Recorded Checks" description="Configuration and runtime state only; no synthetic connectivity checks.">
       <Row name="Credential configuration">{row.configured ? <Chip tone="good">Present</Chip> : <Chip tone="warn">Missing</Chip>}</Row>

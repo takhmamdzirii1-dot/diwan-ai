@@ -8,6 +8,7 @@ import { modelPlanErrorPayload } from '@/lib/models/plan-entitlements';
 import type { ImageModelCapabilities } from '@/lib/models/capabilities';
 import {
   beginGenerationExecution,
+  beginGenerationProviderAttempt,
   finalizeGeneration,
   hashGenerationPayload,
   markGenerationStreaming,
@@ -15,7 +16,7 @@ import {
   reserveGenerationCredits,
   resolveOperationKey,
 } from '@/lib/credits/generation-finance';
-import { resolveTerminalCustomerCharge } from '@/lib/credits/generation-policy';
+import { providerFailureCategory, resolveTerminalCustomerCharge } from '@/lib/credits/generation-policy';
 import { persistGeneratedMedia } from '@/lib/ai/library-media';
 import { requireMediaGenerationAccess } from '@/lib/access/trial-access';
 import { recordFunnelEvent } from '@/lib/analytics/funnel-events';
@@ -182,12 +183,18 @@ export async function POST(request: Request) {
 
   const startedAt = Date.now();
   let providerStarted = false;
+  let providerAttemptCount = 0;
   try {
     await markGenerationStreaming(
       execution.executionId,
       user.id,
       reservation?.reservationId ?? null
     );
+    const attempt = await beginGenerationProviderAttempt({
+      executionId: execution.executionId, userId: user.id,
+      reservationId: reservation?.reservationId ?? null, route, attemptKey: operationKey,
+    });
+    providerAttemptCount = attempt?.attemptNumber ?? 0;
     providerStarted = true;
     const result = await generateWithMicrosoftFoundryRoute(route, {
       prompt: input.prompt,
@@ -234,9 +241,10 @@ export async function POST(request: Request) {
         outputCount: 1,
         latencyMs,
         delivery: result.delivery,
+        provider_status: result.rawStatus ?? result.state,
       },
       providerOperationId: result.providerOperationId,
-      attemptCount: 1,
+      attemptCount: providerAttemptCount || 1,
     };
     let financialResult;
     try {
@@ -247,9 +255,16 @@ export async function POST(request: Request) {
       financialResult = await finalizeGeneration(finalizeArgs);
     }
     if (financialResult.state !== 'completed') throw new Error('EXECUTION_FINALIZATION_FAILED');
-    await finalizeModelTrialAccess({ userId: user.id, operationKey, outcome: 'completed' });
+    try {
+      await finalizeModelTrialAccess({ userId: user.id, operationKey, outcome: 'completed' });
+    } catch (cause) {
+      console.error('[image-generation] trial completion needs reconciliation', {
+        executionId: execution.executionId,
+        code: cause instanceof Error ? cause.message : 'MODEL_TRIAL_FINALIZATION_FAILED',
+      });
+    }
     if (resolvedAccess.access.state === 'trial') {
-      await recordFunnelEvent({ userId: user.id, event: 'model_trial_used', key: operationKey, metadata: { model: runtimeModel.modelId, modality: 'image', plan: resolvedAccess.currentPlan } });
+      await recordFunnelEvent({ userId: user.id, event: 'model_trial_used', key: operationKey, metadata: { model: runtimeModel.modelId, modality: 'image', plan: resolvedAccess.currentPlan } }).catch(() => undefined);
     }
     await recordProviderResult(route.providerId, true);
 
@@ -274,9 +289,11 @@ export async function POST(request: Request) {
         customerCharge: 0,
         errorCode: internalCode,
         failureOwner,
-        failureCategory: providerStarted ? 'provider_execution' : 'vantra_execution',
-        actualUsage: { latencyMs: Date.now() - startedAt },
-        attemptCount: providerStarted ? 1 : 0,
+        failureCategory: providerStarted ? providerFailureCategory(internalCode, true) : 'vantra_execution',
+        actualUsage: { latencyMs: Date.now() - startedAt,
+          provider_status: cause instanceof MediaProviderError ? cause.code : null,
+        },
+        attemptCount: providerStarted ? providerAttemptCount || 1 : 0,
       });
     } catch (finalizationError) {
       console.error('[image-generation] failure finalization failed', {

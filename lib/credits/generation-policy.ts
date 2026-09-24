@@ -35,3 +35,12 @@ export function resolveTerminalCustomerCharge(input: {
 export function failureStateForInterruptedStream(outputStarted: boolean) {
   return outputStarted ? 'partial_failed' as const : 'failed' as const;
 }
+
+export function providerFailureCategory(code: string, providerStarted: boolean) {
+  if (!providerStarted) return 'pre_execution';
+  if (/REJECTED|VALIDATION|INVALID_|UNSUPPORTED_/.test(code)) return 'provider_rejection';
+  if (/TIMEOUT|NETWORK|TRANSIENT|UNAVAILABLE/.test(code)) return 'provider_unavailable';
+  if (/RESULT_NOT_READY|INVALID_RESPONSE/.test(code)) return 'accepted_no_result';
+  if (/CANCELLED|CANCELED|INTERRUPTED/.test(code)) return 'interrupted';
+  return 'provider_execution';
+}

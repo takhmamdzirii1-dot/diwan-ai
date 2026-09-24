@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   failureStateForInterruptedStream,
+  providerFailureCategory,
   resolveTerminalCustomerCharge,
 } from './generation-policy';
 
@@ -32,4 +33,11 @@ test('user cancellation charges only an authoritative bounded amount', () => {
 test('interrupted streams distinguish no-output failure from partial failure', () => {
   assert.equal(failureStateForInterruptedStream(false), 'failed');
   assert.equal(failureStateForInterruptedStream(true), 'partial_failed');
+});
+
+test('provider terminal failures are classified without changing customer charge policy', () => {
+  assert.equal(providerFailureCategory('PROVIDER_RESULT_NOT_READY', true), 'accepted_no_result');
+  assert.equal(providerFailureCategory('PROVIDER_TIMEOUT', true), 'provider_unavailable');
+  assert.equal(providerFailureCategory('PROVIDER_REJECTED', true), 'provider_rejection');
+  assert.equal(providerFailureCategory('PROVIDER_TIMEOUT', false), 'pre_execution');
 });

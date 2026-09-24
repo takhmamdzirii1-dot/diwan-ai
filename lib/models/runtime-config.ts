@@ -7,8 +7,9 @@ import { isRetiredModelReference } from '@/lib/models/retired-providers';
 import { modelBrand, modelIconUrl } from '@/src/config/model-catalog';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
 import { providerConfigurationSummary } from '@/lib/ai/providers/registry';
-import { emptyModelCapabilities, type ModelCapabilities } from '@/lib/models/capabilities';
+import { emptyModelCapabilities, normalizeModelSurfaceVisibility, type CapabilityConfidence, type CapabilitySourceType, type CapabilitySyncStatus, type ModelCapabilities, type ModelSurfaceVisibility } from '@/lib/models/capabilities';
 import { normalizeModelCapabilities } from '@/lib/models/capability-validation';
+import { withAdapterInputs } from '@/lib/models/adapter-capabilities';
 import {
   defaultAllowedPlansForModel,
   normalizeAllowedPlans,
@@ -67,6 +68,13 @@ export type ModelRuntimeOverride = {
   studioVisible: boolean | null;
   customerAvailabilityLabel: string | null;
   capabilities: ModelCapabilities;
+  capabilitySourceType?: CapabilitySourceType;
+  capabilityConfidence?: CapabilityConfidence;
+  capabilitySyncStatus?: CapabilitySyncStatus;
+  capabilitySyncError?: string | null;
+  capabilityLastSyncedAt?: string | null;
+  capabilitySchemaAvailable?: boolean;
+  surfaceVisibility?: ModelSurfaceVisibility;
   allowedPlans: ModelPlanCode[];
   archived: boolean;
   updatedAt: string;
@@ -86,6 +94,12 @@ export type EffectiveRuntimeModel = RegistryModelReference & {
   visibleInStudio: boolean;
   availabilityLabel: string | null;
   capabilities: ModelCapabilities;
+  capabilitySourceType: CapabilitySourceType;
+  capabilityConfidence: CapabilityConfidence;
+  capabilitySyncStatus: CapabilitySyncStatus;
+  capabilitySyncError: string | null;
+  capabilityLastSyncedAt: string | null;
+  surfaceVisibility: ModelSurfaceVisibility;
   allowedPlans: ModelPlanCode[];
   planAccess: ModelPlanAccessMap;
   archived: boolean;
@@ -199,6 +213,13 @@ function mapOverride(row: any): ModelRuntimeOverride {
     studioVisible: row.studio_visible == null ? null : Boolean(row.studio_visible),
     customerAvailabilityLabel: row.customer_availability_label == null ? null : String(row.customer_availability_label),
     capabilities: normalizeModelCapabilities(row.modality, row.capabilities),
+    capabilitySourceType: row.capability_source_type ?? 'unknown',
+    capabilityConfidence: row.capability_confidence ?? 'unknown',
+    capabilitySyncStatus: row.capability_sync_status ?? 'partial',
+    capabilitySyncError: row.capability_sync_error ?? null,
+    capabilityLastSyncedAt: row.capability_last_synced_at ?? null,
+    capabilitySchemaAvailable: Object.prototype.hasOwnProperty.call(row, 'capability_source_type'),
+    surfaceVisibility: normalizeModelSurfaceVisibility(row.modality, row.surface_visibility),
     allowedPlans: normalizeAllowedPlans(row.allowed_plans),
     archived: Boolean(row.archived),
     updatedAt: String(row.updated_at),
@@ -206,11 +227,21 @@ function mapOverride(row: any): ModelRuntimeOverride {
 }
 
 export async function loadModelRuntimeOverrides(client: SupabaseClient, modelKey?: string) {
-  let query = client.from('model_runtime_configs').select(
-    'model_key,model_id,modality,enabled,routing_role,customer_credit_price,provider_cost_status,provider_cost_minor,provider_cost_currency,customer_display_name,customer_short_description,customer_media_url,customer_category,customer_sort_order,studio_visible,customer_availability_label,capabilities,allowed_plans,archived,updated_at'
-  );
+  const legacyColumns = 'model_key,model_id,modality,enabled,routing_role,customer_credit_price,provider_cost_status,provider_cost_minor,provider_cost_currency,customer_display_name,customer_short_description,customer_media_url,customer_category,customer_sort_order,studio_visible,customer_availability_label,capabilities,allowed_plans,archived,updated_at';
+  const syncColumns = ',capability_source_type,capability_confidence,capability_sync_status,capability_sync_error,capability_last_synced_at,surface_visibility';
+  let query = client.from('model_runtime_configs').select(legacyColumns + syncColumns);
   if (modelKey) query = query.eq('model_key', modelKey);
-  const { data, error } = await query;
+  const current = await query;
+  let data: any[] | null = current.data as any[] | null;
+  let error = current.error;
+  // The application remains readable while the additive migration is applied.
+  if (error && ['42703', 'PGRST204'].includes(error.code)) {
+    let legacyQuery = client.from('model_runtime_configs').select(legacyColumns);
+    if (modelKey) legacyQuery = legacyQuery.eq('model_key', modelKey);
+    const legacy = await legacyQuery;
+    data = legacy.data as any[] | null;
+    error = legacy.error;
+  }
   if (error) throw error;
   return (data ?? []).map(mapOverride);
 }
@@ -273,6 +304,10 @@ export function applyModelRuntimeOverrides(overrides: readonly ModelRuntimeOverr
       defaultModelPlanAccess(override?.customerDisplayName ?? model.displayName, model.modality, allowedPlans),
       storedAccess.filter((row) => row.modelKey === model.key)
     );
+    const savedCapabilities = override?.capabilitySchemaAvailable
+      && (override.capabilitySourceType ?? 'unknown') === 'unknown'
+      ? emptyModelCapabilities(model.modality)
+      : override?.capabilities ?? model.baseCapabilities;
     return {
       ...model,
       displayName: override?.customerDisplayName ?? model.displayName,
@@ -288,7 +323,13 @@ export function applyModelRuntimeOverrides(overrides: readonly ModelRuntimeOverr
       sortOrder: override?.customerSortOrder ?? model.baseSortOrder,
       visibleInStudio: !retired && (override?.studioVisible ?? model.baseVisibleInStudio),
       availabilityLabel: override?.customerAvailabilityLabel ?? null,
-      capabilities: override?.capabilities ?? model.baseCapabilities,
+      capabilities: withAdapterInputs(model.key, model.modality, savedCapabilities),
+      capabilitySourceType: override?.capabilitySourceType ?? 'unknown',
+      capabilityConfidence: override?.capabilityConfidence ?? 'unknown',
+      capabilitySyncStatus: override?.capabilitySyncStatus ?? 'partial',
+      capabilitySyncError: override?.capabilitySyncError ?? null,
+      capabilityLastSyncedAt: override?.capabilityLastSyncedAt ?? null,
+      surfaceVisibility: override?.surfaceVisibility ?? normalizeModelSurfaceVisibility(model.modality, null),
       allowedPlans,
       planAccess,
       archived: archived || retired,
@@ -327,7 +368,12 @@ export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<S
     .filter((row) => row.enabled && providerReady.get(String(row.provider_id)))
     .map((row) => String(row.model_key)));
   const studioModels = models
-    .filter((model) => !model.archived && model.visibleInStudio && model.enabled)
+    .filter((model) => !model.archived && model.visibleInStudio && model.enabled
+      && model.surfaceVisibility[model.modality]
+      && (model.modality !== 'video' || (
+        (model.surfaceVisibility.textToVideo && 'textToVideo' in model.capabilities && model.capabilities.textToVideo)
+        || (model.surfaceVisibility.imageToVideo && 'imageToVideo' in model.capabilities && model.capabilities.imageToVideo)
+      )))
     .sort((a, b) => a.modality.localeCompare(b.modality) || a.sortOrder - b.sortOrder)
     .map((model) => {
       const billableReady = model.customerCreditPrice != null;
@@ -359,6 +405,7 @@ export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<S
         category: model.category ?? undefined,
         availabilityLabel: model.availabilityLabel ?? undefined,
         capabilities: model.capabilities,
+        surfaceVisibility: model.surfaceVisibility,
         allowedPlans: model.allowedPlans,
         planAccess: model.planAccess,
       } satisfies StudioRuntimeModelDefinition;
