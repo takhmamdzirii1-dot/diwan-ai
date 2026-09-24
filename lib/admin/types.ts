@@ -47,7 +47,7 @@ export type AdminProviderRow = {
   name: string;
   modalities: string[];
   enabled: boolean;
-  status: 'ready' | 'disabled' | 'misconfigured' | 'unavailable';
+  status: 'ready' | 'degraded' | 'disabled' | 'misconfigured' | 'unavailable';
   availabilityReason: string;
   availabilityCode: import('./provider-availability').ProviderAvailabilityCode;
   availabilityDetail: string | null;

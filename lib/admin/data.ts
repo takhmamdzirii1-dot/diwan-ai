@@ -28,7 +28,7 @@ import type {
 } from './types';
 import { isMissingCustomerPricing } from './model-economics';
 import { deriveProviderTelemetry } from './provider-telemetry';
-import { providerAvailabilityReason } from './provider-availability';
+import { classifyProviderRuntimeHealth, providerAvailabilityReason } from './provider-availability';
 import { reconciliationFlags } from './reconciliation-flags';
 import { CATALOG_MODELS, findCatalogModel, modelBrand, modelIconUrl } from '@/src/config/model-catalog';
 import { emptyModelCapabilities, normalizeModelSurfaceVisibility } from '@/lib/models/capabilities';
@@ -260,8 +260,15 @@ export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewD
       const states = new Map<string, 'ready' | 'degraded' | 'unavailable' | 'misconfigured'>();
       for (const provider of enabledProviders) {
         const id = String(provider.provider_id);
+        const definition = resolveServerProvider(id, provider);
+        const runtimeHealth = classifyProviderRuntimeHealth({
+          lastError: provider.last_error_code == null ? null : String(provider.last_error_code),
+          lastErrorAt: provider.last_checked_at == null ? null : String(provider.last_checked_at),
+          connectionTestSupported: definition?.adapter === 'openai-compatible-chat',
+          now,
+        });
         states.set(id, !providerConfigurationSummary(id, provider).configured ? 'misconfigured'
-          : provider.emergency_disabled ? 'unavailable' : provider.last_error_code ? 'degraded' : 'ready');
+          : provider.emergency_disabled ? 'unavailable' : runtimeHealth.state);
       }
       const providerHealth = {
         ready: [...states.values()].filter((state) => state === 'ready').length,
@@ -334,8 +341,15 @@ export async function getAdminOverview(): Promise<AdminDataResult<AdminOverviewD
     status: 'failed', createdAt: row.created_at, href: `/admin/jobs?range=7d&status=failed&q=${encodeURIComponent(row.id)}`,
   });
   for (const provider of configuration?.providers ?? []) {
-    const state = !providerConfigurationSummary(String(provider.provider_id), provider).configured ? 'misconfigured'
-      : provider.emergency_disabled ? 'unavailable' : provider.last_error_code ? 'degraded' : null;
+    const providerId = String(provider.provider_id);
+    const runtimeHealth = classifyProviderRuntimeHealth({
+      lastError: provider.last_error_code == null ? null : String(provider.last_error_code),
+      lastErrorAt: provider.last_checked_at == null ? null : String(provider.last_checked_at),
+      connectionTestSupported: resolveServerProvider(providerId, provider)?.adapter === 'openai-compatible-chat',
+      now,
+    });
+    const state = !providerConfigurationSummary(providerId, provider).configured ? 'misconfigured'
+      : provider.emergency_disabled ? 'unavailable' : runtimeHealth.state === 'ready' ? null : runtimeHealth.state;
     if (!state || !provider.last_checked_at) continue;
     activity.push({ id: `provider:${provider.provider_id}:${provider.last_checked_at}`, kind: 'provider',
       title: `Provider ${state}`, context: String(provider.display_name ?? provider.provider_id), status: state,
@@ -469,6 +483,8 @@ export async function getAdminProviders(): Promise<AdminDataResult<AdminProvider
       const enabledRoutes = associatedModels.filter((route) => route.enabled);
       const routeModelKeys = new Set(enabledRoutes.map((route) => route.key));
       const matchingModels = modelConfigs.filter((model) => routeModelKeys.has(String(model.model_key)));
+      const telemetry = deriveProviderTelemetry(provider.id, attempts, costs, MODEL_NAMES,
+        attempts.length < PAGE_SIZE * MAX_PAGES && costs.length < PAGE_SIZE * MAX_PAGES);
       const availability = providerAvailabilityReason({
         enabled: provider.enabled && !provider.archived,
         emergencyDisabled: provider.emergencyDisabled,
@@ -481,13 +497,16 @@ export async function getAdminProviders(): Promise<AdminDataResult<AdminProvider
         supportedRouteCount: enabledRoutes.length,
         usableModelCount: matchingModels.filter((model) => model.enabled && !model.archived).length,
         lastError: provider.lastRuntimeError ?? (lastAttempt?.state === 'failed' ? lastFailure?.error_message : null) ?? null,
+        lastErrorAt: provider.lastRuntimeError ? provider.lastRuntimeCheck
+          : lastFailure?.finished_at ?? lastFailure?.started_at ?? null,
+        lastSuccessAt: telemetry.lastSuccessAt,
+        repeatedProviderFailure,
+        connectionTestSupported: provider.testSupported,
         capabilitySyncFailed: matchingModels.some((model) => model.capability_sync_status === 'failed'),
       });
       const status: AdminProviderRow['status'] = availability.code === 'runtime_disabled'
         ? 'disabled' : ['credential_missing', 'missing_required_env', 'adapter_misconfigured'].includes(availability.code)
-          ? 'misconfigured' : availability.code === 'ready' ? 'ready' : 'unavailable';
-      const telemetry = deriveProviderTelemetry(provider.id, attempts, costs, MODEL_NAMES,
-        attempts.length < PAGE_SIZE * MAX_PAGES && costs.length < PAGE_SIZE * MAX_PAGES);
+          ? 'misconfigured' : availability.state;
       return {
         id: provider.id, name: provider.name, modalities: provider.modalities,
         adapterType: provider.adapterType, baseEndpoint: provider.baseEndpoint,

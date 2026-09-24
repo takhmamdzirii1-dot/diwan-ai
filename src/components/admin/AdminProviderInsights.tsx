@@ -56,6 +56,7 @@ function Section({ title, description, children }: { title: string; description?
 function providerState(row: AdminProviderRow) {
   if (row.archived || !row.enabled || row.emergencyDisabled) return <Chip>Disabled</Chip>;
   if (row.status === 'misconfigured') return <Chip tone="warn">Misconfigured</Chip>;
+  if (row.status === 'degraded') return <Chip tone="warn">Degraded</Chip>;
   if (row.status === 'unavailable') return <Chip tone="bad">Unavailable</Chip>;
   return <Chip tone="good">Ready</Chip>;
 }
@@ -194,7 +195,9 @@ export function ProviderDiagnostics({ row }: { row: AdminProviderRow }) {
       <Row name="Routing configuration">{row.enabled ? <Chip tone="good">Enabled</Chip> : <Chip>Disabled</Chip>}</Row>
       <Row name="Connection test">{row.testSupported ? 'Available in provider controls' : 'Not supported by this adapter'}</Row>
     </Section>
-    {row.lastError && <div className="rounded-lg border border-red-400/20 bg-red-400/5 p-3 text-[11px] text-red-200">Last recorded error: {row.lastError}</div>}
+    {row.lastError && <div className={`rounded-lg border p-3 text-[11px] ${['request_issue', 'stale_error', 'recovered'].includes(row.availabilityCode) ? 'border-amber-400/20 bg-amber-400/5 text-amber-100' : 'border-red-400/20 bg-red-400/5 text-red-200'}`}>
+      {row.availabilityCode === 'request_issue' ? 'Last recorded request issue' : ['stale_error', 'recovered'].includes(row.availabilityCode) ? 'Historical error' : 'Last recorded error'}: {row.lastError}
+    </div>}
     <details className={`${card} p-3 text-[11px] text-[var(--studio-text-secondary)]`}><summary className="cursor-pointer">Technical details</summary><p className="mt-2 break-all">Provider ID: {row.id}</p><p className="mt-1">Average finished attempt latency: {row.averageLatencyMs == null ? dash : `${row.averageLatencyMs} ms`}</p></details>
   </div>;
 }
