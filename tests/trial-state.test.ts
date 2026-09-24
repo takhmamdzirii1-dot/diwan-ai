@@ -37,6 +37,23 @@ test('active paid access overrides the free trial clock', () => {
   assert.equal(deriveStudioAccess({ createdAt, now: new Date('2026-09-20T00:00:00Z'), entitlements: [entitlement] }).kind, 'paid_active');
 });
 
+test('future renewal never replaces the current paid entitlement before its start', () => {
+  const current: AccessEntitlement = {
+    plan_id: 'lite-current', status: 'active', starts_at: '2026-09-01T00:00:00Z', ends_at: '2026-10-01T00:00:00Z',
+    payment_plans: { plan_code: 'lite', name: 'Lite' },
+  };
+  const future: AccessEntitlement = {
+    plan_id: 'lite-future', status: 'active', starts_at: '2026-10-01T00:00:00Z', ends_at: '2026-10-31T00:00:00Z',
+    payment_plans: { plan_code: 'lite', name: 'Lite' },
+  };
+  const before = deriveStudioAccess({ createdAt, now: new Date('2026-09-30T23:59:59.999Z'), entitlements: [future, current] });
+  assert.equal(before.kind, 'paid_active');
+  assert.equal(before.paidPlanId, 'lite-current');
+  const atBoundary = deriveStudioAccess({ createdAt, now: new Date('2026-10-01T00:00:00Z'), entitlements: [future, current] });
+  assert.equal(atBoundary.kind, 'paid_active');
+  assert.equal(atBoundary.paidPlanId, 'lite-future');
+});
+
 test('previously paid users use the reactivation path after access expires', () => {
   const entitlement: AccessEntitlement = {
     plan_id: 'pro-plan', status: 'expired', starts_at: '2026-08-01T00:00:00Z', ends_at: '2026-09-01T00:00:00Z',

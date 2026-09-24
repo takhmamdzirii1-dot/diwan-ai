@@ -16,6 +16,13 @@ type PlanRelation = { plan_code?: unknown } | { plan_code?: unknown }[] | null;
 export async function resolveCurrentModelPlan(userId: string, client?: SupabaseClient): Promise<ModelPlanCode> {
   const serverClient = client ?? getSupabaseAdminClient();
   if (!serverClient) throw new Error('PLAN_ENTITLEMENT_UNAVAILABLE');
+  const admin = getSupabaseAdminClient();
+  if (admin) {
+    const { error: refreshError } = await admin.rpc('activate_due_subscription_period_for_access', { p_user_id: userId });
+    if (refreshError && !['PGRST202', '42883'].includes(refreshError.code)) {
+      throw new Error('PLAN_ENTITLEMENT_UNAVAILABLE');
+    }
+  }
   const now = new Date().toISOString();
   const { data, error } = await serverClient
     .from('user_entitlements')

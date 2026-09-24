@@ -48,7 +48,9 @@ export function deriveStudioAccess(input: {
     const relation = Array.isArray(row.payment_plans) ? row.payment_plans[0] : row.payment_plans;
     return relation?.plan_code && relation.plan_code !== 'free';
   });
-  const active = paid.find((row) => row.status === 'active' && (!row.ends_at || new Date(row.ends_at) > now));
+  const active = paid.find((row) => row.status === 'active'
+    && new Date(row.starts_at) <= now
+    && (!row.ends_at || new Date(row.ends_at) > now));
   const selected = active ?? paid[0] ?? null;
   const plan = selected ? (Array.isArray(selected.payment_plans) ? selected.payment_plans[0] : selected.payment_plans) : null;
   const expiresAt = trialExpiresAt(input.createdAt);
