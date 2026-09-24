@@ -251,6 +251,7 @@
       "promptPlaceholder": "صف الحركة والمكان والإضاءة واللقطة…",
       "duration": "المدة",
       "aspectRatio": "نسبة الأبعاد",
+      "aspectFromSource": "من الصورة المصدر",
       "durations": { "five": "5 ثوانٍ", "ten": "10 ثوانٍ" },
       "generate": "إنشاء",
       "generating": "جارٍ الإنشاء…",

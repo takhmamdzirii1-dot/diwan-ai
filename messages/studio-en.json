@@ -251,6 +251,7 @@
       "promptPlaceholder": "Describe the action, environment, lighting, and shot…",
       "duration": "Duration",
       "aspectRatio": "Aspect ratio",
+      "aspectFromSource": "From source image",
       "durations": { "five": "5 seconds", "ten": "10 seconds" },
       "generate": "Generate",
       "generating": "Generating…",

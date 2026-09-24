@@ -251,6 +251,7 @@
       "promptPlaceholder": "Décrivez l’action, le décor, la lumière et le cadrage…",
       "duration": "Durée",
       "aspectRatio": "Format",
+      "aspectFromSource": "Depuis l’image source",
       "durations": { "five": "5 secondes", "ten": "10 secondes" },
       "generate": "Générer",
       "generating": "Génération…",
