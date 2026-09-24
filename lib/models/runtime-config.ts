@@ -10,6 +10,7 @@ import { providerConfigurationSummary } from '@/lib/ai/providers/registry';
 import { emptyModelCapabilities, normalizeModelSurfaceVisibility, type CapabilityConfidence, type CapabilitySourceType, type CapabilitySyncStatus, type ModelCapabilities, type ModelSurfaceVisibility } from '@/lib/models/capabilities';
 import { normalizeModelCapabilities } from '@/lib/models/capability-validation';
 import { withAdapterInputs } from '@/lib/models/adapter-capabilities';
+import { isStudioCatalogVisible, isStudioRuntimeReady } from '@/lib/models/studio-model-visibility';
 import {
   defaultAllowedPlansForModel,
   normalizeAllowedPlans,
@@ -368,17 +369,12 @@ export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<S
     .filter((row) => row.enabled && providerReady.get(String(row.provider_id)))
     .map((row) => String(row.model_key)));
   const studioModels = models
-    .filter((model) => !model.archived && model.visibleInStudio && model.enabled
-      && model.surfaceVisibility[model.modality]
-      && (model.modality !== 'video' || (
-        (model.surfaceVisibility.textToVideo && 'textToVideo' in model.capabilities && model.capabilities.textToVideo)
-        || (model.surfaceVisibility.imageToVideo && 'imageToVideo' in model.capabilities && model.capabilities.imageToVideo)
-      )))
+    .filter(isStudioCatalogVisible)
     .sort((a, b) => a.modality.localeCompare(b.modality) || a.sortOrder - b.sortOrder)
     .map((model) => {
       const billableReady = model.customerCreditPrice != null;
-      const modeSupported = model.modality !== 'chat' || ('streaming' in model.capabilities && model.capabilities.streaming);
-      const selectable = model.enabled && billableReady && routeReady.has(model.key) && modeSupported;
+      const selectable = model.enabled && billableReady
+        && isStudioRuntimeReady(model, routeReady.has(model.key));
       const knownAvailability = ['available', 'beta', 'preview', 'unavailable', 'temporarily_unavailable']
         .includes(model.availability)
         ? model.availability
