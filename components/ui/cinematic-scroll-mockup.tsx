@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -9,12 +10,19 @@ import {
   useScroll,
   useTransform,
 } from "framer-motion";
-import ShowcaseScene from "./showcase-scenes";
+
+const FEATURE_IMAGES = [
+  "/showcase/chat-preview.png",
+  "/showcase/image-preview.png",
+  "/showcase/video-preview.png",
+] as const;
 
 export function CinematicScrollMockup() {
   const t = useTranslations("showcase");
   const isRtl = useLocale() === "ar";
-  const features = t.raw("features") as { label: string; description: string; alt: string }[];
+  const features = (t.raw("features") as { label: string; description: string; alt: string }[]).map(
+    (feature, index) => ({ ...feature, image: FEATURE_IMAGES[index] })
+  );
   const containerRef = useRef<HTMLElement>(null);
   const [desktopActiveIndex, setDesktopActiveIndex] = useState(0);
   const [mobileActiveIndex, setMobileActiveIndex] = useState(0);
@@ -99,7 +107,13 @@ export function CinematicScrollMockup() {
                       {feature.description}
                     </p>
                     <div className="relative mt-6 aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black/60 shadow-[0_20px_60px_-36px_rgba(255,255,255,0.2)]">
-                      <ShowcaseScene index={index as 0 | 1 | 2} alt={feature.alt} />
+                      <Image
+                        src={feature.image}
+                        alt={feature.alt}
+                        fill
+                        sizes="(max-width: 1023px) calc(100vw - 64px)"
+                        className="object-cover object-center"
+                      />
                     </div>
                   </motion.article>
                 );
@@ -196,18 +210,25 @@ export function CinematicScrollMockup() {
               <span aria-hidden="true" className="w-10" />
             </div>
 
-              <div className="relative min-h-0 flex-1 overflow-hidden rounded-b-xl bg-[#050505]">
-                {features.map((feature, index) => (
-                  <motion.div
-                    key={feature.label}
-                    aria-hidden={desktopActiveIndex !== index}
-                    animate={{ opacity: desktopActiveIndex === index ? 1 : 0 }}
-                    transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-                    className="absolute inset-0"
-                  >
-                    <ShowcaseScene index={index as 0 | 1 | 2} alt={feature.alt} />
-                  </motion.div>
-                ))}
+            <div className="relative min-h-0 flex-1 overflow-hidden rounded-b-xl bg-[#050505]">
+              {features.map((feature, index) => (
+                <motion.div
+                  key={feature.label}
+                  aria-hidden={desktopActiveIndex !== index}
+                  animate={{ opacity: desktopActiveIndex === index ? 1 : 0 }}
+                  transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute inset-0"
+                >
+                  <Image
+                    src={feature.image}
+                    alt={feature.alt}
+                    fill
+                    priority={index === 0}
+                    sizes="(max-width: 1280px) 92vw, 1180px"
+                    className="object-cover object-center"
+                  />
+                </motion.div>
+              ))}
 
               <div
                 aria-hidden="true"
