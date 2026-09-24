@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createClient } from '@/src/lib/supabase/server';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
 import { FUNNEL_EVENTS, recordFunnelEvent } from '@/lib/analytics/funnel-events';
+import { isClientFunnelEvent } from '@/lib/analytics/client-funnel-events';
 
 const schema = z.object({
   event: z.enum(FUNNEL_EVENTS),
@@ -17,6 +18,7 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: 'INVALID_FUNNEL_EVENT' }, { status: 400 });
   const { event, key, metadata } = parsed.data;
+  if (!isClientFunnelEvent(event)) return NextResponse.json({ error: 'INVALID_FUNNEL_EVENT' }, { status: 400 });
   await recordFunnelEvent({ userId: user.id, event: event!, key: key!, metadata });
   if (parsed.data.event === 'lite_declined') {
     const admin = getSupabaseAdminClient();

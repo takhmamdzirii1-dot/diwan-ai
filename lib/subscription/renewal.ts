@@ -61,6 +61,24 @@ export function classifyRenewalContext(input: {
   return 'new';
 }
 
+/** Use committed entitlement timestamps when approval crossed the expiry boundary. */
+export function classifyApprovedSamePlan(input: {
+  activation: unknown;
+  newStartsAt: string | null;
+  previousEndsAt: string | null;
+  fallback: RenewalContext;
+}): RenewalContext {
+  if (input.activation === 'scheduled') return 'early_renewal';
+  if (input.newStartsAt && input.previousEndsAt) {
+    const starts = Date.parse(input.newStartsAt);
+    const previousEnd = Date.parse(input.previousEndsAt);
+    if (Number.isFinite(starts) && Number.isFinite(previousEnd)) {
+      return previousEnd > starts ? 'early_renewal' : 'reactivation';
+    }
+  }
+  return input.fallback;
+}
+
 export function renewalEventFor(
   stage: 'started' | 'completed' | 'failed',
   context: RenewalContext

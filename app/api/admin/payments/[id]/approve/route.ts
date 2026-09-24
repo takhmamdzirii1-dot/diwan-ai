@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { getOwnerAccess } from '@/lib/auth/owner';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
 import { recordFunnelEvent } from '@/lib/analytics/funnel-events';
-import { classifyRenewalContext, renewalEventFor, type RenewalContext } from '@/lib/subscription/renewal';
+import { classifyApprovedSamePlan, classifyRenewalContext, renewalEventFor, type RenewalContext } from '@/lib/subscription/renewal';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const access = await getOwnerAccess();
@@ -24,7 +24,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const nowIso = new Date().toISOString();
     const [{ data: orderPlan }, { data: activePaid }, { data: prior }] = await Promise.all([
       client.from('payment_plans').select('plan_code').eq('id', payment.plan_id).maybeSingle(),
-      client.from('user_entitlements').select('plan_id,payment_plans!inner(plan_code)').eq('user_id', payment.user_id).eq('status', 'active').or(`ends_at.is.null,ends_at.gt.${nowIso}`).limit(1).maybeSingle(),
+      client.from('user_entitlements').select('plan_id,payment_plans!inner(plan_code)').eq('user_id', payment.user_id).eq('status', 'active').lte('starts_at', nowIso).or(`ends_at.is.null,ends_at.gt.${nowIso}`).limit(1).maybeSingle(),
       client.from('user_entitlements').select('ends_at').eq('user_id', payment.user_id).eq('plan_id', payment.plan_id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
     ]);
     const orderPlanCode = orderPlan?.plan_code ?? null;
@@ -51,10 +51,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
   if (payment?.user_id) {
     const lifecycleType = (data as { lifecycle_type?: unknown } | null)?.lifecycle_type;
+    const activation = (data as { activation?: unknown } | null)?.activation;
+    const entitlementId = (data as { entitlement_id?: unknown } | null)?.entitlement_id;
     await recordFunnelEvent({ userId: payment.user_id, event: 'payment_approved', key: id, metadata: { paymentOrderId: id, lifecycleType: typeof lifecycleType === 'string' ? lifecycleType : null } });
-    const completedContext = lifecycleType === 'same_plan_renewal'
-      ? (renewalContext === 'reactivation' ? 'reactivation' as const : 'early_renewal' as const)
-      : classifyRenewalContext({ lifecycleType: typeof lifecycleType === 'string' ? lifecycleType : null, wasLapsed: false, orderKind: payment.order_kind ?? null });
+    let completedContext = classifyRenewalContext({ lifecycleType: typeof lifecycleType === 'string' ? lifecycleType : null, wasLapsed: false, orderKind: payment.order_kind ?? null });
+    if (lifecycleType === 'same_plan_renewal') {
+      if (activation === 'scheduled') completedContext = 'early_renewal';
+      else if (typeof entitlementId === 'string' && payment.plan_id) {
+        const [{ data: newEntitlement }, { data: priorEntitlement }] = await Promise.all([
+          client.from('user_entitlements').select('starts_at').eq('id', entitlementId).maybeSingle(),
+          client.from('user_entitlements').select('ends_at').eq('user_id', payment.user_id).eq('plan_id', payment.plan_id).neq('id', entitlementId).order('ends_at', { ascending: false }).limit(1).maybeSingle(),
+        ]);
+        completedContext = classifyApprovedSamePlan({
+          activation,
+          newStartsAt: newEntitlement?.starts_at ?? null,
+          previousEndsAt: priorEntitlement?.ends_at ?? null,
+          fallback: renewalContext === 'reactivation' ? 'reactivation' : 'early_renewal',
+        });
+      } else completedContext = renewalContext === 'reactivation' ? 'reactivation' : 'early_renewal';
+    }
     const completedEvent = renewalEventFor('completed', completedContext);
     if (completedEvent) {
       await recordFunnelEvent({ userId: payment.user_id, event: completedEvent, key: id, metadata: { paymentOrderId: id, lifecycleType: typeof lifecycleType === 'string' ? lifecycleType : null } });

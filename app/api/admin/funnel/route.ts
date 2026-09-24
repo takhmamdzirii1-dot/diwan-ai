@@ -21,9 +21,9 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const range = url.searchParams.get('range') === '30d' ? '30d' : '7d';
   const cutoff = new Date(Date.now() - RANGES[range] * 86_400_000).toISOString();
-  const { data, error } = await client
+  const { data, error, count } = await client
     .from('admin_audit_log')
-    .select('action,actor_user_id,created_at')
+    .select('action,actor_user_id,created_at', { count: 'exact' })
     .eq('resource_type', 'user_funnel')
     .gte('created_at', cutoff)
     .order('created_at', { ascending: false })
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     range,
     generatedAt: new Date().toISOString(),
-    truncated: (data ?? []).length >= 5000,
+    truncated: count !== null && count > (data ?? []).length,
     events: [...byEvent.entries()].map(([event, entry]) => ({
       event,
       count: entry.count,

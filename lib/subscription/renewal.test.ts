@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   classifyRenewalContext,
+  classifyApprovedSamePlan,
   renewalEventFor,
   renewalReminderState,
 } from './renewal';
@@ -67,4 +68,11 @@ test('renewal and reactivation map to distinct started/completed/failed events',
   assert.equal(renewalEventFor('completed', 'upgrade'), null);
   assert.equal(renewalEventFor('completed', 'new'), null);
   assert.equal(renewalEventFor('completed', 'top_up'), null);
+});
+
+test('approval classification uses committed timestamps at exact expiry', () => {
+  const expiry = '2026-09-24T12:00:00.000Z';
+  assert.equal(classifyApprovedSamePlan({ activation: 'scheduled', newStartsAt: expiry, previousEndsAt: expiry, fallback: 'reactivation' }), 'early_renewal');
+  assert.equal(classifyApprovedSamePlan({ activation: 'immediate', newStartsAt: expiry, previousEndsAt: expiry, fallback: 'early_renewal' }), 'reactivation');
+  assert.equal(classifyApprovedSamePlan({ activation: 'immediate', newStartsAt: '2026-09-24T11:59:59.999Z', previousEndsAt: expiry, fallback: 'reactivation' }), 'early_renewal');
 });
