@@ -28,7 +28,7 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
   }) => void;
 }) {
   const t = useTranslations('Admin.models');
-  const [enabled, setEnabled] = useState(model.enabled);
+  const enabled = model.enabled;
   const [routingRole, setRoutingRole] = useState(model.priority);
   const [price, setPrice] = useState(model.creditPrice == null ? '' : String(model.creditPrice));
   const [planAccess, setPlanAccess] = useState<ModelPlanAccessMap>(() => clonePlanAccess(model.planAccess));
@@ -39,7 +39,6 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
   const [feedback, setFeedback] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
-    setEnabled(model.enabled);
     setRoutingRole(model.priority);
     setPrice(model.creditPrice == null ? '' : String(model.creditPrice));
     setPlanAccess(clonePlanAccess(model.planAccess));
@@ -56,7 +55,7 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
     const value = Number(trimmed);
     return Number.isSafeInteger(value) ? value : undefined;
   }, [price]);
-  const dirty = mode === 'pricing' ? enabled !== model.enabled || normalizedPrice !== model.creditPrice
+  const dirty = mode === 'pricing' ? normalizedPrice !== model.creditPrice
     : mode === 'plans' ? MODEL_PLAN_CODES.some((plan) => planAccess[plan].state !== model.planAccess[plan].state
       || planAccess[plan].trialAllowance !== model.planAccess[plan].trialAllowance)
       : routingRole !== model.priority;
@@ -108,21 +107,6 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
   const controlClass = 'h-9 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12px] text-white outline-none focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/40 disabled:cursor-not-allowed disabled:opacity-45';
 
   return <div className="grid gap-3 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-card)] p-4 text-start sm:grid-cols-2 sm:items-end">
-    {mode === 'pricing' && <label title={t('runtimeHelp')} className="flex min-h-9 items-center gap-2.5 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-semibold text-white">
-      <input
-        type="checkbox"
-        checked={enabled}
-        disabled={!model.activationSupported}
-        onChange={(event) => {
-          const nextEnabled = event.target.checked;
-          setEnabled(nextEnabled);
-          if (!nextEnabled) setRoutingRole('unassigned');
-          setFeedback(null);
-        }}
-        className="h-4 w-4 accent-white"
-      />
-      {t('enabledLabel')}
-    </label>}
     {mode === 'routing' && <label title={t('roleHelp')} className="grid gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--studio-text-muted)]">
       {t('routingRoleLabel')}
       <select
@@ -195,7 +179,6 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
       </button>
       {feedback && <p role={feedback.tone === 'error' ? 'alert' : 'status'} className={`text-[10.5px] ${feedback.tone === 'error' ? 'text-red-200' : 'text-emerald-200'}`}>{feedback.message}</p>}
     </div>
-    {mode === 'pricing' && !model.activationSupported && <p className="sm:col-span-2 text-[11px] text-amber-100/80">{t('activationUnavailable')}</p>}
     {mode === 'pricing' && <p className="sm:col-span-2 text-[11px] text-[var(--studio-text-muted)]">{t('priceSemantics')}</p>}
     {mode === 'routing' && !model.enabled && <p className="sm:col-span-2 text-[11px] text-amber-100/80">{t('routingRequiresEnabled')}</p>}
     {confirmingPrice && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--studio-overlay)] p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setConfirmingPrice(false); }} onKeyDown={(event) => { if (event.key === 'Escape' && !saving) setConfirmingPrice(false); if (event.key === 'Tab' && !event.shiftKey && event.target === saveConfirmationRef.current) { event.preventDefault(); cancelConfirmationRef.current?.focus(); } if (event.key === 'Tab' && event.shiftKey && event.target === cancelConfirmationRef.current) { event.preventDefault(); saveConfirmationRef.current?.focus(); } }}>
