@@ -53,5 +53,5 @@ test('Admin renders provenance, sync and context visibility controls', () => {
   </NextIntlClientProvider>);
   assert.match(html, /Sync now/);
   assert.match(html, /Show in Image to Video/);
-  assert.match(html, /Source: unknown/);
+  assert.match(html, /Source: No verified source yet/);
 });

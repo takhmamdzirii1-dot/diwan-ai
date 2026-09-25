@@ -119,6 +119,7 @@ export type AdminModelRow = {
   capabilitySyncStatus: import('@/lib/models/capabilities').CapabilitySyncStatus;
   capabilitySyncError: string | null;
   capabilityLastSyncedAt: string | null;
+  routeCapabilitiesV2: import('@/lib/models/capability-v2').RouteCapabilityStore;
   surfaceVisibility: import('@/lib/models/capabilities').ModelSurfaceVisibility;
   allowedPlans: import('@/lib/models/plan-entitlements').ModelPlanCode[];
   planAccess: import('@/lib/models/model-access').ModelPlanAccessMap;

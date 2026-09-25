@@ -24,6 +24,7 @@
     "@vitejs/plugin-react": "^5.0.4",
     "ai": "^3.4.9",
     "clsx": "^2.1.1",
+    "docx": "^9.7.2",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "framer-motion": "^13.1.1",

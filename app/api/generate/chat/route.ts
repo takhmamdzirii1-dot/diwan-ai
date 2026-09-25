@@ -9,6 +9,7 @@ import { effectiveChatWeight, isValidChatWeight } from '@/lib/chat/chat-usage';
 import { finalizeChatUsage, precheckChatUsage, reserveChatUsage } from '@/lib/chat/chat-usage.server';
 import { createChatLanguageModel, classifyProviderFailure } from '@/lib/ai/providers/chat';
 import { resolveProviderRoutes } from '@/lib/ai/providers/routes';
+import { resolveRouteCapabilities } from '@/lib/models/capability-v2';
 import { requireStudioGenerationAccess } from '@/lib/access/trial-access';
 import { finalizeModelTrialAccess, reserveModelTrialAccess } from '@/lib/models/model-trial.server';
 import { recordFunnelEvent } from '@/lib/analytics/funnel-events';
@@ -145,24 +146,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: code, reason: runtimeAccessReasonForError(code) }, { status });
     }
     const chatCapabilities = runtimeModel.capabilities;
-    if (!('streaming' in chatCapabilities) || !chatCapabilities.streaming) {
-      return NextResponse.json({ error: 'MODEL_CAPABILITY_UNSUPPORTED' }, { status: 409 });
-    }
-    const unsupportedAttachment = messagesPayload.some((message) => {
-      const attachments = message?.experimental_attachments;
-      if (attachments == null) return false;
-      if (!Array.isArray(attachments)) return true;
-      return attachments.some((attachment) => {
-        const contentType = attachment?.contentType;
-        if (typeof contentType !== 'string') return true;
-        return contentType.startsWith('image/')
-          ? !chatCapabilities.visionInput
-          : !chatCapabilities.fileInput;
-      });
-    });
-    if (unsupportedAttachment) {
-      return NextResponse.json({ error: 'MODEL_CAPABILITY_UNSUPPORTED' }, { status: 409 });
-    }
     // Weighted Chat Usage Engine: chat never touches the VANTRA Credits
     // ledger. The model's customer weight meters rolling 5-hour / weekly
     // allowances instead. A missing weight fails closed (Admin-unconfigured).
@@ -208,6 +191,29 @@ export async function POST(request: Request) {
     }
     if (!languageModel) {
       return NextResponse.json({ error: 'NO_CONFIGURED_PROVIDER_ROUTE' }, { status: 503 });
+    }
+    const native = resolveRouteCapabilities({
+      route: { id: route.id, providerId: route.providerId, providerModelId: route.providerModelId },
+      stored: runtimeModel.routeCapabilitiesV2,
+    }).resolved;
+    if (native.streaming.state === 'unsupported'
+      || (native.streaming.state === 'unknown' && (!('streaming' in chatCapabilities) || !chatCapabilities.streaming))) {
+      return NextResponse.json({ error: 'MODEL_CAPABILITY_UNSUPPORTED', reason: 'Streaming is disabled for this model route.' }, { status: 409 });
+    }
+    const unsupportedAttachment = messagesPayload.some((message) => {
+      const attachments = message?.experimental_attachments;
+      if (attachments == null) return false;
+      if (!Array.isArray(attachments)) return true;
+      return attachments.some((attachment) => {
+        const contentType = attachment?.contentType;
+        if (typeof contentType !== 'string') return true;
+        return contentType.startsWith('image/')
+          ? (runtimeModel.routeCapabilitySchemaAvailable ? native.visionInput.state !== 'supported' : !('visionInput' in chatCapabilities && chatCapabilities.visionInput))
+          : (runtimeModel.routeCapabilitySchemaAvailable ? native.fileInput.state !== 'supported' : !('fileInput' in chatCapabilities && chatCapabilities.fileInput));
+      });
+    });
+    if (unsupportedAttachment) {
+      return NextResponse.json({ error: 'MODEL_CAPABILITY_UNSUPPORTED', reason: 'This model route cannot accept that attachment. Choose a supported model or remove the file.' }, { status: 409 });
     }
 
     const operationKey = resolveOperationKey(

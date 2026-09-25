@@ -22,7 +22,7 @@ import { GhostButton } from './AppShell';
 import type { StudioRuntimeModelDefinition } from '@/src/config/studio-registry';
 import { isModelSelectable } from '@/src/config/studio-registry';
 import { applyModelPlanAccess } from '@/lib/models/plan-entitlements';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useStudioAccess } from '@/src/hooks/useStudioAccess';
 import ActivationOffer, { type ActivationPrompt, type ActivationReason } from './ActivationOffer';
 import type { ChatModelOption } from '@/components/ui/model-picker';
@@ -68,6 +68,7 @@ export default function StudioDashboard({
 }) {
   const reduceMotion = useReducedMotion();
   const t = useTranslations('studio.chat');
+  const locale = useLocale();
   const sidebarT = useTranslations('studio.sidebar');
   const { user, refreshBalance, planCode, planStatus, planEndsAt } = useUser({ loadPlan: true, loadBalance: true });
   const { openAuthModal, openTopUpModal } = useModal();
@@ -715,6 +716,10 @@ export default function StudioDashboard({
                                     // Weighted chat limits speak calmly: no codes,
                                     // weights, or numeric allowances customer-side.
                                     if (body.error === 'FREE_ACCESS_RESTRICTED') return t('freeAccessPendingReview');
+                                    if (body.error === 'MODEL_CAPABILITY_UNSUPPORTED') return locale === 'ar'
+                                      ? 'هذا النموذج لا يدعم هذا الملف عبر المسار الحالي. اختر نموذجًا آخر أو أزل الملف.'
+                                      : locale === 'fr' ? 'Ce modèle ne prend pas en charge ce fichier sur sa route actuelle. Choisissez un autre modèle ou retirez le fichier.'
+                                        : 'This model cannot accept that file on its current route. Choose another model or remove the file.';
                                     if (body.error === 'CHAT_LIMIT_REACHED') {
                                       const wait = formatCapacityWait(body.nextAvailableAt ?? null);
                                       return wait

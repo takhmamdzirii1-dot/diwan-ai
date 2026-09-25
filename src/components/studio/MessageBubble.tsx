@@ -8,7 +8,11 @@ import type { Message } from '@ai-sdk/react';
 import { useSmoothText } from '../../hooks/useSmoothText';
 import { detectDir } from '../../lib/direction';
 import { cn } from '@/lib/utils';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import dynamic from 'next/dynamic';
+import { documentFromMarkdown } from '@/lib/artifacts/core';
+
+const ArtifactDocumentPreview = dynamic(() => import('./ArtifactDocumentPreview'), { ssr: false });
 
 export interface MessageBubbleProps {
   message: Message;
@@ -71,6 +75,8 @@ function AttachmentThumbnail({ attachment }: { attachment: { name: string; url?:
 export default function MessageBubble({ message, isLatest, isStreaming, isThinking, onRegenerate }: MessageBubbleProps) {
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
   const [copiedMessage, setCopiedMessage] = useState(false);
+  const [documentOpen, setDocumentOpen] = useState(false);
+  const locale = useLocale();
   const reduceMotion = useReducedMotion();
   const t = useTranslations('studio.chat');
   const codeBlockCounter = useRef(0);
@@ -78,6 +84,8 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
 
   const isUser = message.role === 'user';
   const isRTL = detectDir(message.content) === 'rtl';
+  const canOpenDocument = !isUser && !isStreaming && message.content.length >= 300
+    && (/^#{1,3}\s/m.test(message.content) || /\n\s*[-*]\s/.test(message.content) || message.content.length >= 900);
 
   // Visual Attachment Rendering parser for user messages
   const attachmentRegex = /\[Attachment:\s*([^\]]+)\]/g;
@@ -381,11 +389,13 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                     <RefreshCw className="h-3.5 w-3.5" />
                   </button>
                 )}
+                {canOpenDocument && <button type="button" onClick={() => setDocumentOpen(true)} className="ms-2 rounded-lg px-2.5 py-1.5 text-xs text-white/70 transition-colors duration-150 hover:bg-white/[0.05] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">{locale === 'ar' ? 'فتح كمستند' : locale === 'fr' ? 'Ouvrir en document' : 'Open as document'}</button>}
               </div>
             )}
           </div>
         )}
       </div>
+      {documentOpen && <ArtifactDocumentPreview artifact={documentFromMarkdown(message.id, message.content, locale)} locale={locale} onClose={() => setDocumentOpen(false)} />}
     </motion.div>
   );
 }

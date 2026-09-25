@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { AdminModelRow } from '@/lib/admin/types';
+import { CHAT_NATIVE_CAPABILITIES, resolveRouteCapabilities, type CapabilityOverride } from '@/lib/models/capability-v2';
 import {
   MODEL_ASPECT_RATIOS,
   MODEL_CAMERA_MOTIONS,
@@ -36,7 +37,7 @@ function Choices<T extends string | number>({ label, options, selected, onChange
 }
 
 export default function AdminModelCapabilitiesControls({ model, onSaved }: {
-  model: Pick<AdminModelRow, 'key' | 'modality' | 'capabilities' | 'surfaceVisibility' | 'capabilitySourceType' | 'capabilityConfidence' | 'capabilitySyncStatus' | 'capabilitySyncError' | 'capabilityLastSyncedAt'>;
+  model: Pick<AdminModelRow, 'key' | 'modality' | 'capabilities' | 'surfaceVisibility' | 'capabilitySourceType' | 'capabilityConfidence' | 'capabilitySyncStatus' | 'capabilitySyncError' | 'capabilityLastSyncedAt'> & Partial<Pick<AdminModelRow, 'routes' | 'routeCapabilitiesV2'>>;
   onSaved: (patch: Partial<AdminModelRow>) => void;
 }) {
   const t = useTranslations('Admin.models.capabilities');
@@ -45,6 +46,22 @@ export default function AdminModelCapabilitiesControls({ model, onSaved }: {
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [feedback, setFeedback] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+  const activeRoute = (model.routes ?? []).filter((route) => route.enabled && route.providerEnabled && route.configured)
+    .sort((a, b) => a.priority - b.priority)[0];
+  const routeCapabilities = activeRoute ? resolveRouteCapabilities({ route: activeRoute, stored: model.routeCapabilitiesV2 }).resolved : null;
+  const setRouteOverride = async (capability: typeof CHAT_NATIVE_CAPABILITIES[number], override: CapabilityOverride) => {
+    if (!activeRoute) return;
+    setSaving(true); setFeedback(null);
+    try {
+      const response = await fetch('/api/admin/model-capabilities', { method: 'PATCH', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ modelKey: model.key, routeId: activeRoute.id, capability, override }) });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body.config) throw new Error('Unable to save route override.');
+      onSaved({ routeCapabilitiesV2: body.config.routeCapabilitiesV2 });
+      setFeedback({ tone: 'success', text: 'Route override saved.' });
+    } catch { setFeedback({ tone: 'error', text: 'Unable to save route override.' }); }
+    finally { setSaving(false); }
+  };
   useEffect(() => { setValue(model.capabilities); setVisibility(model.surfaceVisibility); setFeedback(null); }, [model]);
   const dirty = useMemo(() => JSON.stringify(value) !== JSON.stringify(model.capabilities)
     || JSON.stringify(visibility) !== JSON.stringify(model.surfaceVisibility),
@@ -85,6 +102,7 @@ export default function AdminModelCapabilitiesControls({ model, onSaved }: {
         capabilitySourceType: body.config.sourceType, capabilityConfidence: body.config.confidence,
         capabilitySyncStatus: body.config.syncStatus, capabilitySyncError: body.config.syncError,
         capabilityLastSyncedAt: body.config.lastSyncedAt, updatedAt: body.config.updatedAt });
+      if (body.config.routeCapabilitiesV2) onSaved({ routeCapabilitiesV2: body.config.routeCapabilitiesV2 });
       setFeedback({ tone: body.config.syncStatus === 'failed' ? 'error' : 'success',
         text: body.config.syncError ?? 'Capability sync complete.' });
     } catch {
@@ -95,9 +113,22 @@ export default function AdminModelCapabilitiesControls({ model, onSaved }: {
   return <section className="space-y-3 rounded-lg border border-[var(--studio-border-subtle)] bg-black/20 p-3 text-start">
     <p className="text-[11px] leading-relaxed text-[var(--studio-text-secondary)]">{t('description')}</p>
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--studio-border-subtle)] px-3 py-2 text-[11px] text-[var(--studio-text-secondary)]">
-      <div><span className="font-semibold text-white">Detected capabilities</span><p>Source: {model.capabilitySourceType.replaceAll('_', ' ')} · {model.capabilityConfidence} · {model.capabilitySyncStatus}</p><p>Last synced: {model.capabilityLastSyncedAt ? new Date(model.capabilityLastSyncedAt).toLocaleString('en') : 'Never'}</p>{model.capabilitySyncError && <p className="text-amber-200">{model.capabilitySyncError}</p>}</div>
+      <div><span className="font-semibold text-white">Capability status</span><p>Source: {model.capabilitySourceType === 'admin_override' ? 'Manual Override' : model.capabilitySourceType === 'provider_metadata' ? 'Provider Metadata' : model.capabilitySourceType === 'adapter_inferred' ? 'VANTRA Catalog' : 'No verified source yet'}</p><p>Verification: {model.capabilitySyncStatus === 'failed' ? 'Error' : model.capabilityConfidence === 'verified' ? 'Verified' : model.capabilityConfidence === 'partial' ? 'Partial' : model.capabilityConfidence === 'manual' ? 'Manual override' : 'Unknown'}</p><p>Last checked: {model.capabilityLastSyncedAt ? new Date(model.capabilityLastSyncedAt).toLocaleString('en') : 'Never'}</p>{model.capabilitySyncError && <p className="text-amber-200">{model.capabilitySyncError}</p>}</div>
       <div className="flex gap-2"><button type="button" onClick={() => void syncNow()} disabled={syncing || saving || dirty} className="h-8 rounded-lg border border-[var(--studio-border)] px-3 font-semibold text-white disabled:opacity-45">{syncing ? 'Syncing…' : 'Sync now'}</button>{model.capabilitySourceType === 'admin_override' && <button type="button" onClick={() => void syncNow(true)} disabled={syncing || saving || dirty} className="h-8 rounded-lg border border-[var(--studio-border)] px-3 font-semibold text-white disabled:opacity-45">Use detected</button>}</div>
     </div>
+    {model.modality === 'chat' && <div className="space-y-3 rounded-lg border border-[var(--studio-border-subtle)] p-3 text-xs text-white/75">
+      <div><h3 className="font-semibold text-white">Model capabilities · active route</h3><p className="mt-1">{activeRoute ? `${activeRoute.providerId} / ${activeRoute.providerModelId}` : 'No active configured route'}</p></div>
+      <div className="grid gap-1.5 sm:grid-cols-2">{CHAT_NATIVE_CAPABILITIES.map((key) => {
+        const state = routeCapabilities?.[key];
+        const label = ({ streaming: 'Streaming', visionInput: 'Vision / image input', fileInput: 'Native file input', structuredOutput: 'Structured output', tools: 'Tool calling', parallelTools: 'Parallel tool calls' })[key];
+        return <div key={key} className="flex items-center justify-between gap-2 rounded-md border border-white/10 px-2.5 py-2"><span>{label}</span><span className="text-white">{state?.source === 'manual_override' ? 'Manual override' : state?.state === 'supported' ? 'Supported' : state?.state === 'unsupported' ? 'Unsupported' : 'Unknown'}</span></div>;
+      })}</div>
+      <div><h3 className="font-semibold text-white">VANTRA capabilities</h3><p className="mt-1">Document upload: unavailable · Document extraction: unavailable · File generation/export: available in browser</p></div>
+      <details className="rounded-md border border-white/10 p-2.5"><summary className="cursor-pointer font-semibold text-white">Advanced overrides and technical details</summary>
+        <p className="my-2">Provider: {activeRoute?.providerId ?? 'None'} · Backend model: {activeRoute?.providerModelId ?? 'None'}. Sync refreshes available metadata; no live probe runs automatically.</p>
+        {activeRoute && CHAT_NATIVE_CAPABILITIES.map((key) => <label key={key} className="flex items-center justify-between gap-3 py-1.5"><span>{key}</span><select value={routeCapabilities?.[key].override ?? 'auto'} disabled={saving} onChange={(event) => void setRouteOverride(key, event.target.value as CapabilityOverride)} className="rounded-md border border-white/15 bg-neutral-950 px-2 py-1 text-white"><option value="auto">Auto</option><option value="force_enabled">Force enabled</option><option value="force_disabled">Force disabled</option></select></label>)}
+      </details>
+    </div>}
     {model.modality === 'chat' && (() => { const caps = value as ChatModelCapabilities; return <div className="grid gap-2 sm:grid-cols-2">
       <Toggle checked={caps.streaming} label={t('streaming')} onChange={(streaming) => patch({ streaming })} />
       <Toggle checked={caps.visionInput} label={t('visionInput')} onChange={(visionInput) => patch({ visionInput })} />

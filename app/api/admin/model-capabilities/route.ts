@@ -7,6 +7,7 @@ import { validateModelCapabilities } from '@/lib/models/capability-validation';
 import { normalizeModelSurfaceVisibility } from '@/lib/models/capabilities';
 import { loadModelRuntimeOverrides, resolveRuntimeModelReference } from '@/lib/models/runtime-config';
 import { syncModelCapabilities } from '@/lib/models/capability-sync';
+import { CHAT_NATIVE_CAPABILITIES, normalizeRouteCapabilityStore, type CapabilityOverride } from '@/lib/models/capability-v2';
 
 const requestSchema = z.object({
   modelKey: z.string().trim().min(1).max(300),
@@ -42,7 +43,32 @@ export async function PATCH(request: Request) {
   const access = await ownerClient(request);
   if ('error' in access) return NextResponse.json({ error: access.error }, { status: access.status });
 
-  const body = requestSchema.safeParse(await request.json().catch(() => null));
+  const rawBody = await request.json().catch(() => null);
+  if (rawBody && typeof rawBody === 'object' && 'routeId' in rawBody) {
+    const parsed = z.object({ modelKey: z.string().trim().min(1).max(300), routeId: z.string().uuid(),
+      capability: z.enum(CHAT_NATIVE_CAPABILITIES), override: z.enum(['auto', 'force_enabled', 'force_disabled']) }).strict().safeParse(rawBody);
+    if (!parsed.success) return NextResponse.json({ error: 'INVALID_MODEL_CAPABILITIES' }, { status: 400 });
+    const model = await resolveRuntimeModelReference(access.client, parsed.data.modelKey);
+    if (!model || model.modality !== 'chat') return NextResponse.json({ error: 'MODEL_NOT_REGISTERED' }, { status: 404 });
+    const { data: route, error: routeError } = await access.client.from('model_provider_routes')
+      .select('id,provider_id,provider_model_id').eq('id', parsed.data.routeId).eq('model_key', model.key).maybeSingle();
+    if (routeError || !route) return NextResponse.json({ error: 'MODEL_ROUTE_NOT_FOUND' }, { status: 404 });
+    const stored = (await loadModelRuntimeOverrides(access.client, model.key))[0];
+    if (!stored) return NextResponse.json({ error: 'MODEL_RUNTIME_CONFIG_REQUIRED' }, { status: 409 });
+    const store = normalizeRouteCapabilityStore(stored.routeCapabilitiesV2);
+    const current = store[parsed.data.routeId];
+    const identity = { providerId: String(route.provider_id), providerModelId: String(route.provider_model_id) };
+    store[parsed.data.routeId] = { ...identity,
+      evidence: current?.providerId === identity.providerId && current.providerModelId === identity.providerModelId ? current.evidence : {},
+      overrides: { ...(current?.providerId === identity.providerId && current.providerModelId === identity.providerModelId ? current.overrides : {}),
+        [parsed.data.capability]: parsed.data.override as CapabilityOverride } };
+    const { error } = await access.client.from('model_runtime_configs').update({ route_capabilities_v2: store, updated_by: access.userId })
+      .eq('model_key', model.key).eq('model_id', model.modelId);
+    if (error) return NextResponse.json({ error: 'CAPABILITY_SCHEMA_UPDATE_REQUIRED' }, { status: 503 });
+    refreshViews();
+    return NextResponse.json({ config: { routeCapabilitiesV2: store } });
+  }
+  const body = requestSchema.safeParse(rawBody);
   if (!body.success) return NextResponse.json({ error: 'INVALID_MODEL_CAPABILITIES' }, { status: 400 });
   const client = access.client;
   const model = await resolveRuntimeModelReference(client, body.data.modelKey);
@@ -117,6 +143,7 @@ export async function POST(request: Request) {
     const result = await syncModelCapabilities(access.client, {
       modelKey: model.key, modelId: model.modelId, modality: model.modality,
       capabilities: stored.capabilities, sourceType: stored.capabilitySourceType ?? 'unknown',
+      routeCapabilitiesV2: stored.routeCapabilitiesV2,
       actorId: access.userId,
     });
     refreshViews();
@@ -146,6 +173,7 @@ export async function DELETE(request: Request) {
     const result = await syncModelCapabilities(access.client, {
       modelKey: model.key, modelId: model.modelId, modality: model.modality,
       capabilities: stored.capabilities, sourceType: 'unknown', actorId: access.userId,
+      routeCapabilitiesV2: stored.routeCapabilitiesV2,
     });
     refreshViews();
     return NextResponse.json({ config: result });

@@ -10,6 +10,7 @@ import { providerConfigurationSummary } from '@/lib/ai/providers/registry';
 import { emptyModelCapabilities, normalizeModelSurfaceVisibility, type CapabilityConfidence, type CapabilitySourceType, type CapabilitySyncStatus, type ModelCapabilities, type ModelSurfaceVisibility } from '@/lib/models/capabilities';
 import { normalizeModelCapabilities } from '@/lib/models/capability-validation';
 import { withAdapterInputs } from '@/lib/models/adapter-capabilities';
+import { normalizeRouteCapabilityStore, resolveRouteCapabilities, type RouteCapabilityStore } from '@/lib/models/capability-v2';
 import { isStudioCatalogVisible, isStudioRuntimeReady } from '@/lib/models/studio-model-visibility';
 import {
   defaultAllowedPlansForModel,
@@ -76,6 +77,8 @@ export type ModelRuntimeOverride = {
   capabilitySyncError?: string | null;
   capabilityLastSyncedAt?: string | null;
   capabilitySchemaAvailable?: boolean;
+  routeCapabilitiesV2: RouteCapabilityStore;
+  routeCapabilitySchemaAvailable: boolean;
   surfaceVisibility?: ModelSurfaceVisibility;
   allowedPlans: ModelPlanCode[];
   archived: boolean;
@@ -102,6 +105,8 @@ export type EffectiveRuntimeModel = RegistryModelReference & {
   capabilitySyncStatus: CapabilitySyncStatus;
   capabilitySyncError: string | null;
   capabilityLastSyncedAt: string | null;
+  routeCapabilitiesV2: RouteCapabilityStore;
+  routeCapabilitySchemaAvailable: boolean;
   surfaceVisibility: ModelSurfaceVisibility;
   allowedPlans: ModelPlanCode[];
   planAccess: ModelPlanAccessMap;
@@ -109,6 +114,8 @@ export type EffectiveRuntimeModel = RegistryModelReference & {
   persisted: boolean;
   updatedAt: string | null;
 };
+
+let routeV2SchemaRetryAt = 0;
 
 const defaultModelIds = new Set([
   DEFAULT_CHAT_MODEL?.id,
@@ -224,6 +231,8 @@ function mapOverride(row: any): ModelRuntimeOverride {
     capabilitySyncError: row.capability_sync_error ?? null,
     capabilityLastSyncedAt: row.capability_last_synced_at ?? null,
     capabilitySchemaAvailable: Object.prototype.hasOwnProperty.call(row, 'capability_source_type'),
+    routeCapabilitiesV2: normalizeRouteCapabilityStore(row.route_capabilities_v2),
+    routeCapabilitySchemaAvailable: Object.prototype.hasOwnProperty.call(row, 'route_capabilities_v2'),
     surfaceVisibility: normalizeModelSurfaceVisibility(row.modality, row.surface_visibility),
     allowedPlans: normalizeAllowedPlans(row.allowed_plans),
     archived: Boolean(row.archived),
@@ -234,12 +243,21 @@ function mapOverride(row: any): ModelRuntimeOverride {
 export async function loadModelRuntimeOverrides(client: SupabaseClient, modelKey?: string) {
   const legacyColumns = 'model_key,model_id,modality,enabled,routing_role,customer_credit_price,provider_cost_status,provider_cost_minor,provider_cost_currency,customer_display_name,customer_short_description,customer_media_url,customer_category,customer_sort_order,studio_visible,customer_availability_label,capabilities,allowed_plans,archived,updated_at';
   const syncColumns = ',capability_source_type,capability_confidence,capability_sync_status,capability_sync_error,capability_last_synced_at,surface_visibility';
-  let query = client.from('model_runtime_configs').select(legacyColumns + syncColumns + ',chat_base_class');
+  const requestRouteV2 = Date.now() >= routeV2SchemaRetryAt;
+  let query = client.from('model_runtime_configs').select(legacyColumns + syncColumns + (requestRouteV2 ? ',chat_base_class,route_capabilities_v2' : ',chat_base_class'));
   if (modelKey) query = query.eq('model_key', modelKey);
   const current = await query;
   let data: any[] | null = current.data as any[] | null;
   let error = current.error;
   // The application remains readable while the additive migration is applied.
+  if (requestRouteV2 && error && ['42703', 'PGRST204'].includes(error.code)) {
+    routeV2SchemaRetryAt = Date.now() + 5 * 60 * 1000;
+    let currentQuery = client.from('model_runtime_configs').select(legacyColumns + syncColumns + ',chat_base_class');
+    if (modelKey) currentQuery = currentQuery.eq('model_key', modelKey);
+    const withoutV2 = await currentQuery;
+    data = withoutV2.data as any[] | null;
+    error = withoutV2.error;
+  }
   if (error && ['42703', 'PGRST204'].includes(error.code)) {
     let syncQuery = client.from('model_runtime_configs').select(legacyColumns + syncColumns);
     if (modelKey) syncQuery = syncQuery.eq('model_key', modelKey);
@@ -342,6 +360,8 @@ export function applyModelRuntimeOverrides(overrides: readonly ModelRuntimeOverr
       capabilitySyncStatus: override?.capabilitySyncStatus ?? 'partial',
       capabilitySyncError: override?.capabilitySyncError ?? null,
       capabilityLastSyncedAt: override?.capabilityLastSyncedAt ?? null,
+      routeCapabilitiesV2: override?.routeCapabilitiesV2 ?? {},
+      routeCapabilitySchemaAvailable: override?.routeCapabilitySchemaAvailable ?? false,
       surfaceVisibility: override?.surfaceVisibility ?? normalizeModelSurfaceVisibility(model.modality, null),
       allowedPlans,
       planAccess,
@@ -367,7 +387,7 @@ export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<S
   if (!serverClient) throw new Error('MODEL_RUNTIME_CONFIG_UNAVAILABLE');
   const [models, routesResult, providersResult] = await Promise.all([
     getEffectiveRuntimeModels(serverClient),
-    serverClient.from('model_provider_routes').select('model_key,provider_id,enabled'),
+    serverClient.from('model_provider_routes').select('id,model_key,provider_id,provider_model_id,enabled,priority'),
     serverClient.from('provider_runtime_configs').select('provider_id,enabled,emergency_disabled,display_name,adapter_type,base_endpoint,archived'),
   ]);
   if (routesResult.error) throw routesResult.error;
@@ -412,7 +432,17 @@ export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<S
         iconUrl: model.mediaUrl ?? modelIconUrl(brand),
         category: model.category ?? undefined,
         availabilityLabel: model.availabilityLabel ?? undefined,
-        capabilities: model.capabilities,
+        capabilities: model.modality === 'chat' ? (() => {
+          const activeRoute = (routesResult.data ?? []).filter((row) => row.model_key === model.key && row.enabled && providerReady.get(String(row.provider_id)))
+            .sort((a, b) => Number(a.priority) - Number(b.priority))[0];
+          if (!activeRoute) return model.capabilities;
+          const routeState = resolveRouteCapabilities({ route: { id: String(activeRoute.id), providerId: String(activeRoute.provider_id), providerModelId: String(activeRoute.provider_model_id) }, stored: model.routeCapabilitiesV2 });
+          const legacy = model.capabilities as import('@/lib/models/capabilities').ChatModelCapabilities;
+          return { ...legacy,
+            visionInput: model.routeCapabilitySchemaAvailable ? routeState.resolved.visionInput.state === 'supported' : legacy.visionInput,
+            fileInput: model.routeCapabilitySchemaAvailable ? routeState.resolved.fileInput.state === 'supported' : legacy.fileInput,
+          };
+        })() : model.capabilities,
         surfaceVisibility: model.surfaceVisibility,
         allowedPlans: model.allowedPlans,
         planAccess: model.planAccess,

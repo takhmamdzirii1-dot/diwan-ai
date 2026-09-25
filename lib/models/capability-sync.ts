@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CapabilitySourceType, ModelCapabilities } from './capabilities';
 import type { StudioModality } from '@/src/config/studio-registry';
 import { resolveCapabilityPriority } from './capability-resolution';
+import { resolveRouteCapabilities, type RouteCapabilityStore } from './capability-v2';
 
 type ReaderInput = { providerId: string; providerModelId: string; modality: StudioModality };
 type CapabilityReader = (input: ReaderInput) => Promise<Partial<ModelCapabilities> | null>;
@@ -40,9 +41,10 @@ export async function syncModelCapabilities(client: SupabaseClient, input: {
   capabilities: ModelCapabilities;
   sourceType: CapabilitySourceType;
   actorId: string;
+  routeCapabilitiesV2?: RouteCapabilityStore;
 }) {
   const routes = await client.from('model_provider_routes')
-    .select('provider_id,provider_model_id,priority')
+    .select('id,provider_id,provider_model_id,priority')
     .eq('model_key', input.modelKey).eq('enabled', true).order('priority').limit(1);
   if (routes.error) throw routes.error;
   const route = routes.data?.[0];
@@ -72,16 +74,30 @@ export async function syncModelCapabilities(client: SupabaseClient, input: {
     result.syncStatus = 'partial';
     result.syncError = 'No enabled provider route is configured for this model.';
   }
-  const { data, error } = await client.from('model_runtime_configs').update({
+  const routeCapabilitiesV2 = { ...(input.routeCapabilitiesV2 ?? {}) };
+  if (route && input.modality === 'chat') {
+    const identity = { id: String(route.id), providerId: String(route.provider_id), providerModelId: String(route.provider_model_id) };
+    routeCapabilitiesV2[identity.id] = resolveRouteCapabilities({ route: identity, stored: routeCapabilitiesV2,
+      providerMetadata: providerMetadata as any, catalog: adapterInferred as any, now: result.lastSyncedAt }).record;
+  }
+  const update = {
     capabilities: result.capabilities,
     capability_source_type: result.sourceType,
     capability_confidence: result.confidence,
     capability_sync_status: result.syncStatus,
     capability_sync_error: result.syncError,
     capability_last_synced_at: result.lastSyncedAt,
+    route_capabilities_v2: routeCapabilitiesV2,
     updated_by: input.actorId,
-  }).eq('model_key', input.modelKey).eq('model_id', input.modelId)
-    .select('updated_at').maybeSingle();
+  };
+  let { data, error } = await client.from('model_runtime_configs').update(update)
+    .eq('model_key', input.modelKey).eq('model_id', input.modelId).select('updated_at').maybeSingle();
+  if (error && ['42703', 'PGRST204'].includes(error.code)) {
+    const { route_capabilities_v2: _pendingMigration, ...legacyUpdate } = update;
+    const fallback = await client.from('model_runtime_configs').update(legacyUpdate)
+      .eq('model_key', input.modelKey).eq('model_id', input.modelId).select('updated_at').maybeSingle();
+    data = fallback.data; error = fallback.error;
+  }
   if (error || !data) throw new Error(error?.message ?? 'MODEL_RUNTIME_CONFIG_REQUIRED');
-  return { ...result, updatedAt: String(data.updated_at) };
+  return { ...result, routeCapabilitiesV2, updatedAt: String(data.updated_at) };
 }
