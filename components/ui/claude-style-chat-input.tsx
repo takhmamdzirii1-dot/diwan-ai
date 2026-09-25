@@ -28,6 +28,8 @@ export interface ClaudeSendPayload {
 
 export interface ClaudeChatInputProps {
     onSendMessage: (data: ClaudeSendPayload) => void | Promise<void>;
+    onOpenSpreadsheet?: (file: File) => void;
+    locale?: string;
     models?: ChatModelOption[];
     selectedModelId?: string;
     onSelectModel?: (id: string) => void;
@@ -127,6 +129,8 @@ const PastedContentCard: React.FC<{ content: { id: string; content: string }; on
 /* --- Main Composer --- */
 export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
     onSendMessage,
+    onOpenSpreadsheet,
+    locale = 'en',
     models = [],
     selectedModelId,
     onSelectModel,
@@ -222,16 +226,18 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
     const supportsVision = selectedModel?.visionInput === true;
     const supportsFiles = selectedModel?.fileInput === true;
     const supportsAttachments = supportsVision || supportsFiles;
+    const supportsMenu = supportsAttachments || Boolean(onOpenSpreadsheet);
 
     useEffect(() => {
         setFiles((current) => current.filter((item) => item.type.startsWith('image/') ? supportsVision : supportsFiles));
-        if (!supportsAttachments) setMultimodalMenuOpen(false);
-    }, [selectedModel?.id, supportsVision, supportsFiles, supportsAttachments]);
+        if (!supportsMenu) setMultimodalMenuOpen(false);
+    }, [selectedModel?.id, supportsVision, supportsFiles, supportsMenu]);
     const menuRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
     const docInputRef = useRef<HTMLInputElement>(null);
+    const spreadsheetInputRef = useRef<HTMLInputElement>(null);
 
     // Click outside listener for multimodal dropdown
     useEffect(() => {
@@ -420,7 +426,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                     {/* Left side: action icons */}
                     <div className="flex items-center shrink-0 gap-1 ps-1">
                         {/* Multimodal Dropdown Menu */}
-                        {supportsAttachments && <div className="relative" ref={menuRef}>
+                        {supportsMenu && <div className="relative" ref={menuRef}>
                             <button
                                 type="button"
                                 onClick={() => setMultimodalMenuOpen(!multimodalMenuOpen)}
@@ -463,6 +469,8 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                         <FileText className="w-4 h-4 text-white/60 shrink-0" />
                                         <span>Upload Document</span>
                                     </button>}
+
+                                    {onOpenSpreadsheet && <button type="button" onClick={() => { setMultimodalMenuOpen(false); spreadsheetInputRef.current?.click(); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md hover:bg-white/[0.06] text-white transition-colors text-start cursor-pointer"><FileText className="w-4 h-4 text-white/60 shrink-0" /><span>{locale === 'ar' ? 'فتح جدول بيانات' : locale === 'fr' ? 'Ouvrir une feuille de calcul' : 'Open spreadsheet'}</span></button>}
 
                                 </div>
                             )}
@@ -570,6 +578,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
             )}
 
             {/* Hidden file inputs */}
+            {onOpenSpreadsheet && <input ref={spreadsheetInputRef} type="file" accept=".xlsx,.csv" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onOpenSpreadsheet(file); event.target.value = ''; }} />}
             {supportsAttachments && <input
                 ref={fileInputRef}
                 type="file"

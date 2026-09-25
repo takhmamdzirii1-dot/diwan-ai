@@ -10,9 +10,10 @@ import { detectDir } from '../../lib/direction';
 import { cn } from '@/lib/utils';
 import { useLocale, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
-import { documentFromMarkdown } from '@/lib/artifacts/core';
+import { documentFromMarkdown, presentationFromResponse } from '@/lib/artifacts/core';
 
 const ArtifactDocumentPreview = dynamic(() => import('./ArtifactDocumentPreview'), { ssr: false });
+const ArtifactPresentationPreview = dynamic(() => import('./ArtifactPresentationPreview'), { ssr: false });
 
 export interface MessageBubbleProps {
   message: Message;
@@ -76,6 +77,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
   const [copiedMessage, setCopiedMessage] = useState(false);
   const [documentOpen, setDocumentOpen] = useState(false);
+  const [presentationOpen, setPresentationOpen] = useState(false);
   const locale = useLocale();
   const reduceMotion = useReducedMotion();
   const t = useTranslations('studio.chat');
@@ -86,6 +88,8 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   const isRTL = detectDir(message.content) === 'rtl';
   const canOpenDocument = !isUser && !isStreaming && message.content.length >= 300
     && (/^#{1,3}\s/m.test(message.content) || /\n\s*[-*]\s/.test(message.content) || message.content.length >= 900);
+  const presentation = !isUser && !isStreaming && message.content.includes('"presentation"')
+    ? presentationFromResponse(message.content, locale) : null;
 
   // Visual Attachment Rendering parser for user messages
   const attachmentRegex = /\[Attachment:\s*([^\]]+)\]/g;
@@ -390,12 +394,14 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                   </button>
                 )}
                 {canOpenDocument && <button type="button" onClick={() => setDocumentOpen(true)} className="ms-2 rounded-lg px-2.5 py-1.5 text-xs text-white/70 transition-colors duration-150 hover:bg-white/[0.05] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">{locale === 'ar' ? 'فتح كمستند' : locale === 'fr' ? 'Ouvrir en document' : 'Open as document'}</button>}
+                {presentation && <button type="button" onClick={() => setPresentationOpen(true)} className="ms-2 rounded-lg px-2.5 py-1.5 text-xs text-white/70 transition-colors duration-150 hover:bg-white/[0.05] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">{locale === 'ar' ? 'معاينة الشرائح' : locale === 'fr' ? 'Voir les diapositives' : 'Preview slides'}</button>}
               </div>
             )}
           </div>
         )}
       </div>
       {documentOpen && <ArtifactDocumentPreview artifact={documentFromMarkdown(message.id, message.content, locale)} locale={locale} onClose={() => setDocumentOpen(false)} />}
+      {presentationOpen && presentation && <ArtifactPresentationPreview artifact={presentation} onClose={() => setPresentationOpen(false)} />}
     </motion.div>
   );
 }

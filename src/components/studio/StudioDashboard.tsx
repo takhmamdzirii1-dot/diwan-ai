@@ -27,6 +27,9 @@ import { useStudioAccess } from '@/src/hooks/useStudioAccess';
 import ActivationOffer, { type ActivationPrompt, type ActivationReason } from './ActivationOffer';
 import type { ChatModelOption } from '@/components/ui/model-picker';
 import { trackFunnelEvent } from '@/src/lib/funnel-analytics';
+import dynamic from 'next/dynamic';
+
+const ArtifactSpreadsheetPreview = dynamic(() => import('./ArtifactSpreadsheetPreview'), { ssr: false });
 
 type CenterMode = 'chat' | 'image' | 'video' | 'library';
 
@@ -77,6 +80,7 @@ export default function StudioDashboard({
 
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [spreadsheetFile, setSpreadsheetFile] = useState<File | null>(null);
 
   const showActivation = useCallback((reason: ActivationReason, modality: 'chat' | 'image' | 'video', model?: { id: string; name: string; requiredPlan?: import('@/lib/models/plan-entitlements').ModelPlanCode | null }) => {
     if (model && (reason === 'model_locked' || reason === 'model_trial_exhausted')) {
@@ -776,6 +780,8 @@ export default function StudioDashboard({
                     <div className="pointer-events-auto mx-auto w-full max-w-4xl px-6">
                       <ClaudeChatInput
                       onSendMessage={handleSend}
+                      onOpenSpreadsheet={setSpreadsheetFile}
+                      locale={locale}
                       models={chatModels.map((model) => ({
                         id: model.id,
                         name: model.displayName,
@@ -840,6 +846,7 @@ export default function StudioDashboard({
         models={entitledModels}
       />
       <ActivationOffer prompt={activationPrompt} onClose={() => setActivationPrompt(null)} />
+      {spreadsheetFile && <ArtifactSpreadsheetPreview file={spreadsheetFile} locale={locale} onClose={() => setSpreadsheetFile(null)} onAnalyze={(prompt) => void handleSend({ message: prompt, isThinkingEnabled: false })} />}
     </div>
   );
 }
