@@ -11,6 +11,7 @@ import {
   LogOut,
   LogIn,
   Trash2,
+  Coins,
   ChevronDown,
   X,
 } from 'lucide-react';
@@ -63,11 +64,11 @@ export default function DashboardSidebar({
   onCloseMobile,
 }: DashboardSidebarProps) {
   const t = useTranslations('studio.sidebar');
-  const { user, signOut, balance, balanceStatus, planName, planStatus, planCode, paidPlanCode } = useUser({
+  const { user, signOut, balance, balanceStatus, planName, planStatus, planCode, paidPlanCode, planAccessState } = useUser({
     loadBalance: true,
     loadPlan: true,
   });
-  const { openAuthModal } = useModal();
+  const { openAuthModal, openTopUpModal } = useModal();
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const asideRef = useRef<HTMLElement>(null);
@@ -79,6 +80,9 @@ export default function DashboardSidebar({
     : planStatus === 'ready'
       ? planName ?? t('freePlan')
       : '—';
+  const hasActivePaidPlan = planStatus === 'ready'
+    && planAccessState !== 'EXPIRED'
+    && (planCode === 'lite' || planCode === 'pro' || planCode === 'max');
   const historyCopy = {
     chat: { label: t('recentChats'), empty: t('noRecentChats') },
     image: { label: t('recentGenerations'), empty: t('noRecentGenerations') },
@@ -303,7 +307,7 @@ export default function DashboardSidebar({
 
         {/* Verified credits + profile */}
         <div className="shrink-0 p-3 space-y-3 border-t border-white/[0.08]">
-          {!(planStatus === 'ready' && planCode === 'free' && !paidPlanCode) && <div className="rounded-xl border border-[var(--studio-border-subtle)] bg-[var(--studio-surface-raised)] px-3 py-2.5">
+          {user && <div className="rounded-xl border border-[var(--studio-border-subtle)] bg-[var(--studio-surface-raised)] px-3 py-2.5">
             <PanelLabel className="px-0 mb-1">{t('unifiedCredits')}</PanelLabel>
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-[11px] text-[var(--studio-text-muted)]">{t('balance')}</span>
@@ -313,6 +317,10 @@ export default function DashboardSidebar({
                 ) : user && balanceStatus === 'ready' && balance !== null ? balance.toLocaleString() : '—'}
               </span>
             </div>
+            <button type="button" onClick={() => openTopUpModal(hasActivePaidPlan ? { id: '', mode: 'credits' } : undefined)} className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-[var(--studio-border)] text-[11px] font-semibold text-[var(--studio-text-secondary)] transition-colors duration-150 hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]">
+              <Coins className="h-3.5 w-3.5" />
+              {hasActivePaidPlan ? t('addCredits') : paidPlanCode ? t('reactivatePlan') : t('activatePlan')}
+            </button>
           </div>}
 
           {user ? (

@@ -50,3 +50,10 @@ export type PaymentPlan = {
   accessPeriodDays: number | null;
   publicVisible: boolean;
 };
+
+export type TopUpCatalogContext = {
+  activePlanCode: 'lite' | 'pro' | 'max' | null;
+  activePlanName: string | null;
+  liteRemaining: number | null;
+  reason: 'ACTIVE_PAID_PLAN_REQUIRED' | 'LITE_TOP_UP_LIMIT_REACHED' | null;
+};

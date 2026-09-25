@@ -4,12 +4,12 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useLocale, useTranslations } from 'next-intl';
 import { ArrowLeft, Banknote, Building2, Check, CheckCircle2, Clipboard, Clock3, CreditCard, FileUp, Loader2, LockKeyhole, X } from 'lucide-react';
-import type { ManualTransferDestination, PaymentMethod, PaymentOrder, PaymentPlan } from '@/lib/payments/types';
+import type { ManualTransferDestination, PaymentMethod, PaymentOrder, PaymentPlan, TopUpCatalogContext } from '@/lib/payments/types';
 import { isPurchasablePlan } from '@/lib/payments/plan-catalog';
 import { trackFunnelEvent } from '@/src/lib/funnel-analytics';
 import useUser from '@/src/hooks/useUser';
 
-export interface TopUpPlan { id: string; }
+export interface TopUpPlan { id: string; mode?: 'checkout' | 'credits'; }
 export interface TopUpModalProps { isOpen: boolean; onClose: () => void; plan?: TopUpPlan; onSuccess?: () => void; }
 type Step = 1 | 2 | 3;
 type Availability = Record<PaymentMethod, boolean>;
@@ -28,6 +28,9 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
   const t = useTranslations('payments');
   const locale = useLocale();
   const [plans, setPlans] = useState<PaymentPlan[]>([]);
+  const [subscriptionPlans, setSubscriptionPlans] = useState<PaymentPlan[]>([]);
+  const [flow, setFlow] = useState<'checkout' | 'credits'>('checkout');
+  const [topUp, setTopUp] = useState<TopUpCatalogContext>({ activePlanCode: null, activePlanName: null, liteRemaining: null, reason: 'ACTIVE_PAID_PLAN_REQUIRED' });
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [preselected, setPreselected] = useState(false);
   const [step, setStep] = useState<Step>(1);
@@ -70,8 +73,9 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
   const dialog = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const selectedPlan = useMemo(() => plans.find((item) => item.id === selectedPlanId) ?? null, [plans, selectedPlanId]);
-  const checkoutTitle = selectedPlan?.kind === 'subscription'
-    ? t('activatePlan', { plan: selectedPlan.name }) : t('title');
+  const checkoutTitle = flow === 'credits'
+    ? t('buyCredits')
+    : selectedPlan?.kind === 'subscription' ? t('activatePlan', { plan: selectedPlan.name }) : t('title');
   const manual = method === 'baridimob' || method === 'ccp';
   const instantAvailable = available.edahabia || available.cib;
   const translateError = (code: string) => t.has('errors.' + code) ? t('errors.' + code) : t('errors.generic');
@@ -79,7 +83,9 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
   useEffect(() => {
     if (!isOpen) return;
     let cancelled = false;
-    setPlans([]); setSelectedPlanId(''); setPreselected(false); setStep(1); setMethod('baridimob'); setAvailable(defaultAvailability);
+    setPlans([]); setSubscriptionPlans([]); setFlow(plan?.mode ?? 'checkout');
+    setTopUp({ activePlanCode: null, activePlanName: null, liteRemaining: null, reason: 'ACTIVE_PAID_PLAN_REQUIRED' });
+    setSelectedPlanId(''); setPreselected(false); setStep(1); setMethod('baridimob'); setAvailable(defaultAvailability);
     setOrder(null); setDestination(null); setReference(''); setProof(null); setBusy(false);
     setSubmitted(false); setConfirmation(false); setGatewayFailed(false); setCopied(null); setError(null);
     setCatalogLoading(true); inFlight.current = false;
@@ -88,16 +94,21 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
       fetch('/api/payments/plans', { cache: 'no-store' }).then(async (response) => {
         const body = await response.json();
         if (!response.ok) throw new Error(body.error ?? 'PAYMENT_CATALOG_UNAVAILABLE');
-        return body as { plans?: PaymentPlan[]; creditPacks?: PaymentPlan[]; gatewayAvailability?: Availability };
+        return body as { plans?: PaymentPlan[]; creditPacks?: PaymentPlan[]; topUp?: TopUpCatalogContext; gatewayAvailability?: Availability };
       }),
       fetch('/api/payments/retention', { cache: 'no-store' }).then(async (response) => response.ok ? response.json() : null).catch(() => null),
     ]).then(([catalog, retention]) => {
       const lite = retention?.liteOffer as PaymentPlan | null | undefined;
-      const next = [...(catalog.plans ?? []), ...(catalog.creditPacks ?? []), ...(lite ? [lite] : [])].filter(isPurchasablePlan)
+      const subscriptions = [...(catalog.plans ?? []), ...(lite ? [lite] : [])].filter(isPurchasablePlan)
         .filter((item, index, all) => all.findIndex((candidate) => candidate.id === item.id) === index);
+      const packs = (catalog.creditPacks ?? []).filter(isPurchasablePlan);
+      const requestedFlow = plan?.mode ?? 'checkout';
+      const next = requestedFlow === 'credits' ? packs : subscriptions;
       if (cancelled) return;
       const status = { ...defaultAvailability, ...catalog.gatewayAvailability };
-      setPlans(next); setAvailable(status);
+      setSubscriptionPlans(subscriptions); setPlans(next);
+      setTopUp(catalog.topUp ?? { activePlanCode: null, activePlanName: null, liteRemaining: null, reason: 'ACTIVE_PAID_PLAN_REQUIRED' });
+      setAvailable(status);
       setMethod(status.edahabia ? 'edahabia' : status.cib ? 'cib' : status.baridimob ? 'baridimob' : 'ccp');
       const chosen = next.find((item) => item.id === plan?.id);
       if (chosen) { setSelectedPlanId(chosen.id); setPreselected(true); setStep(2); }
@@ -107,7 +118,11 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
     return () => { cancelled = true; if (timer.current) clearTimeout(timer.current); };
   // Opening the dialog or changing its preselected plan restarts checkout.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, plan?.id]);
+  }, [isOpen, plan?.id, plan?.mode]);
+
+  const showSubscriptionCheckout = () => {
+    setFlow('checkout'); setPlans(subscriptionPlans); setSelectedPlanId(''); setPreselected(false); setError(null);
+  };
 
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
@@ -216,12 +231,12 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} onClick={() => { if (!busy) onClose(); }} className="fixed inset-0 bg-[var(--studio-overlay,rgba(0,0,0,.82))] backdrop-blur-md" />
     <motion.div ref={dialog} initial={{ opacity: 0, scale: 0.98, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: 8 }} transition={{ duration: 0.2 }} className="relative z-10 flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden border border-[var(--studio-border,#444)] bg-[var(--studio-card,#151517)] shadow-[var(--studio-shadow,0_24px_80px_rgba(0,0,0,.7))] sm:h-auto sm:max-h-[calc(100dvh-40px)] sm:max-w-[700px] sm:rounded-3xl">
       <header className="sticky top-0 z-10 shrink-0 border-b border-[var(--studio-border,#444)] bg-[var(--studio-card,#151517)] px-5 pb-3 pt-[max(16px,env(safe-area-inset-top))] sm:px-6 sm:pt-5">
-        <div className="flex items-start gap-3"><button type="button" onClick={back} disabled={busy || submitted || confirmation || step === 1 || (step === 2 && preselected)} aria-label={t('back')} className="flex min-h-12 min-w-12 items-center justify-center rounded-xl border border-[var(--studio-border,#444)] disabled:invisible focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent,#fff)]"><ArrowLeft className="h-5 w-5 rtl:rotate-180" /></button><div className="min-w-0 flex-1"><h2 ref={heading} tabIndex={-1} id="topup-title" className="text-xl font-semibold outline-none">{checkoutTitle}</h2><p className="mt-0.5 text-base text-[var(--studio-text-secondary,#bbb)]">{submitted ? t('pendingTitle') : step === 1 ? t('selectPlan') : step === 2 ? t('paymentMethod') : t('paymentDetails')}</p></div><button type="button" onClick={onClose} disabled={busy} aria-label={t('close')} className="flex min-h-12 min-w-12 items-center justify-center rounded-xl border border-[var(--studio-border,#444)] disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent,#fff)]"><X className="h-5 w-5" /></button></div>
+        <div className="flex items-start gap-3"><button type="button" onClick={back} disabled={busy || submitted || confirmation || step === 1 || (step === 2 && preselected)} aria-label={t('back')} className="flex min-h-12 min-w-12 items-center justify-center rounded-xl border border-[var(--studio-border,#444)] disabled:invisible focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent,#fff)]"><ArrowLeft className="h-5 w-5 rtl:rotate-180" /></button><div className="min-w-0 flex-1"><h2 ref={heading} tabIndex={-1} id="topup-title" className="text-xl font-semibold outline-none">{checkoutTitle}</h2><p className="mt-0.5 text-base text-[var(--studio-text-secondary,#bbb)]">{submitted ? t('pendingTitle') : step === 1 ? (flow === 'credits' ? t('selectCreditPack') : t('selectPlan')) : step === 2 ? t('paymentMethod') : t('paymentDetails')}</p></div><button type="button" onClick={onClose} disabled={busy} aria-label={t('close')} className="flex min-h-12 min-w-12 items-center justify-center rounded-xl border border-[var(--studio-border,#444)] disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent,#fff)]"><X className="h-5 w-5" /></button></div>
         <div className="mt-3 flex items-center justify-between text-base font-medium text-[var(--studio-text-secondary,#bbb)]"><span>{t('stepOf', { step, total: 3 })}</span><span>{Math.round(step / 3 * 100)}%</span></div><div role="progressbar" aria-valuenow={step} aria-valuemin={1} aria-valuemax={3} aria-label={t('progressLabel')} className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--studio-border,#444)]"><div className="h-full rounded-full bg-[var(--studio-accent,#fff)] transition-[width] duration-200" style={{ width: String(step / 3 * 100) + '%' }} /></div>
       </header>
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 py-4 text-base sm:flex-[0_1_auto] sm:px-6 sm:py-5">
         {submitted ? <div role="status" className={surface + ' p-6 text-center'}><Clock3 className="mx-auto h-9 w-9" /><h3 className="mt-3 text-xl font-semibold">{t('pendingTitle')}</h3><p className="mt-3 leading-relaxed text-[var(--studio-text-secondary,#bbb)]">{t('pendingDescription')}</p>{order && <p dir="ltr" className="mt-4 rounded-xl border border-[var(--studio-border,#444)] p-3 font-semibold">{order.payment_reference}</p>}</div> : <>
-          {step === 1 && renewalContext && !catalogLoading && (() => {
+          {step === 1 && flow === 'checkout' && renewalContext && !catalogLoading && (() => {
             const endsDate = planEndsAt ? formatPlanDate(planEndsAt) : null;
             const preserved = purchasedBalance ?? 0;
             return <section aria-label={renewalContext.kind === 'renew' ? t('renewTitle', { plan: renewalContext.label }) : t('reactivateTitle', { plan: renewalContext.label })} className={surface + ' p-4'}>
@@ -231,7 +246,14 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
               {renewalPlan && renewalPlan.id !== selectedPlanId && <button type="button" onClick={() => { setSelectedPlanId(renewalPlan.id); setError(null); }} className="mt-3 inline-flex min-h-12 items-center rounded-xl border border-[var(--studio-border,#444)] px-4 text-base font-semibold hover:bg-[var(--studio-hover,#29292d)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent,#fff)]">{t('renewNow')}</button>}
             </section>;
           })()}
-          {step === 1 && <section aria-labelledby="plan-heading"><h3 id="plan-heading" className="mb-3 text-lg font-semibold">{t('selectPlan')}</h3>{catalogLoading ? <div className={surface + ' flex min-h-28 items-center justify-center'}><Loader2 className="h-6 w-6 animate-spin" aria-label={t('loadingPlans')} /></div> : plans.length ? <div role="radiogroup" aria-label={t('selectPlan')} className="space-y-3">{plans.map((item) => <button key={item.id} type="button" role="radio" aria-checked={selectedPlanId === item.id} onClick={() => { setSelectedPlanId(item.id); setError(null); }} className={'flex min-h-20 w-full items-center gap-4 rounded-2xl border-2 p-4 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent,#fff)] ' + (selectedPlanId === item.id ? 'border-[var(--studio-accent,#fff)] bg-[var(--studio-hover,#29292d)]' : 'border-[var(--studio-border,#444)] hover:bg-[var(--studio-hover,#29292d)]')}><span className="min-w-0 flex-1"><span className="block text-lg font-semibold">{item.name}</span><span className="mt-1 block text-base text-[var(--studio-text-secondary,#bbb)]">{item.unifiedCredits.toLocaleString(locale)} {t('creditsShort')}</span></span><strong dir="ltr" className="shrink-0 text-base">{item.priceDzd.toLocaleString(locale)} DA</strong></button>)}</div> : <div className={surface + ' p-5 text-center'}>{t('catalogEmpty')}</div>}</section>}
+          {step === 1 && flow === 'credits' && !catalogLoading && <section className={surface + ' p-4'}>
+            <p className="text-base text-[var(--studio-text-secondary,#bbb)]">{t('activePlan')}</p>
+            <h3 className="mt-1 text-lg font-semibold">{topUp.activePlanName ?? t('noActivePaidPlan')}</h3>
+            {topUp.activePlanCode === 'lite' && <p className="mt-2 text-base text-[var(--studio-text-secondary,#bbb)]">{t('liteTopUpsRemaining', { count: topUp.liteRemaining ?? 0 })}</p>}
+            <p className="mt-2 text-base leading-relaxed text-[var(--studio-text-secondary,#bbb)]">{t('purchasedCreditsAccessNote')}</p>
+            {topUp.activePlanCode === 'lite' && <p className="mt-1 text-base text-[var(--studio-text-secondary,#bbb)]">{t('liteTopUpVideoNote')}</p>}
+          </section>}
+          {step === 1 && <section aria-labelledby="plan-heading"><h3 id="plan-heading" className="mb-3 text-lg font-semibold">{flow === 'credits' ? t('selectCreditPack') : t('selectPlan')}</h3>{catalogLoading ? <div className={surface + ' flex min-h-28 items-center justify-center'}><Loader2 className="h-6 w-6 animate-spin" aria-label={t('loadingPlans')} /></div> : plans.length ? <div role="radiogroup" aria-label={flow === 'credits' ? t('selectCreditPack') : t('selectPlan')} className="space-y-3">{plans.map((item) => <button key={item.id} type="button" role="radio" aria-checked={selectedPlanId === item.id} onClick={() => { setSelectedPlanId(item.id); setError(null); }} className={'flex min-h-20 w-full items-center gap-4 rounded-2xl border-2 p-4 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent,#fff)] ' + (selectedPlanId === item.id ? 'border-[var(--studio-accent,#fff)] bg-[var(--studio-hover,#29292d)]' : 'border-[var(--studio-border,#444)] hover:bg-[var(--studio-hover,#29292d)]')}><span className="min-w-0 flex-1"><span className="block text-lg font-semibold">{item.name}</span><span className="mt-1 block text-base text-[var(--studio-text-secondary,#bbb)]">{item.unifiedCredits.toLocaleString(locale)} {t('creditsShort')}</span></span><strong dir="ltr" className="shrink-0 text-base">{item.priceDzd.toLocaleString(locale)} DA</strong></button>)}</div> : <div className={surface + ' p-5 text-center'}><p>{flow === 'credits' ? (topUp.reason === 'LITE_TOP_UP_LIMIT_REACHED' ? t('liteTopUpLimitReached') : topUp.activePlanCode ? t('noCreditPacksForPlan') : t('topUpRequiresPaidPlan')) : t('catalogEmpty')}</p>{flow === 'credits' && !topUp.activePlanCode && <button type="button" onClick={showSubscriptionCheckout} className="mt-4 min-h-12 rounded-xl bg-[var(--studio-accent,#fff)] px-4 font-semibold text-[var(--studio-accent-contrast,#000)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent,#fff)]">{renewalContext ? t('reactivatePlan') : t('activatePaidPlan')}</button>}</div>}</section>}
           {step > 1 && selectedPlan && <div role="group" className={surface + ' w-full p-4'} aria-label={t('selectedPlan')}>
             <div className="grid w-full gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4">
               <div className="min-w-0"><p className="text-base text-[var(--studio-text-secondary,#bbb)]">{t('selectedPlan')}</p><h3 className="mt-0.5 truncate text-lg font-semibold">{selectedPlan.name}</h3><p className="mt-0.5 text-base text-[var(--studio-text-secondary,#bbb)]">{selectedPlan.unifiedCredits.toLocaleString(locale)} {t('creditsShort')}</p></div>

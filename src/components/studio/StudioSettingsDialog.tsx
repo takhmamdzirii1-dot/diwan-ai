@@ -496,6 +496,13 @@ function CreditsPanel() {
           <StaticRow label={t('paidAccessEnds')} value={new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(planEndsAt))} />
         )}
       </div>
+      {user && planStatus === 'ready' && planAccessState !== 'EXPIRED' && (planCode === 'lite' || planCode === 'pro' || planCode === 'max') && (
+        <div className="rounded-xl border border-[var(--studio-border-subtle)] bg-[var(--studio-surface-raised)] p-4">
+          <p className="text-[12px] font-semibold text-[var(--studio-text-primary)]">{t('addCredits')}</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-[var(--studio-text-muted)]">{t('topUpAccessNote')}</p>
+          <button type="button" onClick={() => openTopUpModal({ id: '', mode: 'credits' })} className="mt-3 h-9 rounded-lg bg-[var(--studio-accent)] px-3 text-[11px] font-semibold text-[var(--studio-accent-contrast)] hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]">{t('buyCredits')}</button>
+        </div>
+      )}
       {planAccessState === 'EXPIRING_SOON' && (
         <div className="rounded-xl border border-amber-200/15 bg-amber-200/[0.04] p-4">
           <p className="text-[12px] leading-relaxed text-white/75">{t('planEndsSoon')}</p>
