@@ -37,16 +37,25 @@ test('missing fields stay unknown; explicit false and route metadata override ge
   assert.equal(override.resolved.tools.source, 'manual_override');
 });
 
-test('Agnes fallback applies only when catalog has no backend match', () => {
+test('Agnes fallback fills only capabilities missing from a matched Models.dev model', () => {
   const route = { providerId: 'agnes', providerModelId: 'agnes-3.0-flash', displayName: 'GPT-5.6 Sol' };
   assert.deepEqual(vantraFallbackCapabilities(route), { streaming: true, visionInput: true, tools: true });
   const catalogModel = findModelsDevModel(indexModelsDevCatalog(fixture), route);
   assert.equal(catalogModel?.providerId, 'agnes');
   assert.equal(mapModelsDevCapabilities(catalogModel).visionInput, true);
-  const missing = resolveRouteCapabilities({ route: { id: 'agnes-route', ...route }, catalog: vantraFallbackCapabilities(route) });
-  assert.equal(missing.resolved.fileInput.state, 'unknown');
-  assert.equal(missing.resolved.structuredOutput.state, 'unknown');
-  assert.equal(missing.resolved.parallelTools.state, 'unknown');
+  const merged = resolveRouteCapabilities({ route: { id: 'agnes-route', ...route },
+    modelsDev: { ...mapModelsDevCapabilities(catalogModel), structuredOutput: false },
+    catalog: vantraFallbackCapabilities(route) });
+  assert.equal(merged.resolved.streaming.state, 'supported');
+  assert.equal(merged.resolved.streaming.source, 'vantra_catalog');
+  assert.equal(merged.resolved.visionInput.state, 'supported');
+  assert.equal(merged.resolved.visionInput.source, 'models_dev');
+  assert.equal(merged.resolved.tools.state, 'supported');
+  assert.equal(merged.resolved.tools.source, 'models_dev');
+  assert.equal(merged.resolved.structuredOutput.state, 'unsupported');
+  assert.equal(merged.resolved.structuredOutput.source, 'models_dev');
+  assert.equal(merged.resolved.fileInput.state, 'unknown');
+  assert.equal(merged.resolved.parallelTools.state, 'unknown');
 });
 
 test('route evidence contains capability booleans, not raw catalog fields or secrets', () => {

@@ -81,7 +81,7 @@ export async function syncModelCapabilities(client: SupabaseClient, input: {
     const catalogResult = await modelsDevCatalog.load();
     const catalogModel = catalogResult.catalog ? findModelsDevModel(catalogResult.catalog, identity) : null;
     const modelsDevEvidence = mapModelsDevCapabilities(catalogModel);
-    const localFallback = catalogModel ? undefined : vantraFallbackCapabilities(identity);
+    const localFallback = vantraFallbackCapabilities(identity);
     const routeProviderEvidence: Partial<Record<ChatNativeCapability, boolean>> = {};
     const providerFields = providerMetadata as Record<string, unknown> | null;
     for (const key of CHAT_NATIVE_CAPABILITIES) {
