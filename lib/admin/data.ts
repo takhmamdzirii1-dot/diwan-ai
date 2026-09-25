@@ -925,37 +925,61 @@ export async function getAdminAudit(): Promise<AdminDataResult<AdminAuditRow[]>>
   const client = await requireAdminDataAccess();
   if (!client) return unavailable([]);
   try {
-    const [audits, generalAudits, orders, auth] = await Promise.all([
+    const [audits, generalAudits, orders, catalogPlans, modelConfigs, auth] = await Promise.all([
       client.from('payment_audit_log').select('id,payment_order_id,actor_user_id,action,previous_status,new_status,created_at')
         .order('created_at', { ascending: false }).limit(100),
-      client.from('admin_audit_log').select('id,actor_user_id,action,resource_type,resource_id,previous_state,new_state,created_at')
+      client.from('admin_audit_log').select('id,actor_user_id,action,resource_type,resource_id,previous_state,new_state,metadata,created_at')
         .order('created_at', { ascending: false }).limit(100),
-      client.from('payment_orders').select('id,plan_name').order('created_at', { ascending: false }).limit(500),
+      client.from('payment_orders').select('id,plan_name,payment_reference').order('created_at', { ascending: false }).limit(500),
+      client.from('payment_plans').select('id,name,slug,plan_code'),
+      client.from('model_runtime_configs').select('model_key,customer_display_name'),
       allAuthUsers(client),
     ]);
     if (audits.error) throw audits.error;
     if (generalAudits.error) throw generalAudits.error;
     if (orders.error) throw orders.error;
-    const plans = new Map((orders.data ?? []).map((row) => [row.id, row.plan_name]));
+    const orderLabels = new Map((orders.data ?? []).map((row) => [row.id,
+      [row.plan_name, row.payment_reference].filter(Boolean).join(' · ')]));
+    const planLabels = new Map((catalogPlans.error ? [] : catalogPlans.data ?? []).map((row) => [row.id,
+      `${row.name} (${row.plan_code ?? row.slug})`]));
+    const modelLabels = new Map((modelConfigs.error ? [] : modelConfigs.data ?? []).map((row) => [row.model_key,
+      row.customer_display_name ? `${row.customer_display_name} (${row.model_key})` : row.model_key]));
+    const providerLabels = new Map(SERVER_PROVIDER_REGISTRY.map((provider) => [provider.id, `${provider.name} (${provider.id})`]));
     const emails = new Map(auth.users.map((user) => [user.id, user.email ?? null]));
     const paymentRows = (audits.data ?? []).map((row) => ({
-      id: row.id, action: row.action, actor: emails.get(row.actor_user_id) ?? null,
-      resource: plans.get(row.payment_order_id) ?? 'Payment',
+      id: row.id, action: row.action, actor: emails.get(row.actor_user_id) ?? row.actor_user_id ?? null,
+      resource: orderLabels.get(row.payment_order_id) ?? `Payment ${row.payment_order_id}`,
       resourceType: 'payment_order', resourceId: row.payment_order_id,
       detail: row.previous_status ? `${row.previous_status} → ${row.new_status}` : row.new_status,
       previousState: row.previous_status ? { status: row.previous_status } : null,
       newState: row.new_status ? { status: row.new_status } : null,
       createdAt: row.created_at,
     } satisfies AdminAuditRow));
-    const generalRows = (generalAudits.data ?? []).map((row) => ({
-      id: row.id, action: row.action, actor: emails.get(row.actor_user_id) ?? null,
-      resource: row.resource_type.replaceAll('_', ' '), resourceType: row.resource_type,
+    const generalRows = (generalAudits.data ?? []).map((row) => {
+      const metadata = row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+        ? row.metadata as Record<string, unknown> : {};
+      const explicitLabel = typeof metadata.resource_label === 'string' ? metadata.resource_label.trim() : '';
+      const state = row.new_state && typeof row.new_state === 'object' && !Array.isArray(row.new_state)
+        ? row.new_state as Record<string, unknown> : {};
+      const providerId = typeof state.provider_id === 'string' ? state.provider_id : null;
+      const resource = explicitLabel
+        || (row.resource_type === 'plan' ? planLabels.get(row.resource_id) : null)
+        || (row.resource_type === 'model' ? modelLabels.get(row.resource_id) : null)
+        || (row.resource_type === 'provider' ? providerLabels.get(row.resource_id) : null)
+        || (row.resource_type === 'provider_route' && providerId
+          ? `${modelLabels.get(String(state.model_key)) ?? state.model_key ?? 'Model'} · ${providerLabels.get(providerId) ?? providerId}` : null)
+        || (row.resource_type === 'user' ? emails.get(row.resource_id) : null)
+        || `${row.resource_type.replaceAll('_', ' ')} · ${row.resource_id}`;
+      return {
+      id: row.id, action: row.action, actor: emails.get(row.actor_user_id) ?? row.actor_user_id ?? null,
+      resource, resourceType: row.resource_type,
       resourceId: row.resource_id,
       detail: row.action.replaceAll('_', ' '),
       previousState: row.previous_state as Record<string, unknown> | null,
       newState: row.new_state as Record<string, unknown> | null,
       createdAt: row.created_at,
-    } satisfies AdminAuditRow));
+    } satisfies AdminAuditRow;
+    });
     return { available: true, data: [...generalRows, ...paymentRows]
       .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
       .slice(0, 150) };

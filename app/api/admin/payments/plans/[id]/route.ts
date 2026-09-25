@@ -47,7 +47,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { data, error } = await client.from('payment_plans').update({
     name: plan.name, description: plan.description || null, kind: plan.kind,
     price_dzd: plan.priceDzd, unified_credits: plan.unifiedCredits,
-    ...(existing.plan_code === 'lite' ? { subscription_credit_allowance: plan.subscriptionCreditAllowance } : {}),
+    ...(existing.kind === 'subscription' && existing.plan_code !== 'free'
+      ? { subscription_credit_allowance: plan.unifiedCredits }
+      : {}),
     included_video_allowance: plan.includedVideoAllowance, active: plan.active,
     display_order: plan.displayOrder, featured: plan.featured,
     ...(plan.publicVisible === undefined ? {} : { public_visible: plan.publicVisible }),
@@ -58,7 +60,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       ...(plan.topUpPurchaseLimitPerPeriod == null ? { top_up_purchase_limit_per_period: null } : { top_up_purchase_limit_per_period: plan.topUpPurchaseLimitPerPeriod }),
     } } : {}),
     updated_by: access.user.id,
-  }).eq('id', id).select('id,slug,name,description,kind,price_dzd,unified_credits,subscription_credit_allowance,included_video_allowance,active,display_order,featured,public_visible,eligibility_required,frozen,entitlement').maybeSingle();
+  }).eq('id', id).select('id,slug,plan_code,name,description,kind,price_dzd,unified_credits,subscription_credit_allowance,included_video_allowance,access_period_days,active,display_order,featured,public_visible,eligibility_required,frozen,entitlement').maybeSingle();
   if (error) return NextResponse.json({ error: error.code === '23505' ? 'PAYMENT_PLAN_SLUG_EXISTS' : 'PAYMENT_PLAN_UPDATE_FAILED' }, { status: 409 });
   if (!data) return NextResponse.json({ error: 'PAYMENT_PLAN_NOT_FOUND' }, { status: 404 });
   revalidatePath('/admin/payments');
@@ -71,6 +73,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     includedVideoAllowance: data.included_video_allowance == null ? null : Number(data.included_video_allowance),
     active: data.active, displayOrder: data.display_order, featured: data.featured,
     publicVisible: data.public_visible, eligibilityRequired: data.eligibility_required, frozen: data.frozen,
+    planCode: data.plan_code, accessPeriodDays: data.access_period_days == null ? null : Number(data.access_period_days),
     topUpPlanCode: data.entitlement?.top_up_plan_code ?? null,
     topUpPurchaseLimitPerPeriod: data.entitlement?.top_up_purchase_limit_per_period ?? null,
   } });
