@@ -9,7 +9,6 @@ export function useStudioAccess(enabled: boolean) {
   useEffect(() => {
     if (!enabled) { setAccess(null); setLoading(false); return; }
     let cancelled = false;
-    let expiryTimer: ReturnType<typeof setTimeout> | null = null;
     const load = () => {
       setLoading(true);
       fetch('/api/studio/access', { cache: 'no-store' })
@@ -18,10 +17,6 @@ export function useStudioAccess(enabled: boolean) {
           if (cancelled) return;
           const next = body?.access as StudioAccessState | undefined;
           setAccess(next ?? null);
-          if (next?.kind === 'trial_active') {
-            const remaining = new Date(next.trialExpiresAt).getTime() - Date.now();
-            if (remaining > 0) expiryTimer = setTimeout(load, Math.min(remaining + 250, 2_147_000_000));
-          }
         })
         .finally(() => { if (!cancelled) setLoading(false); });
     };
@@ -30,7 +25,6 @@ export function useStudioAccess(enabled: boolean) {
     window.addEventListener('vantra-payment-updated', paymentUpdated);
     return () => {
       cancelled = true;
-      if (expiryTimer) clearTimeout(expiryTimer);
       window.removeEventListener('vantra-payment-updated', paymentUpdated);
     };
   }, [enabled]);

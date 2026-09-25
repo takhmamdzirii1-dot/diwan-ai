@@ -94,11 +94,13 @@ export default function PrunaMotionStudio({
   onGenerate,
   onOpenLibrary,
   onModelAccessRequest,
+  planCode = 'free',
 }: {
   models: StudioRuntimeModelDefinition[];
   onGenerate?: (draft: VideoRequestDraft) => Promise<VideoGenerationResult>;
   onOpenLibrary?: () => void;
   onModelAccessRequest?: (model: ChatModelOption) => void;
+  planCode?: string;
 }) {
   const t = useTranslations('studio.video');
   const executionT = useTranslations('studio.videoExecution');
@@ -159,6 +161,7 @@ export default function PrunaMotionStudio({
   const controls = videoControlProfile(capabilities, sourceMode);
   const availableResolutions = controls.resolutions;
   const availableGenerationModes = controls.generationModes;
+  const allowedDurations = capabilities?.durations.filter((value) => !['free', 'lite'].includes(planCode) || value <= 5) ?? [];
   const sourceModeSupported = supportedSourceModes.includes(sourceMode);
   const configurationValid = Boolean(
     onGenerate
@@ -166,7 +169,7 @@ export default function PrunaMotionStudio({
     && isModelSelectable(selectedModel)
     && sourceModeSupported
     && duration
-    && capabilities.durations.includes(duration)
+    && allowedDurations.includes(duration)
     && availableResolutions.includes(resolution)
     && availableGenerationModes.includes(generationMode)
     && (sourceMode === 'image'
@@ -228,9 +231,9 @@ export default function PrunaMotionStudio({
     setSourceMode((current) => supportedSourceModes.includes(current)
       ? current
       : (supportedSourceModes[0] ?? 'text'));
-    setDuration((current) => capabilities.durations.includes(current as ModelVideoDuration)
+    setDuration((current) => allowedDurations.includes(current as ModelVideoDuration)
       ? current
-      : (capabilities.durations[0] ?? ''));
+      : (allowedDurations[0] ?? ''));
     setAspectRatio((current) => capabilities.aspectRatios.includes(current as ModelAspectRatio)
       ? current
       : (capabilities.aspectRatios[0] ?? ''));
@@ -244,7 +247,7 @@ export default function PrunaMotionStudio({
     } else if (!capabilities.endImage) {
       clearEndImage();
     }
-  }, [modelId, capabilities, sourceMode]);
+  }, [modelId, capabilities, sourceMode, planCode]);
 
   const buildDraft = () => {
     if (!prompt.trim()) {
@@ -338,7 +341,7 @@ export default function PrunaMotionStudio({
         </div>}
         <div className="space-y-2"><FieldLabel>{t('model')}</FieldLabel><ModelSelector models={modelOptions} selectedModel={modelId} onSelect={setModelId} onAccessRequest={onModelAccessRequest} dropdownPosition="top" wideTrigger menuLabel={modelsT('videoMenuLabel')} emptyLabel={modelsT('noModels')} modality="video" /></div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {capabilities && capabilities.durations.length > 0 && <label className="space-y-2"><FieldLabel htmlFor="video-duration">{t('duration')}</FieldLabel><select id="video-duration" value={duration} onChange={(event) => setDuration(Number(event.target.value) as ModelVideoDuration)} className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white">{capabilities.durations.map((value) => <option key={value} value={value}>{t('durationSeconds', { value })}</option>)}</select></label>}
+          {capabilities && allowedDurations.length > 0 && <label className="space-y-2"><FieldLabel htmlFor="video-duration">{t('duration')}</FieldLabel><select id="video-duration" value={duration} onChange={(event) => setDuration(Number(event.target.value) as ModelVideoDuration)} className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white">{allowedDurations.map((value) => <option key={value} value={value}>{t('durationSeconds', { value })}</option>)}</select></label>}
           {sourceMode === 'text' && capabilities && capabilities.aspectRatios.length > 0 && <label className="space-y-2"><FieldLabel htmlFor="video-aspect">{t('aspectRatio')}</FieldLabel><select id="video-aspect" value={aspectRatio} onChange={(event) => setAspectRatio(event.target.value as ModelAspectRatio)} className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-white">{capabilities.aspectRatios.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>}
           {sourceMode === 'image' && capabilities && <div className="space-y-2"><FieldLabel>{t('aspectRatio')}</FieldLabel><p className="flex h-10 items-center rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[12.5px] text-[var(--studio-text-secondary)]">{t('aspectFromSource')}</p></div>}
           {availableResolutions.length > 0 && <div className="space-y-2"><FieldLabel>{executionT('resolution')}</FieldLabel>{options(availableResolutions, resolution, (value) => setResolution(value), (value) => value)}</div>}

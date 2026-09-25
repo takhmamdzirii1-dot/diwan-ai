@@ -69,6 +69,7 @@ export function resolveConfiguredModelAccess(access: ModelPlanAccessMap, current
 
 export function runtimeAccessReasonForError(code: string): RuntimeModelAccessReason | null {
   if (code === 'MODEL_PLAN_ACCESS_REQUIRED') return 'plan_required';
+  if (code === 'FREE_ACCESS_RESTRICTED') return 'plan_required';
   if (code === 'MODEL_TRIAL_EXHAUSTED') return 'trial_exhausted';
   if (code === 'MODEL_TRIAL_UNCONFIGURED') return 'trial_unconfigured';
   if (code === 'FREE_MEDIA_EXPIRED') return 'free_media_expired';

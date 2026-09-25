@@ -186,7 +186,9 @@ export default function StudioDashboard({
       // through to the existing inline error renderer.
       try {
         const body = JSON.parse(chatError.message) as { error?: string };
-        if ((body.error === 'MODEL_TRIAL_EXHAUSTED' || body.error === 'MODEL_TRIAL_UNCONFIGURED') && activeModel) {
+        if (body.error === 'FREE_ACCESS_RESTRICTED') {
+          showActivation('free_access_restricted', 'chat');
+        } else if ((body.error === 'MODEL_TRIAL_EXHAUSTED' || body.error === 'MODEL_TRIAL_UNCONFIGURED') && activeModel) {
           showActivation('model_trial_exhausted', 'chat', { id: activeModel.id, name: activeModel.displayName, requiredPlan: activeModel.requiredPlan });
         }
       } catch { /* Inline renderer shows the message. */ }
@@ -351,8 +353,8 @@ export default function StudioDashboard({
   const handleSend = useCallback(
     async (data: { message: string; isThinkingEnabled: boolean; files?: Array<{ file: File; preview?: string | null; type: string }> }) => {
       if (!activeModel || !isModelSelectable(activeModel)) return;
-      if (access?.kind === 'paid_lapsed') {
-        showActivation('paid_lapsed', 'chat', { id: activeModel.id, name: activeModel.displayName });
+      if (access?.kind !== 'paid_active' && access?.freeEligibility && !['eligible', 'manually_approved'].includes(access.freeEligibility)) {
+        showActivation('free_access_restricted', 'chat');
         return;
       }
       if (activeModel.accessState === 'locked') {
@@ -452,12 +454,13 @@ export default function StudioDashboard({
     } | null;
     if (!response.ok || !payload?.image?.src || !payload.libraryAssetId) {
       const code = payload?.error;
-      if (code === 'FREE_MEDIA_EXPIRED') showActivation('free_media_expired', 'image');
+      if (code === 'FREE_ACCESS_RESTRICTED') showActivation('free_access_restricted', 'image');
+      else if (code === 'FREE_MEDIA_EXPIRED') showActivation('free_media_expired', 'image');
       else if (code === 'FREE_IMAGE_TRIAL_EXHAUSTED') showActivation('image_allowance_exhausted', 'image');
       else if (code === 'PAID_PLAN_REACTIVATION_REQUIRED') showActivation('paid_lapsed', 'image');
       else if (code === 'MODEL_TRIAL_EXHAUSTED' || code === 'MODEL_TRIAL_UNCONFIGURED') showActivation('model_trial_exhausted', 'image', { id: draft.modelId, name: imageModels.find((item) => item.id === draft.modelId)?.displayName ?? draft.modelId, requiredPlan: payload?.requiredPlan });
       else if (code === 'MODEL_PLAN_ACCESS_REQUIRED') showActivation('model_locked', 'image', { id: draft.modelId, name: imageModels.find((item) => item.id === draft.modelId)?.displayName ?? draft.modelId, requiredPlan: payload?.requiredPlan });
-      if (/FREE_MEDIA_EXPIRED|FREE_IMAGE_TRIAL_EXHAUSTED|PAID_PLAN_REACTIVATION_REQUIRED|MODEL_TRIAL_|MODEL_PLAN_ACCESS_REQUIRED/.test(code ?? '')) throw new Error('ACCESS_PROMPTED');
+      if (/FREE_ACCESS_RESTRICTED|FREE_MEDIA_EXPIRED|FREE_IMAGE_TRIAL_EXHAUSTED|PAID_PLAN_REACTIVATION_REQUIRED|MODEL_TRIAL_|MODEL_PLAN_ACCESS_REQUIRED/.test(code ?? '')) throw new Error('ACCESS_PROMPTED');
       throw new Error(payload?.error ?? 'IMAGE_GENERATION_FAILED');
     }
     await refreshBalance();
@@ -515,13 +518,15 @@ export default function StudioDashboard({
     } | null;
     if (!response.ok || !payload?.video?.src || !payload.libraryAssetId) {
       const code = payload?.error;
-      if (code === 'FREE_MEDIA_EXPIRED') showActivation('free_media_expired', 'video');
+      if (code === 'FREE_ACCESS_RESTRICTED') showActivation('free_access_restricted', 'video');
+      else if (code === 'FREE_MEDIA_EXPIRED') showActivation('free_media_expired', 'video');
       else if (code === 'FREE_VIDEO_TRIAL_EXHAUSTED') showActivation('video_allowance_exhausted', 'video');
       else if (code === 'FREE_VIDEO_DURATION_LIMIT') showActivation('video_duration_limit', 'video');
+      else if (code === 'LITE_VIDEO_DURATION_LIMIT') showActivation('lite_video_duration_limit', 'video');
       else if (code === 'PAID_PLAN_REACTIVATION_REQUIRED') showActivation('paid_lapsed', 'video');
       else if (code === 'MODEL_TRIAL_EXHAUSTED' || code === 'MODEL_TRIAL_UNCONFIGURED') showActivation('model_trial_exhausted', 'video', { id: draft.modelId, name: videoModels.find((item) => item.id === draft.modelId)?.displayName ?? draft.modelId, requiredPlan: payload?.requiredPlan });
       else if (code === 'MODEL_PLAN_ACCESS_REQUIRED') showActivation('model_locked', 'video', { id: draft.modelId, name: videoModels.find((item) => item.id === draft.modelId)?.displayName ?? draft.modelId, requiredPlan: payload?.requiredPlan });
-      if (/FREE_MEDIA_EXPIRED|FREE_VIDEO_TRIAL_EXHAUSTED|FREE_VIDEO_DURATION_LIMIT|PAID_PLAN_REACTIVATION_REQUIRED|MODEL_TRIAL_|MODEL_PLAN_ACCESS_REQUIRED/.test(code ?? '')) throw new Error('ACCESS_PROMPTED');
+      if (/FREE_ACCESS_RESTRICTED|FREE_MEDIA_EXPIRED|FREE_VIDEO_TRIAL_EXHAUSTED|FREE_VIDEO_DURATION_LIMIT|LITE_VIDEO_DURATION_LIMIT|PAID_PLAN_REACTIVATION_REQUIRED|MODEL_TRIAL_|MODEL_PLAN_ACCESS_REQUIRED/.test(code ?? '')) throw new Error('ACCESS_PROMPTED');
       throw new Error(payload?.error ?? 'VIDEO_GENERATION_FAILED');
     }
     await refreshBalance();
@@ -709,6 +714,7 @@ export default function StudioDashboard({
                                     };
                                     // Weighted chat limits speak calmly: no codes,
                                     // weights, or numeric allowances customer-side.
+                                    if (body.error === 'FREE_ACCESS_RESTRICTED') return t('freeAccessPendingReview');
                                     if (body.error === 'CHAT_LIMIT_REACHED') {
                                       const wait = formatCapacityWait(body.nextAvailableAt ?? null);
                                       return wait
@@ -807,7 +813,7 @@ export default function StudioDashboard({
             {/* ── Motion Studio ── */}
             {activeWorkspace === 'video' && (
               <motion.div key="video" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }} className="absolute inset-0">
-                <PrunaMotionStudio models={videoModels} onGenerate={handleVideoGenerate} onOpenLibrary={() => onWorkspaceChange('library')} onModelAccessRequest={(model) => requestModelAccess('video', model)} />
+                <PrunaMotionStudio models={videoModels} planCode={planCode} onGenerate={handleVideoGenerate} onOpenLibrary={() => onWorkspaceChange('library')} onModelAccessRequest={(model) => requestModelAccess('video', model)} />
               </motion.div>
             )}
 

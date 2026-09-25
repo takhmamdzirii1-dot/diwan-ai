@@ -26,7 +26,7 @@ export async function reserveModelTrialAccess(args: {
     p_credit_reservation_id: args.reservationId,
   });
   if (error) {
-    const known = /MODEL_TRIAL_(?:EXHAUSTED|UNCONFIGURED)|MODEL_ACCESS_CHANGED/.exec(error.message)?.[0];
+    const known = /FREE_ACCESS_RESTRICTED|MODEL_TRIAL_(?:EXHAUSTED|UNCONFIGURED)|MODEL_ACCESS_CHANGED/.exec(error.message)?.[0];
     throw new Error(known ?? 'MODEL_TRIAL_UNCONFIGURED');
   }
   return data;

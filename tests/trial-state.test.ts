@@ -1,13 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { deriveStudioAccess, freeVideoDurationAllowed, generationAccessError, trialExpiresAt, type AccessEntitlement } from '../lib/access/trial-state';
+import { deriveStudioAccess, freeVideoDurationAllowed, generationAccessError, type AccessEntitlement } from '../lib/access/trial-state';
 
 const createdAt = '2026-09-01T00:00:00.000Z';
 
-test('uses auth account creation as the single seven day trial clock', () => {
-  assert.equal(trialExpiresAt(createdAt), '2026-09-08T00:00:00.000Z');
+test('Free media remains available after day seven', () => {
   assert.equal(deriveStudioAccess({ createdAt, now: new Date('2026-09-07T23:59:59Z') }).kind, 'trial_active');
-  assert.equal(deriveStudioAccess({ createdAt, now: new Date('2026-09-08T00:00:00Z') }).kind, 'trial_expired');
+  assert.equal(deriveStudioAccess({ createdAt, now: new Date('2026-10-08T00:00:00Z') }).kind, 'trial_active');
 });
 
 test('media counters do not alter the time based Chat trial state', () => {
@@ -16,16 +15,18 @@ test('media counters do not alter the time based Chat trial state', () => {
   assert.equal(deriveStudioAccess({ createdAt, now: new Date('2026-09-05T00:00:00Z') }).kind, 'trial_active');
 });
 
-test('day eight keeps Chat open while media generation expires', () => {
+test('day eight keeps Chat and unused media open', () => {
   const access = deriveStudioAccess({ createdAt, now: new Date('2026-09-09T00:00:00Z') });
   assert.equal(generationAccessError(access, 'chat'), null);
-  assert.equal(generationAccessError(access, 'image'), 'FREE_MEDIA_EXPIRED');
-  assert.equal(generationAccessError(access, 'video'), 'FREE_MEDIA_EXPIRED');
+  assert.equal(generationAccessError(access, 'image'), null);
+  assert.equal(generationAccessError(access, 'video'), null);
 });
 
 test('Free video cannot exceed five seconds even when its model supports longer output', () => {
   assert.equal(freeVideoDurationAllowed('free', 5), true);
   assert.equal(freeVideoDurationAllowed('free', 6), false);
+  assert.equal(freeVideoDurationAllowed('lite', 5), true);
+  assert.equal(freeVideoDurationAllowed('lite', 6), false);
   assert.equal(freeVideoDurationAllowed('pro', 15), true);
 });
 
@@ -54,15 +55,16 @@ test('future renewal never replaces the current paid entitlement before its star
   assert.equal(atBoundary.paidPlanId, 'lite-future');
 });
 
-test('previously paid users use the reactivation path after access expires', () => {
+test('previously paid users return to Free eligibility after expiry', () => {
   const entitlement: AccessEntitlement = {
     plan_id: 'pro-plan', status: 'expired', starts_at: '2026-08-01T00:00:00Z', ends_at: '2026-09-01T00:00:00Z',
     payment_plans: { plan_code: 'pro', name: 'Pro' },
   };
   const state = deriveStudioAccess({ createdAt, now: new Date('2026-09-20T00:00:00Z'), entitlements: [entitlement] });
-  assert.equal(state.kind, 'paid_lapsed');
+  assert.equal(state.kind, 'trial_active');
   assert.equal(state.paidPlanCode, 'pro');
-  assert.equal(generationAccessError(state, 'chat'), 'PAID_PLAN_REACTIVATION_REQUIRED');
+  assert.equal(generationAccessError(state, 'chat'), null);
+  assert.equal(generationAccessError({ ...state, freeEligibility: 'review_required' }, 'chat'), 'FREE_ACCESS_RESTRICTED');
 });
 
 test('persists Lite-offer funnel state from auth metadata', () => {

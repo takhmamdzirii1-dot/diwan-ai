@@ -18,6 +18,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import type { AdminActivity, AdminDataResult, AdminOverviewData } from '@/lib/admin/types';
+import AdminCostSummary from './AdminCostSummary';
 
 const cardClass = 'rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)]';
 
@@ -157,6 +158,7 @@ export default function AdminOverview({ result }: { result: AdminDataResult<Admi
         <SecondaryCard href="/admin/providers" icon={<Server className="h-5 w-5" />} label="Provider health" value={data.providerHealth == null ? '—' : `${data.providerHealth.ready} / ${data.providerHealth.enabled}`} context={providerContext} />
         <SecondaryCard href="/admin/models" icon={<Boxes className="h-5 w-5" />} label="Active models" value={data.activeModels?.toLocaleString() ?? '—'} context={data.testingModels == null || data.disabledModels == null ? 'Unavailable' : `${data.testingModels} testing · ${data.disabledModels} disabled`} />
       </section>
+      <AdminCostSummary />
 
       <section className="mt-6 grid items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
         <div className={`${cardClass} min-w-0 p-4`}>

@@ -51,6 +51,7 @@ type ChatLimitRow = { planCode: string; fiveHourLimit: number | null; weeklyLimi
 /** Owner-only live view of the weighted-chat allowances (raw units stay server-side). */
 function ChatLimitsLive() {
   const [rows, setRows] = useState<ChatLimitRow[] | null>(null);
+  const [costControls, setCostControls] = useState<{ cost_normalization_enabled: boolean; usage_unit_cost_usd: number | null; complexity_enabled: boolean; complexity_rules: Record<string, unknown>; context_controls: Record<string, unknown>; output_controls: Record<string, unknown>; concurrency_controls: Record<string, unknown> } | null>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     let live = true;
@@ -59,7 +60,7 @@ function ChatLimitsLive() {
       .then((body) => {
         if (!live) return;
         if (!body || !Array.isArray(body.limits)) setFailed(true);
-        else setRows(body.limits);
+        else { setRows(body.limits); setCostControls(body.costControls ?? null); }
       })
       .catch(() => { if (live) setFailed(true); });
     return () => { live = false; };
@@ -77,6 +78,7 @@ function ChatLimitsLive() {
           return <tr key={plan} className="border-t border-[var(--studio-border-subtle)]"><td className="font-semibold">{plan === 'max' ? 'Max' : plan[0].toUpperCase() + plan.slice(1)}</td><td>{!rows ? dash : row ? number(row.fiveHourLimit) : dash}</td><td>{!rows ? dash : row ? number(row.weeklyLimit) : dash}</td><td>{!rows ? dash : row?.fallbackEnabled ? 'Enabled' : 'Disabled'}</td><td>{pill(status, status === 'Configured' ? 'success' : 'neutral')}</td></tr>;
         })}</tbody>
     </table>
+    <details className="border-t border-[var(--studio-border)] p-4"><summary className="cursor-pointer text-[12px] font-semibold">Advanced Chat Cost Control</summary><div className="mt-3 grid gap-2 text-[11px] text-[var(--studio-text-secondary)] sm:grid-cols-2"><p>Cost normalization: {costControls ? costControls.cost_normalization_enabled ? 'On' : 'Off' : 'Unavailable'}</p><p>Usage unit cost (USD): {costControls?.usage_unit_cost_usd ?? 'Not configured'}</p><p>Complexity surcharge: {costControls ? costControls.complexity_enabled ? 'On' : 'Off' : 'Unavailable'}</p><p>Context / output / concurrency rules: {costControls ? 'Stored for future use' : 'Unavailable'}</p></div><p className="mt-2 text-[11px] text-[var(--studio-text-muted)]">Base model weights and rolling limits are active. Dynamic controls are reserved for a reviewed launch.</p></details>
   </div>;
 }
 

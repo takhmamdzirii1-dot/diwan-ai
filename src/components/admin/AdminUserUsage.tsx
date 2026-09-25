@@ -11,7 +11,7 @@ type Usage = {
     activeReservations: number; requests: number; breakdown: { model: string; requests: number; weightedUsage: number }[] };
   media: { modality: 'image' | 'video'; successful: number; failed: number; credits: string | null;
     breakdown: { model: string; successful: number; failed: number; credits: string | null }[] }[];
-  allowances: { freeMediaEndsAt: string; freeImageRemaining: number | null; freeVideoRemaining: number | null; liteVideoTotal: number | null; liteVideoRemaining: number | null };
+  allowances: { freeMediaEndsAt: null; freeImageRemaining: number | null; freeVideoRemaining: number | null; liteVideoTotal: number | null; liteVideoRemaining: number | null };
   credits: { subscriptionBalance: string | null; purchasedBalance: string | null; rolloverBalance: string | null;
     subscriptionConsumedCycle: string | null; purchasedConsumed: string | null;
     ledger: { id: string; type: string; amount: string; reason: string; createdAt: string }[] };
@@ -88,11 +88,11 @@ export default function AdminUserUsage({ userId }: { userId: string }) {
       {data.media.map((item) => section(item.modality === 'image' ? 'Image' : 'Video', <div key={item.modality}>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {stat('Successful', item.successful)}{stat('Failed', item.failed)}{stat('Credits consumed', item.credits)}
-          {data.plan.name === 'free' && stat('Free used / remaining', (() => {
+          {data.plan.name === 'free' && stat('Free Media Allowance used / remaining', (() => {
             const total = item.modality === 'image' ? 5 : 1;
             const remaining = item.modality === 'image' ? data.allowances.freeImageRemaining : data.allowances.freeVideoRemaining;
             return remaining == null ? null : `${total - remaining} / ${remaining}`;
-          })(), Date.parse(data.allowances.freeMediaEndsAt) <= Date.now() ? `Unused allowance expired ${date(data.allowances.freeMediaEndsAt)}` : `One-time allowance ends ${date(data.allowances.freeMediaEndsAt)}`)}
+          })(), 'One-time allowance; unused generations do not expire.')}
           {item.modality === 'video' && data.plan.name === 'lite' && stat('Included Lite videos used / remaining',
             data.allowances.liteVideoTotal == null || data.allowances.liteVideoRemaining == null ? null
               : `${data.allowances.liteVideoTotal - data.allowances.liteVideoRemaining} / ${data.allowances.liteVideoRemaining}`,
@@ -107,7 +107,7 @@ export default function AdminUserUsage({ userId }: { userId: string }) {
         <h4 className="mb-2 mt-4 text-[11px] font-semibold">Recent ledger</h4>
         {lines(data.credits.ledger.map((row) => <div key={row.id} className="flex justify-between gap-3 py-2"><span className="min-w-0"><strong>{row.type}</strong><span className={`ms-2 ${muted}`}>{row.reason}</span></span><span className="shrink-0 text-end tabular-nums">{row.amount}<span className={`block text-[10px] ${muted}`}>{date(row.createdAt)}</span></span></div>), 'No ledger entries in this range.')}
       </>)}
-      {section('Model trials', lines(data.trials.map((trial) => <div key={`${trial.model}:${trial.scope}`} className="flex justify-between gap-3 py-2"><span className="min-w-0"><strong>{trial.model}</strong><span className={`block text-[10px] ${muted}`}>{trial.plan} · {trial.scope ?? dash}</span></span><span className="shrink-0 text-end tabular-nums">{trial.used} / {show(trial.allowance)} used<span className={`block text-[10px] ${muted}`}>{trial.exhausted ? 'Exhausted or unconfigured' : `${show(trial.remaining)} remaining`}</span></span></div>), 'No Trial model access configured for this plan.'))}
+      {section('Model Trial Uses', lines(data.trials.map((trial) => <div key={`${trial.model}:${trial.scope}`} className="flex justify-between gap-3 py-2"><span className="min-w-0"><strong>{trial.model}</strong><span className={`block text-[10px] ${muted}`}>{trial.plan} · {trial.scope ?? dash}</span></span><span className="shrink-0 text-end tabular-nums">{trial.used} / {show(trial.allowance)} used<span className={`block text-[10px] ${muted}`}>{trial.exhausted ? 'Exhausted or unconfigured' : `${show(trial.remaining)} remaining`}</span></span></div>), 'No Trial model access configured for this plan.'))}
       {section('Recent jobs', lines(data.jobs.map((job) => <div key={job.id} className="grid gap-1 py-2 sm:grid-cols-[minmax(0,1fr)_auto]"><div className="min-w-0"><strong className="truncate">{job.model}</strong><span className={`ms-2 ${muted}`}>{job.modality} · {job.status}</span><p className={`text-[10px] ${muted}`}>{job.provider ?? dash} · {date(job.createdAt)}</p></div><div className="tabular-nums sm:text-end">{show(job.charge)} credits<span className={`block text-[10px] ${muted}`}>Provider cost {cost(job.providerCost)}</span></div></div>), 'No jobs in this range.'))}
     </>}
   </div>;

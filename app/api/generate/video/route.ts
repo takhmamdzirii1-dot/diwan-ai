@@ -42,7 +42,7 @@ const MAX_MULTIPART_BYTES = PRUNA_SOURCE_IMAGE_MAX_BYTES * 2 + 64 * 1024;
 
 function safeResponseCode(code: string) {
   if (/INSUFFICIENT_CREDITS/.test(code)) return 'INSUFFICIENT_CREDITS';
-  if (/FREE_VIDEO_TRIAL_EXHAUSTED|FREE_MEDIA_EXPIRED|PAID_PLAN_REACTIVATION_REQUIRED|LITE_VIDEO_ALLOWANCE_EXHAUSTED|PAID_MEDIA_ACCESS_REQUIRED|MODEL_TRIAL_EXHAUSTED|MODEL_TRIAL_UNCONFIGURED/.test(code)) {
+  if (/FREE_ACCESS_RESTRICTED|FREE_VIDEO_TRIAL_EXHAUSTED|FREE_MEDIA_EXPIRED|PAID_PLAN_REACTIVATION_REQUIRED|LITE_VIDEO_ALLOWANCE_EXHAUSTED|PAID_MEDIA_ACCESS_REQUIRED|MODEL_TRIAL_EXHAUSTED|MODEL_TRIAL_UNCONFIGURED/.test(code)) {
     return code;
   }
   if (/MODEL_CUSTOMER_PRICE_UNCONFIGURED/.test(code)) return code;
@@ -54,7 +54,7 @@ function safeResponseCode(code: string) {
 }
 
 function responseStatus(code: string) {
-  if (/INSUFFICIENT_CREDITS|FREE_VIDEO_TRIAL_EXHAUSTED|FREE_MEDIA_EXPIRED|PAID_PLAN_REACTIVATION_REQUIRED|LITE_VIDEO_ALLOWANCE_EXHAUSTED|PAID_MEDIA_ACCESS_REQUIRED|MODEL_TRIAL_EXHAUSTED/.test(code)) return 402;
+  if (/INSUFFICIENT_CREDITS|FREE_ACCESS_RESTRICTED|FREE_VIDEO_TRIAL_EXHAUSTED|FREE_MEDIA_EXPIRED|PAID_PLAN_REACTIVATION_REQUIRED|LITE_VIDEO_ALLOWANCE_EXHAUSTED|PAID_MEDIA_ACCESS_REQUIRED|MODEL_TRIAL_EXHAUSTED/.test(code)) return 402;
   if (/AUTHENTICATION_REQUIRED/.test(code)) return 401;
   if (/INVALID_|UNSUPPORTED_/.test(code)) return 400;
   if (/MODEL_CUSTOMER_PRICE_UNCONFIGURED|MODEL_NOT_AVAILABLE|REQUEST_ALREADY_PROCESSED/.test(code)) return 409;
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     await requireMediaGenerationAccess(user);
   } catch (cause) {
     const code = cause instanceof Error ? cause.message : 'STUDIO_ACCESS_UNAVAILABLE';
-    if (code === 'FREE_MEDIA_EXPIRED' || code === 'PAID_PLAN_REACTIVATION_REQUIRED') {
+    if (code === 'FREE_ACCESS_RESTRICTED' || code === 'PAID_PLAN_REACTIVATION_REQUIRED') {
       return NextResponse.json({ error: code, reason: runtimeAccessReasonForError(code) }, { status: 403 });
     }
     return NextResponse.json({ error: 'STUDIO_ACCESS_UNAVAILABLE' }, { status: 503 });
@@ -134,7 +134,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: code }, { status: 400 });
   }
   if (!freeVideoDurationAllowed(resolvedAccess.currentPlan, input.duration)) {
-    return NextResponse.json({ error: 'FREE_VIDEO_DURATION_LIMIT', reason: 'plan_required' }, { status: 403 });
+    return NextResponse.json({ error: resolvedAccess.currentPlan === 'lite' ? 'LITE_VIDEO_DURATION_LIMIT' : 'FREE_VIDEO_DURATION_LIMIT', reason: 'plan_required' }, { status: 403 });
   }
 
   let route;

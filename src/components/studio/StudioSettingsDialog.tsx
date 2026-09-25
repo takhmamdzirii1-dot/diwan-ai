@@ -471,22 +471,22 @@ function CreditsPanel() {
       <SectionHeader title={t('planCredits')} description={t('creditsDescription')} />
       <div className="rounded-2xl border border-[var(--studio-border-subtle)] bg-[var(--studio-surface-raised)] px-5">
         <StaticRow label={t('currentPlan')} value={displayedPlan} />
-        <StaticRow
+        {(planCode !== 'free' || paidPlanCode) && <StaticRow
           label={t('unifiedCreditsBalance')}
           value={user && balanceStatus === 'ready' && balance !== null ? balance.toLocaleString() : t('balanceUnavailable')}
-        />
+        />}
         {user && balanceStatus === 'ready' && (subscriptionBalance ?? 0) > 0 && (
           <StaticRow label={t('subscriptionCredits')} value={(subscriptionBalance ?? 0).toLocaleString()} />
         )}
         {user && balanceStatus === 'ready' && (purchasedBalance ?? 0) > 0 && (
           <StaticRow label={t('purchasedCredits')} value={(purchasedBalance ?? 0).toLocaleString()} />
         )}
-        {user && planStatus === 'ready' && planCode === 'free' && (access?.kind === 'trial_active' || access?.kind === 'trial_expired') && (
+        {user && planStatus === 'ready' && planCode === 'free' && access?.kind === 'trial_active' && (
           <>
             <StaticRow label={t('freeChatAccess')} value={t('standardChat')} />
-            <StaticRow label={t('mediaTrial')} value={access?.kind === 'trial_expired' ? t('mediaTrialEnded') : t('mediaTrialDuration')} />
-            <StaticRow label={t('freeImages')} value={access?.kind === 'trial_expired' ? t('mediaTrialEnded') : t('remainingCount', { count: freeImageRemaining ?? 0 })} />
-            <StaticRow label={t('freeVideo')} value={access?.kind === 'trial_expired' ? t('mediaTrialEnded') : t('remainingCount', { count: freeVideoRemaining ?? 0 })} />
+            <StaticRow label={t('mediaTrial')} value={t('mediaTrialDuration')} />
+            <StaticRow label={t('freeImages')} value={t('remainingCount', { count: freeImageRemaining ?? 0 })} />
+            <StaticRow label={t('freeVideo')} value={t('remainingCount', { count: freeVideoRemaining ?? 0 })} />
           </>
         )}
         {user && planStatus === 'ready' && paidPlanCode === 'lite' && planAccessState !== 'EXPIRED' && (

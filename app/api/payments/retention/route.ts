@@ -84,7 +84,7 @@ export async function GET() {
         .maybeSingle(),
       getStudioAccess(user).catch(() => null),
     ]);
-    acquisitionEligible = Boolean(decline && (access?.kind === 'trial_active' || access?.kind === 'trial_expired') && !access.hasSeenLiteOffer);
+    acquisitionEligible = Boolean(decline && access?.kind === 'trial_active' && !access.hasSeenLiteOffer);
   }
   const eligible = returningPaidEligible || acquisitionEligible;
 

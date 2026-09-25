@@ -11,11 +11,8 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'AUTHENTICATION_REQUIRED' }, { status: 401 });
   try {
     const access = await getStudioAccess(user);
-    if (access.kind === 'trial_active' || access.kind === 'trial_expired') {
+    if (access.kind === 'trial_active') {
       await recordFunnelEvent({ userId: user.id, event: 'trial_started', key: 'canonical', occurredAt: access.trialStartedAt });
-    }
-    if (access.kind === 'trial_expired') {
-      await recordFunnelEvent({ userId: user.id, event: 'trial_expired', key: 'canonical', occurredAt: access.trialExpiresAt });
     }
     return NextResponse.json({ access }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch {

@@ -7,6 +7,7 @@ import {
   chatLevelForPlan,
   chatUsageState,
   computeWindowRelease,
+  effectiveChatWeight,
   evaluateChatWindows,
   formatCapacityWait,
   isValidChatWeight,
@@ -27,14 +28,14 @@ test('plan maps to customer-facing chat level', () => {
 
 // ── Weight validation (fail closed, never invent) ───────────────────────────
 
-test('only non-negative safe integers are valid chat weights', () => {
+test('only positive safe integers are valid chat weights', () => {
   assert.equal(isValidChatWeight(null), false);
   assert.equal(isValidChatWeight(undefined), false);
   assert.equal(isValidChatWeight('5'), false);
   assert.equal(isValidChatWeight(-1), false);
   assert.equal(isValidChatWeight(1.5), false);
   assert.equal(isValidChatWeight(Number.NaN), false);
-  assert.equal(isValidChatWeight(0), true);
+  assert.equal(isValidChatWeight(0), false);
   assert.equal(isValidChatWeight(7), true);
 });
 
@@ -385,12 +386,17 @@ test('missing plan limits refuse without inventing', async () => {
   assert.deepEqual(store.consumed('u1', NOW), { fiveHour: 0, weekly: 0 });
 });
 
-test('zero-weight models reserve without consuming allowance', async () => {
+test('zero-cost Chat still consumes its configured base weight', async () => {
   const store = new MemoryChatStore({ free: { fiveHour: 120, weekly: 800 } });
-  const result = await store.reserve({ userId: 'u1', operationKey: 'op-zero', planCode: 'free', weight: 0, nowMs: NOW });
+  const weight = effectiveChatWeight(0, 'fast');
+  assert.equal(weight, 5);
+  assert.equal(effectiveChatWeight(0, 'standard'), 10);
+  assert.equal(effectiveChatWeight(0, 'advanced'), 15);
+  assert.equal(effectiveChatWeight(0, 'heavy'), 25);
+  const result = await store.reserve({ userId: 'u1', operationKey: 'op-zero', planCode: 'free', weight, nowMs: NOW });
   assert.equal(result.allowed, true);
   await store.finalize('op-zero', 'completed');
-  assert.deepEqual(store.consumed('u1', NOW), { fiveHour: 0, weekly: 0 });
+  assert.deepEqual(store.consumed('u1', NOW), { fiveHour: 5, weekly: 5 });
 });
 
 test('finalizing an unknown key is a safe no-op', async () => {

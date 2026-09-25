@@ -63,7 +63,7 @@ export default function DashboardSidebar({
   onCloseMobile,
 }: DashboardSidebarProps) {
   const t = useTranslations('studio.sidebar');
-  const { user, signOut, balance, balanceStatus, planName, planStatus } = useUser({
+  const { user, signOut, balance, balanceStatus, planName, planStatus, planCode, paidPlanCode } = useUser({
     loadBalance: true,
     loadPlan: true,
   });
@@ -303,7 +303,7 @@ export default function DashboardSidebar({
 
         {/* Verified credits + profile */}
         <div className="shrink-0 p-3 space-y-3 border-t border-white/[0.08]">
-          <div className="rounded-xl border border-[var(--studio-border-subtle)] bg-[var(--studio-surface-raised)] px-3 py-2.5">
+          {!(planStatus === 'ready' && planCode === 'free' && !paidPlanCode) && <div className="rounded-xl border border-[var(--studio-border-subtle)] bg-[var(--studio-surface-raised)] px-3 py-2.5">
             <PanelLabel className="px-0 mb-1">{t('unifiedCredits')}</PanelLabel>
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-[11px] text-[var(--studio-text-muted)]">{t('balance')}</span>
@@ -313,7 +313,7 @@ export default function DashboardSidebar({
                 ) : user && balanceStatus === 'ready' && balance !== null ? balance.toLocaleString() : '—'}
               </span>
             </div>
-          </div>
+          </div>}
 
           {user ? (
             <div ref={profileRef} className="relative">

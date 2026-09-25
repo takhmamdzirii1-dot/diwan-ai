@@ -58,6 +58,7 @@ export type ModelRuntimeOverride = {
   enabled: boolean;
   routingRole: ModelRoutingRole;
   customerCreditPrice: number | null;
+  chatBaseClass: 'fast' | 'standard' | 'advanced' | 'heavy';
   providerCostStatus: ProviderCostStatus | null;
   providerCostMinor: string | null;
   providerCostCurrency: string | null;
@@ -85,6 +86,7 @@ export type EffectiveRuntimeModel = RegistryModelReference & {
   enabled: boolean;
   routingRole: ModelRoutingRole;
   customerCreditPrice: number | null;
+  chatBaseClass: 'fast' | 'standard' | 'advanced' | 'heavy';
   providerCostStatus: ProviderCostStatus | null;
   providerCostMinor: string | null;
   providerCostCurrency: string | null;
@@ -203,6 +205,8 @@ function mapOverride(row: any): ModelRuntimeOverride {
     enabled: Boolean(row.enabled),
     routingRole: row.routing_role,
     customerCreditPrice: row.customer_credit_price == null ? null : Number(row.customer_credit_price),
+    chatBaseClass: ['fast', 'standard', 'advanced', 'heavy'].includes(row.chat_base_class)
+      ? row.chat_base_class : 'standard',
     providerCostStatus: row.provider_cost_status,
     providerCostMinor: row.provider_cost_minor == null ? null : String(row.provider_cost_minor),
     providerCostCurrency: row.provider_cost_currency,
@@ -230,12 +234,19 @@ function mapOverride(row: any): ModelRuntimeOverride {
 export async function loadModelRuntimeOverrides(client: SupabaseClient, modelKey?: string) {
   const legacyColumns = 'model_key,model_id,modality,enabled,routing_role,customer_credit_price,provider_cost_status,provider_cost_minor,provider_cost_currency,customer_display_name,customer_short_description,customer_media_url,customer_category,customer_sort_order,studio_visible,customer_availability_label,capabilities,allowed_plans,archived,updated_at';
   const syncColumns = ',capability_source_type,capability_confidence,capability_sync_status,capability_sync_error,capability_last_synced_at,surface_visibility';
-  let query = client.from('model_runtime_configs').select(legacyColumns + syncColumns);
+  let query = client.from('model_runtime_configs').select(legacyColumns + syncColumns + ',chat_base_class');
   if (modelKey) query = query.eq('model_key', modelKey);
   const current = await query;
   let data: any[] | null = current.data as any[] | null;
   let error = current.error;
   // The application remains readable while the additive migration is applied.
+  if (error && ['42703', 'PGRST204'].includes(error.code)) {
+    let syncQuery = client.from('model_runtime_configs').select(legacyColumns + syncColumns);
+    if (modelKey) syncQuery = syncQuery.eq('model_key', modelKey);
+    const synced = await syncQuery;
+    data = synced.data as any[] | null;
+    error = synced.error;
+  }
   if (error && ['42703', 'PGRST204'].includes(error.code)) {
     let legacyQuery = client.from('model_runtime_configs').select(legacyColumns);
     if (modelKey) legacyQuery = legacyQuery.eq('model_key', modelKey);
@@ -315,6 +326,7 @@ export function applyModelRuntimeOverrides(overrides: readonly ModelRuntimeOverr
       enabled,
       routingRole,
       customerCreditPrice: override ? override.customerCreditPrice : model.baseCustomerCreditPrice,
+      chatBaseClass: override?.chatBaseClass ?? 'standard',
       providerCostStatus: override?.providerCostStatus ?? null,
       providerCostMinor: override?.providerCostMinor ?? null,
       providerCostCurrency: override?.providerCostCurrency ?? null,

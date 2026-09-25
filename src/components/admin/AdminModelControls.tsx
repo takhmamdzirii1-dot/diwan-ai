@@ -149,7 +149,7 @@ export default function AdminModelControls({ model, mode = 'pricing', onSaved }:
             {MODEL_ACCESS_STATES.map((state) => <option key={state} value={state}>{state[0].toUpperCase() + state.slice(1)}</option>)}
           </select>
           {planAccess[plan].state === 'trial' && <label className="grid gap-1 text-[10px] font-medium text-[var(--studio-text-muted)]">
-            Trial allowance
+            Model Trial Uses
             <input
               value={planAccess[plan].trialAllowance ?? ''}
               inputMode="numeric"

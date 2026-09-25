@@ -20,11 +20,19 @@ export async function getStudioAccess(user: User): Promise<StudioAccessState> {
     .eq('user_id', user.id)
     .order('starts_at', { ascending: false });
   if (error) throw new Error('STUDIO_ACCESS_UNAVAILABLE');
-  return deriveStudioAccess({
+  const basicAccess = deriveStudioAccess({
     createdAt: user.created_at,
     entitlements: (data ?? []) as unknown as AccessEntitlement[],
     hasSeenLiteOffer: user.user_metadata?.has_seen_lite_offer === true,
   });
+  if (basicAccess.kind === 'paid_active') return basicAccess;
+  const eligibility = await admin.rpc('assess_free_access', { p_user_id: user.id });
+  if (eligibility.error) {
+    // Allow the existing Free path until the forward migration is installed.
+    if (['PGRST202', '42883'].includes(eligibility.error.code)) return basicAccess;
+    throw new Error('STUDIO_ACCESS_UNAVAILABLE');
+  }
+  return { ...basicAccess, freeEligibility: eligibility.data as StudioAccessState['freeEligibility'] };
 }
 
 export async function requireStudioGenerationAccess(user: User) {

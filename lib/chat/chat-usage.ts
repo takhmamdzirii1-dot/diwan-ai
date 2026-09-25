@@ -38,12 +38,23 @@ export function chatLevelForPlan(plan: ModelPlanCode): ChatLevel {
   return 'standard';
 }
 
-/** A usable chat weight is a non-negative safe integer. Null/negative/NaN
+/** A usable chat weight is a positive safe integer. Null/zero/negative/NaN
  *  means Admin-unconfigured: metered usage must fail closed, never invent. */
 export function isValidChatWeight(value: unknown): value is number {
   return typeof value === 'number'
     && Number.isSafeInteger(value)
-    && value >= 0;
+    && value > 0;
+}
+
+export const CHAT_BASE_WEIGHTS = { fast: 5, standard: 10, advanced: 15, heavy: 25 } as const;
+
+export function effectiveChatWeight(configured: number | null, baseClass: keyof typeof CHAT_BASE_WEIGHTS = 'standard') {
+  if (configured != null && (!Number.isSafeInteger(configured) || configured < 0)) {
+    throw new Error('CHAT_WEIGHT_UNCONFIGURED');
+  }
+  // Launch controls for cost normalization and complexity are off; actual
+  // provider cost is tracked separately and never reduces the base weight.
+  return Math.max(CHAT_BASE_WEIGHTS[baseClass], configured ?? 0);
 }
 
 /** Utilization of a window. A null limit means unlimited (utilization 0). */

@@ -108,7 +108,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       plan: { ...planView, rollover: period?.rollover_amount == null ? null : String(period.rollover_amount) },
       chat: { ...chat, requests: chatActivity.length, breakdown: [...chatByModel.values()].sort((a, b) => b.weightedUsage - a.weightedUsage) },
       media,
-      allowances: { freeMediaEndsAt: new Date(Date.parse(auth.data.user.created_at) + 7 * 86_400_000).toISOString(),
+      allowances: { freeMediaEndsAt: null,
         freeImageRemaining: account.data?.free_image_remaining ?? null, freeVideoRemaining: account.data?.free_video_remaining ?? null,
         liteVideoTotal: period?.plan_code === 'lite' ? period.included_videos : null,
         liteVideoRemaining: period?.plan_code === 'lite' && account.data?.lite_video_entitlement_id === period.entitlement_id ? account.data.lite_video_remaining : null },

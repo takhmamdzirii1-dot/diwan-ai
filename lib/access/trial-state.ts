@@ -1,20 +1,21 @@
-export const FREE_TRIAL_DAYS = 7;
 export const FREE_VIDEO_MAX_DURATION_SECONDS = 5;
 
 export function freeVideoDurationAllowed(planCode: string, durationSeconds: number) {
-  return planCode !== 'free' || durationSeconds <= FREE_VIDEO_MAX_DURATION_SECONDS;
+  return !['free', 'lite'].includes(planCode) || durationSeconds <= FREE_VIDEO_MAX_DURATION_SECONDS;
 }
 
-export type StudioAccessKind = 'trial_active' | 'trial_expired' | 'paid_active' | 'paid_lapsed';
+export type StudioAccessKind = 'trial_active' | 'paid_active';
+export type FreeEligibilityState = 'eligible' | 'review_required' | 'ineligible' | 'manually_approved';
 
 export type StudioAccessState = {
   kind: StudioAccessKind;
   trialStartedAt: string;
-  trialExpiresAt: string;
+  trialExpiresAt: null;
   paidPlanId: string | null;
   paidPlanCode: string | null;
   paidPlanName: string | null;
   hasSeenLiteOffer: boolean;
+  freeEligibility: FreeEligibilityState;
 };
 
 export type AccessEntitlement = {
@@ -25,15 +26,11 @@ export type AccessEntitlement = {
   payment_plans: { plan_code: string | null; name: string } | Array<{ plan_code: string | null; name: string }> | null;
 };
 
-export function generationAccessError(access: StudioAccessState, modality: 'chat' | 'image' | 'video') {
-  if (access.kind === 'paid_lapsed') return 'PAID_PLAN_REACTIVATION_REQUIRED' as const;
-  if (access.kind === 'trial_expired' && modality !== 'chat') return 'FREE_MEDIA_EXPIRED' as const;
+export function generationAccessError(access: StudioAccessState, _modality: 'chat' | 'image' | 'video') {
+  if (access.kind !== 'paid_active' && !['eligible', 'manually_approved'].includes(access.freeEligibility)) {
+    return 'FREE_ACCESS_RESTRICTED' as const;
+  }
   return null;
-}
-
-export function trialExpiresAt(createdAt: string) {
-  const started = new Date(createdAt);
-  return new Date(started.getTime() + FREE_TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
 }
 
 export function deriveStudioAccess(input: {
@@ -41,6 +38,7 @@ export function deriveStudioAccess(input: {
   now?: Date;
   entitlements?: AccessEntitlement[];
   hasSeenLiteOffer?: boolean;
+  freeEligibility?: FreeEligibilityState;
 }): StudioAccessState {
   const rows = input.entitlements ?? [];
   const now = input.now ?? new Date();
@@ -53,14 +51,14 @@ export function deriveStudioAccess(input: {
     && (!row.ends_at || new Date(row.ends_at) > now));
   const selected = active ?? paid[0] ?? null;
   const plan = selected ? (Array.isArray(selected.payment_plans) ? selected.payment_plans[0] : selected.payment_plans) : null;
-  const expiresAt = trialExpiresAt(input.createdAt);
   return {
-    kind: active ? 'paid_active' : paid.length ? 'paid_lapsed' : now < new Date(expiresAt) ? 'trial_active' : 'trial_expired',
+    kind: active ? 'paid_active' : 'trial_active',
     trialStartedAt: input.createdAt,
-    trialExpiresAt: expiresAt,
+    trialExpiresAt: null,
     paidPlanId: selected?.plan_id ?? null,
     paidPlanCode: plan?.plan_code ?? null,
     paidPlanName: plan?.name ?? null,
     hasSeenLiteOffer: input.hasSeenLiteOffer === true,
+    freeEligibility: input.freeEligibility ?? 'eligible',
   };
 }

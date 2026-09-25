@@ -125,7 +125,7 @@ export function RemainingPlansView({ result }: { result: AdminDataResult<AdminPa
     </div>}
     {tab === 'Rules' && <div className="grid gap-4 lg:grid-cols-2">
       {section('Purchase rules', <>{pair('Currency', 'DZD · Algerian dinar')}{pair('Credit packs', 'Active paid-plan entitlement required')}{pair('Lite eligibility', 'Existing paid-plan entitlement required')}{pair('Frozen Max', 'Current production behavior retained')}</>)}
-      {section('Snapshot & rollover rules', <>{pair('Historical orders', 'Original prices and entitlements preserved')}{pair('Top-ups', 'Separate from recurring allowance')}{pair('Pro rollover', 'Up to 600 subscription credits')}{pair('Top-ups in rollover', 'Excluded')}{pair('Changes', 'Future purchases or cycles only')}</>)}
+    {section('Snapshot & rollover rules', <>{pair('Historical orders', 'Original prices and entitlements preserved')}{pair('Top-ups', 'Separate from recurring allowance')}{pair('Pro rollover', 'Up to 600 subscription credits')}{pair('Pro grace', 'Renew within 30 days after expiry')}{pair('Top-ups in rollover', 'Excluded')}{pair('Changes', 'Future purchases or cycles only')}</>)}
     </div>}    {(selected || creating) && <div className="fixed inset-0 z-[70] bg-[var(--studio-overlay)]" onMouseDown={(event) => { if (event.target === event.currentTarget) { close(); setCreating(false); } }}>
       <aside role="dialog" aria-modal="true" aria-label={selected?.name ?? 'Add Credit Pack'} className="ms-auto flex h-full w-full max-w-[580px] flex-col border-s border-[var(--studio-border)] bg-[var(--studio-card)] text-[var(--studio-text-primary)] shadow-[var(--studio-shadow)]">
         <header className="border-b border-[var(--studio-border)]">

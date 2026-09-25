@@ -5,7 +5,7 @@ import { streamText } from 'ai';
 import { DEFAULT_CHAT_MODEL } from '../../../../src/config/studio-registry';
 import { resolveRuntimeModelAccess } from '@/lib/models/plan-entitlements.server';
 import { modelPlanErrorPayload } from '@/lib/models/plan-entitlements';
-import { isValidChatWeight } from '@/lib/chat/chat-usage';
+import { effectiveChatWeight, isValidChatWeight } from '@/lib/chat/chat-usage';
 import { finalizeChatUsage, precheckChatUsage, reserveChatUsage } from '@/lib/chat/chat-usage.server';
 import { createChatLanguageModel, classifyProviderFailure } from '@/lib/ai/providers/chat';
 import { resolveProviderRoutes } from '@/lib/ai/providers/routes';
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       await requireStudioGenerationAccess(user);
     } catch (cause) {
       const code = cause instanceof Error ? cause.message : 'STUDIO_ACCESS_UNAVAILABLE';
-      if (code === 'FREE_TRIAL_EXPIRED' || code === 'PAID_PLAN_REACTIVATION_REQUIRED') {
+      if (code === 'FREE_ACCESS_RESTRICTED' || code === 'PAID_PLAN_REACTIVATION_REQUIRED') {
         return NextResponse.json({ error: code, reason: runtimeAccessReasonForError(code) }, { status: 403 });
       }
       return NextResponse.json({ error: 'STUDIO_ACCESS_UNAVAILABLE' }, { status: 503 });
@@ -169,7 +169,7 @@ export async function POST(request: Request) {
     let planCode = resolvedAccess.currentPlan;
     let weight: number;
     try {
-      weight = runtimeModel.customerCreditPrice ?? NaN;
+      weight = effectiveChatWeight(runtimeModel.customerCreditPrice, runtimeModel.chatBaseClass);
       if (!isValidChatWeight(weight)) throw new Error('CHAT_WEIGHT_UNCONFIGURED');
       const admission = await precheckChatUsage({ userId: user.id, planCode, weight });
       if (!admission.allowed) {

@@ -88,12 +88,12 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
       fetch('/api/payments/plans', { cache: 'no-store' }).then(async (response) => {
         const body = await response.json();
         if (!response.ok) throw new Error(body.error ?? 'PAYMENT_CATALOG_UNAVAILABLE');
-        return body as { plans?: PaymentPlan[]; gatewayAvailability?: Availability };
+        return body as { plans?: PaymentPlan[]; creditPacks?: PaymentPlan[]; gatewayAvailability?: Availability };
       }),
       fetch('/api/payments/retention', { cache: 'no-store' }).then(async (response) => response.ok ? response.json() : null).catch(() => null),
     ]).then(([catalog, retention]) => {
       const lite = retention?.liteOffer as PaymentPlan | null | undefined;
-      const next = [...(catalog.plans ?? []), ...(lite ? [lite] : [])].filter(isPurchasablePlan)
+      const next = [...(catalog.plans ?? []), ...(catalog.creditPacks ?? []), ...(lite ? [lite] : [])].filter(isPurchasablePlan)
         .filter((item, index, all) => all.findIndex((candidate) => candidate.id === item.id) === index);
       if (cancelled) return;
       const status = { ...defaultAvailability, ...catalog.gatewayAvailability };

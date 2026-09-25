@@ -18,7 +18,11 @@ export async function GET() {
   if (error) {
     return NextResponse.json({ error: 'CHAT_LIMITS_UNAVAILABLE', limits: [] }, { status: 503 });
   }
+  const controls = await client.from('chat_cost_controls')
+    .select('cost_normalization_enabled,usage_unit_cost_usd,complexity_enabled,complexity_rules,context_controls,output_controls,concurrency_controls')
+    .eq('singleton', true).maybeSingle();
   return NextResponse.json({
+    costControls: controls.error ? null : controls.data,
     limits: (data ?? []).map((row) => ({
       planCode: String(row.plan_code),
       fiveHourLimit: row.five_hour_limit == null ? null : Number(row.five_hour_limit),
