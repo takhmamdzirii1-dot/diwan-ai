@@ -11,11 +11,15 @@ import {
   MODEL_VIDEO_DURATIONS,
   MODEL_VIDEO_GENERATION_MODES,
   MODEL_VIDEO_RESOLUTIONS,
-  type ChatModelCapabilities,
   type ImageModelCapabilities,
   type ModelCapabilities,
   type VideoModelCapabilities,
 } from '@/lib/models/capabilities';
+
+const CHAT_CAPABILITY_LABELS = {
+  streaming: 'Streaming', visionInput: 'Vision / image input', fileInput: 'Native file input',
+  structuredOutput: 'Structured output', tools: 'Tool calling', parallelTools: 'Parallel tool calls',
+} as const;
 
 function Toggle({ checked, label, onChange }: { checked: boolean; label: string; onChange: (value: boolean) => void }) {
   return <label className="flex min-h-9 items-center gap-2.5 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-semibold text-white">
@@ -116,27 +120,22 @@ export default function AdminModelCapabilitiesControls({ model, onSaved }: {
     <p className="text-[11px] leading-relaxed text-[var(--studio-text-secondary)]">{t('description')}</p>
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--studio-border-subtle)] px-3 py-2 text-[11px] text-[var(--studio-text-secondary)]">
       <div><span className="font-semibold text-white">Capability status</span><p>Source: {routeSources.length ? routeSources.join(' + ') : model.capabilitySourceType === 'admin_override' ? 'Manual Override' : model.capabilitySourceType === 'provider_metadata' ? 'Provider Metadata' : model.capabilitySourceType === 'adapter_inferred' ? 'VANTRA Catalog' : 'No verified source yet'}</p><p>Verification: {model.capabilitySyncStatus === 'failed' ? 'Error' : routeSources.length ? 'Partial' : model.capabilityConfidence === 'verified' ? 'Verified' : model.capabilityConfidence === 'partial' ? 'Partial' : model.capabilityConfidence === 'manual' ? 'Manual override' : 'Unknown'}</p><p>Last checked: {model.capabilityLastSyncedAt ? new Date(model.capabilityLastSyncedAt).toLocaleString('en') : 'Never'}</p>{model.capabilitySyncError && <p className={model.capabilitySyncStatus === 'failed' ? 'text-amber-200' : 'text-white/65'}>{model.capabilitySyncError}</p>}</div>
-      <div className="flex gap-2"><button type="button" onClick={() => void syncNow()} disabled={syncing || saving || dirty} className="h-8 rounded-lg border border-[var(--studio-border)] px-3 font-semibold text-white disabled:opacity-45">{syncing ? 'Syncing…' : 'Sync now'}</button>{model.capabilitySourceType === 'admin_override' && <button type="button" onClick={() => void syncNow(true)} disabled={syncing || saving || dirty} className="h-8 rounded-lg border border-[var(--studio-border)] px-3 font-semibold text-white disabled:opacity-45">Use detected</button>}</div>
+      <div className="flex gap-2"><button type="button" onClick={() => void syncNow()} disabled={syncing || saving || dirty} className="h-8 rounded-lg border border-[var(--studio-border)] px-3 font-semibold text-white disabled:opacity-45">{syncing ? 'Syncing…' : 'Sync now'}</button>{model.modality !== 'chat' && model.capabilitySourceType === 'admin_override' && <button type="button" onClick={() => void syncNow(true)} disabled={syncing || saving || dirty} className="h-8 rounded-lg border border-[var(--studio-border)] px-3 font-semibold text-white disabled:opacity-45">Use detected</button>}</div>
     </div>
     {model.modality === 'chat' && <div className="space-y-3 rounded-lg border border-[var(--studio-border-subtle)] p-3 text-xs text-white/75">
       <div><h3 className="font-semibold text-white">Model capabilities · active route</h3><p className="mt-1">{activeRoute ? `${activeRoute.providerId} / ${activeRoute.providerModelId}` : 'No active configured route'}</p></div>
       <div className="grid gap-1.5 sm:grid-cols-2">{CHAT_NATIVE_CAPABILITIES.map((key) => {
         const state = routeCapabilities?.[key];
-        const label = ({ streaming: 'Streaming', visionInput: 'Vision / image input', fileInput: 'Native file input', structuredOutput: 'Structured output', tools: 'Tool calling', parallelTools: 'Parallel tool calls' })[key];
+        const label = CHAT_CAPABILITY_LABELS[key];
         return <div key={key} className="flex items-center justify-between gap-2 rounded-md border border-white/10 px-2.5 py-2"><span>{label}</span><span className="text-end text-white">{state?.state === 'supported' ? 'Supported' : state?.state === 'unsupported' ? 'Unsupported' : 'Unknown'}<span className="block text-[10px] font-normal text-white/50">Source: {sourceName(state?.source ?? 'unknown')}</span></span></div>;
       })}</div>
       <div><h3 className="font-semibold text-white">VANTRA capabilities</h3><p className="mt-1">Document upload: unavailable · Document extraction: unavailable · File generation/export: available in browser</p></div>
       <details className="rounded-md border border-white/10 p-2.5"><summary className="cursor-pointer font-semibold text-white">Advanced overrides and technical details</summary>
         <p className="my-2">Provider: {activeRoute?.providerId ?? 'None'} · Backend model: {activeRoute?.providerModelId ?? 'None'}. Sync refreshes available metadata; no live probe runs automatically.</p>
-        {activeRoute && CHAT_NATIVE_CAPABILITIES.map((key) => <label key={key} className="flex items-center justify-between gap-3 py-1.5"><span>{key}</span><select value={routeCapabilities?.[key].override ?? 'auto'} disabled={saving} onChange={(event) => void setRouteOverride(key, event.target.value as CapabilityOverride)} className="rounded-md border border-white/15 bg-neutral-950 px-2 py-1 text-white"><option value="auto">Auto</option><option value="force_enabled">Force enabled</option><option value="force_disabled">Force disabled</option></select></label>)}
+        {model.capabilitySourceType === 'admin_override' && <button type="button" onClick={() => void syncNow(true)} disabled={syncing || saving || dirty} className="my-2 rounded-md border border-white/15 px-2.5 py-1.5 text-white disabled:opacity-45">Clear legacy model override</button>}
+        {activeRoute && CHAT_NATIVE_CAPABILITIES.map((key) => <label key={key} className="flex items-center justify-between gap-3 py-1.5"><span>{CHAT_CAPABILITY_LABELS[key]}</span><select value={routeCapabilities?.[key].override ?? 'auto'} disabled={saving} onChange={(event) => void setRouteOverride(key, event.target.value as CapabilityOverride)} className="rounded-md border border-white/15 bg-neutral-950 px-2 py-1 text-white"><option value="auto">Auto</option><option value="force_enabled">Force enabled</option><option value="force_disabled">Force disabled</option></select></label>)}
       </details>
     </div>}
-    {model.modality === 'chat' && (() => { const caps = value as ChatModelCapabilities; return <div className="grid gap-2 sm:grid-cols-2">
-      <Toggle checked={caps.streaming} label={t('streaming')} onChange={(streaming) => patch({ streaming })} />
-      <Toggle checked={caps.visionInput} label={t('visionInput')} onChange={(visionInput) => patch({ visionInput })} />
-      <Toggle checked={caps.fileInput} label={t('fileInput')} onChange={(fileInput) => patch({ fileInput })} />
-      <Toggle checked={caps.tools} label={t('tools')} onChange={(tools) => patch({ tools })} />
-    </div>; })()}
     {model.modality === 'image' && (() => { const caps = value as ImageModelCapabilities; return <div className="grid gap-3 sm:grid-cols-2">
       <Toggle checked={caps.textToImage} label={t('textToImage')} onChange={(textToImage) => patch({ textToImage })} />
       <Toggle checked={caps.referenceImage} label={t('referenceImage')} onChange={(referenceImage) => patch({ referenceImage })} />

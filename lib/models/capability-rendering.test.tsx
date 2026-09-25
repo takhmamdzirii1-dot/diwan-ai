@@ -78,5 +78,15 @@ test('Admin capability page renders Models.dev evidence without a catalog refres
     assert.equal(fetches, 0);
     assert.match(html, /Source: Models.dev/);
     assert.match(html, /Provider metadata is unavailable. Models.dev catalog evidence is being used/);
+    assert.match(html, /Vision \/ image input/);
+    assert.match(html, /Supported/);
+    assert.match(html, /Unknown/);
+    assert.match(html, /Native file input/);
+    assert.match(html, /VANTRA capabilities/);
+    assert.match(html, /Advanced overrides and technical details/);
+    assert.equal((html.match(/type="checkbox"/g) ?? []).length, 1, 'only Studio visibility remains a checkbox');
+    assert.equal((html.match(/<option value="auto"/g) ?? []).length, 6);
+    assert.equal((html.match(/<option value="force_enabled"/g) ?? []).length, 6);
+    assert.equal((html.match(/<option value="force_disabled"/g) ?? []).length, 6);
   } finally { globalThis.fetch = originalFetch; }
 });
