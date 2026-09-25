@@ -8,7 +8,7 @@ import adminMessages from '../../messages/admin-en.json';
 import PrunaMotionStudio from '@/src/components/studio/PrunaMotionStudio';
 import AdminModelCapabilitiesControls from '@/src/components/admin/AdminModelCapabilitiesControls';
 import type { StudioRuntimeModelDefinition } from '@/src/config/studio-registry';
-import { defaultModelSurfaceVisibility, type VideoModelCapabilities } from './capabilities';
+import { defaultModelSurfaceVisibility, type ChatModelCapabilities, type VideoModelCapabilities } from './capabilities';
 
 const baseCapabilities: VideoModelCapabilities = {
   textToVideo: true, imageToVideo: false, durations: [5], aspectRatios: ['16:9'],
@@ -54,4 +54,29 @@ test('Admin renders provenance, sync and context visibility controls', () => {
   assert.match(html, /Sync now/);
   assert.match(html, /Show in Image to Video/);
   assert.match(html, /Source: No verified source yet/);
+});
+
+test('Admin capability page renders Models.dev evidence without a catalog refresh', () => {
+  const originalFetch = globalThis.fetch;
+  let fetches = 0;
+  globalThis.fetch = (async () => { fetches++; throw new Error('PAGE_LOAD_FETCH'); }) as typeof fetch;
+  try {
+    const caps: ChatModelCapabilities = { streaming: true, visionInput: false, fileInput: false, tools: false };
+    const html = renderToStaticMarkup(<NextIntlClientProvider locale="en" messages={adminMessages}>
+      <AdminModelCapabilitiesControls model={{
+        key: 'vantra:chat:agnes-3.0-flash', modality: 'chat', capabilities: caps,
+        surfaceVisibility: defaultModelSurfaceVisibility('chat'),
+        capabilitySourceType: 'unknown', capabilityConfidence: 'unknown', capabilitySyncStatus: 'partial',
+        capabilitySyncError: 'Provider metadata is unavailable. Models.dev catalog evidence is being used.',
+        capabilityLastSyncedAt: '2026-09-25T00:00:00Z',
+        routes: [{ id: 'route-1', providerId: 'agnes', providerModelId: 'agnes-3.0-flash', enabled: true, configured: true, providerEnabled: true, priority: 1, fallback: false }],
+        routeCapabilitiesV2: { 'route-1': { providerId: 'agnes', providerModelId: 'agnes-3.0-flash', evidence: {
+          visionInput: { state: 'supported', source: 'models_dev', checkedAt: '2026-09-25T00:00:00Z' },
+        }, overrides: {} } },
+      }} onSaved={() => undefined} />
+    </NextIntlClientProvider>);
+    assert.equal(fetches, 0);
+    assert.match(html, /Source: Models.dev/);
+    assert.match(html, /Provider metadata is unavailable. Models.dev catalog evidence is being used/);
+  } finally { globalThis.fetch = originalFetch; }
 });

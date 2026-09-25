@@ -9,7 +9,7 @@ import { effectiveChatWeight, isValidChatWeight } from '@/lib/chat/chat-usage';
 import { finalizeChatUsage, precheckChatUsage, reserveChatUsage } from '@/lib/chat/chat-usage.server';
 import { createChatLanguageModel, classifyProviderFailure } from '@/lib/ai/providers/chat';
 import { resolveProviderRoutes } from '@/lib/ai/providers/routes';
-import { resolveRouteCapabilities } from '@/lib/models/capability-v2';
+import { resolveRouteCapabilities, routeAllowsAttachment } from '@/lib/models/capability-v2';
 import { requireStudioGenerationAccess } from '@/lib/access/trial-access';
 import { finalizeModelTrialAccess, reserveModelTrialAccess } from '@/lib/models/model-trial.server';
 import { recordFunnelEvent } from '@/lib/analytics/funnel-events';
@@ -207,9 +207,10 @@ export async function POST(request: Request) {
       return attachments.some((attachment) => {
         const contentType = attachment?.contentType;
         if (typeof contentType !== 'string') return true;
+        if (runtimeModel.routeCapabilitySchemaAvailable) return !routeAllowsAttachment(native, contentType);
         return contentType.startsWith('image/')
-          ? (runtimeModel.routeCapabilitySchemaAvailable ? native.visionInput.state !== 'supported' : !('visionInput' in chatCapabilities && chatCapabilities.visionInput))
-          : (runtimeModel.routeCapabilitySchemaAvailable ? native.fileInput.state !== 'supported' : !('fileInput' in chatCapabilities && chatCapabilities.fileInput));
+          ? !('visionInput' in chatCapabilities && chatCapabilities.visionInput)
+          : !('fileInput' in chatCapabilities && chatCapabilities.fileInput);
       });
     });
     if (unsupportedAttachment) {

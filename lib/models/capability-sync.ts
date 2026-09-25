@@ -4,13 +4,14 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CapabilitySourceType, ModelCapabilities } from './capabilities';
 import type { StudioModality } from '@/src/config/studio-registry';
 import { resolveCapabilityPriority } from './capability-resolution';
-import { resolveRouteCapabilities, type RouteCapabilityStore } from './capability-v2';
+import { CHAT_NATIVE_CAPABILITIES, resolveRouteCapabilities, type ChatNativeCapability, type RouteCapabilityStore } from './capability-v2';
+import { findModelsDevModel, mapModelsDevCapabilities, modelsDevCatalog, vantraFallbackCapabilities } from './models-dev-catalog';
 
 type ReaderInput = { providerId: string; providerModelId: string; modality: StudioModality };
 type CapabilityReader = (input: ReaderInput) => Promise<Partial<ModelCapabilities> | null>;
 
 // A reader must only return fields evidenced by its provider's API or by the
-// exact adapter request contract. Missing fields remain unsupported.
+// exact adapter request contract. Missing native fields remain Unknown.
 const providerMetadataReaders: Partial<Record<string, CapabilityReader>> = {};
 const adapterReaders: Partial<Record<string, CapabilityReader>> = {
   pruna_ai: async ({ providerModelId, modality }) => {
@@ -59,8 +60,8 @@ export async function syncModelCapabilities(client: SupabaseClient, input: {
     try {
       providerMetadata = await providerMetadataReaders[readerInput.providerId]?.(readerInput) ?? null;
       if (!providerMetadata) adapterInferred = await adapterReaders[readerInput.providerId]?.(readerInput) ?? null;
-    } catch (cause) {
-      readerError = cause instanceof Error ? cause.message.slice(0, 300) : 'Capability reader failed.';
+    } catch {
+      readerError = 'Provider capability metadata refresh failed.';
     }
   }
   const result = resolveCapabilityPriority({
@@ -77,8 +78,43 @@ export async function syncModelCapabilities(client: SupabaseClient, input: {
   const routeCapabilitiesV2 = { ...(input.routeCapabilitiesV2 ?? {}) };
   if (route && input.modality === 'chat') {
     const identity = { id: String(route.id), providerId: String(route.provider_id), providerModelId: String(route.provider_model_id) };
-    routeCapabilitiesV2[identity.id] = resolveRouteCapabilities({ route: identity, stored: routeCapabilitiesV2,
-      providerMetadata: providerMetadata as any, catalog: adapterInferred as any, now: result.lastSyncedAt }).record;
+    const catalogResult = await modelsDevCatalog.load();
+    const catalogModel = catalogResult.catalog ? findModelsDevModel(catalogResult.catalog, identity) : null;
+    const modelsDevEvidence = mapModelsDevCapabilities(catalogModel);
+    const localFallback = catalogModel ? undefined : vantraFallbackCapabilities(identity);
+    const routeProviderEvidence: Partial<Record<ChatNativeCapability, boolean>> = {};
+    const providerFields = providerMetadata as Record<string, unknown> | null;
+    for (const key of CHAT_NATIVE_CAPABILITIES) {
+      if (typeof providerFields?.[key] === 'boolean') routeProviderEvidence[key] = providerFields[key] as boolean;
+    }
+    const resolution = resolveRouteCapabilities({ route: identity, stored: routeCapabilitiesV2,
+      providerMetadata: routeProviderEvidence,
+      modelsDev: modelsDevEvidence, modelsDevCheckedAt: catalogResult.checkedAt,
+      catalog: localFallback, now: result.lastSyncedAt });
+    routeCapabilitiesV2[identity.id] = resolution.record;
+    const hasResolvedEvidence = Object.values(resolution.resolved).some((entry) => entry.state !== 'unknown');
+    if (catalogResult.status === 'stale') {
+      result.syncStatus = 'partial';
+      result.syncError = 'Capability catalog could not be refreshed. Last known safe evidence is being used.';
+    } else if (catalogResult.status === 'unavailable' && hasResolvedEvidence && !Object.keys(localFallback ?? {}).length) {
+      result.syncStatus = 'partial';
+      result.syncError = 'Capability catalog could not be refreshed. Last known safe evidence is being used.';
+    } else if (catalogResult.status === 'unavailable' && !hasResolvedEvidence) {
+      result.syncStatus = 'partial';
+      result.syncError = 'No verified capability information is available for this route. Unknown features remain disabled.';
+    } else if (!providerMetadata && Object.keys(modelsDevEvidence).length) {
+      result.syncStatus = 'partial';
+      result.syncError = 'Provider metadata is unavailable. Models.dev catalog evidence is being used.';
+    } else if (!providerMetadata && Object.keys(localFallback ?? {}).length) {
+      result.syncStatus = 'partial';
+      result.syncError = 'Provider metadata is unavailable. VANTRA catalog evidence is being used.';
+    } else if (!providerMetadata && hasResolvedEvidence) {
+      result.syncStatus = 'partial';
+      result.syncError = 'Fresh metadata is unavailable. Last known safe route evidence is being used.';
+    } else if (!hasResolvedEvidence) {
+      result.syncStatus = 'partial';
+      result.syncError = 'No verified capability information is available for this route. Unknown features remain disabled.';
+    }
   }
   const update = {
     capabilities: result.capabilities,

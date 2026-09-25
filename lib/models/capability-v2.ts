@@ -2,7 +2,7 @@ export const CHAT_NATIVE_CAPABILITIES = ['streaming', 'visionInput', 'fileInput'
 export type ChatNativeCapability = typeof CHAT_NATIVE_CAPABILITIES[number];
 export type CapabilityState = 'supported' | 'unsupported' | 'unknown';
 export type CapabilityOverride = 'auto' | 'force_enabled' | 'force_disabled';
-export type CapabilityEvidenceSource = 'provider_metadata' | 'vantra_catalog' | 'route_probe' | 'manual_override';
+export type CapabilityEvidenceSource = 'provider_metadata' | 'models_dev' | 'vantra_catalog' | 'route_probe' | 'manual_override';
 export type CapabilityEvidence = { state: CapabilityState; source: CapabilityEvidenceSource; checkedAt?: string; errorCode?: string };
 export type RouteCapabilityRecord = {
   providerId: string;
@@ -13,6 +13,12 @@ export type RouteCapabilityRecord = {
 export type RouteCapabilityStore = Record<string, RouteCapabilityRecord>;
 export type RouteIdentity = { id: string; providerId: string; providerModelId: string };
 const VERIFIED_CACHE_MS = 30 * 24 * 60 * 60 * 1000;
+
+export function routeAllowsAttachment(capabilities: ReturnType<typeof resolveRouteCapabilities>['resolved'], contentType: string): boolean {
+  if (contentType.startsWith('image/')) return capabilities.visionInput.state === 'supported';
+  if (capabilities.fileInput.state !== 'supported') return false;
+  return capabilities.fileInput.source !== 'models_dev' || contentType === 'application/pdf';
+}
 
 export function normalizeRouteCapabilityStore(value: unknown): RouteCapabilityStore {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
@@ -30,7 +36,7 @@ export function normalizeRouteCapabilityStore(value: unknown): RouteCapabilitySt
       if (entry && typeof entry === 'object') {
         const item = entry as Record<string, unknown>;
         if (['supported', 'unsupported', 'unknown'].includes(String(item.state))
-          && ['provider_metadata', 'vantra_catalog', 'route_probe'].includes(String(item.source))) {
+          && ['provider_metadata', 'models_dev', 'vantra_catalog', 'route_probe'].includes(String(item.source))) {
           evidence[key] = { state: item.state as CapabilityState, source: item.source as CapabilityEvidenceSource,
             ...(typeof item.checkedAt === 'string' ? { checkedAt: item.checkedAt } : {}),
             ...(typeof item.errorCode === 'string' ? { errorCode: item.errorCode.slice(0, 80) } : {}) };
@@ -46,6 +52,8 @@ export function normalizeRouteCapabilityStore(value: unknown): RouteCapabilitySt
 export function resolveRouteCapabilities(input: {
   route: RouteIdentity;
   providerMetadata?: Partial<Record<ChatNativeCapability, boolean>>;
+  modelsDev?: Partial<Record<ChatNativeCapability, boolean>>;
+  modelsDevCheckedAt?: string | null;
   catalog?: Partial<Record<ChatNativeCapability, boolean>>;
   stored?: RouteCapabilityStore;
   now?: string;
@@ -56,9 +64,11 @@ export function resolveRouteCapabilities(input: {
   const resolved = {} as Record<ChatNativeCapability, { state: CapabilityState; source: CapabilityEvidenceSource | 'unknown'; override: CapabilityOverride; checkedAt?: string; errorCode?: string }>;
   for (const key of CHAT_NATIVE_CAPABILITIES) {
     const metadata = input.providerMetadata?.[key];
+    const modelsDev = input.modelsDev?.[key];
     const catalog = input.catalog?.[key];
     const fresh: CapabilityEvidence | undefined = typeof metadata === 'boolean'
       ? { state: metadata ? 'supported' : 'unsupported', source: 'provider_metadata', checkedAt: input.now }
+      : typeof modelsDev === 'boolean' ? { state: modelsDev ? 'supported' : 'unsupported', source: 'models_dev', checkedAt: input.modelsDevCheckedAt ?? input.now }
       : typeof catalog === 'boolean' ? { state: catalog ? 'supported' : 'unsupported', source: 'vantra_catalog', checkedAt: input.now } : undefined;
     const prior = matching?.evidence[key];
     const currentTime = Date.parse(input.now ?? new Date().toISOString());
