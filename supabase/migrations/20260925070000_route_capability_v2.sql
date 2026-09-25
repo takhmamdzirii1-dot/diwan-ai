@@ -5,7 +5,7 @@ alter table public.model_runtime_configs
 
 -- Extend the existing model runtime audit snapshot without creating another
 -- audit stream or changing historical entries.
-+create or replace function public.audit_model_runtime_change()
+create or replace function public.audit_model_runtime_change()
 returns trigger language plpgsql security definer set search_path = '' as $$
 declare
   v_actor uuid := case when tg_op = 'INSERT' then new.updated_by else coalesce(new.updated_by, old.updated_by) end;
