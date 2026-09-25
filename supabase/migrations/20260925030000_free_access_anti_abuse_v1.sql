@@ -15,12 +15,47 @@ alter table public.free_device_links enable row level security;
 revoke all on public.free_device_links from public, anon, authenticated;
 grant select, insert on public.free_device_links to service_role;
 
+-- No account reference or personal details survive deletion. This minimal
+-- tombstone records that the validated identity has already claimed Free.
+create table public.free_device_claim_history (
+  identity_kind text not null check (identity_kind in ('installation','webcrypto')),
+  identity_hash text not null check (identity_hash ~ '^[0-9a-f]{64}$'),
+  primary key (identity_kind, identity_hash)
+);
+alter table public.free_device_claim_history enable row level security;
+revoke all on public.free_device_claim_history from public, anon, authenticated;
+grant select, insert on public.free_device_claim_history to service_role;
+
+-- The earlier email-alias assessment and Admin actions both update this row.
+-- Keep each known signal once, while retaining safe prior evidence and notes.
+create or replace function public.merge_free_access_evidence()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare v_signals jsonb;
+begin
+  v_signals := coalesce(old.evidence->'signals','{}'::jsonb)
+    || coalesce(new.evidence->'signals','{}'::jsonb);
+  if old.reason_code in ('repeated_email_alias','shared_vantra_device','shared_trusted_browser_key') then
+    v_signals := v_signals || jsonb_build_object(old.reason_code,true);
+  end if;
+  if new.reason_code in ('repeated_email_alias','shared_vantra_device','shared_trusted_browser_key') then
+    v_signals := v_signals || jsonb_build_object(new.reason_code,true);
+  end if;
+  new.evidence := coalesce(old.evidence,'{}'::jsonb) || coalesce(new.evidence,'{}'::jsonb)
+    || jsonb_build_object('signals',v_signals);
+  return new;
+end;
+$$;
+create trigger free_access_evidence_merge before update on public.free_access_eligibility
+  for each row execute function public.merge_free_access_evidence();
+
 create or replace function public.link_free_device_identity(
   p_user_id uuid, p_identity_kind text, p_identity_hash text
 ) returns text language plpgsql security definer set search_path = '' as $$
 declare
   v_others integer;
   v_first_user uuid;
+  v_already_linked boolean;
+  v_prior_claim boolean;
   v_before text;
   v_reason text;
 begin
@@ -34,6 +69,13 @@ begin
   -- The lock makes the first and second linkage decisions sequential even
   -- when two accounts reach the server at the same instant.
   perform pg_advisory_xact_lock(hashtextextended(p_identity_kind || ':' || p_identity_hash, 0));
+  select exists(select 1 from public.free_device_links
+    where identity_kind=p_identity_kind and identity_hash=p_identity_hash
+      and user_id=p_user_id) into v_already_linked;
+  select exists(select 1 from public.free_device_claim_history
+    where identity_kind=p_identity_kind and identity_hash=p_identity_hash) into v_prior_claim;
+  insert into public.free_device_claim_history(identity_kind,identity_hash)
+    values(p_identity_kind,p_identity_hash) on conflict do nothing;
   insert into public.free_device_links(identity_kind,identity_hash,user_id)
     values(p_identity_kind,p_identity_hash,p_user_id) on conflict do nothing;
   select count(distinct user_id) into v_others from public.free_device_links
@@ -46,7 +88,8 @@ begin
     on conflict(user_id) do nothing;
   select state into v_before from public.free_access_eligibility
     where user_id=p_user_id for update;
-  if v_others > 0 and v_first_user <> p_user_id
+  if ((v_prior_claim and not v_already_linked)
+      or (v_others > 0 and v_first_user <> p_user_id))
     and v_before in ('eligible','review_required') then
     v_reason := case p_identity_kind when 'webcrypto' then 'shared_trusted_browser_key'
       else 'shared_vantra_device' end;

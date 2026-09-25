@@ -119,6 +119,34 @@ assert.deepEqual((await db.query(`select free_image_remaining,free_video_remaini
   { free_image_remaining: 3, free_video_remaining: 1 });
 assert.equal((await db.query(`select public.link_free_device_identity('${first}','webcrypto','${keyHash}') as state`)).rows[0].state, 'eligible');
 assert.equal((await db.query(`select public.link_free_device_identity('${keyOnly}','webcrypto','${keyHash}') as state`)).rows[0].state, 'review_required');
+const multiSignal = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+await db.exec(`insert into auth.users(id,email) values('${multiSignal}','person+v1@example.com')`);
+assert.equal((await db.query(`select public.assess_free_access('${multiSignal}') as state`)).rows[0].state, 'review_required');
+await db.exec(`select public.link_free_device_identity('${multiSignal}','installation','${installHash}')`);
+await db.exec(`select public.link_free_device_identity('${multiSignal}','webcrypto','${keyHash}')`);
+await db.exec(`select public.link_free_device_identity('${multiSignal}','webcrypto','${keyHash}')`);
+const combined = (await db.query(`select reason_code,evidence from public.free_access_eligibility where user_id='${multiSignal}'`)).rows[0];
+assert.equal(combined.reason_code, 'shared_trusted_browser_key');
+assert.deepEqual(Object.keys(combined.evidence.signals).sort(),
+  ['repeated_email_alias','shared_trusted_browser_key','shared_vantra_device']);
+assert.equal(JSON.stringify(combined.evidence).includes(installHash) || JSON.stringify(combined.evidence).includes(keyHash), false);
+assert.equal((await db.query(`select count(*)::int as n from public.admin_audit_log where action='free_account_sent_to_review' and resource_id='${multiSignal}'`)).rows[0].n, 1);
+await db.exec(`select public.set_free_access_eligibility('${multiSignal}','manually_approved','${first}','Reviewed all signals')`);
+assert.deepEqual(Object.keys((await db.query(`select evidence from public.free_access_eligibility where user_id='${multiSignal}'`)).rows[0].evidence.signals).sort(),
+  ['repeated_email_alias','shared_trusted_browser_key','shared_vantra_device']);
+
+const deleted = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+const replacement = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+const claimedHash = '4'.repeat(64);
+await db.exec(`insert into auth.users(id,email) values('${deleted}','deleted@example.org'),('${replacement}','replacement@example.org')`);
+assert.equal((await db.query(`select public.link_free_device_identity('${deleted}','installation','${claimedHash}') as state`)).rows[0].state, 'eligible');
+await db.exec(`delete from auth.users where id='${deleted}'`);
+assert.equal((await db.query(`select count(*)::int as n from public.free_device_links where identity_hash='${claimedHash}'`)).rows[0].n, 0);
+assert.equal((await db.query(`select count(*)::int as n from public.free_device_claim_history where identity_hash='${claimedHash}'`)).rows[0].n, 1);
+assert.deepEqual((await db.query(`select column_name from information_schema.columns where table_schema='public' and table_name='free_device_claim_history' order by column_name`)).rows.map((row) => row.column_name),
+  ['identity_hash','identity_kind']);
+assert.equal((await db.query(`select public.link_free_device_identity('${replacement}','installation','${claimedHash}') as state`)).rows[0].state, 'review_required');
+await assert.rejects(db.exec(`insert into public.chat_usage_records values(gen_random_uuid(),'${replacement}','free')`), /FREE_ACCESS_RESTRICTED/);
 const simultaneousHash = '3'.repeat(64);
 const simultaneous = await Promise.all([
   db.query(`select public.link_free_device_identity('${concurrent}','installation','${simultaneousHash}') as state`),
