@@ -85,4 +85,47 @@ await db.exec(`insert into public.credit_reservations values(gen_random_uuid(),'
 assert.equal((await db.query(`select count(*)::int as n from public.admin_audit_log where action='free_eligibility_manually_overridden'`)).rows[0].n, 1);
 await db.exec("set request.jwt.claim.role='authenticated'");
 await assert.rejects(db.exec(`select public.set_free_access_eligibility('${old}','ineligible','${alias}','Unauthorized')`), /FORBIDDEN/);
-console.log('Free eligibility migration and execution guards passed on local PostgreSQL WASM');
+await db.exec("set request.jwt.claim.role='service_role'");
+await db.exec(readFileSync('supabase/migrations/20260925030000_free_access_anti_abuse_v1.sql', 'utf8'));
+const first = '66666666-6666-4666-8666-666666666666';
+const second = '77777777-7777-4777-8777-777777777777';
+const keyOnly = '88888888-8888-4888-8888-888888888888';
+const concurrent = '99999999-9999-4999-8999-999999999999';
+const concurrentOther = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const installHash = '1'.repeat(64);
+const keyHash = '2'.repeat(64);
+await db.exec(`insert into auth.users(id,email) values
+  ('${first}','first@example.org'),('${second}','second@example.org'),
+  ('${keyOnly}','third@example.org'),('${concurrent}','fourth@example.org'),
+  ('${concurrentOther}','fifth@example.org');
+insert into public.credits values('${second}',3,1);`);
+assert.equal((await db.query(`select public.link_free_device_identity('${first}','installation','${installHash}') as state`)).rows[0].state, 'eligible');
+await db.exec("set request.headers.x_forwarded_for='100.64.1.1'");
+assert.equal((await db.query(`select public.assess_free_access('${first}') as state`)).rows[0].state, 'eligible');
+await db.exec("set request.headers.x_forwarded_for='203.0.113.9'");
+assert.equal((await db.query(`select public.free_access_execution_allowed('${first}') as allowed`)).rows[0].allowed, true);
+assert.equal((await db.query(`select public.link_free_device_identity('${second}','installation','${installHash}') as state`)).rows[0].state, 'review_required');
+assert.equal((await db.query(`select public.link_free_device_identity('${first}','installation','${installHash}') as state`)).rows[0].state, 'eligible');
+await assert.rejects(db.exec(`insert into public.chat_usage_records values(gen_random_uuid(),'${second}','free')`), /FREE_ACCESS_RESTRICTED/);
+assert.deepEqual((await db.query(`select public.free_device_risk_summary('${second}') as result`)).rows[0].result,
+  { linked_accounts: 1, shared_installations: 1, shared_browser_keys: 0 });
+await db.exec(`insert into public.user_entitlements values('${second}','${paidPlan}','active',now()-interval '1 day',now()+interval '1 day',null)`);
+assert.equal((await db.query(`select public.free_access_execution_allowed('${second}') as allowed`)).rows[0].allowed, true);
+await db.exec(`update public.user_entitlements set ends_at=now()-interval '1 second' where user_id='${second}'`);
+assert.equal((await db.query(`select public.free_access_execution_allowed('${second}') as allowed`)).rows[0].allowed, false);
+await db.exec(`select public.set_free_access_eligibility('${second}','manually_approved','${first}','Reviewed shared device')`);
+assert.equal((await db.query(`select public.link_free_device_identity('${second}','installation','${installHash}') as state`)).rows[0].state, 'manually_approved');
+assert.deepEqual((await db.query(`select free_image_remaining,free_video_remaining from public.credits where user_id='${second}'`)).rows[0],
+  { free_image_remaining: 3, free_video_remaining: 1 });
+assert.equal((await db.query(`select public.link_free_device_identity('${first}','webcrypto','${keyHash}') as state`)).rows[0].state, 'eligible');
+assert.equal((await db.query(`select public.link_free_device_identity('${keyOnly}','webcrypto','${keyHash}') as state`)).rows[0].state, 'review_required');
+const simultaneousHash = '3'.repeat(64);
+const simultaneous = await Promise.all([
+  db.query(`select public.link_free_device_identity('${concurrent}','installation','${simultaneousHash}') as state`),
+  db.query(`select public.link_free_device_identity('${concurrentOther}','installation','${simultaneousHash}') as state`),
+]);
+assert.deepEqual(simultaneous.map((result) => result.rows[0].state).sort(), ['eligible','review_required']);
+await db.exec("set request.jwt.claim.role='authenticated'");
+await assert.rejects(db.exec(`select public.link_free_device_identity('${first}','installation','${'4'.repeat(64)}')`), /FORBIDDEN/);
+await assert.rejects(db.exec(`select public.free_device_risk_summary('${first}')`), /FORBIDDEN/);
+console.log('Free eligibility, device linkage, paid bypass and execution guards passed on local PostgreSQL WASM');

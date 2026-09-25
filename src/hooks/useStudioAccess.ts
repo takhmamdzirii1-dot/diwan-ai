@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { StudioAccessState } from '@/lib/access/trial-state';
+import { enrollFreeDeviceKey } from '@/src/lib/free-device-key';
 
 export function useStudioAccess(enabled: boolean) {
   const [access, setAccess] = useState<StudioAccessState | null>(null);
@@ -17,6 +18,13 @@ export function useStudioAccess(enabled: boolean) {
           if (cancelled) return;
           const next = body?.access as StudioAccessState | undefined;
           setAccess(next ?? null);
+          if (next?.kind === 'trial_active') {
+            void enrollFreeDeviceKey().then((state) => {
+              if (!cancelled && state && ['eligible', 'review_required', 'ineligible', 'manually_approved'].includes(state)) {
+                setAccess((current) => current ? { ...current, freeEligibility: state as StudioAccessState['freeEligibility'] } : current);
+              }
+            });
+          }
         })
         .finally(() => { if (!cancelled) setLoading(false); });
     };

@@ -2,6 +2,7 @@ import 'server-only';
 
 import type { User } from '@supabase/supabase-js';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
+import { ensureInstallationIdentity } from '@/lib/access/free-device.server';
 import { deriveStudioAccess, generationAccessError, type AccessEntitlement, type StudioAccessState } from '@/lib/access/trial-state';
 export type { StudioAccessState } from '@/lib/access/trial-state';
 
@@ -26,6 +27,13 @@ export async function getStudioAccess(user: User): Promise<StudioAccessState> {
     hasSeenLiteOffer: user.user_metadata?.has_seen_lite_offer === true,
   });
   if (basicAccess.kind === 'paid_active') return basicAccess;
+  const installationHash = await ensureInstallationIdentity();
+  const linkage = await admin.rpc('link_free_device_identity', {
+    p_user_id: user.id, p_identity_kind: 'installation', p_identity_hash: installationHash,
+  });
+  if (linkage.error && !['PGRST202', '42883'].includes(linkage.error.code)) {
+    throw new Error('STUDIO_ACCESS_UNAVAILABLE');
+  }
   const eligibility = await admin.rpc('assess_free_access', { p_user_id: user.id });
   if (eligibility.error) {
     // Allow the existing Free path until the forward migration is installed.

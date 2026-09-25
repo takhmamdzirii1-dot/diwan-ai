@@ -12,7 +12,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   }
   const client = getSupabaseAdminClient();
   if (!client) return NextResponse.json({ error: 'ADMIN_DATA_UNAVAILABLE' }, { status: 503 });
-  const [balances, periods, entitlements, ledger, payments, jobs, freeAccess] = await Promise.all([
+  const [balances, periods, entitlements, ledger, payments, jobs, freeAccess, riskSummary] = await Promise.all([
     client.from('credits')
       .select('balance,subscription_balance,subscription_rollover_balance,purchased_balance,free_image_remaining,free_video_remaining,lite_video_remaining,subscription_entitlement_id,subscription_plan_code,lite_video_entitlement_id')
       .eq('user_id', id).maybeSingle(),
@@ -29,6 +29,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       .eq('user_id', id).order('created_at', { ascending: false }).limit(20),
     client.from('free_access_eligibility')
       .select('state,reason_code,evidence,updated_at,updated_by').eq('user_id', id).maybeSingle(),
+    client.rpc('free_device_risk_summary', { p_user_id: id }),
   ]);
   if ([balances, periods, entitlements, ledger, payments, jobs].some((result) => result.error)) {
     return NextResponse.json({ error: 'USER_DETAIL_QUERY_FAILED' }, { status: 503 });
@@ -52,7 +53,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'USER_DETAIL_QUERY_FAILED' }, { status: 503 });
   }
   return NextResponse.json({
-    freeAccess: freeAccess.error ? null : freeAccess.data ?? { state: 'eligible', reason_code: null, evidence: {}, updated_at: null, updated_by: null },
+    freeAccess: freeAccess.error ? null : {
+      ...(freeAccess.data ?? { state: 'eligible', reason_code: null, evidence: {}, updated_at: null, updated_by: null }),
+      riskSummary: riskSummary.error ? null : riskSummary.data,
+    },
     balances: balances.data ? {
       balance: String(balances.data.balance),
       subscription_balance: String(balances.data.subscription_balance),
