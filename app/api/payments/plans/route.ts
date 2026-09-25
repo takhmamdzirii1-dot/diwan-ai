@@ -4,6 +4,7 @@ import { getEffectiveRuntimeModels } from '@/lib/models/runtime-config';
 import { estimatePlanOutcomes } from '@/lib/payments/outcome-estimates';
 import { PAYMENT_GATEWAYS } from '@/lib/payments/gateways';
 import { eligibleTopUpRows, liteTopUpsRemaining, type PaidTopUpPlanCode } from '@/lib/payments/top-up-catalog';
+import { topUpPackLimit } from '@/lib/payments/top-up-pack';
 import { createClient } from '@/src/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -51,13 +52,10 @@ export async function GET() {
           .select('id,slug,plan_code,name,description,kind,price_dzd,unified_credits,active,display_order,featured,access_period_days,public_visible,entitlement')
           .eq('kind', 'credit_pack').eq('active', true).order('display_order');
         if (!packError) {
-          let liteRemaining: number | null = null;
-          if (code === 'lite') {
-            const { count } = await client.from('payment_orders').select('id', { count: 'exact', head: true })
-              .eq('user_id', user.id).eq('order_kind', 'credit_pack').eq('status', 'approved')
-              .gte('reviewed_at', active!.starts_at);
-            liteRemaining = liteTopUpsRemaining(count ?? 2);
-          }
+          const { data: approvedOrders, error: ordersError } = await client.from('payment_orders')
+            .select('plan_id').eq('user_id', user.id).eq('order_kind', 'credit_pack')
+            .eq('status', 'approved').gte('reviewed_at', active!.starts_at);
+          const liteRemaining = code === 'lite' ? liteTopUpsRemaining(ordersError ? 2 : (approvedOrders?.length ?? 0)) : null;
           const activePlanCode = code as PaidTopUpPlanCode;
           topUp = {
             activePlanCode,
@@ -65,11 +63,16 @@ export async function GET() {
             liteRemaining,
             reason: activePlanCode === 'lite' && liteRemaining === 0 ? 'LITE_TOP_UP_LIMIT_REACHED' : null,
           };
-          creditPacks = eligibleTopUpRows(packRows ?? [], activePlanCode, liteRemaining).map((pack) => ({ id: pack.id, slug: pack.slug, planCode: pack.plan_code ?? pack.slug,
+          const approvedByPack = new Map<string, number>();
+          for (const order of approvedOrders ?? []) approvedByPack.set(order.plan_id, (approvedByPack.get(order.plan_id) ?? 0) + 1);
+          creditPacks = (ordersError ? [] : eligibleTopUpRows(packRows ?? [], activePlanCode, liteRemaining))
+            .filter((pack) => { const limit = topUpPackLimit(pack.entitlement); return limit == null || (approvedByPack.get(pack.id) ?? 0) < limit; })
+            .map((pack) => ({ id: pack.id, slug: pack.slug, planCode: pack.plan_code ?? pack.slug,
             name: pack.name, description: pack.description, kind: pack.kind,
             priceDzd: pack.price_dzd, unifiedCredits: Number(pack.unified_credits),
             active: pack.active, displayOrder: pack.display_order, featured: pack.featured,
-            accessPeriodDays: pack.access_period_days, publicVisible: pack.public_visible }));
+            accessPeriodDays: pack.access_period_days, publicVisible: pack.public_visible,
+            purchasesRemaining: topUpPackLimit(pack.entitlement) == null ? null : Math.max(0, topUpPackLimit(pack.entitlement)! - (approvedByPack.get(pack.id) ?? 0)) }));
         }
       }
     }

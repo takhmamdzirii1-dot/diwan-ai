@@ -430,6 +430,7 @@ function ModelsPanel({ selectedId, onSelect, models }: { selectedId: string; onS
 
 function CreditsPanel() {
   const t = useTranslations('studio.settings');
+  const paymentT = useTranslations('payments');
   const locale = useLocale();
   const { openTopUpModal } = useModal();
   const [liteOffer, setLiteOffer] = useState<PaymentPlan | null>(null);
@@ -501,6 +502,12 @@ function CreditsPanel() {
           <p className="text-[12px] font-semibold text-[var(--studio-text-primary)]">{t('addCredits')}</p>
           <p className="mt-1 text-[11px] leading-relaxed text-[var(--studio-text-muted)]">{t('topUpAccessNote')}</p>
           <button type="button" onClick={() => openTopUpModal({ id: '', mode: 'credits' })} className="mt-3 h-9 rounded-lg bg-[var(--studio-accent)] px-3 text-[11px] font-semibold text-[var(--studio-accent-contrast)] hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]">{t('buyCredits')}</button>
+        </div>
+      )}
+      {user && planStatus === 'ready' && planCode === 'free' && !paidPlanCode && (
+        <div className="rounded-xl border border-[var(--studio-border-subtle)] bg-[var(--studio-surface-raised)] p-4">
+          <p className="text-[12px] text-[var(--studio-text-secondary)]">{paymentT('topUpRequiresPaidPlan')}</p>
+          <button type="button" onClick={() => openTopUpModal()} className="mt-3 h-9 rounded-lg bg-[var(--studio-accent)] px-3 text-[11px] font-semibold text-[var(--studio-accent-contrast)] hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]">{paymentT('activatePaidPlan')}</button>
         </div>
       )}
       {planAccessState === 'EXPIRING_SOON' && (

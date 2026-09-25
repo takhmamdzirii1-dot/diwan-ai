@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { eligibleTopUpRows, liteTopUpsRemaining, topUpPlanCode } from './top-up-catalog';
+import { paidTopUpPlanLabel, topUpPackLimit, topUpPackLimitLabel } from './top-up-pack';
 
 const packs = [
   { slug: 'lite_300', priceDzd: 1000, credits: 300, entitlement: { top_up_plan_code: 'lite' } },
@@ -37,4 +38,15 @@ test('cross-plan and untagged packs are excluded, including for MAX', () => {
   assert.equal(topUpPlanCode({ top_up_plan_code: 'lite' }), 'lite');
   assert.equal(topUpPlanCode({ top_up_plan_code: 'free' }), null);
   assert.deepEqual(eligibleTopUpRows(packs, 'max', null), []);
+});
+
+test('Admin labels exact paid-plan eligibility and supported period limits', () => {
+  assert.equal(paidTopUpPlanLabel('lite'), 'Lite');
+  assert.equal(paidTopUpPlanLabel('pro'), 'Pro');
+  assert.equal(paidTopUpPlanLabel('max'), 'MAX');
+  assert.equal(paidTopUpPlanLabel(null), 'Not configured');
+  assert.equal(topUpPackLimit({ top_up_purchase_limit_per_period: 2 }), 2);
+  assert.equal(topUpPackLimit({ top_up_purchase_limit_per_period: 0 }), null);
+  assert.equal(topUpPackLimitLabel({ top_up_plan_code: 'lite' }), '2 / paid period');
+  assert.equal(topUpPackLimitLabel({ top_up_plan_code: 'pro' }), 'No pack limit');
 });

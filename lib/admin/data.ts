@@ -904,6 +904,8 @@ export async function getAdminPaymentPlans(): Promise<AdminDataResult<AdminPayme
       eligibilityRequired: typeof plan.eligibility_required === 'boolean' ? plan.eligibility_required : undefined,
       frozen: typeof plan.frozen === 'boolean' ? plan.frozen : undefined,
       planCode: plan.plan_code == null ? null : String(plan.plan_code),
+      topUpPlanCode: plan.entitlement?.top_up_plan_code === 'lite' || plan.entitlement?.top_up_plan_code === 'pro' || plan.entitlement?.top_up_plan_code === 'max' ? plan.entitlement.top_up_plan_code : null,
+      topUpPurchaseLimitPerPeriod: typeof plan.entitlement?.top_up_purchase_limit_per_period === 'number' ? plan.entitlement.top_up_purchase_limit_per_period : null,
       accessPeriodDays: plan.access_period_days == null ? null : Number(plan.access_period_days),
       createdAt: plan.created_at ?? null, updatedAt: plan.updated_at ?? null,
       history: (audit.error ? [] : audit.data ?? []).filter((event) => event.resource_id === plan.id)

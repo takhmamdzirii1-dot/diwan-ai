@@ -67,7 +67,7 @@ export async function POST(request: Request) {
   if (error || !data) {
     console.error('[payments] order creation failed', { code: error?.code });
     const expected = ['PAYMENT_PLAN_UNAVAILABLE', 'ACTIVE_PAID_PLAN_REQUIRED',
-      'TOP_UP_PLAN_NOT_ELIGIBLE', 'LITE_TOP_UP_LIMIT_REACHED'] as const;
+      'TOP_UP_PLAN_NOT_ELIGIBLE', 'LITE_TOP_UP_LIMIT_REACHED', 'TOP_UP_PACK_LIMIT_REACHED'] as const;
     const safeCode = expected.find((code) => code === error?.message) ?? 'PAYMENT_ORDER_CREATE_FAILED';
     return NextResponse.json({ error: safeCode }, { status: safeCode === 'PAYMENT_ORDER_CREATE_FAILED' ? 500 : 409 });
   }

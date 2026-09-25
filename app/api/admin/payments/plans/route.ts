@@ -11,7 +11,12 @@ const schema = z.object({
   priceDzd: z.number().int().positive().safe(), unifiedCredits: z.number().int().positive().safe(),
   includedVideoAllowance: z.number().int().min(0).max(4).nullable().optional().default(null),
   active: z.boolean(), displayOrder: z.number().int().min(-10000).max(10000), featured: z.boolean(),
+  topUpPlanCode: z.enum(['lite', 'pro', 'max']).optional(),
+  topUpPurchaseLimitPerPeriod: z.number().int().min(1).max(1000).nullable().optional(),
 }).superRefine((plan, context) => {
+  if (plan.kind === 'credit_pack' && (!plan.topUpPlanCode || (plan.topUpPlanCode === 'lite' && plan.topUpPurchaseLimitPerPeriod != null && plan.topUpPurchaseLimitPerPeriod > 2))) {
+    context.addIssue({ code: 'custom', path: ['topUpPlanCode'], message: 'A credit pack requires one paid plan; Lite allows at most two purchases per period.' });
+  }
   if ((plan.slug === 'lite') !== (plan.includedVideoAllowance !== null)) {
     context.addIssue({ code: 'custom', path: ['includedVideoAllowance'], message: 'Lite requires an included-video allowance; other plans must leave it empty.' });
   }
@@ -27,6 +32,8 @@ function serializePlan(data: any) {
     subscriptionCreditAllowance: data.subscription_credit_allowance == null ? null : Number(data.subscription_credit_allowance),
     includedVideoAllowance: data.included_video_allowance == null ? null : Number(data.included_video_allowance),
     active: data.active, displayOrder: data.display_order, featured: data.featured,
+    topUpPlanCode: data.entitlement?.top_up_plan_code ?? null,
+    topUpPurchaseLimitPerPeriod: data.entitlement?.top_up_purchase_limit_per_period ?? null,
   };
 }
 
@@ -43,8 +50,9 @@ export async function POST(request: Request) {
     slug: plan.slug, name: plan.name, description: plan.description || null, kind: plan.kind,
     price_dzd: plan.priceDzd, unified_credits: plan.unifiedCredits,
     included_video_allowance: plan.includedVideoAllowance, active: plan.active,
+    ...(plan.kind === 'credit_pack' ? { entitlement: { top_up_plan_code: plan.topUpPlanCode, ...(plan.topUpPurchaseLimitPerPeriod == null ? {} : { top_up_purchase_limit_per_period: plan.topUpPurchaseLimitPerPeriod }) } } : {}),
     display_order: plan.displayOrder, featured: plan.featured, updated_by: access.user.id,
-  }).select('id,slug,name,description,kind,price_dzd,unified_credits,subscription_credit_allowance,included_video_allowance,active,display_order,featured').single();
+  }).select('id,slug,name,description,kind,price_dzd,unified_credits,subscription_credit_allowance,included_video_allowance,active,display_order,featured,entitlement').single();
   if (error) return NextResponse.json({ error: error.code === '23505' ? 'PAYMENT_PLAN_SLUG_EXISTS' : 'PAYMENT_PLAN_CREATE_FAILED' }, { status: 409 });
   revalidatePath('/admin/payments');
   revalidatePath('/admin/audit');

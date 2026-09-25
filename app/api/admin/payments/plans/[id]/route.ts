@@ -13,7 +13,12 @@ const schema = z.object({
   includedVideoAllowance: z.number().int().min(0).max(4).nullable().optional().default(null),
   displayOrder: z.number().int().min(-10000).max(10000), featured: z.boolean(),
   publicVisible: z.boolean().optional(), eligibilityRequired: z.boolean().optional(),
+  topUpPlanCode: z.enum(['lite', 'pro', 'max']).nullable().optional(),
+  topUpPurchaseLimitPerPeriod: z.number().int().min(1).max(1000).nullable().optional(),
 }).superRefine((plan, context) => {
+  if (plan.kind === 'credit_pack' && (!plan.topUpPlanCode || (plan.topUpPlanCode === 'lite' && plan.topUpPurchaseLimitPerPeriod != null && plan.topUpPurchaseLimitPerPeriod > 2))) {
+    context.addIssue({ code: 'custom', path: ['topUpPlanCode'], message: 'A credit pack requires one paid plan; Lite allows at most two purchases per period.' });
+  }
   if ((plan.slug === 'lite') !== (plan.includedVideoAllowance !== null)) {
     context.addIssue({ code: 'custom', path: ['includedVideoAllowance'], message: 'Lite requires an included-video allowance; other plans must leave it empty.' });
   }
@@ -34,10 +39,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { id } = await params;
   if (!z.string().uuid().safeParse(id).success) return NextResponse.json({ error: 'INVALID_PAYMENT_PLAN' }, { status: 400 });
   const plan = parsed.data;
-  const { data: existing, error: readError } = await client.from('payment_plans').select('slug,plan_code').eq('id', id).maybeSingle();
+  const { data: existing, error: readError } = await client.from('payment_plans').select('slug,plan_code,kind,entitlement').eq('id', id).maybeSingle();
   if (readError) return NextResponse.json({ error: 'PAYMENT_PLAN_UPDATE_FAILED' }, { status: 409 });
   if (!existing) return NextResponse.json({ error: 'PAYMENT_PLAN_NOT_FOUND' }, { status: 404 });
   if (existing.slug !== plan.slug) return NextResponse.json({ error: 'PAYMENT_PLAN_SLUG_IMMUTABLE' }, { status: 409 });
+  if (existing.kind !== plan.kind) return NextResponse.json({ error: 'PAYMENT_PLAN_KIND_IMMUTABLE' }, { status: 409 });
   const { data, error } = await client.from('payment_plans').update({
     name: plan.name, description: plan.description || null, kind: plan.kind,
     price_dzd: plan.priceDzd, unified_credits: plan.unifiedCredits,
@@ -46,8 +52,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     display_order: plan.displayOrder, featured: plan.featured,
     ...(plan.publicVisible === undefined ? {} : { public_visible: plan.publicVisible }),
     ...(plan.eligibilityRequired === undefined ? {} : { eligibility_required: plan.eligibilityRequired }),
+    ...(existing.kind === 'credit_pack' ? { entitlement: {
+      ...(existing.entitlement && typeof existing.entitlement === 'object' && !Array.isArray(existing.entitlement) ? existing.entitlement : {}),
+      top_up_plan_code: plan.topUpPlanCode,
+      ...(plan.topUpPurchaseLimitPerPeriod == null ? { top_up_purchase_limit_per_period: null } : { top_up_purchase_limit_per_period: plan.topUpPurchaseLimitPerPeriod }),
+    } } : {}),
     updated_by: access.user.id,
-  }).eq('id', id).select('id,slug,name,description,kind,price_dzd,unified_credits,subscription_credit_allowance,included_video_allowance,active,display_order,featured,public_visible,eligibility_required,frozen').maybeSingle();
+  }).eq('id', id).select('id,slug,name,description,kind,price_dzd,unified_credits,subscription_credit_allowance,included_video_allowance,active,display_order,featured,public_visible,eligibility_required,frozen,entitlement').maybeSingle();
   if (error) return NextResponse.json({ error: error.code === '23505' ? 'PAYMENT_PLAN_SLUG_EXISTS' : 'PAYMENT_PLAN_UPDATE_FAILED' }, { status: 409 });
   if (!data) return NextResponse.json({ error: 'PAYMENT_PLAN_NOT_FOUND' }, { status: 404 });
   revalidatePath('/admin/payments');
@@ -60,5 +71,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     includedVideoAllowance: data.included_video_allowance == null ? null : Number(data.included_video_allowance),
     active: data.active, displayOrder: data.display_order, featured: data.featured,
     publicVisible: data.public_visible, eligibilityRequired: data.eligibility_required, frozen: data.frozen,
+    topUpPlanCode: data.entitlement?.top_up_plan_code ?? null,
+    topUpPurchaseLimitPerPeriod: data.entitlement?.top_up_purchase_limit_per_period ?? null,
   } });
 }

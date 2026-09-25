@@ -278,6 +278,8 @@ export type AdminPaymentPlan = {
   frozen?: boolean;
   planCode?: string | null;
   accessPeriodDays?: number | null;
+  topUpPlanCode?: 'lite' | 'pro' | 'max' | null;
+  topUpPurchaseLimitPerPeriod?: number | null;
   createdAt?: string | null;
   updatedAt?: string | null;
   history?: { id: string; action: string; at: string; previousState: Record<string, unknown> | null; newState: Record<string, unknown> | null }[];

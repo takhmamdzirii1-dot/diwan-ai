@@ -49,6 +49,7 @@ export type PaymentPlan = {
   featured: boolean;
   accessPeriodDays: number | null;
   publicVisible: boolean;
+  purchasesRemaining?: number | null;
 };
 
 export type TopUpCatalogContext = {

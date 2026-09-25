@@ -309,18 +309,18 @@ export default function DashboardSidebar({
         <div className="shrink-0 p-3 space-y-3 border-t border-white/[0.08]">
           {user && <div className="rounded-xl border border-[var(--studio-border-subtle)] bg-[var(--studio-surface-raised)] px-3 py-2.5">
             <PanelLabel className="px-0 mb-1">{t('unifiedCredits')}</PanelLabel>
-            <div className="flex items-baseline justify-between gap-3">
+            <div className="flex items-center justify-between gap-3">
               <span className="text-[11px] text-[var(--studio-text-muted)]">{t('balance')}</span>
-              <span className="font-mono text-[12px] font-semibold text-white" aria-live="polite" aria-busy={balanceStatus === 'loading'}>
+              <div className="flex items-center gap-2"><span className="font-mono text-[12px] font-semibold text-white" aria-live="polite" aria-busy={balanceStatus === 'loading'}>
                 {balanceStatus === 'loading' ? (
                   <span className="block h-3 w-12 animate-pulse rounded bg-white/10 motion-reduce:animate-none" aria-hidden="true" />
                 ) : user && balanceStatus === 'ready' && balance !== null ? balance.toLocaleString() : '—'}
-              </span>
+              </span>{hasActivePaidPlan && <button type="button" onClick={() => openTopUpModal({ id: '', mode: 'credits' })} className="inline-flex min-h-8 items-center gap-1 rounded-lg border border-[var(--studio-border)] px-2 text-[10px] font-semibold text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]"><Coins className="h-3 w-3" />{t('addCredits')}</button>}</div>
             </div>
-            <button type="button" onClick={() => openTopUpModal(hasActivePaidPlan ? { id: '', mode: 'credits' } : undefined)} className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-[var(--studio-border)] text-[11px] font-semibold text-[var(--studio-text-secondary)] transition-colors duration-150 hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]">
+            {!hasActivePaidPlan && <button type="button" onClick={() => openTopUpModal()} className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-[var(--studio-border)] text-[11px] font-semibold text-[var(--studio-text-secondary)] transition-colors duration-150 hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]">
               <Coins className="h-3.5 w-3.5" />
-              {hasActivePaidPlan ? t('addCredits') : paidPlanCode ? t('reactivatePlan') : t('activatePlan')}
-            </button>
+              {paidPlanCode ? t('reactivatePlan') : t('activatePlan')}
+            </button>}
           </div>}
 
           {user ? (
