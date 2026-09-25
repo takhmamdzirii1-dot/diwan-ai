@@ -52,7 +52,8 @@ export default function AdminModelCapabilitiesControls({ model, onSaved }: {
   const [feedback, setFeedback] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
   const [syncDiagnostics, setSyncDiagnostics] = useState<{
     provider: string; route: string; backendModelId: string; canonicalLookupId: string;
-    modelsDevMatch: boolean; providerMetadataMatch: boolean; finalSources: string[]; categories: string[];
+    modelsDevMatch: boolean; providerMetadataMatch: boolean; vantraFallbackMatch: boolean;
+    finalSources: string[]; categories: string[];
   } | null>(null);
   const activeRoute = (model.routes ?? []).filter((route) => route.enabled && route.providerEnabled && route.configured)
     .sort((a, b) => a.priority - b.priority)[0];
@@ -140,7 +141,7 @@ export default function AdminModelCapabilitiesControls({ model, onSaved }: {
         {syncDiagnostics && activeRoute?.id === syncDiagnostics.route && <div className="my-2 space-y-1 rounded-md border border-white/10 p-2 text-[11px] text-white/65">
           <p>Provider: {syncDiagnostics.provider} · Route: {syncDiagnostics.route}</p>
           <p>Backend model ID: {syncDiagnostics.backendModelId} · Canonical lookup ID: {syncDiagnostics.canonicalLookupId}</p>
-          <p>Models.dev match: {syncDiagnostics.modelsDevMatch ? 'Yes' : 'No'} · Provider metadata match: {syncDiagnostics.providerMetadataMatch ? 'Yes' : 'No'}</p>
+          <p>Provider metadata match: {syncDiagnostics.providerMetadataMatch ? 'Yes' : 'No'} · Models.dev match: {syncDiagnostics.modelsDevMatch ? 'Yes' : 'No'} · VANTRA fallback match: {syncDiagnostics.vantraFallbackMatch ? 'Yes' : 'No'}</p>
           <p>Final source: {syncDiagnostics.finalSources.length ? syncDiagnostics.finalSources.map(sourceName).join(' + ') : 'Unknown'}</p>
           <p>Sync details: {syncDiagnostics.categories.join(', ')}</p>
         </div>}

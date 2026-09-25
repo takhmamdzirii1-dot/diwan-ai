@@ -45,6 +45,8 @@ const providerAliases: Record<string, string> = { zai: 'z-ai', alibaba: 'qwen' }
 
 export function lookupModelsDevModel(catalog: Catalog, route: Pick<RouteIdentity, 'providerId' | 'providerModelId'>): ModelsDevLookup {
   const backendId = identity(route.providerModelId);
+  if (backendId.startsWith('~') || (identity(route.providerId) === 'orca_router' && backendId.startsWith('orcarouter/')))
+    return { model: null, canonicalLookupId: backendId, aliasUsed: false };
   const routeProvider = identity(route.providerId);
   const separator = backendId.indexOf('/');
   const underlyingProvider = separator > 0 ? backendId.slice(0, separator) : null;

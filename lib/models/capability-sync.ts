@@ -3,14 +3,17 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CapabilitySourceType, ModelCapabilities } from './capabilities';
 import type { StudioModality } from '@/src/config/studio-registry';
-import { providerConfigurationSummary } from '@/lib/ai/providers/registry';
+import { providerConfigurationSummary, type ProviderRuntimeDescriptor } from '@/lib/ai/providers/registry';
 import { resolveCapabilityPriority } from './capability-resolution';
-import { CHAT_NATIVE_CAPABILITIES, resolveRouteCapabilities, type ChatNativeCapability, type RouteCapabilityStore } from './capability-v2';
+import { resolveRouteCapabilities, type RouteCapabilityStore } from './capability-v2';
 import { lookupModelsDevModel, mapModelsDevCapabilities, modelsDevCatalog, vantraFallbackCapabilities } from './models-dev-catalog';
+import { fetchProviderCapabilityMetadata } from './provider-capability-fetch.server';
+import { providerCapabilityBooleans } from './provider-capability-evidence';
 
 export type CapabilitySyncDiagnostics = {
   provider: string; route: string; backendModelId: string; canonicalLookupId: string;
-  modelsDevMatch: boolean; providerMetadataMatch: boolean; finalSources: string[]; categories: string[];
+  modelsDevMatch: boolean; providerMetadataMatch: boolean; vantraFallbackMatch: boolean;
+  finalSources: string[]; categories: string[];
 };
 
 type ReaderInput = { providerId: string; providerModelId: string; modality: StudioModality };
@@ -55,6 +58,7 @@ export async function syncModelCapabilities(client: SupabaseClient, input: {
     .eq('model_key', input.modelKey).eq('enabled', true).order('priority');
   if (routes.error) throw routes.error;
   let route = routes.data?.[0];
+  let providerRuntime: ProviderRuntimeDescriptor | null = null;
   if (input.modality === 'chat' && routes.data?.length) {
     const providers = await client.from('provider_runtime_configs')
       .select('provider_id,enabled,emergency_disabled,archived,adapter_type,base_endpoint')
@@ -64,6 +68,7 @@ export async function syncModelCapabilities(client: SupabaseClient, input: {
       Boolean(item.enabled) && !Boolean(item.archived) && !Boolean(item.emergency_disabled)
         && providerConfigurationSummary(String(item.provider_id), item).configured]));
     route = routes.data.find((item) => ready.get(String(item.provider_id)));
+    providerRuntime = providers.data?.find((item) => item.provider_id === route?.provider_id) ?? null;
   }
   let providerMetadata: Partial<ModelCapabilities> | null = null;
   let adapterInferred: Partial<ModelCapabilities> | null = null;
@@ -99,11 +104,9 @@ export async function syncModelCapabilities(client: SupabaseClient, input: {
     const lookup = catalogResult.catalog ? lookupModelsDevModel(catalogResult.catalog, identity) : null;
     const modelsDevEvidence = mapModelsDevCapabilities(lookup?.model ?? null);
     const localFallback = vantraFallbackCapabilities(identity);
-    const routeProviderEvidence: Partial<Record<ChatNativeCapability, boolean>> = {};
-    const providerFields = providerMetadata as Record<string, unknown> | null;
-    for (const key of CHAT_NATIVE_CAPABILITIES) {
-      if (typeof providerFields?.[key] === 'boolean') routeProviderEvidence[key] = providerFields[key] as boolean;
-    }
+    const providerResponse = await fetchProviderCapabilityMetadata({ providerId: identity.providerId,
+      providerModelId: identity.providerModelId, runtime: providerRuntime });
+    const routeProviderEvidence = providerCapabilityBooleans(providerResponse.result);
     const resolution = resolveRouteCapabilities({ route: identity, stored: routeCapabilitiesV2,
       providerMetadata: routeProviderEvidence,
       modelsDev: modelsDevEvidence, modelsDevCheckedAt: catalogResult.checkedAt,
@@ -111,14 +114,15 @@ export async function syncModelCapabilities(client: SupabaseClient, input: {
     routeCapabilitiesV2[identity.id] = resolution.record;
     const finalSources = [...new Set(Object.values(resolution.resolved).filter((item) => item.state !== 'unknown').map((item) => item.source))];
     const categories = [
-      ...(Object.keys(routeProviderEvidence).length ? ['matched_provider_metadata'] : [readerError ? 'metadata_refresh_failed' : 'provider_metadata_unavailable']),
+      ...(providerResponse.result?.matched ? ['matched_provider_metadata'] : [providerResponse.reason]),
       ...(lookup?.model ? ['matched_models_dev'] : [catalogResult.catalog ? (identity.providerModelId.trim() ? 'model_not_found' : 'provider_model_id_missing') : 'catalog_unavailable']),
       ...(lookup?.aliasUsed ? ['canonical_alias_used'] : []),
       ...(Object.keys(localFallback).length ? ['matched_vantra_fallback'] : []),
     ];
     diagnostics = { provider: identity.providerId, route: identity.id, backendModelId: identity.providerModelId,
       canonicalLookupId: lookup?.canonicalLookupId ?? identity.providerModelId, modelsDevMatch: Boolean(lookup?.model),
-      providerMetadataMatch: Object.keys(routeProviderEvidence).length > 0, finalSources, categories };
+      providerMetadataMatch: Boolean(providerResponse.result?.matched), vantraFallbackMatch: Object.keys(localFallback).length > 0,
+      finalSources, categories };
     const hasResolvedEvidence = Object.values(resolution.resolved).some((entry) => entry.state !== 'unknown');
     if (catalogResult.status === 'stale') {
       result.syncStatus = 'partial';
@@ -129,13 +133,13 @@ export async function syncModelCapabilities(client: SupabaseClient, input: {
     } else if (catalogResult.status === 'unavailable' && !hasResolvedEvidence) {
       result.syncStatus = 'partial';
       result.syncError = 'No verified capability information is available for this route. Unknown features remain disabled.';
-    } else if (!providerMetadata && Object.keys(modelsDevEvidence).length) {
+    } else if (!providerResponse.result?.matched && Object.keys(modelsDevEvidence).length) {
       result.syncStatus = 'partial';
       result.syncError = 'Provider metadata is unavailable. Models.dev catalog evidence is being used.';
-    } else if (!providerMetadata && Object.keys(localFallback ?? {}).length) {
+    } else if (!providerResponse.result?.matched && Object.keys(localFallback ?? {}).length) {
       result.syncStatus = 'partial';
       result.syncError = 'Provider metadata is unavailable. VANTRA catalog evidence is being used.';
-    } else if (!providerMetadata && hasResolvedEvidence) {
+    } else if (!providerResponse.result?.matched && hasResolvedEvidence) {
       result.syncStatus = 'partial';
       result.syncError = 'Fresh metadata is unavailable. Last known safe route evidence is being used.';
     } else if (!hasResolvedEvidence) {
