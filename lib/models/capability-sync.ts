@@ -3,9 +3,15 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CapabilitySourceType, ModelCapabilities } from './capabilities';
 import type { StudioModality } from '@/src/config/studio-registry';
+import { providerConfigurationSummary } from '@/lib/ai/providers/registry';
 import { resolveCapabilityPriority } from './capability-resolution';
 import { CHAT_NATIVE_CAPABILITIES, resolveRouteCapabilities, type ChatNativeCapability, type RouteCapabilityStore } from './capability-v2';
-import { findModelsDevModel, mapModelsDevCapabilities, modelsDevCatalog, vantraFallbackCapabilities } from './models-dev-catalog';
+import { lookupModelsDevModel, mapModelsDevCapabilities, modelsDevCatalog, vantraFallbackCapabilities } from './models-dev-catalog';
+
+export type CapabilitySyncDiagnostics = {
+  provider: string; route: string; backendModelId: string; canonicalLookupId: string;
+  modelsDevMatch: boolean; providerMetadataMatch: boolean; finalSources: string[]; categories: string[];
+};
 
 type ReaderInput = { providerId: string; providerModelId: string; modality: StudioModality };
 type CapabilityReader = (input: ReaderInput) => Promise<Partial<ModelCapabilities> | null>;
@@ -46,9 +52,19 @@ export async function syncModelCapabilities(client: SupabaseClient, input: {
 }) {
   const routes = await client.from('model_provider_routes')
     .select('id,provider_id,provider_model_id,priority')
-    .eq('model_key', input.modelKey).eq('enabled', true).order('priority').limit(1);
+    .eq('model_key', input.modelKey).eq('enabled', true).order('priority');
   if (routes.error) throw routes.error;
-  const route = routes.data?.[0];
+  let route = routes.data?.[0];
+  if (input.modality === 'chat' && routes.data?.length) {
+    const providers = await client.from('provider_runtime_configs')
+      .select('provider_id,enabled,emergency_disabled,archived,adapter_type,base_endpoint')
+      .in('provider_id', [...new Set(routes.data.map((item) => String(item.provider_id)))]);
+    if (providers.error) throw providers.error;
+    const ready = new Map((providers.data ?? []).map((item) => [String(item.provider_id),
+      Boolean(item.enabled) && !Boolean(item.archived) && !Boolean(item.emergency_disabled)
+        && providerConfigurationSummary(String(item.provider_id), item).configured]));
+    route = routes.data.find((item) => ready.get(String(item.provider_id)));
+  }
   let providerMetadata: Partial<ModelCapabilities> | null = null;
   let adapterInferred: Partial<ModelCapabilities> | null = null;
   let readerError: string | null = null;
@@ -73,14 +89,15 @@ export async function syncModelCapabilities(client: SupabaseClient, input: {
     result.syncError = readerError;
   } else if (!route) {
     result.syncStatus = 'partial';
-    result.syncError = 'No enabled provider route is configured for this model.';
+    result.syncError = 'No active configured provider route is available for this model.';
   }
   const routeCapabilitiesV2 = { ...(input.routeCapabilitiesV2 ?? {}) };
+  let diagnostics: CapabilitySyncDiagnostics | null = null;
   if (route && input.modality === 'chat') {
     const identity = { id: String(route.id), providerId: String(route.provider_id), providerModelId: String(route.provider_model_id) };
     const catalogResult = await modelsDevCatalog.load();
-    const catalogModel = catalogResult.catalog ? findModelsDevModel(catalogResult.catalog, identity) : null;
-    const modelsDevEvidence = mapModelsDevCapabilities(catalogModel);
+    const lookup = catalogResult.catalog ? lookupModelsDevModel(catalogResult.catalog, identity) : null;
+    const modelsDevEvidence = mapModelsDevCapabilities(lookup?.model ?? null);
     const localFallback = vantraFallbackCapabilities(identity);
     const routeProviderEvidence: Partial<Record<ChatNativeCapability, boolean>> = {};
     const providerFields = providerMetadata as Record<string, unknown> | null;
@@ -92,6 +109,16 @@ export async function syncModelCapabilities(client: SupabaseClient, input: {
       modelsDev: modelsDevEvidence, modelsDevCheckedAt: catalogResult.checkedAt,
       catalog: localFallback, now: result.lastSyncedAt });
     routeCapabilitiesV2[identity.id] = resolution.record;
+    const finalSources = [...new Set(Object.values(resolution.resolved).filter((item) => item.state !== 'unknown').map((item) => item.source))];
+    const categories = [
+      ...(Object.keys(routeProviderEvidence).length ? ['matched_provider_metadata'] : [readerError ? 'metadata_refresh_failed' : 'provider_metadata_unavailable']),
+      ...(lookup?.model ? ['matched_models_dev'] : [catalogResult.catalog ? (identity.providerModelId.trim() ? 'model_not_found' : 'provider_model_id_missing') : 'catalog_unavailable']),
+      ...(lookup?.aliasUsed ? ['canonical_alias_used'] : []),
+      ...(Object.keys(localFallback).length ? ['matched_vantra_fallback'] : []),
+    ];
+    diagnostics = { provider: identity.providerId, route: identity.id, backendModelId: identity.providerModelId,
+      canonicalLookupId: lookup?.canonicalLookupId ?? identity.providerModelId, modelsDevMatch: Boolean(lookup?.model),
+      providerMetadataMatch: Object.keys(routeProviderEvidence).length > 0, finalSources, categories };
     const hasResolvedEvidence = Object.values(resolution.resolved).some((entry) => entry.state !== 'unknown');
     if (catalogResult.status === 'stale') {
       result.syncStatus = 'partial';
@@ -135,5 +162,5 @@ export async function syncModelCapabilities(client: SupabaseClient, input: {
     data = fallback.data; error = fallback.error;
   }
   if (error || !data) throw new Error(error?.message ?? 'MODEL_RUNTIME_CONFIG_REQUIRED');
-  return { ...result, routeCapabilitiesV2, updatedAt: String(data.updated_at) };
+  return { ...result, routeCapabilitiesV2, diagnostics, updatedAt: String(data.updated_at) };
 }

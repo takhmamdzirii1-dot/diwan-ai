@@ -4,6 +4,7 @@ const CATALOG_URL = 'https://models.dev/api.json';
 const CACHE_MS = 24 * 60 * 60 * 1000;
 type ModelEntry = { providerId: string; modelId: string; value: Record<string, unknown> };
 type Catalog = Map<string, ModelEntry[]>;
+export type ModelsDevLookup = { model: ModelEntry | null; canonicalLookupId: string; aliasUsed: boolean };
 export type CatalogStatus = 'fresh' | 'stale' | 'unavailable';
 export type CatalogResult = { status: CatalogStatus; catalog: Catalog | null; checkedAt: string | null };
 
@@ -38,20 +39,32 @@ export function indexModelsDevCatalog(payload: unknown): Catalog {
   return index;
 }
 
-export function findModelsDevModel(catalog: Catalog, route: Pick<RouteIdentity, 'providerId' | 'providerModelId'>): ModelEntry | null {
+// Only namespaces present in VANTRA's configured backend route IDs belong here.
+// An alias changes the provider namespace, never the model/version identifier.
+const providerAliases: Record<string, string> = { zai: 'z-ai', alibaba: 'qwen' };
+
+export function lookupModelsDevModel(catalog: Catalog, route: Pick<RouteIdentity, 'providerId' | 'providerModelId'>): ModelsDevLookup {
   const backendId = identity(route.providerModelId);
   const routeProvider = identity(route.providerId);
-  const canonicalProvider = backendId.includes('/') ? backendId.split('/')[0] : null;
-  const candidates = catalog.get(backendId) ?? (canonicalProvider ? catalog.get(backendId.slice(canonicalProvider.length + 1)) : undefined) ?? [];
-  const exact = candidates.find((item) => item.providerId === routeProvider && (item.modelId === backendId || `${item.providerId}/${item.modelId}` === backendId));
-  if (exact) return exact;
-  const canonical = canonicalProvider ? candidates.find((item) => item.providerId === canonicalProvider) : null;
-  if (canonical) return canonical;
-  // Aggregator metadata is route-specific. Never borrow OpenRouter evidence
-  // for OrcaRouter (or vice versa) through a coincidentally matching ID.
-  const aggregators = new Set(['openrouter', 'orca_router', 'orcarouter', 'vercel_ai_gateway']);
-  const generic = candidates.filter((item) => !aggregators.has(item.providerId));
-  return generic.length === 1 ? generic[0] : null;
+  const separator = backendId.indexOf('/');
+  const underlyingProvider = separator > 0 ? backendId.slice(0, separator) : null;
+  const modelId = separator > 0 ? backendId.slice(separator + 1) : backendId;
+  const exactCandidates = catalog.get(backendId) ?? [];
+  const exact = exactCandidates.find((item) => item.providerId === routeProvider && item.modelId === backendId)
+    ?? (underlyingProvider ? exactCandidates.find((item) => item.providerId === underlyingProvider && item.modelId === modelId) : null)
+    ?? (!underlyingProvider ? exactCandidates.find((item) => item.providerId === routeProvider && item.modelId === backendId) : null);
+  if (exact) return { model: exact, canonicalLookupId: backendId, aliasUsed: false };
+  const aliasedProvider = underlyingProvider ? providerAliases[underlyingProvider] : undefined;
+  if (aliasedProvider) {
+    const aliasedId = `${aliasedProvider}/${modelId}`;
+    const aliased = (catalog.get(aliasedId) ?? []).find((item) => item.providerId === aliasedProvider && item.modelId === modelId);
+    if (aliased) return { model: aliased, canonicalLookupId: aliasedId, aliasUsed: true };
+  }
+  return { model: null, canonicalLookupId: aliasedProvider ? `${aliasedProvider}/${modelId}` : backendId, aliasUsed: false };
+}
+
+export function findModelsDevModel(catalog: Catalog, route: Pick<RouteIdentity, 'providerId' | 'providerModelId'>): ModelEntry | null {
+  return lookupModelsDevModel(catalog, route).model;
 }
 
 export function mapModelsDevCapabilities(model: ModelEntry | null): Partial<Record<ChatNativeCapability, boolean>> {

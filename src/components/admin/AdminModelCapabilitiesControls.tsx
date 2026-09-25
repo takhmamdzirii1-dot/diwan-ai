@@ -50,6 +50,10 @@ export default function AdminModelCapabilitiesControls({ model, onSaved }: {
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [feedback, setFeedback] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+  const [syncDiagnostics, setSyncDiagnostics] = useState<{
+    provider: string; route: string; backendModelId: string; canonicalLookupId: string;
+    modelsDevMatch: boolean; providerMetadataMatch: boolean; finalSources: string[]; categories: string[];
+  } | null>(null);
   const activeRoute = (model.routes ?? []).filter((route) => route.enabled && route.providerEnabled && route.configured)
     .sort((a, b) => a.priority - b.priority)[0];
   const routeCapabilities = activeRoute ? resolveRouteCapabilities({ route: activeRoute, stored: model.routeCapabilitiesV2 }).resolved : null;
@@ -109,6 +113,7 @@ export default function AdminModelCapabilitiesControls({ model, onSaved }: {
         capabilitySyncStatus: body.config.syncStatus, capabilitySyncError: body.config.syncError,
         capabilityLastSyncedAt: body.config.lastSyncedAt, updatedAt: body.config.updatedAt });
       if (body.config.routeCapabilitiesV2) onSaved({ routeCapabilitiesV2: body.config.routeCapabilitiesV2 });
+      setSyncDiagnostics(body.config.diagnostics ?? null);
       setFeedback({ tone: body.config.syncStatus === 'failed' ? 'error' : 'success',
         text: body.config.syncError ?? 'Capability sync complete.' });
     } catch {
@@ -132,6 +137,13 @@ export default function AdminModelCapabilitiesControls({ model, onSaved }: {
       <div><h3 className="font-semibold text-white">VANTRA capabilities</h3><p className="mt-1">Document upload: unavailable · Document extraction: unavailable · File generation/export: available in browser</p></div>
       <details className="rounded-md border border-white/10 p-2.5"><summary className="cursor-pointer font-semibold text-white">Advanced overrides and technical details</summary>
         <p className="my-2">Provider: {activeRoute?.providerId ?? 'None'} · Backend model: {activeRoute?.providerModelId ?? 'None'}. Sync refreshes available metadata; no live probe runs automatically.</p>
+        {syncDiagnostics && activeRoute?.id === syncDiagnostics.route && <div className="my-2 space-y-1 rounded-md border border-white/10 p-2 text-[11px] text-white/65">
+          <p>Provider: {syncDiagnostics.provider} · Route: {syncDiagnostics.route}</p>
+          <p>Backend model ID: {syncDiagnostics.backendModelId} · Canonical lookup ID: {syncDiagnostics.canonicalLookupId}</p>
+          <p>Models.dev match: {syncDiagnostics.modelsDevMatch ? 'Yes' : 'No'} · Provider metadata match: {syncDiagnostics.providerMetadataMatch ? 'Yes' : 'No'}</p>
+          <p>Final source: {syncDiagnostics.finalSources.length ? syncDiagnostics.finalSources.map(sourceName).join(' + ') : 'Unknown'}</p>
+          <p>Sync details: {syncDiagnostics.categories.join(', ')}</p>
+        </div>}
         {model.capabilitySourceType === 'admin_override' && <button type="button" onClick={() => void syncNow(true)} disabled={syncing || saving || dirty} className="my-2 rounded-md border border-white/15 px-2.5 py-1.5 text-white disabled:opacity-45">Clear legacy model override</button>}
         {activeRoute && CHAT_NATIVE_CAPABILITIES.map((key) => <label key={key} className="flex items-center justify-between gap-3 py-1.5"><span>{CHAT_CAPABILITY_LABELS[key]}</span><select value={routeCapabilities?.[key].override ?? 'auto'} disabled={saving} onChange={(event) => void setRouteOverride(key, event.target.value as CapabilityOverride)} className="rounded-md border border-white/15 bg-neutral-950 px-2 py-1 text-white"><option value="auto">Auto</option><option value="force_enabled">Force enabled</option><option value="force_disabled">Force disabled</option></select></label>)}
       </details>

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createModelsDevCatalogAdapter, findModelsDevModel, indexModelsDevCatalog, mapModelsDevCapabilities, vantraFallbackCapabilities } from './models-dev-catalog';
+import { createModelsDevCatalogAdapter, findModelsDevModel, indexModelsDevCatalog, lookupModelsDevModel, mapModelsDevCapabilities, vantraFallbackCapabilities } from './models-dev-catalog';
 import { resolveRouteCapabilities, routeAllowsAttachment } from './capability-v2';
 
 const fixture = {
@@ -17,6 +17,51 @@ test('backend model identity drives lookup and catalog mappings', () => {
   assert.deepEqual(mapModelsDevCapabilities(model), { visionInput: true, fileInput: true, tools: true, structuredOutput: true });
   assert.equal(findModelsDevModel(index, { providerId: 'openai', providerModelId: route.displayName }), null);
   assert.equal(findModelsDevModel(index, { providerId: 'orca_router', providerModelId: 'shared-test' }), null);
+});
+
+test('representative router and gateway identities resolve by exact provider then explicit namespace alias', () => {
+  const index = indexModelsDevCatalog({
+    openai: { models: { 'gpt-test': { id: 'gpt-test', tool_call: true } } },
+    'z-ai': { models: { 'glm-5.3-flash': { id: 'glm-5.3-flash', modalities: { input: ['image'] } },
+      'glm-5.3-flash-free': { id: 'glm-5.3-flash-free', tool_call: false } } },
+    qwen: { models: { 'qwen3.8-flash': { id: 'qwen3.8-flash', structured_output: true } } },
+    agnes: { models: { 'agnes-3.0-flash': { id: 'agnes-3.0-flash', tool_call: true } } },
+  });
+  const openRouter = lookupModelsDevModel(index, { providerId: 'openrouter', providerModelId: 'openai/gpt-test' });
+  assert.equal(openRouter.model?.providerId, 'openai');
+  assert.equal(openRouter.canonicalLookupId, 'openai/gpt-test');
+  assert.equal(openRouter.aliasUsed, false);
+  const vercel = lookupModelsDevModel(index, { providerId: 'vercel_ai_gateway', providerModelId: 'zai/glm-5.3-flash' });
+  assert.equal(vercel.model?.providerId, 'z-ai');
+  assert.equal(vercel.canonicalLookupId, 'z-ai/glm-5.3-flash');
+  assert.equal(vercel.aliasUsed, true);
+  const qwenGateway = lookupModelsDevModel(index, { providerId: 'vercel_ai_gateway', providerModelId: 'alibaba/qwen3.8-flash' });
+  assert.equal(qwenGateway.model?.providerId, 'qwen');
+  const orca = lookupModelsDevModel(index, { providerId: 'orca_router', providerModelId: 'z-ai/glm-5.3-flash-free' });
+  assert.equal(orca.model?.modelId, 'glm-5.3-flash-free');
+  assert.equal(mapModelsDevCapabilities(orca.model).tools, false);
+  const agnes = lookupModelsDevModel(index, { providerId: 'agnes', providerModelId: 'agnes-3.0-flash' });
+  assert.equal(agnes.model?.providerId, 'agnes');
+  assert.equal(agnes.aliasUsed, false);
+  assert.equal(lookupModelsDevModel(index, { providerId: 'orca_router', providerModelId: 'z-ai/glm-5.3-flash-free-v2' }).model, null);
+  assert.equal(lookupModelsDevModel(index, { providerId: 'openrouter', providerModelId: 'GPT-5.6 Sol' }).model, null);
+});
+
+test('exact provider catalog evidence wins; per-capability route evidence remains authoritative', () => {
+  const index = indexModelsDevCatalog({
+    zai: { models: { 'glm-5.3-flash': { id: 'glm-5.3-flash', tool_call: true, structured_output: false } } },
+    'z-ai': { models: { 'glm-5.3-flash': { id: 'glm-5.3-flash', tool_call: false } } },
+  });
+  const route = { id: 'vercel-route', providerId: 'vercel_ai_gateway', providerModelId: 'zai/glm-5.3-flash' };
+  const lookup = lookupModelsDevModel(index, route);
+  assert.equal(lookup.model?.providerId, 'zai');
+  assert.equal(lookup.aliasUsed, false);
+  const resolved = resolveRouteCapabilities({ route, modelsDev: mapModelsDevCapabilities(lookup.model), providerMetadata: { tools: false } });
+  assert.equal(resolved.resolved.tools.state, 'unsupported');
+  assert.equal(resolved.resolved.tools.source, 'provider_metadata');
+  assert.equal(resolved.resolved.structuredOutput.state, 'unsupported');
+  assert.equal(resolved.resolved.structuredOutput.source, 'models_dev');
+  assert.equal(resolved.resolved.visionInput.state, 'unknown');
 });
 
 test('missing fields stay unknown; explicit false and route metadata override generic support', () => {
