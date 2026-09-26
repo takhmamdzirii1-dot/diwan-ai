@@ -1,7 +1,9 @@
 import { after, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { streamText } from 'ai';
-import { PRESENTATION_OUTPUT_INSTRUCTION, presentationRequested } from '@/lib/artifacts/chat-parts';
+import { PRESENTATION_OUTPUT_INSTRUCTION } from '@/lib/artifacts/chat-parts';
+import { artifactTaskInstruction, resolveArtifactToolPath, selectArtifactTools, verifyArtifactToolResult } from '@/lib/artifacts/tool-registry';
+import { buildNativeArtifactTools } from '@/lib/artifacts/tool-native.server';
 
 import { DEFAULT_CHAT_MODEL } from '../../../../src/config/studio-registry';
 import { resolveRuntimeModelAccess } from '@/lib/models/plan-entitlements.server';
@@ -96,8 +98,8 @@ export async function POST(request: Request) {
     const latestUserText = Array.isArray(messages)
       ? [...messages].reverse().find((entry) => entry?.role === 'user')?.content
       : prompt;
-    const wantsPresentation = typeof latestUserText === 'string' && presentationRequested(latestUserText);
-    const SYSTEM_PROMPT = `${customSystem || DEFAULT_SYSTEM}\n\n${DATETIME_CONTEXT}${wantsPresentation ? `\n\n${PRESENTATION_OUTPUT_INSTRUCTION}` : ''}`;
+    const taskSelection = selectArtifactTools(typeof latestUserText === 'string' ? latestUserText : '');
+    const SYSTEM_PROMPT = `${customSystem || DEFAULT_SYSTEM}\n\n${DATETIME_CONTEXT}`;
 
     let messagesPayload = messages;
     if (Array.isArray(messagesPayload) && (
@@ -134,7 +136,7 @@ export async function POST(request: Request) {
     }
     // Chat-only presentation parts are persisted client-side, not provider input.
     messagesPayload = messagesPayload.map((message) => {
-      const { vantraParts: _parts, ...providerMessage } = message;
+      const { vantraParts: _parts, toolInvocations: _tools, ...providerMessage } = message;
       return providerMessage;
     });
 
@@ -206,6 +208,10 @@ export async function POST(request: Request) {
       route: { id: route.id, providerId: route.providerId, providerModelId: route.providerModelId },
       stored: runtimeModel.routeCapabilitiesV2,
     }).resolved;
+    const toolPath = resolveArtifactToolPath(taskSelection, native);
+    const taskInstruction = taskSelection.skill === 'presentation' && toolPath !== 'native'
+      ? PRESENTATION_OUTPUT_INSTRUCTION : artifactTaskInstruction(taskSelection, toolPath);
+    if (taskInstruction) messagesPayload[0] = { role: 'system', content: `${SYSTEM_PROMPT}\n\n${taskInstruction}` };
     if (native.streaming.state === 'unsupported'
       || (native.streaming.state === 'unknown' && (!('streaming' in chatCapabilities) || !chatCapabilities.streaming))) {
       return NextResponse.json({ error: 'MODEL_CAPABILITY_UNSUPPORTED', reason: 'Streaming is disabled for this model route.' }, { status: 409 });
@@ -440,9 +446,12 @@ export async function POST(request: Request) {
         null
       );
       providerStarted = true;
+      const nativeTools = toolPath === 'native' ? buildNativeArtifactTools(taskSelection) : undefined;
       const result = await streamText({
         model: languageModel,
         messages: messagesPayload,
+        tools: nativeTools,
+        maxSteps: 1,
         temperature,
         maxTokens,
         topP,
@@ -450,9 +459,11 @@ export async function POST(request: Request) {
         abortSignal: request.signal,
         onChunk: ({ chunk }) => {
           if (chunk.type === 'text-delta' && chunk.textDelta.length > 0) outputStarted = true;
+          if (chunk.type === 'tool-result' && verifyArtifactToolResult(chunk.toolName, chunk.result)) outputStarted = true;
         },
-        onFinish: async ({ finishReason, usage }) => {
+        onFinish: async ({ finishReason, usage, toolResults }) => {
           try {
+            if (toolResults.some((entry) => verifyArtifactToolResult(entry.toolName, entry.result))) outputStarted = true;
             if (request.signal.aborted) {
               await finalizeOnce({
                 terminalStatus: 'user_cancelled',

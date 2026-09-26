@@ -11,7 +11,8 @@ import { cn } from '@/lib/utils';
 import { useLocale, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { documentFromMarkdown } from '@/lib/artifacts/core';
-import { chatPartsFromMessage, looksLikeArtifactOutput, streamingSafeText } from '@/lib/artifacts/chat-parts';
+import { chatPartsFromMessage, chatPartsFromToolInvocations, looksLikeArtifactOutput, streamingSafeText } from '@/lib/artifacts/chat-parts';
+import { artifactToolProgress } from '@/lib/artifacts/tool-registry';
 
 const ArtifactDocumentPreview = dynamic(() => import('./ArtifactDocumentPreview'), { ssr: false });
 const ArtifactPresentationPreview = dynamic(() => import('./ArtifactPresentationPreview'), { ssr: false });
@@ -87,9 +88,13 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   codeBlockCounter.current = 0;
 
   const isUser = message.role === 'user';
+  const toolInvocations = (message as Message & { toolInvocations?: unknown }).toolInvocations;
   const parts = !isUser && !isStreaming
-    ? chatPartsFromMessage(message.content, locale, (message as Message & { vantraParts?: unknown }).vantraParts)
+    ? [...chatPartsFromMessage(message.content, locale, (message as Message & { vantraParts?: unknown }).vantraParts), ...chatPartsFromToolInvocations(toolInvocations, locale)]
     : [];
+  const toolProgress = !isUser && isStreaming && Array.isArray(toolInvocations)
+    ? toolInvocations.map((invocation) => invocation && typeof invocation.toolName === 'string' && invocation.state !== 'result'
+      ? artifactToolProgress(invocation.toolName, locale) : null).find(Boolean) : null;
   const artifactParts = parts.filter((part) => part.type !== 'text');
   const safeContent = isStreaming ? streamingSafeText(message.content)
     : parts.filter((part) => part.type === 'text').map((part) => part.text).join('\n\n');
@@ -380,6 +385,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
               )}
             </div>}
 
+            {toolProgress && <p className="mt-2 text-xs text-[var(--studio-text-secondary)]" role="status">{toolProgress}</p>}
             {artifactParts.map((part, index) => {
               if (part.type === 'document') return <ArtifactDocumentPreview key={index} artifact={part.artifact} locale={locale} onClose={() => undefined} inline />;
               if (part.type === 'spreadsheet') return <ArtifactSpreadsheetPreview key={index} initialArtifact={part.artifact} locale={locale} onClose={() => undefined} onAnalyze={() => undefined} inline />;

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { parsePresentationResponse, PRESENTATION_MODEL_SHAPE, type Artifact, type PresentationFailureCategory } from './core';
+import { getArtifactTool, runArtifactTool, verifyArtifactToolResult } from './tool-registry';
 
 const text = z.string().max(80_000);
 const base = z.object({
@@ -68,6 +69,16 @@ function artifactCandidate(content: string): string | null {
 }
 
 export function parseChatArtifact(content: string, language: string): Artifact | null {
+  const toolSource = artifactCandidate(content);
+  if (toolSource) {
+    try {
+      const invocation = JSON.parse(toolSource) as { tool?: unknown; input?: unknown };
+      if (typeof invocation.tool === 'string' && getArtifactTool(invocation.tool)) {
+        const result = runArtifactTool(invocation.tool, invocation.input);
+        return result.status === 'ok' && artifactSchema.safeParse(result.artifact).success ? result.artifact : null;
+      }
+    } catch { /* Other existing artifact shapes still use the parser below. */ }
+  }
   if (presentationLike(content)) {
     const result = parsePresentationResponse(content, language);
     return result.artifact && artifactSchema.safeParse(result.artifact).success ? result.artifact : null;
@@ -95,9 +106,25 @@ function parseChatMedia(content: string): ChatMessagePart | null {
 
 export function looksLikeArtifactOutput(content: string): boolean {
   const trimmed = content.trimStart();
-  return presentationLike(content)
+  return /"tool"\s*:\s*"create_(?:table|chart|document|spreadsheet|presentation)"/i.test(content)
+    || presentationLike(content)
     || trimmed.startsWith('{') && /"(?:type|schemaVersion|slides|sheets|blocks|series)"\s*:/.test(trimmed)
     || /```(?:json)?\s*\{[\s\S]*?"(?:type|schemaVersion|slides|sheets|blocks|series)"\s*:/i.test(content);
+}
+
+export function chatPartsFromToolInvocations(invocations: unknown, language: string): ChatMessagePart[] {
+  if (!Array.isArray(invocations)) return [];
+  const parts: ChatMessagePart[] = [];
+  for (const invocation of invocations.slice(0, 5)) {
+    if (!invocation || typeof invocation !== 'object' || invocation.state !== 'result' || typeof invocation.toolName !== 'string') continue;
+    const artifact = verifyArtifactToolResult(invocation.toolName, invocation.result);
+    const valid = artifact && artifactSchema.safeParse(artifact);
+    if (valid?.success) parts.push({ type: artifact.type, artifact: valid.data } as ChatMessagePart);
+    else if (getArtifactTool(invocation.toolName)) parts.push({ type: 'text', text: language === 'ar'
+      ? 'تعذر إنشاء معاينة آمنة لهذا المحتوى. حاول مرة أخرى.' : language === 'fr'
+        ? 'Impossible de créer un aperçu sûr de ce contenu. Réessayez.' : 'A safe preview could not be created for this content. Please try again.' });
+  }
+  return parts;
 }
 
 export function chatPartsFromMessage(content: string, language: string, stored?: unknown): ChatMessagePart[] {
