@@ -5,6 +5,7 @@ import { PRESENTATION_OUTPUT_INSTRUCTION } from '@/lib/artifacts/chat-parts';
 import { artifactTaskInstruction, resolveArtifactToolPath, selectArtifactTools, verifyArtifactToolResult } from '@/lib/artifacts/tool-registry';
 import { buildNativeArtifactTools } from '@/lib/artifacts/tool-native.server';
 import { completeMessageText, providerChatMessages } from '@/lib/chat/message-history';
+import { isChatTraceId, traceChatDataStream } from '@/lib/chat/debug-trace';
 
 import { DEFAULT_CHAT_MODEL } from '../../../../src/config/studio-registry';
 import { resolveRuntimeModelAccess } from '@/lib/models/plan-entitlements.server';
@@ -37,6 +38,12 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
+  const requestId = request.headers.get('x-vantra-chat-debug-id');
+  const traceId = isChatTraceId(requestId) ? requestId : null;
+  const trace = (label: string, details: Record<string, string | number | boolean | null>) => {
+    if (traceId) console.info(`[VANTRA_CHAT_DEBUG] ${label}`, { requestId: traceId, ...details });
+  };
+  trace('SERVER_RECEIVE', { received: true, messageCount: null, phase: 'entry' });
   try {
     const supabase = await createClient();
 
@@ -74,6 +81,7 @@ export async function POST(request: Request) {
     }
 
     const { prompt, model = DEFAULT_CHAT_MODEL?.id, messages } = body;
+    trace('SERVER_RECEIVE', { received: true, messageCount: Array.isArray(messages) ? messages.length : 0, phase: 'parsed' });
 
     // Generation controls (clamped for safety)
     const clamp = (v: unknown, min: number, max: number, fallback: number) => {
@@ -322,6 +330,7 @@ export async function POST(request: Request) {
 
     let outputStarted = false;
     let providerStarted = false;
+    let providerStreamReturned = false;
     let completedStream = false;
     let usageSettled = false;
     // Settle exactly once per terminal path; the RPC itself is idempotent,
@@ -445,6 +454,7 @@ export async function POST(request: Request) {
       );
       providerStarted = true;
       const nativeTools = toolPath === 'native' ? buildNativeArtifactTools(taskSelection) : undefined;
+      trace('PROVIDER', { callStarted: true, streamReturned: false, finishReason: null, errorCategory: null });
       const result = await streamText({
         model: languageModel,
         messages: messagesPayload,
@@ -460,6 +470,8 @@ export async function POST(request: Request) {
           if (chunk.type === 'tool-result' && verifyArtifactToolResult(chunk.toolName, chunk.result)) outputStarted = true;
         },
         onFinish: async ({ finishReason, usage, toolResults }) => {
+          trace('PROVIDER', { callStarted: true, streamReturned: true, finishReason,
+            errorCategory: finishReason === 'error' ? 'provider_stream_error' : null });
           try {
             if (toolResults.some((entry) => verifyArtifactToolResult(entry.toolName, entry.result))) outputStarted = true;
             if (request.signal.aborted) {
@@ -510,13 +522,21 @@ export async function POST(request: Request) {
           }
         },
       });
-      return result.toDataStreamResponse({
+      providerStreamReturned = true;
+      trace('PROVIDER', { callStarted: true, streamReturned: true, finishReason: null, errorCategory: null });
+      const streamResponse = result.toDataStreamResponse({
         headers: {
           'x-vantra-operation-id': operationKey,
         },
       });
+      return traceId ? traceChatDataStream(streamResponse, traceId,
+        ({ textChars, status, errorCategory }) => trace('SERVER_STREAM', { textChars, status, errorCategory: errorCategory ?? null }), request.signal)
+        : streamResponse;
     } catch (providerError) {
       const failure = classifyProviderFailure(providerError);
+      trace('PROVIDER', { callStarted: providerStarted, streamReturned: providerStreamReturned, finishReason: null,
+        errorCategory: request.signal.aborted ? 'aborted' : 'provider_call_error' });
+      trace('SERVER_STREAM', { textChars: 0, status: request.signal.aborted ? 'aborted' : 'error', errorCategory: 'pre_stream_error' });
       try {
         await finalizeOnce({
           terminalStatus: request.signal.aborted

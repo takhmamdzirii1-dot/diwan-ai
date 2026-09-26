@@ -172,6 +172,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
 
   return (
     <motion.div
+      data-chat-debug-latest-assistant={isLatest && !isUser ? '' : undefined}
       initial={reduceMotion ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.32, 0.72, 0, 1] }}
@@ -247,7 +248,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
 
             {isStreaming && !displayContent && <p role="status" className="text-sm text-[var(--studio-text-muted)]">{locale === 'ar' ? 'جارٍ تحضير المعاينة…' : locale === 'fr' ? 'Préparation de l’aperçu…' : 'Preparing preview…'}</p>}
             {toolProgress && <p className="mt-2 text-xs text-[var(--studio-text-secondary)]" role="status">{toolProgress}</p>}
-            {renderParts.map((part, index) => part.type === 'text' ? part.text && <div key={index} className={cn(
+            {renderParts.map((part, index) => part.type === 'text' ? part.text && <div key={index} data-chat-rendered-text="" className={cn(
               "prose prose-invert max-w-none font-sans antialiased text-white/90 text-[15px] font-normal leading-relaxed",
               "prose-p:text-white/90 prose-p:text-[15px] prose-p:font-sans prose-p:antialiased prose-p:leading-relaxed prose-p:font-normal",
               "prose-headings:text-white/90 prose-headings:font-semibold prose-strong:text-white/90 prose-strong:font-semibold",

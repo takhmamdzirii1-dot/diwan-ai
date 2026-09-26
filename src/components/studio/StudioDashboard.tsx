@@ -30,6 +30,7 @@ import { trackFunnelEvent } from '@/src/lib/funnel-analytics';
 import dynamic from 'next/dynamic';
 import { chatPartsFromMessage } from '@/lib/artifacts/chat-parts';
 import { chatRequestMessages, serializeChatSession } from '@/lib/chat/message-history';
+import { traceChatDataStream } from '@/lib/chat/debug-trace';
 
 const ArtifactSpreadsheetPreview = dynamic(() => import('./ArtifactSpreadsheetPreview'), { ssr: false });
 
@@ -110,6 +111,12 @@ export default function StudioDashboard({
   const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null);
   const [chatExchanges, setChatExchanges] = useState(0);
   const sendStartRef = useRef<number>(0);
+  const [chatDebugEnabled] = useState(() => {
+    try { return typeof window !== 'undefined' && localStorage.getItem('VANTRA_CHAT_DEBUG') === '1'; }
+    catch { return false; }
+  });
+  const debugRequestIdRef = useRef<string | null>(null);
+  const debugClientCharsRef = useRef(0);
 
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -182,16 +189,45 @@ export default function StudioDashboard({
   } = useChat({
     id: activeSessionId || 'default-session',
     api: '/api/generate/chat',
-    experimental_prepareRequestBody: ({ messages: requestMessages, requestBody }) => ({
-      messages: chatRequestMessages(requestMessages),
-      ...requestBody,
-    }),
+    experimental_prepareRequestBody: ({ messages: requestMessages, requestBody }) => {
+      if (chatDebugEnabled) {
+        const requestId = crypto.randomUUID();
+        debugRequestIdRef.current = requestId;
+        debugClientCharsRef.current = 0;
+        console.info('[VANTRA_CHAT_DEBUG] CLIENT_SEND', { requestId, messageCount: requestMessages.length, started: true });
+      }
+      return { messages: chatRequestMessages(requestMessages), ...requestBody };
+    },
+    fetch: chatDebugEnabled ? async (input, init) => {
+      const requestId = debugRequestIdRef.current;
+      const headers = new Headers(init?.headers);
+      if (requestId) headers.set('x-vantra-chat-debug-id', requestId);
+      try {
+        const response = await fetch(input, { ...init, headers });
+        if (!requestId) return response;
+        if (!response.ok) {
+          console.info('[VANTRA_CHAT_DEBUG] CLIENT_STREAM', { requestId, textChars: 0, status: 'error', errorCategory: 'http_error' });
+          return response;
+        }
+        return traceChatDataStream(response, requestId, ({ textChars, status, errorCategory }) => {
+          debugClientCharsRef.current = textChars;
+          console.info('[VANTRA_CHAT_DEBUG] CLIENT_STREAM', { requestId, textChars, status, errorCategory: errorCategory ?? null });
+        }, init?.signal ?? undefined);
+      } catch (error) {
+        if (requestId) console.info('[VANTRA_CHAT_DEBUG] CLIENT_STREAM', { requestId, textChars: debugClientCharsRef.current,
+          status: init?.signal?.aborted ? 'aborted' : 'error', errorCategory: init?.signal?.aborted ? null : 'fetch_error' });
+        throw error;
+      }
+    } : undefined,
     onFinish: () => {
       if (sendStartRef.current) setLastLatencyMs(performance.now() - sendStartRef.current);
       setChatExchanges((count) => count + 1);
       refreshBalance();
     },
     onError: (chatError) => {
+      if (chatDebugEnabled && debugRequestIdRef.current) console.info('[VANTRA_CHAT_DEBUG] CLIENT_STREAM', {
+        requestId: debugRequestIdRef.current, textChars: debugClientCharsRef.current, status: 'error', errorCategory: 'consumer_error',
+      });
       // Server-side trial exhaustion surfaces here (e.g. allowance ran out
       // mid-session). Route it to the activation offer; anything else falls
       // through to the existing inline error renderer.
@@ -268,6 +304,21 @@ export default function StudioDashboard({
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
+  const previousChatLoadingRef = useRef(false);
+  useEffect(() => {
+    const wasLoading = previousChatLoadingRef.current;
+    previousChatLoadingRef.current = isLoading;
+    if (!chatDebugEnabled || !wasLoading || isLoading || !debugRequestIdRef.current) return;
+    const requestId = debugRequestIdRef.current;
+    requestAnimationFrame(() => {
+      const last = messages[messages.length - 1];
+      const storedTextChars = last?.role === 'assistant' ? last.content.length : 0;
+      const renderedTextChars = Array.from(transcriptRef.current?.querySelectorAll('[data-chat-debug-latest-assistant] [data-chat-rendered-text]') ?? [])
+        .reduce((total, element) => total + (element.textContent?.length ?? 0)
+          - Array.from(element.querySelectorAll('button')).reduce((controls, button) => controls + (button.textContent?.length ?? 0), 0), 0);
+      console.info('[VANTRA_CHAT_DEBUG] FINAL_UI', { requestId, storedAssistantTextChars: storedTextChars, renderedAssistantTextChars: renderedTextChars });
+    });
+  }, [chatDebugEnabled, isLoading, messages]);
   const composerRef = useRef<HTMLDivElement>(null);
   const followLatestRef = useRef(true);
   const lastScrollTopRef = useRef(0);
