@@ -28,6 +28,8 @@ import { trackFunnelEvent } from '@/src/lib/funnel-analytics';
 import dynamic from 'next/dynamic';
 import { chatPartsFromMessage, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
 import type { SpreadsheetArtifact } from '@/lib/artifacts/core';
+import { chartFromSheet } from '@/lib/artifacts/spreadsheet-actions';
+import { attachConversationFile, attachedSpreadsheet, attachmentRequestContext, parseConversationAttachments, uploadFileKind, type ConversationAttachment } from '@/lib/chat/conversation-attachments';
 import { chatRequestMessages, serializeChatSession } from '@/lib/chat/message-history';
 import { executeAgentSemanticStep } from '@/lib/chat/agent-client';
 import { agentTaskFor, cancelAgentRun, createAgentRun, executeAgentRun, isCurrentAgentUpdate, type AgentRun } from '@/lib/chat/agent-runtime';
@@ -37,6 +39,7 @@ import { guidanceForChatError, shouldShowChatError, type GuidanceAction } from '
 import ChatGuidanceCard from './ChatGuidanceCard';
 
 const ArtifactSpreadsheetPreview = dynamic(() => import('./ArtifactSpreadsheetPreview'), { ssr: false });
+const FileAttachmentPreview = dynamic(() => import('./FileAttachmentPreview'), { ssr: false });
 
 type CenterMode = 'chat' | 'image' | 'video' | 'library';
 
@@ -87,12 +90,12 @@ export default function StudioDashboard({
 
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [spreadsheetFile, setSpreadsheetFile] = useState<File | null>(null);
-  const [availableSpreadsheet, setAvailableSpreadsheet] = useState<SpreadsheetArtifact | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [attachmentsBySession, setAttachmentsBySession] = useState<Record<string, ConversationAttachment[]>>({});
   const [agentRun, setAgentRun] = useState<AgentRun | null>(null);
   const agentRunRef = useRef<AgentRun | null>(null);
   const agentAbortRef = useRef<AbortController | null>(null);
-  const agentMessageRef = useRef<{ assistantId: string; history: Array<{ role: string; content: string }>; modelId: string; spreadsheet: SpreadsheetArtifact | null } | null>(null);
+  const agentMessageRef = useRef<{ assistantId: string; history: Array<{ role: string; content: string }>; modelId: string } | null>(null);
 
   const showActivation = useCallback((reason: ActivationReason, modality: 'chat' | 'image' | 'video', model?: { id: string; name: string; requiredPlan?: import('@/lib/models/plan-entitlements').ModelPlanCode | null }) => {
     if (model && (reason === 'model_locked' || reason === 'model_trial_exhausted')) {
@@ -141,6 +144,35 @@ export default function StudioDashboard({
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const activeSessionIdRef = useRef(activeSessionId);
   activeSessionIdRef.current = activeSessionId;
+  const conversationId = activeSessionId ?? 'default-session';
+  const conversationAttachments = attachmentsBySession[conversationId] ?? [];
+  const currentSpreadsheet = attachedSpreadsheet(conversationAttachments);
+  useEffect(() => {
+    if (!activeSessionId || attachmentsBySession[activeSessionId]) return;
+    try {
+      const saved = localStorage.getItem(`vantra_attachments_${activeSessionId}`);
+      if (saved) setAttachmentsBySession((current) => current[activeSessionId] ? current
+        : { ...current, [activeSessionId]: parseConversationAttachments(saved) });
+    } catch { /* This conversation remains available in memory. */ }
+  }, [activeSessionId, attachmentsBySession]);
+  const attachToConversation = useCallback((attachment: ConversationAttachment) => {
+    const id = activeSessionIdRef.current ?? 'default-session';
+    setSessions((current) => current.some((session) => session.id === id) ? current
+      : [{ id, title: attachment.name, createdAt: Date.now() }, ...current].slice(0, 30));
+    setAttachmentsBySession((current) => {
+      const next = attachConversationFile(current[id] ?? [], attachment);
+      try { localStorage.setItem(`vantra_attachments_${id}`, JSON.stringify(next)); } catch { /* Keep in memory. */ }
+      return { ...current, [id]: next };
+    });
+  }, []);
+  const detachFromConversation = useCallback((name: string) => {
+    const id = activeSessionIdRef.current ?? 'default-session';
+    setAttachmentsBySession((current) => {
+      const next = (current[id] ?? []).filter((item) => item.name !== name);
+      try { localStorage.setItem(`vantra_attachments_${id}`, JSON.stringify(next)); } catch { /* Keep in memory. */ }
+      return { ...current, [id]: next };
+    });
+  }, []);
 
   const activeModel = chatModels.find((model) => model.id === selectedModelId) ?? defaultChatModel;
 
@@ -360,12 +392,11 @@ export default function StudioDashboard({
   useEffect(() => {
     const run = agentRunRef.current;
     const context = agentMessageRef.current;
-    if (run?.status === 'waiting_for_user' && availableSpreadsheet && context
+    if (run?.status === 'waiting_for_user' && currentSpreadsheet && context
       && run.conversationId === (activeSessionId ?? 'default-session')) {
-      context.spreadsheet = availableSpreadsheet;
-      void runAgentRequest(run, availableSpreadsheet, context);
+      void runAgentRequest(run, currentSpreadsheet, context);
     }
-  }, [availableSpreadsheet, activeSessionId, runAgentRequest]);
+  }, [currentSpreadsheet, activeSessionId, runAgentRequest]);
 
   useEffect(() => {
     const run = agentRunRef.current;
@@ -373,9 +404,9 @@ export default function StudioDashboard({
     if (run?.status === 'failed' && run.terminalError === 'switch_model' && context
       && context.modelId !== selectedModelId && run.conversationId === (activeSessionId ?? 'default-session')) {
       context.modelId = selectedModelId;
-      void runAgentRequest(run, context.spreadsheet, context);
+      void runAgentRequest(run, currentSpreadsheet, context);
     }
-  }, [selectedModelId, activeSessionId, runAgentRequest]);
+  }, [selectedModelId, activeSessionId, currentSpreadsheet, runAgentRequest]);
 
   const abortAgentRun = useCallback(() => {
     const run = agentRunRef.current;
@@ -440,7 +471,7 @@ export default function StudioDashboard({
   const handleNewChat = useCallback(() => {
     // Abort any active text stream
     abortChatRequest('conversation_switch_abort');
-    agentRunRef.current = null; agentMessageRef.current = null; setAgentRun(null); setAvailableSpreadsheet(null);
+    agentRunRef.current = null; agentMessageRef.current = null; setAgentRun(null); setPendingFile(null);
     // Lazy creation: no DB/list record yet â€” just a draft id so the composer stays live.
     setActiveSessionId(`draft-${Date.now()}`);
     setMessages([]);
@@ -449,17 +480,23 @@ export default function StudioDashboard({
 
   const handleSelectSession = useCallback((sessionId: string) => {
     abortChatRequest('conversation_switch_abort');
-    agentRunRef.current = null; agentMessageRef.current = null; setAgentRun(null); setAvailableSpreadsheet(null);
+    agentRunRef.current = null; agentMessageRef.current = null; setAgentRun(null); setPendingFile(null);
     setActiveSessionId(sessionId);
     onWorkspaceChange('chat');
   }, [abortChatRequest, onWorkspaceChange]);
 
   const handleDeleteSession = useCallback((sessionId: string) => {
     if (sessionId === activeSessionId) abortChatRequest('conversation_switch_abort');
-    if (sessionId === activeSessionId) { agentRunRef.current = null; agentMessageRef.current = null; setAgentRun(null); setAvailableSpreadsheet(null); }
+    if (sessionId === activeSessionId) { agentRunRef.current = null; agentMessageRef.current = null; setAgentRun(null); setPendingFile(null); }
     try {
       localStorage.removeItem(`vantra_chat_${sessionId}`);
+      localStorage.removeItem(`vantra_attachments_${sessionId}`);
     } catch {}
+    setAttachmentsBySession((current) => {
+      const next = { ...current };
+      delete next[sessionId];
+      return next;
+    });
     setSessions((prev) => {
       const next = prev.filter((s) => s.id !== sessionId);
       if (sessionId === activeSessionId) {
@@ -614,7 +651,7 @@ export default function StudioDashboard({
   }, [activeSessionId, scheduleFollow]);
 
   const handleSend = useCallback(
-    async (data: { message: string; isThinkingEnabled: boolean; files?: Array<{ file: File; preview?: string | null; type: string }> }) => {
+    async (data: { message: string; isThinkingEnabled: boolean; files?: Array<{ file: File; preview?: string | null; type: string }>; spreadsheetArtifact?: SpreadsheetArtifact; spreadsheetContextOverride?: string }) => {
       if (canonicalPendingRef.current || agentRunRef.current?.status === 'running') return;
       if (!activeModel || !isModelSelectable(activeModel)) return;
       if (access?.kind !== 'paid_active' && access?.freeEligibility && !['eligible', 'manually_approved'].includes(access.freeEligibility)) {
@@ -641,13 +678,15 @@ export default function StudioDashboard({
 
       // Convert attachments for experimental_attachments
       const capabilities = activeModel.capabilities;
-      const attachments = (data.files || []).filter((f) => f.type.startsWith('image/')
+      const attachments = [...conversationAttachments.filter((item): item is Extract<ConversationAttachment, { kind: 'file' | 'image' }> => item.kind === 'file' || item.kind === 'image').map((item) => ({
+        name: item.name, contentType: item.contentType, url: item.url,
+      })), ...(data.files || []).filter((f) => f.type.startsWith('image/')
         ? ('visionInput' in capabilities && capabilities.visionInput)
         : ('fileInput' in capabilities && capabilities.fileInput)).map((f) => ({
         name: f.file?.name || 'attachment',
         contentType: f.type,
         url: f.preview || '',
-      }));
+      }))];
 
       // Lazy session creation: the record is materialised only on the first prompt
       const derivedTitle = (() => {
@@ -679,10 +718,8 @@ export default function StudioDashboard({
         if (!run) return;
         const userMessage = { id: crypto.randomUUID(), role: 'user' as const, content };
         const assistantId = crypto.randomUUID();
-        const priorSpreadsheet = [...messages].reverse().flatMap((message) => chatPartsFromMessage(message.content, locale,
-          (message as typeof message & { vantraParts?: unknown }).vantraParts)).find((part) => part.type === 'spreadsheet');
-        const spreadsheet = availableSpreadsheet ?? (priorSpreadsheet?.type === 'spreadsheet' ? priorSpreadsheet.artifact : null);
-        const context = { assistantId, history: chatRequestMessages([...messages, userMessage]), modelId: selectedModelId, spreadsheet };
+        const spreadsheet = data.spreadsheetArtifact ?? currentSpreadsheet;
+        const context = { assistantId, history: chatRequestMessages([...messages, userMessage]), modelId: selectedModelId };
         agentRunRef.current = run;
         agentMessageRef.current = context;
         setAgentRun(run);
@@ -700,17 +737,19 @@ export default function StudioDashboard({
           body: {
             model: selectedModelId,
             operationId: crypto.randomUUID(),
+            ...attachmentRequestContext(conversationAttachments, data.spreadsheetArtifact),
+            ...(data.spreadsheetContextOverride ? { spreadsheetContext: data.spreadsheetContextOverride.slice(0, 12_000) } : {}),
           },
         }
       );
     },
     [append, selectedModelId, activeSessionId, sessions, activeModel, user, openAuthModal, access?.kind, showActivation,
-      messages, locale, availableSpreadsheet, runAgentRequest, setMessages]
+      messages, locale, currentSpreadsheet, conversationAttachments, runAgentRequest, setMessages]
   );
 
   const handleChatGuidanceAction = (action: GuidanceAction) => {
     if (action === 'try_again' && agentRunRef.current?.status === 'failed' && agentMessageRef.current) {
-      void runAgentRequest(agentRunRef.current, agentMessageRef.current.spreadsheet ?? availableSpreadsheet,
+      void runAgentRequest(agentRunRef.current, currentSpreadsheet,
         { ...agentMessageRef.current, modelId: selectedModelId });
       return;
     }
@@ -724,14 +763,9 @@ export default function StudioDashboard({
     });
     else if (action === 'try_again') void reload();
     else if (action === 'choose_file') {
-      const lastUser = [...messages].reverse().find((message) => message.role === 'user');
-      const attachments = (lastUser as typeof lastUser & { experimental_attachments?: Array<{ contentType?: string }> } | undefined)?.experimental_attachments ?? [];
-      const image = attachments.some((file) => file.contentType?.startsWith('image/'));
-      document.querySelector<HTMLInputElement>(image ? '[data-chat-image-input]' : '[data-chat-document-input]')?.click();
+      document.querySelector<HTMLInputElement>('[data-chat-file-input]')?.click();
     }
-    else if (action === 'upload_document') document.querySelector<HTMLInputElement>('[data-chat-document-input]')?.click();
-    else if (action === 'upload_image') document.querySelector<HTMLInputElement>('[data-chat-image-input]')?.click();
-    else if (action === 'upload_spreadsheet') document.querySelector<HTMLInputElement>('[data-chat-spreadsheet-input]')?.click();
+    else if (action === 'upload_file' || action === 'upload_document' || action === 'upload_image' || action === 'upload_spreadsheet') document.querySelector<HTMLInputElement>('[data-chat-file-input]')?.click();
     else if (action === 'switch_model') {
       const lastUser = [...messages].reverse().find((message) => message.role === 'user');
       const attachments = (lastUser as typeof lastUser & { experimental_attachments?: Array<{ contentType?: string }> } | undefined)?.experimental_attachments ?? [];
@@ -743,12 +777,6 @@ export default function StudioDashboard({
       if (candidate) setSelectedModelId(candidate.id);
     }
   };
-
-  const onSpreadsheetArtifactReady = useCallback((artifact: SpreadsheetArtifact) => {
-    setAvailableSpreadsheet(artifact);
-    if (agentMessageRef.current) agentMessageRef.current.spreadsheet = artifact;
-    if (agentRunRef.current?.status === 'waiting_for_user') setSpreadsheetFile(null);
-  }, []);
 
   const handleStarter = useCallback((text: string) => {
     window.dispatchEvent(new CustomEvent('vantra-prefill-prompt', { detail: { prompt: text } }));
@@ -1014,7 +1042,10 @@ export default function StudioDashboard({
                                 isLatest={idx === messages.length - 1}
                                 isStreaming={(isLoading || canonicalPending) && idx === messages.length - 1 && msg.role === 'assistant'}
                                 onRegenerate={chatBusy || msg.id === agentMessageRef.current?.assistantId ? undefined : () => reload()}
-                                onRequestPrompt={(prompt) => void handleSend({ message: prompt, isThinkingEnabled: false })}
+                                onRequestPrompt={(prompt, artifact, context) => {
+                                  if (artifact) attachToConversation({ kind: 'spreadsheet', name: `${artifact.title}.xlsx`, artifact });
+                                  void handleSend({ message: prompt, isThinkingEnabled: false, spreadsheetArtifact: artifact, spreadsheetContextOverride: context });
+                                }}
                               />
                             ))}
                           </motion.div>
@@ -1082,7 +1113,34 @@ export default function StudioDashboard({
                     <div className="pointer-events-auto mx-auto w-full max-w-4xl px-6">
                       <ClaudeChatInput
                       onSendMessage={handleSend}
-                      onOpenSpreadsheet={setSpreadsheetFile}
+                      onSelectFile={(file) => setPendingFile(file)}
+                      conversationAttachments={conversationAttachments}
+                      onRemoveConversationAttachment={detachFromConversation}
+                      onConversationAttachmentAction={(action, attachment) => {
+                        if (action === 'ask') {
+                          window.dispatchEvent(new CustomEvent('vantra-prefill-prompt', { detail: { prompt: `Ask about ${attachment.name}: ` } }));
+                          return;
+                        }
+                        if (action === 'chart' && attachment.kind === 'spreadsheet') {
+                          const sheet = attachment.artifact.sheets[0];
+                          if (!sheet) return;
+                          try {
+                            const chart = chartFromSheet(attachment.artifact, sheet, 'bar', 0, Math.min(sheet.rows.length, 40));
+                            setMessages((current) => [...current,
+                              { id: crypto.randomUUID(), role: 'user' as const, content: 'Create a chart from this spreadsheet.' },
+                              { id: crypto.randomUUID(), role: 'assistant' as const, content: '', vantraParts: [{ type: 'chart' as const, artifact: chart }] }]);
+                            if (activeSessionId && !sessions.some((session) => session.id === activeSessionId))
+                              setSessions((current) => [{ id: activeSessionId, title: attachment.name, createdAt: Date.now() }, ...current]);
+                          } catch { /* No chartable range; leave the attachment in place. */ }
+                          return;
+                        }
+                        const message = action === 'analyze' ? 'Analyze this spreadsheet and summarize the main findings.'
+                          : action === 'summarize' ? 'Summarize this document.' : 'Create a presentation from this spreadsheet.';
+                        void handleSend({ message: attachment.kind === 'document' || attachment.kind === 'file'
+                          ? action === 'presentation' ? 'Create a presentation from this document.' : message : message,
+                          isThinkingEnabled: false,
+                          spreadsheetArtifact: attachment.kind === 'spreadsheet' ? attachment.artifact : undefined });
+                      }}
                       locale={locale}
                       models={chatModels.map((model) => ({
                         id: model.id,
@@ -1151,7 +1209,8 @@ export default function StudioDashboard({
         models={entitledModels}
       />
       <ActivationOffer prompt={activationPrompt} onClose={() => setActivationPrompt(null)} />
-      {spreadsheetFile && <ArtifactSpreadsheetPreview file={spreadsheetFile} locale={locale} onClose={() => setSpreadsheetFile(null)} onAnalyze={(prompt) => void handleSend({ message: prompt, isThinkingEnabled: false })} onArtifactReady={onSpreadsheetArtifactReady} />}
+      {pendingFile && uploadFileKind(pendingFile) === 'spreadsheet' && <ArtifactSpreadsheetPreview file={pendingFile} locale={locale} onClose={() => setPendingFile(null)} onAttach={(artifact, name) => attachToConversation({ kind: 'spreadsheet', name, artifact })} onAnalyze={(prompt, artifact, context) => void handleSend({ message: prompt, isThinkingEnabled: false, spreadsheetArtifact: artifact, spreadsheetContextOverride: context })} />}
+      {pendingFile && uploadFileKind(pendingFile) !== 'spreadsheet' && <FileAttachmentPreview file={pendingFile} locale={locale} onCancel={() => setPendingFile(null)} onAttach={(attachment) => { attachToConversation(attachment); setPendingFile(null); }} />}
     </div>
   );
 }

@@ -76,8 +76,8 @@ test('selection and local chart/presentation assembly use no AI or network', () 
 });
 
 test('attachment menu stays simple when the selected model cannot read files', () => {
-  assert.deepEqual(attachmentMenuActions(true, true), ['upload_image', 'upload_document', 'upload_spreadsheet']);
-  assert.deepEqual(attachmentMenuActions(false, true), ['upload_spreadsheet']);
+  assert.deepEqual(attachmentMenuActions(true, true), ['upload_file']);
+  assert.deepEqual(attachmentMenuActions(false, true), ['upload_file']);
 });
 
 test('technical errors become safe customer guidance', () => {

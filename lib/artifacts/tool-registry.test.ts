@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { chatPartsFromMessage, chatPartsFromToolInvocations } from './chat-parts';
 import { buildNativeArtifactTools } from './tool-native.server';
-import { agentToolSelection, artifactTaskInstruction, artifactToolProgress, documentToolChoice, getArtifactTool, resolveArtifactToolPath, runArtifactTool, selectArtifactTools, verifyArtifactToolResult } from './tool-registry';
+import { agentToolSelection, artifactTaskInstruction, artifactToolProgress, documentToolChoice, presentationToolChoice, getArtifactTool, resolveArtifactToolPath, runArtifactTool, selectArtifactTools, verifyArtifactToolResult } from './tool-registry';
 
 test('stable registry names resolve and invalid inputs/results fail safely', () => {
   for (const name of ['create_table', 'create_chart', 'create_document', 'create_spreadsheet', 'create_presentation']) {
@@ -86,6 +86,15 @@ test('explicit document intent requires one native document tool and uses struct
     assert.equal(documentToolChoice(ordinary, 'native'), undefined);
     assert.equal(calls, 0);
   } finally { globalThis.fetch = originalFetch; }
+});
+
+test('explicit spreadsheet presentation chooses one native tool or structured fallback without AI classification', () => {
+  const selection = selectArtifactTools('Create a presentation from this spreadsheet.');
+  assert.deepEqual(selection.names, ['create_presentation']);
+  assert.deepEqual(presentationToolChoice(selection, 'native'), { type: 'tool', toolName: 'create_presentation' });
+  assert.equal(presentationToolChoice(selection, 'structured'), undefined);
+  assert.equal(resolveArtifactToolPath(selection, { tools: { state: 'unsupported' }, structuredOutput: { state: 'supported' } }), 'structured');
+  assert.equal(presentationToolChoice(selectArtifactTools('What is compound interest?'), 'native'), undefined);
 });
 
 test('Agent stages expose only the relevant skill and native tool', async () => {

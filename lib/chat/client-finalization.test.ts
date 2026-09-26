@@ -139,6 +139,30 @@ test('valid document tool-only stream becomes a visible artifact with zero text 
   } finally { globalThis.fetch = previousFetch; }
 });
 
+test('valid presentation tool-only stream is visible with zero text', async () => {
+  const result = runArtifactTool('create_presentation', { title: 'Sales review', language: 'en', slides: [
+    { title: 'Sales review', variant: 'cover', blocks: [{ kind: 'text', text: 'Summary' }] },
+    { title: 'Results', variant: 'kpi', blocks: [{ kind: 'table', rows: [['Metric', 'Value'], ['Sales', '20']] }] },
+  ] });
+  assert.equal(result.status, 'ok');
+  const stream = new ReadableStream<Uint8Array>({ start(controller) {
+    controller.enqueue(new TextEncoder().encode(`9:${JSON.stringify({ toolCallId: 'presentation', toolName: 'create_presentation', args: {} })}\n`));
+    controller.enqueue(new TextEncoder().encode(`a:${JSON.stringify({ toolCallId: 'presentation', result })}\n`));
+    controller.close();
+  } });
+  let final: { text: string; artifacts: unknown[]; status: string } | null = null;
+  const finalizer = new ChatStreamFinalizer('presentation-request', (value) => { final = value; });
+  const status = await consumeCanonicalChatStream(stream, (delta) => finalizer.append(delta), undefined, undefined,
+    (part) => finalizer.appendArtifact(part));
+  finalizer.rawDone(status);
+  finalizer.consumerDone();
+  assert.equal(status, 'completed');
+  assert.equal(finalizer.textChars, 0);
+  assert.equal(finalizer.artifactCount, 1);
+  assert.equal(hasUsableCanonicalOutput(status, final!.text, final!.artifacts as never), true);
+  assert.deepEqual(chatPartsFromMessage('', 'en', final!.artifacts).map((part) => part.type), ['presentation']);
+});
+
 test('invalid document result and empty completed stream fail safely', async () => {
   const invalid = new ReadableStream<Uint8Array>({ start(controller) {
     controller.enqueue(new TextEncoder().encode(`9:${JSON.stringify({ toolCallId: 'bad', toolName: 'create_document', args: {} })}\n`));

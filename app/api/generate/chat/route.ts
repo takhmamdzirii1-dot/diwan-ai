@@ -2,7 +2,7 @@ import { after, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { streamText } from 'ai';
 import { PRESENTATION_OUTPUT_INSTRUCTION, validatedArtifactPartFromToolResult } from '@/lib/artifacts/chat-parts';
-import { agentToolSelection, artifactTaskInstruction, documentToolChoice, resolveArtifactToolPath, selectArtifactTools } from '@/lib/artifacts/tool-registry';
+import { agentToolSelection, artifactTaskInstruction, documentToolChoice, presentationToolChoice, resolveArtifactToolPath, selectArtifactTools } from '@/lib/artifacts/tool-registry';
 import { buildNativeArtifactTools } from '@/lib/artifacts/tool-native.server';
 import { completeMessageText, providerChatMessages } from '@/lib/chat/message-history';
 import { isChatTraceId, traceChatDataStream } from '@/lib/chat/debug-trace';
@@ -225,6 +225,13 @@ export async function POST(request: Request) {
     const taskInstruction = taskSelection.skill === 'presentation' && toolPath !== 'native'
       ? PRESENTATION_OUTPUT_INSTRUCTION : artifactTaskInstruction(taskSelection, toolPath);
     if (taskInstruction) messagesPayload[0] = { role: 'system', content: `${SYSTEM_PROMPT}\n\n${taskInstruction}` };
+    const internalContext = [
+      typeof body.spreadsheetContext === 'string' && body.spreadsheetContext.length <= 12_000
+        ? `Bounded attached spreadsheet context (internal, never echo raw rows):\n${body.spreadsheetContext}` : '',
+      typeof body.documentContext === 'string' && body.documentContext.length <= 12_000
+        ? `Attached document context (internal):\n${body.documentContext}` : '',
+    ].filter(Boolean).join('\n\n');
+    if (internalContext) messagesPayload[0] = { role: 'system', content: `${messagesPayload[0].content}\n\n${internalContext}` };
     if (native.streaming.state === 'unsupported'
       || (native.streaming.state === 'unknown' && (!('streaming' in chatCapabilities) || !chatCapabilities.streaming))) {
       return NextResponse.json({ error: 'MODEL_CAPABILITY_UNSUPPORTED', reason: 'Streaming is disabled for this model route.' }, { status: 409 });
@@ -476,7 +483,7 @@ export async function POST(request: Request) {
         messages: messagesPayload,
         tools: nativeTools,
         toolChoice: agentStep === 'presentation' ? { type: 'tool', toolName: 'create_presentation' }
-          : documentToolChoice(taskSelection, toolPath),
+          : presentationToolChoice(taskSelection, toolPath) ?? documentToolChoice(taskSelection, toolPath),
         maxSteps: 1,
         temperature,
         maxTokens,

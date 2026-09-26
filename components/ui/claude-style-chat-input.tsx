@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Plus, Square, X, FileText, Loader2, Archive, Image as ImageIcon, ArrowUp } from "lucide-react";
+import { Plus, Square, X, FileText, Loader2, Archive, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ModelPicker as ModelSelector, type ChatModelOption } from "./model-picker";
 import ChatGuidanceCard from '@/src/components/studio/ChatGuidanceCard';
 import { attachmentMenuActions, guidanceActionLabel, guidanceForComposer, type ChatGuidance, type GuidanceAction } from '@/lib/chat/contextual-guidance';
+import { uploadFileKind, type ConversationAttachment } from '@/lib/chat/conversation-attachments';
 export { ModelPicker as ModelSelector, type ChatModelOption } from "./model-picker";
 
 /* ------------------------------------------------------------------
@@ -30,7 +31,10 @@ export interface ClaudeSendPayload {
 
 export interface ClaudeChatInputProps {
     onSendMessage: (data: ClaudeSendPayload) => void | Promise<void>;
-    onOpenSpreadsheet?: (file: File) => void;
+    onSelectFile?: (file: File) => void;
+    conversationAttachments?: ConversationAttachment[];
+    onRemoveConversationAttachment?: (name: string) => void;
+    onConversationAttachmentAction?: (action: 'analyze' | 'chart' | 'presentation' | 'summarize' | 'ask', attachment: ConversationAttachment) => void;
     locale?: string;
     models?: ChatModelOption[];
     selectedModelId?: string;
@@ -53,6 +57,22 @@ const formatFileSize = (bytes: number) => {
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+};
+
+const attachmentActionLabel = (action: string, locale: string) => {
+    const labels: Record<string, [string, string, string]> = {
+        analyze: ['Analyze', 'Analyser', 'تحليل'], chart: ['Create chart', 'Créer un graphique', 'إنشاء رسم بياني'],
+        presentation: ['Build presentation', 'Créer une présentation', 'إنشاء عرض تقديمي'],
+        summarize: ['Summarize', 'Résumer', 'تلخيص'], ask: ['Ask about it', 'Poser une question', 'اطرح سؤالًا'],
+    };
+    return labels[action]?.[locale.startsWith('ar') ? 2 : locale.startsWith('fr') ? 1 : 0] ?? action;
+};
+const attachmentKindLabel = (kind: ConversationAttachment['kind'], locale: string) => {
+    const labels: Record<ConversationAttachment['kind'], [string, string, string]> = {
+        spreadsheet: ['Spreadsheet', 'Feuille de calcul', 'جدول بيانات'],
+        document: ['Document', 'Document', 'مستند'], file: ['File', 'Fichier', 'ملف'], image: ['Image', 'Image', 'صورة'],
+    };
+    return labels[kind][locale.startsWith('ar') ? 2 : locale.startsWith('fr') ? 1 : 0];
 };
 
 /* --- File Preview Card --- */
@@ -134,7 +154,10 @@ const PastedContentCard: React.FC<{ content: { id: string; content: string }; on
 /* --- Main Composer --- */
 export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
     onSendMessage,
-    onOpenSpreadsheet,
+    onSelectFile,
+    conversationAttachments = [],
+    onRemoveConversationAttachment,
+    onConversationAttachmentAction,
     locale = 'en',
     models = [],
     selectedModelId,
@@ -233,10 +256,8 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
 
     const [multimodalMenuOpen, setMultimodalMenuOpen] = useState(false);
     const selectedModel = models.find((model) => model.id === selectedModelId) ?? models[0];
-    const supportsVision = selectedModel?.visionInput === true;
-    const supportsFiles = selectedModel?.fileInput === true;
-    const supportsAttachments = models.length > 0;
-    const menuActions = attachmentMenuActions(supportsAttachments, Boolean(onOpenSpreadsheet));
+    const supportsAttachments = models.length > 0 || Boolean(onSelectFile);
+    const menuActions = attachmentMenuActions(supportsAttachments, Boolean(onSelectFile));
     const supportsMenu = menuActions.length > 0;
 
     useEffect(() => {
@@ -245,9 +266,6 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
     const menuRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const imageInputRef = useRef<HTMLInputElement>(null);
-    const docInputRef = useRef<HTMLInputElement>(null);
-    const spreadsheetInputRef = useRef<HTMLInputElement>(null);
 
     // Click outside listener for multimodal dropdown
     useEffect(() => {
@@ -294,6 +312,17 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
     }, [files]);
 
     const handleFiles = useCallback((newFilesList: FileList | File[]) => {
+        if (onSelectFile) {
+            if (newFilesList.length !== 1) {
+                setGuidance({ kind: 'warning', message: locale === 'fr' ? 'Choisissez un fichier à la fois.' : locale === 'ar' ? 'اختر ملفًا واحدًا في كل مرة.' : 'Choose one file at a time.', actions: [] });
+                return;
+            }
+            for (const file of Array.from(newFilesList)) {
+                if (uploadFileKind(file)) onSelectFile(file);
+                else setGuidance({ kind: 'warning', message: locale === 'fr' ? 'Ce type de fichier n’est pas pris en charge.' : locale === 'ar' ? 'نوع الملف هذا غير مدعوم.' : 'This file type is not supported.', actions: [] });
+            }
+            return;
+        }
         const newFiles: AttachedFile[] = Array.from(newFilesList).map(file => {
             const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(file.name);
             return {
@@ -308,15 +337,14 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
         setFiles(prev => [...prev, ...newFiles.map((file) => ({ ...file, uploadStatus: 'complete' as const }))]);
         requestedUploadRef.current = null;
         setGuidance(null);
-    }, []);
+    }, [onSelectFile, locale]);
 
     const onDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
     const onDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
     const onDrop = (e: React.DragEvent) => {
         e.preventDefault();
         setIsDragging(false);
-        if (e.dataTransfer.files?.length === 1 && onOpenSpreadsheet && /\.(xlsx|csv)$/i.test(e.dataTransfer.files[0].name)) onOpenSpreadsheet(e.dataTransfer.files[0]);
-        else if (supportsAttachments && e.dataTransfer.files?.length) handleFiles(e.dataTransfer.files);
+        if (supportsAttachments && e.dataTransfer.files?.length) handleFiles(e.dataTransfer.files);
     };
 
     const handlePaste = (e: React.ClipboardEvent) => {
@@ -351,7 +379,9 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
             return;
         }
         if (!message.trim() && files.length === 0 && pastedContent.length === 0) return;
-        const nextGuidance = guidanceForComposer({ text: message, files, model: selectedModel ?? null, balance, balanceStatus, locale });
+        const nextGuidance = guidanceForComposer({ text: message, files: [...files,
+            ...conversationAttachments.filter((item) => item.kind === 'file' || item.kind === 'image').map((item) => ({ type: item.contentType }))],
+            model: selectedModel ?? null, balance, balanceStatus, locale });
         if (nextGuidance) { setGuidance(nextGuidance); return; }
 
         // Don't include [Attachment: filename] in the prompt — text-only models
@@ -387,14 +417,12 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
 
     const hasContent = !!(message.trim() || files.length > 0 || pastedContent.length > 0);
     const handleGuidanceAction = (action: GuidanceAction) => {
-        if (action === 'upload_image' || action === 'choose_file' && requestedUploadRef.current === 'image') imageInputRef.current?.click();
-        else if (action === 'upload_spreadsheet') spreadsheetInputRef.current?.click();
-        else if (action === 'upload_document' || action === 'choose_file') docInputRef.current?.click();
+        if (action === 'upload_file' || action === 'upload_image' || action === 'upload_spreadsheet' || action === 'upload_document' || action === 'choose_file') fileInputRef.current?.click();
         else if (action === 'add_credits') onAddCredits?.();
         else if ((action === 'get_pro' || action === 'view_plans') && selectedModel) onModelAccessRequest?.(selectedModel);
         else if (action === 'switch_model') {
-            const needImage = requestedUploadRef.current === 'image' || files.some((file) => file.type.startsWith('image/'));
-            const needFile = requestedUploadRef.current === 'document' || files.some((file) => !file.type.startsWith('image/'));
+            const needImage = requestedUploadRef.current === 'image' || files.some((file) => file.type.startsWith('image/')) || conversationAttachments.some((item) => item.kind === 'image');
+            const needFile = requestedUploadRef.current === 'document' || files.some((file) => !file.type.startsWith('image/')) || conversationAttachments.some((item) => item.kind === 'file');
             const candidate = models.find((model) => model.id !== selectedModelId && model.enabled && ['available', 'beta'].includes(model.availability)
                 && model.accessState !== 'locked' && !model.requiredPlan && (!needImage || model.visionInput) && (!needFile || model.fileInput));
             if (candidate) { onSelectModel?.(candidate.id); setGuidance(null); requestedUploadRef.current = null; }
@@ -415,8 +443,9 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
 
                 {/* Attachments above input */}
                 {guidance && <div className="px-1 pb-2"><ChatGuidanceCard guidance={guidance} locale={locale} onAction={handleGuidanceAction} /></div>}
-                {(files.length > 0 || pastedContent.length > 0) && (
+                {(files.length > 0 || pastedContent.length > 0 || conversationAttachments.length > 0) && (
                     <div className="flex gap-3 overflow-x-auto custom-scrollbar pb-2 px-1">
+                        {conversationAttachments.map((attachment) => <div key={attachment.name} className="flex shrink-0 flex-col gap-1 rounded-lg border border-white/15 bg-white/[0.04] px-3 py-2 text-xs text-white/80"><div className="flex items-center gap-2"><span className="max-w-48 truncate">{attachment.name}</span><span className="text-white/40">{attachmentKindLabel(attachment.kind, locale)}{attachment.kind === 'spreadsheet' && ` · ${attachment.artifact.sheets[0]?.name ?? ''} · ${attachment.artifact.sheets[0]?.rows.length ?? 0} ${locale.startsWith('ar') ? 'صفوف' : locale.startsWith('fr') ? 'lignes' : 'rows'}`}</span><button type="button" aria-label={`${locale.startsWith('ar') ? 'إزالة' : locale.startsWith('fr') ? 'Retirer' : 'Remove'} ${attachment.name}`} onClick={() => onRemoveConversationAttachment?.(attachment.name)}><X className="h-3.5 w-3.5" /></button></div><div className="flex gap-2 text-[11px] text-white/60">{(attachment.kind === 'spreadsheet' ? ['analyze', 'chart', 'presentation'] : attachment.kind === 'document' || attachment.kind === 'file' ? ['summarize', 'ask', 'presentation'] : []).map((action) => <button key={action} type="button" disabled={isLoading} onClick={() => onConversationAttachmentAction?.(action as 'analyze' | 'chart' | 'presentation' | 'summarize' | 'ask', attachment)} className="hover:text-white disabled:opacity-40">{attachmentActionLabel(action, locale)}</button>)}</div></div>)}
                         {pastedContent.map(content => (
                             <PastedContentCard
                                 key={content.id}
@@ -477,33 +506,17 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                                 <div
                                     className="absolute bottom-full left-0 mb-2 w-52 bg-[var(--studio-popover)] border border-[var(--studio-border)] shadow-[var(--studio-shadow)] rounded-lg p-1 text-sm text-[var(--studio-text-secondary)] z-50 flex flex-col gap-0.5"
                                 >
-                                    {menuActions.includes('upload_image') && <button
+                                    {menuActions.includes('upload_file') && <button
                                         type="button"
                                         onClick={() => {
                                             setMultimodalMenuOpen(false);
-                                            if (supportsVision) imageInputRef.current?.click();
-                                            else { requestedUploadRef.current = 'image'; setGuidance(guidanceForComposer({ text: '', files: [{ type: 'image/png' }], model: selectedModel ?? null, balance, balanceStatus, locale })); }
-                                        }}
-                                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md hover:bg-white/[0.06] text-white transition-colors text-start cursor-pointer"
-                                    >
-                                        <ImageIcon className="w-4 h-4 text-white/60 shrink-0" />
-                                        <span>{guidanceActionLabel('upload_image', locale)}</span>
-                                    </button>}
-
-                                    {menuActions.includes('upload_document') && <button
-                                        type="button"
-                                        onClick={() => {
-                                            setMultimodalMenuOpen(false);
-                                            if (supportsFiles) docInputRef.current?.click();
-                                            else { requestedUploadRef.current = 'document'; setGuidance(guidanceForComposer({ text: '', files: [{ type: 'application/pdf' }], model: selectedModel ?? null, balance, balanceStatus, locale })); }
+                                            fileInputRef.current?.click();
                                         }}
                                         className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md hover:bg-white/[0.06] text-white transition-colors text-start cursor-pointer"
                                     >
                                         <FileText className="w-4 h-4 text-white/60 shrink-0" />
-                                        <span>{guidanceActionLabel('upload_document', locale)}</span>
+                                        <span>{guidanceActionLabel('upload_file', locale)}</span>
                                     </button>}
-
-                                    {menuActions.includes('upload_spreadsheet') && <button type="button" onClick={() => { setMultimodalMenuOpen(false); spreadsheetInputRef.current?.click(); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md hover:bg-white/[0.06] text-white transition-colors text-start cursor-pointer"><FileText className="w-4 h-4 text-white/60 shrink-0" /><span>{guidanceActionLabel('upload_spreadsheet', locale)}</span></button>}
 
                                 </div>
                             )}
@@ -611,35 +624,11 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
             )}
 
             {/* Hidden file inputs */}
-            {onOpenSpreadsheet && <input ref={spreadsheetInputRef} data-chat-spreadsheet-input type="file" accept=".xlsx,.csv" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onOpenSpreadsheet(file); event.target.value = ''; }} />}
             {supportsAttachments && <input
                 ref={fileInputRef}
+                data-chat-file-input
                 type="file"
-                multiple
-                className="hidden"
-                onChange={(e) => {
-                    if (e.target.files) handleFiles(e.target.files);
-                    e.target.value = '';
-                }}
-            />}
-            {supportsAttachments && <input
-                ref={imageInputRef}
-                data-chat-image-input
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={(e) => {
-                    if (e.target.files) handleFiles(e.target.files);
-                    e.target.value = '';
-                }}
-            />}
-            {supportsAttachments && <input
-                ref={docInputRef}
-                data-chat-document-input
-                type="file"
-                accept=".pdf,.doc,.docx,.txt,.md,.json,.csv,.py,.ts,.tsx,.js,.jsx,.yaml,.yml"
-                multiple
+                accept=".xlsx,.csv,.pdf,.doc,.docx,.txt,.md,.json,.py,.ts,.tsx,.js,.jsx,.yaml,.yml,.png,.jpg,.jpeg,.gif,.webp"
                 className="hidden"
                 onChange={(e) => {
                     if (e.target.files) handleFiles(e.target.files);

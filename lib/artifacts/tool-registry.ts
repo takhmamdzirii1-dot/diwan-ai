@@ -159,6 +159,11 @@ export function documentToolChoice(selection: ArtifactToolSelection, path: Artif
     ? { type: 'tool', toolName: 'create_document' } : undefined;
 }
 
+export function presentationToolChoice(selection: ArtifactToolSelection, path: ArtifactToolPath): { type: 'tool'; toolName: 'create_presentation' } | undefined {
+  return path === 'native' && selection.names.length === 1 && selection.names[0] === 'create_presentation'
+    ? { type: 'tool', toolName: 'create_presentation' } : undefined;
+}
+
 const skills: Record<ArtifactTaskSkill, string> = {
   presentation: 'Create a concise slide narrative: cover, key metrics, trend only when data supports it, and evidence-based insights. Never paste raw spreadsheet rows or invent chart references.',
   'spreadsheet-analysis': 'Use only the bounded spreadsheet context supplied in this request. State missing data and limitations; do not infer unseen rows.',

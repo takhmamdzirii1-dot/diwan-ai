@@ -5,7 +5,7 @@ import { formatCapacityWait } from './chat-usage';
 import type { ChatRequestOutcome } from './client-finalization';
 
 export type GuidanceKind = 'requirement' | 'suggestion' | 'warning' | 'confirmation' | 'success' | 'recoverable_error' | 'next_action';
-export type GuidanceAction = 'upload_image' | 'upload_document' | 'upload_spreadsheet' | 'switch_model' | 'add_credits' | 'get_pro' | 'view_plans' | 'choose_file' | 'try_again';
+export type GuidanceAction = 'upload_file' | 'upload_image' | 'upload_document' | 'upload_spreadsheet' | 'switch_model' | 'add_credits' | 'get_pro' | 'view_plans' | 'choose_file' | 'try_again';
 export type ChatGuidance = { kind: GuidanceKind; message: string; actions: GuidanceAction[] };
 
 export type DocumentActionEligibility = 'primary' | 'secondary' | 'hidden';
@@ -44,6 +44,7 @@ const say = (locale: string, words: Record<Locale, string>) => words[lang(locale
 
 export function guidanceActionLabel(action: GuidanceAction, locale: string): string {
   const labels: Record<GuidanceAction, Record<Locale, string>> = {
+    upload_file: { en: 'Upload file', fr: 'Importer un fichier', ar: 'ارفع ملفًا' },
     upload_image: { en: 'Upload image', fr: 'Importer une image', ar: 'ارفع صورة' },
     upload_document: { en: 'Upload document', fr: 'Importer un document', ar: 'ارفع مستندًا' },
     upload_spreadsheet: { en: 'Upload spreadsheet', fr: 'Importer une feuille de calcul', ar: 'ارفع جدول بيانات' },
@@ -86,8 +87,7 @@ export type ComposerGuidanceInput = {
 };
 
 export function attachmentMenuActions(hasModels: boolean, hasSpreadsheet: boolean): GuidanceAction[] {
-  return [...(hasModels ? ['upload_image', 'upload_document'] as const : []),
-    ...(hasSpreadsheet ? ['upload_spreadsheet'] as const : [])];
+  return hasModels || hasSpreadsheet ? ['upload_file'] : [];
 }
 
 export function guidanceForComposer(input: ComposerGuidanceInput): ChatGuidance | null {

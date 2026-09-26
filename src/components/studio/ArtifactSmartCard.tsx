@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { ChatMessagePart } from '@/lib/artifacts/chat-parts';
 import type { ChartArtifact, PresentationArtifact, SpreadsheetArtifact, ArtifactSheet } from '@/lib/artifacts/core';
-import { presentationFromSheet, spreadsheetContext } from '@/lib/artifacts/spreadsheet-actions';
+import { presentationFromSheet } from '@/lib/artifacts/spreadsheet-actions';
 import { artifactActionLabel, chartFromStructuredRows, documentTable, presentationFromChart,
   primaryArtifactActions, readableArtifactCopy, readableTableCopy, secondaryArtifactActions, type ArtifactAction } from '@/lib/chat/contextual-guidance';
 
@@ -30,7 +30,7 @@ const syntheticSheet = (artifact: SpreadsheetArtifact): ArtifactSheet | null => 
 export default function ArtifactSmartCard({ part, locale, onRequestPrompt }: {
   part: Extract<ChatMessagePart, { artifact: unknown }>;
   locale: string;
-  onRequestPrompt?: (prompt: string) => void;
+  onRequestPrompt?: (prompt: string, artifact?: import('@/lib/artifacts/core').SpreadsheetArtifact, context?: string) => void;
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [generatedChart, setGeneratedChart] = useState<ChartArtifact | null>(null);
@@ -64,7 +64,7 @@ export default function ArtifactSmartCard({ part, locale, onRequestPrompt }: {
       } else if (action === 'analyze' && part.type === 'spreadsheet') {
         const sheet = part.artifact.sheets[0];
         if (!sheet || !onRequestPrompt) throw new Error('NO_SHEET');
-        onRequestPrompt(`Analyze this spreadsheet and summarize the main findings. Use only the bounded data below; state limitations.\n\n${spreadsheetContext(part.artifact, sheet)}`);
+        onRequestPrompt('Analyze this spreadsheet and summarize the main findings.', part.artifact);
       } else if (action === 'build_presentation' && part.type === 'spreadsheet') {
         const sheet = syntheticSheet(part.artifact);
         if (!sheet) throw new Error('NO_SHEET');
@@ -89,7 +89,7 @@ export default function ArtifactSmartCard({ part, locale, onRequestPrompt }: {
   return <section className="w-full space-y-2" dir={part.artifact.direction} aria-label={title}>
     {part.type === 'document' && <ArtifactDocumentPreview artifact={part.artifact} locale={locale} onClose={() => undefined} inline />}
     {part.type === 'spreadsheet' && <ArtifactSpreadsheetPreview initialArtifact={part.artifact} locale={locale} onClose={() => undefined}
-      onAnalyze={(prompt) => onRequestPrompt?.(prompt)} inline inlineActionsHandledExternally />}
+      onAnalyze={(prompt, artifact, context) => onRequestPrompt?.(prompt, artifact, context)} inline inlineActionsHandledExternally />}
     {part.type === 'chart' && <div className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-3">
       <ArtifactChart artifact={part.artifact} onReady={chartReady} /></div>}
     {part.type === 'presentation' && <ArtifactPresentationPreview artifact={part.artifact} onClose={() => undefined} inline />}
@@ -114,7 +114,7 @@ export default function ArtifactSmartCard({ part, locale, onRequestPrompt }: {
     {generatedChart && <ArtifactSmartCard part={{ type: 'chart', artifact: generatedChart }} locale={locale} />}
     {previewOpen && part.type === 'document' && <ArtifactDocumentPreview artifact={part.artifact} locale={locale} onClose={() => setPreviewOpen(false)} />}
     {previewOpen && part.type === 'spreadsheet' && <ArtifactSpreadsheetPreview initialArtifact={part.artifact} locale={locale}
-      onClose={() => setPreviewOpen(false)} onAnalyze={(prompt) => { setPreviewOpen(false); onRequestPrompt?.(prompt); }} />}
+      onClose={() => setPreviewOpen(false)} onAnalyze={(prompt, artifact, context) => { setPreviewOpen(false); onRequestPrompt?.(prompt, artifact, context); }} />}
     {previewOpen && part.type === 'presentation' && <ArtifactPresentationPreview artifact={part.artifact} onClose={() => setPreviewOpen(false)} />}
     {generatedPresentation && <ArtifactPresentationPreview artifact={generatedPresentation}
       charts={part.type === 'chart' ? [part.artifact] : []} onClose={() => setGeneratedPresentation(null)} />}

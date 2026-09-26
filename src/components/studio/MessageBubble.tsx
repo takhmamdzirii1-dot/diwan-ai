@@ -25,7 +25,7 @@ export interface MessageBubbleProps {
   isStreaming?: boolean;
   isThinking?: boolean;
   onRegenerate?: () => void;
-  onRequestPrompt?: (prompt: string) => void;
+  onRequestPrompt?: (prompt: string, artifact?: import('@/lib/artifacts/core').SpreadsheetArtifact, context?: string) => void;
   precedingUserMessage?: Message | null;
   agentRun?: AgentRun | null;
   onStopAgent?: () => void;
