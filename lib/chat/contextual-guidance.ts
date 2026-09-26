@@ -3,6 +3,8 @@ import { isExplicitDocumentIntent } from '@/lib/artifacts/tool-registry';
 import { documentToText, type ChartArtifact, type DocumentArtifact, type PresentationArtifact, type SheetCell, type SpreadsheetArtifact } from '@/lib/artifacts/core';
 import { formatCapacityWait } from './chat-usage';
 import type { ChatRequestOutcome } from './client-finalization';
+import { getConversationAttachments, getCurrentSpreadsheetAttachment, getSpreadsheetAttachments,
+  type ConversationAttachmentStore } from './conversation-attachments';
 
 export type GuidanceKind = 'requirement' | 'suggestion' | 'warning' | 'confirmation' | 'success' | 'recoverable_error' | 'next_action';
 export type GuidanceAction = 'upload_file' | 'upload_image' | 'upload_document' | 'upload_spreadsheet' | 'switch_model' | 'add_credits' | 'get_pro' | 'view_plans' | 'choose_file' | 'try_again';
@@ -79,6 +81,9 @@ export function artifactActionLabel(action: ArtifactAction, locale: string): str
 export type ComposerGuidanceInput = {
   text: string;
   files: Array<{ type: string }>;
+  attachmentStore?: ConversationAttachmentStore;
+  conversationId?: string;
+  attachmentsHydrated?: boolean;
   model: { visionInput?: boolean; fileInput?: boolean; requiredPlan?: string | null; accessState?: string; creditCost?: number } | null;
   balance: number | null;
   balanceStatus: string;
@@ -104,6 +109,20 @@ export function guidanceForComposer(input: ComposerGuidanceInput): ChatGuidance 
   const missing = fileRequest && (/\b(?:this|the|attached|uploaded)\s+(?:file|document|pdf|image|photo|spreadsheet|workbook)\b/i.test(text)
     || /(?:هذا|هذه|المرفق|المرفقة)\s+(?:الملف|المستند|الصورة|الجدول)/.test(text));
   if (missing && files.length === 0) {
+    if (input.attachmentStore && input.conversationId) {
+      if (input.attachmentsHydrated === false) return null;
+      const spreadsheets = getSpreadsheetAttachments(input.attachmentStore, input.conversationId);
+      const spreadsheetRequest = /\b(?:spreadsheet|workbook)\b|الجدول/i.test(text)
+        || (spreadsheets.length > 0 && /\b(?:charts?|graphs?)\b/i.test(text)
+          && /\b(?:presentation|slides?)\b/i.test(text));
+      if (spreadsheetRequest) {
+        if (spreadsheets.length > 1) return { kind: 'requirement',
+          message: say(locale, { en: 'Choose one attached spreadsheet to continue.',
+            fr: 'Choisissez une feuille de calcul jointe pour continuer.', ar: 'اختر جدول بيانات مرفقًا للمتابعة.' }),
+          actions: [] };
+        if (getCurrentSpreadsheetAttachment(input.attachmentStore, input.conversationId)) return null;
+      } else if (getConversationAttachments(input.attachmentStore, input.conversationId).length > 0) return null;
+    }
     const action: GuidanceAction = /\b(?:image|photo)\b|الصورة/i.test(text) ? 'upload_image'
       : /\b(?:spreadsheet|workbook)\b|الجدول/i.test(text) ? 'upload_spreadsheet' : 'upload_document';
     return { kind: 'requirement', message: say(locale, { en: 'I need the file first.', fr: "J'ai d'abord besoin du fichier.", ar: 'أحتاج إلى الملف أولًا.' }), actions: [action] };

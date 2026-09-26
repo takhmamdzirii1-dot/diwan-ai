@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils";
 import { ModelPicker as ModelSelector, type ChatModelOption } from "./model-picker";
 import ChatGuidanceCard from '@/src/components/studio/ChatGuidanceCard';
 import { attachmentMenuActions, guidanceActionLabel, guidanceForComposer, type ChatGuidance, type GuidanceAction } from '@/lib/chat/contextual-guidance';
-import { uploadFileKind, type ConversationAttachment } from '@/lib/chat/conversation-attachments';
+import { getConversationAttachments, uploadFileKind, type ConversationAttachment,
+    type ConversationAttachmentStore } from '@/lib/chat/conversation-attachments';
 export { ModelPicker as ModelSelector, type ChatModelOption } from "./model-picker";
 
 /* ------------------------------------------------------------------
@@ -32,7 +33,9 @@ export interface ClaudeSendPayload {
 export interface ClaudeChatInputProps {
     onSendMessage: (data: ClaudeSendPayload) => void | Promise<void>;
     onSelectFile?: (file: File) => void;
-    conversationAttachments?: ConversationAttachment[];
+    attachmentStore: ConversationAttachmentStore;
+    conversationId: string;
+    attachmentsHydrated: boolean;
     onRemoveConversationAttachment?: (attachmentId: string) => void;
     onConversationAttachmentAction?: (action: 'analyze' | 'chart' | 'presentation' | 'summarize' | 'ask', attachment: ConversationAttachment) => void;
     pendingAttachmentActions?: Set<string>;
@@ -156,7 +159,9 @@ const PastedContentCard: React.FC<{ content: { id: string; content: string }; on
 export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
     onSendMessage,
     onSelectFile,
-    conversationAttachments = [],
+    attachmentStore,
+    conversationId,
+    attachmentsHydrated,
     onRemoveConversationAttachment,
     pendingAttachmentActions,
     onConversationAttachmentAction,
@@ -178,6 +183,8 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
     const [message, setMessage] = useState("");
     const [files, setFiles] = useState<AttachedFile[]>([]);
     const [guidance, setGuidance] = useState<ChatGuidance | null>(null);
+    const [guidanceAttempted, setGuidanceAttempted] = useState(false);
+    const conversationAttachments = getConversationAttachments(attachmentStore, conversationId);
     const requestedUploadRef = useRef<'image' | 'document' | null>(null);
     const [pastedContent, setPastedContent] = useState<{ id: string; content: string }[]>([]);
     const [isDragging, setIsDragging] = useState(false);
@@ -258,6 +265,12 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
 
     const [multimodalMenuOpen, setMultimodalMenuOpen] = useState(false);
     const selectedModel = models.find((model) => model.id === selectedModelId) ?? models[0];
+    const guidanceInput = { text: message, files: [...files,
+        ...conversationAttachments.filter((item) => item.kind === 'file' || item.kind === 'image')
+            .map((item) => ({ type: item.contentType }))], model: selectedModel ?? null,
+        balance, balanceStatus, locale, attachmentStore, conversationId, attachmentsHydrated };
+    const policyGuidance = guidanceAttempted && attachmentsHydrated ? guidanceForComposer(guidanceInput) : null;
+    useEffect(() => { setGuidanceAttempted(false); setGuidance(null); }, [conversationId]);
     const supportsAttachments = models.length > 0 || Boolean(onSelectFile);
     const menuActions = attachmentMenuActions(supportsAttachments, Boolean(onSelectFile));
     const supportsMenu = menuActions.length > 0;
@@ -381,10 +394,9 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
             return;
         }
         if (!message.trim() && files.length === 0 && pastedContent.length === 0) return;
-        const nextGuidance = guidanceForComposer({ text: message, files: [...files,
-            ...conversationAttachments.filter((item) => item.kind === 'file' || item.kind === 'image').map((item) => ({ type: item.contentType }))],
-            model: selectedModel ?? null, balance, balanceStatus, locale });
-        if (nextGuidance) { setGuidance(nextGuidance); return; }
+        if (!attachmentsHydrated) return;
+        setGuidanceAttempted(true);
+        if (guidanceForComposer(guidanceInput)) return;
 
         // Don't include [Attachment: filename] in the prompt — text-only models
         // would try to "read" the filename and produce confusing errors like
@@ -406,6 +418,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
         setPastedContent([]);
         requestedUploadRef.current = null;
         setGuidance(null);
+        setGuidanceAttempted(false);
         if (textareaRef.current) textareaRef.current.style.height = 'auto';
     };
 
@@ -444,7 +457,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                 <div className="relative z-10 flex min-h-[100px] max-h-[360px] w-full flex-col justify-between rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-composer)] p-2.5 shadow-[var(--studio-shadow)] transition-[border-color] duration-150 focus-within:border-[var(--studio-border-strong)] motion-reduce:transition-none">
 
                 {/* Attachments above input */}
-                {guidance && <div className="px-1 pb-2"><ChatGuidanceCard guidance={guidance} locale={locale} onAction={handleGuidanceAction} /></div>}
+                {(guidance ?? policyGuidance) && <div className="px-1 pb-2"><ChatGuidanceCard guidance={(guidance ?? policyGuidance)!} locale={locale} onAction={handleGuidanceAction} /></div>}
                 {(files.length > 0 || pastedContent.length > 0 || conversationAttachments.length > 0) && (
                     <div className="flex gap-3 overflow-x-auto custom-scrollbar pb-2 px-1">
                         {conversationAttachments.map((attachment) => <div key={attachment.attachmentId} className="flex shrink-0 flex-col gap-1 rounded-lg border border-white/15 bg-white/[0.04] px-3 py-2 text-xs text-white/80"><div className="flex items-center gap-2"><span className="max-w-48 truncate">{attachment.name}</span><span className="text-white/40">{attachmentKindLabel(attachment.kind, locale)}{attachment.kind === 'spreadsheet' && ` · ${attachment.artifact.sheets[0]?.name ?? ''} · ${attachment.artifact.sheets[0]?.rows.length ?? 0} ${locale.startsWith('ar') ? 'صفوف' : locale.startsWith('fr') ? 'lignes' : 'rows'}`}</span><button type="button" aria-label={`${locale.startsWith('ar') ? 'إزالة' : locale.startsWith('fr') ? 'Retirer' : 'Remove'} ${attachment.name}`} onClick={() => onRemoveConversationAttachment?.(attachment.attachmentId)}><X className="h-3.5 w-3.5" /></button></div><div className="flex gap-2 text-[11px] text-white/60">{(attachment.kind === 'spreadsheet' ? ['analyze', 'chart', 'presentation'] : attachment.kind === 'document' || attachment.kind === 'file' ? ['summarize', 'ask', 'presentation'] : []).map((action) => <button key={action} type="button" disabled={isLoading || pendingAttachmentActions?.has(`${attachment.conversationId}:${attachment.attachmentId}:${action}`)} onClick={() => onConversationAttachmentAction?.(action as 'analyze' | 'chart' | 'presentation' | 'summarize' | 'ask', attachment)} className="hover:text-white disabled:opacity-40">{attachmentActionLabel(action, locale)}</button>)}</div></div>)}

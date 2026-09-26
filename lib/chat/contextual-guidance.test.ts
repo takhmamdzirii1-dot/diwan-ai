@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { ChartArtifact, DocumentArtifact, PresentationArtifact, SpreadsheetArtifact } from '@/lib/artifacts/core';
+import { attachConversationFile, getConversationAttachments, getCurrentSpreadsheetAttachment,
+  parseConversationAttachments } from './conversation-attachments';
 import { artifactActionLabel, attachmentMenuActions, getDocumentActionEligibility, chartFromStructuredRows, guidanceForChatError, guidanceForComposer,
   primaryArtifactActions, presentationFromChart, readableArtifactCopy, readableTableCopy, secondaryArtifactActions,
   shouldShowChatError } from './contextual-guidance';
@@ -71,6 +73,9 @@ test('selection and local chart/presentation assembly use no AI or network', () 
     assert.deepEqual(created?.series[0].values, [10, 20]);
     assert.equal(presentationFromChart(created!).slides[1].blocks[0].kind, 'chart');
     primaryArtifactActions({ type: 'spreadsheet', artifact: sheet });
+    const attached = { test: attachConversationFile([], { kind: 'spreadsheet', name: 'Products.xlsx', artifact: sheet }, 'test') };
+    assert.equal(guidanceForComposer({ ...draft, text: 'Analyze this spreadsheet', attachmentStore: attached,
+      conversationId: 'test', attachmentsHydrated: true }), null);
     assert.equal(calls, 0);
   } finally { globalThis.fetch = previousFetch; }
 });
@@ -114,6 +119,47 @@ test('document action uses explicit intent, artifacts, and historical structure 
     assert.equal(calls, 0);
   } finally { globalThis.fetch = originalFetch; }
   assert.deepEqual(primaryArtifactActions({ type: 'document', artifact: { ...base, type: 'document', blocks: [{ kind: 'paragraph', text: 'Revenue increased.' }] } }), ['copy', 'export_document']);
+});
+
+test('visible conversation spreadsheet suppresses pre-send missing-file guidance', () => {
+  const conversationId = 'conversation-a';
+  const attachmentStore = { [conversationId]: attachConversationFile([], {
+    kind: 'spreadsheet', name: 'Products.xlsx', artifact: sheet,
+  }, conversationId) };
+  assert.equal(getConversationAttachments(attachmentStore, conversationId)[0].attachmentId,
+    getCurrentSpreadsheetAttachment(attachmentStore, conversationId)?.attachmentId);
+  assert.equal(guidanceForComposer({ ...draft, text: 'Create two charts and build a 6-slide presentation from this spreadsheet.',
+    attachmentStore, conversationId, attachmentsHydrated: true }), null);
+});
+
+test('hydration recomputes guidance from the restored conversation attachment', () => {
+  const conversationId = 'conversation-restored';
+  const stored = attachConversationFile([], { kind: 'spreadsheet', name: 'Products.xlsx', artifact: sheet }, conversationId);
+  const text = 'Create two charts and build a 6-slide presentation from this spreadsheet.';
+  assert.equal(guidanceForComposer({ ...draft, text, attachmentStore: {}, conversationId,
+    attachmentsHydrated: false }), null);
+  const restored = { [conversationId]: parseConversationAttachments(JSON.stringify(stored), conversationId) };
+  assert.equal(guidanceForComposer({ ...draft, text, attachmentStore: restored, conversationId,
+    attachmentsHydrated: true }), null);
+  assert.equal(getCurrentSpreadsheetAttachment(restored, conversationId)?.attachmentId, stored[0].attachmentId);
+});
+
+test('no spreadsheet still asks for upload, while multiple spreadsheets ask for selection', () => {
+  const conversationId = 'conversation-multiple';
+  const text = 'Create two charts and build a 6-slide presentation from this spreadsheet.';
+  assert.deepEqual(guidanceForComposer({ ...draft, text, attachmentStore: { [conversationId]: [] },
+    conversationId, attachmentsHydrated: true })?.actions, ['upload_spreadsheet']);
+  const first = attachConversationFile([], { kind: 'spreadsheet', name: 'Products.xlsx', artifact: sheet }, conversationId);
+  const second = attachConversationFile(first, { kind: 'spreadsheet', name: 'Other.xlsx',
+    artifact: { ...sheet, id: 'other-sheet' } }, conversationId);
+  const selected = guidanceForComposer({ ...draft, text, attachmentStore: { [conversationId]: second },
+    conversationId, attachmentsHydrated: true });
+  assert.equal(selected?.kind, 'requirement');
+  assert.match(selected?.message ?? '', /Choose one attached spreadsheet/);
+  assert.deepEqual(selected?.actions, []);
+  assert.doesNotMatch(selected?.message ?? '', /need the file/i);
+  assert.equal(guidanceForComposer({ ...draft, text: 'What is compound interest?',
+    attachmentStore: { [conversationId]: second }, conversationId, attachmentsHydrated: true }), null);
 });
 
 test('completed canonical content supersedes an intermediate consumer error', () => {

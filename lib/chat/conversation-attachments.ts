@@ -31,10 +31,17 @@ export function getConversationAttachments(store: ConversationAttachmentStore, c
   return (store[conversationId] ?? []).filter((attachment) => attachment.conversationId === conversationId);
 }
 
+export function getSpreadsheetAttachments(store: ConversationAttachmentStore,
+  conversationId: string): Array<Extract<ConversationAttachment, { kind: 'spreadsheet' }>> {
+  return getConversationAttachments(store, conversationId).filter((item): item is
+    Extract<ConversationAttachment, { kind: 'spreadsheet' }> => item.kind === 'spreadsheet'
+      && isArtifact(item.artifact) && item.artifact.type === 'spreadsheet'
+      && item.artifact.sheets.some((sheet) => sheet.columns.length > 0));
+}
+
 export function getCurrentSpreadsheetAttachment(store: ConversationAttachmentStore,
   conversationId: string): Extract<ConversationAttachment, { kind: 'spreadsheet' }> | null {
-  return [...getConversationAttachments(store, conversationId)].reverse().find((item) => item.kind === 'spreadsheet') as
-    Extract<ConversationAttachment, { kind: 'spreadsheet' }> | undefined ?? null;
+  return getSpreadsheetAttachments(store, conversationId).at(-1) ?? null;
 }
 
 export function getConversationAttachment(store: ConversationAttachmentStore, conversationId: string,

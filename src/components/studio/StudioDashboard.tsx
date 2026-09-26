@@ -152,18 +152,19 @@ export default function StudioDashboard({
   activeSessionIdRef.current = activeSessionId;
   const conversationId = activeSessionId ?? 'default-session';
   const conversationAttachments = getConversationAttachments(attachmentsBySession, conversationId);
+  const attachmentsHydrated = Object.prototype.hasOwnProperty.call(attachmentsBySession, conversationId);
   const currentSpreadsheet = getCurrentSpreadsheetAttachment(attachmentsBySession, conversationId)?.artifact ?? null;
   useEffect(() => {
-    if (!activeSessionId || attachmentsBySessionRef.current[activeSessionId]) return;
+    if (Object.prototype.hasOwnProperty.call(attachmentsBySessionRef.current, conversationId)) return;
+    let restored: ConversationAttachment[] = [];
     try {
-      const saved = localStorage.getItem(`vantra_attachments_${activeSessionId}`);
-      if (saved) {
-        attachmentsBySessionRef.current = { ...attachmentsBySessionRef.current,
-          [activeSessionId]: parseConversationAttachments(saved, activeSessionId) };
-        setAttachmentsBySession(attachmentsBySessionRef.current);
-      }
+      const saved = localStorage.getItem(`vantra_attachments_${conversationId}`);
+      if (saved) restored = parseConversationAttachments(saved, conversationId);
     } catch { /* This conversation remains available in memory. */ }
-  }, [activeSessionId]);
+    if (Object.prototype.hasOwnProperty.call(attachmentsBySessionRef.current, conversationId)) return;
+    attachmentsBySessionRef.current = { ...attachmentsBySessionRef.current, [conversationId]: restored };
+    setAttachmentsBySession(attachmentsBySessionRef.current);
+  }, [conversationId]);
   const attachToConversation = useCallback((attachment: ConversationAttachmentDraft, expectedConversationId?: string) => {
     const id = expectedConversationId ?? activeSessionIdRef.current ?? 'default-session';
     if (id !== (activeSessionIdRef.current ?? 'default-session')) return null;
@@ -1191,7 +1192,9 @@ export default function StudioDashboard({
                       <ClaudeChatInput
                       onSendMessage={handleSend}
                       onSelectFile={(file) => setPendingFile(file)}
-                      conversationAttachments={conversationAttachments}
+                      attachmentStore={attachmentsBySession}
+                      conversationId={conversationId}
+                      attachmentsHydrated={attachmentsHydrated}
                       pendingAttachmentActions={pendingAttachmentActions}
                       onRemoveConversationAttachment={detachFromConversation}
                       onConversationAttachmentAction={(action, selected) => { void (async () => {
