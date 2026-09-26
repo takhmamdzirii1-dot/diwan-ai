@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { useLocale, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { documentFromMarkdown } from '@/lib/artifacts/core';
-import { chatPartsFromMessage, chatPartsFromToolInvocations, looksLikeArtifactOutput, streamingSafeText } from '@/lib/artifacts/chat-parts';
+import { chatPartsFromMessage, chatPartsFromToolInvocations, looksLikeArtifactOutput, streamingSafeText, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
 import { artifactToolProgress } from '@/lib/artifacts/tool-registry';
 
 const ArtifactDocumentPreview = dynamic(() => import('./ArtifactDocumentPreview'), { ssr: false });
@@ -97,7 +97,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
       ? artifactToolProgress(invocation.toolName, locale) : null).find(Boolean) : null;
   const artifactParts = parts.filter((part) => part.type !== 'text');
   const safeContent = isStreaming ? streamingSafeText(message.content)
-    : parts.filter((part) => part.type === 'text').map((part) => part.text).join('\n\n');
+    : parts.filter((part) => part.type === 'text').map((part) => part.text).join('');
   const isRTL = artifactParts[0] && 'artifact' in artifactParts[0]
     ? artifactParts[0].artifact.direction === 'rtl'
     : detectDir(isUser ? message.content : safeContent) === 'rtl';
@@ -142,8 +142,9 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   // Fluid typewriter reveal while the assistant is streaming
   const smoothActive = !isUser && isStreaming && isLatest;
   const smoothContent = useSmoothText(isUser ? message.content : safeContent, smoothActive);
-  const displayContent = smoothContent;
-  const showStreamingCursor = !isUser && isLatest && displayContent.length > 0 && (smoothActive || displayContent.length < message.content.length);
+  const displayContent = smoothActive ? smoothContent : safeContent;
+  const renderParts: ChatMessagePart[] = isStreaming ? [{ type: 'text', text: displayContent }] : parts;
+  const showStreamingCursor = smoothActive && displayContent.length > 0;
 
   const handleCopyCode = (code: string, id: string) => {
     navigator.clipboard.writeText(code);
@@ -152,9 +153,21 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   };
 
   const handleCopyMessage = () => {
-    navigator.clipboard.writeText(artifactParts.length > 0 ? artifactParts.map((part) => 'artifact' in part ? part.artifact.title : part.name).join('\n') : safeContent);
+    navigator.clipboard.writeText(artifactParts.length > 0 ? parts.map((part) => part.type === 'text'
+      ? part.text : 'artifact' in part ? part.artifact.title : part.name).join('') : safeContent);
     setCopiedMessage(true);
     setTimeout(() => setCopiedMessage(false), 2000);
+  };
+
+  const renderArtifactPart = (part: ChatMessagePart, index: number) => {
+    if (part.type === 'document') return <ArtifactDocumentPreview key={index} artifact={part.artifact} locale={locale} onClose={() => undefined} inline />;
+    if (part.type === 'spreadsheet') return <ArtifactSpreadsheetPreview key={index} initialArtifact={part.artifact} locale={locale} onClose={() => undefined} onAnalyze={() => undefined} inline />;
+    if (part.type === 'chart') return <div key={index} className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-3"><ArtifactChart artifact={part.artifact} /></div>;
+    if (part.type === 'presentation') return <ArtifactPresentationPreview key={index} artifact={part.artifact} onClose={() => undefined} inline />;
+    if (part.type === 'image') return <img key={index} src={part.url} alt={part.name} className="max-h-[30rem] max-w-full rounded-xl border border-[var(--studio-border)] object-contain" />;
+    if (part.type === 'video') return <video key={index} src={part.url} controls preload="metadata" aria-label={part.name} className="max-h-[30rem] max-w-full rounded-xl border border-[var(--studio-border)]" />;
+    if (part.type === 'file') return <a key={index} href={part.url} download={part.name} className="inline-flex rounded-lg border border-[var(--studio-border)] px-3 py-2 text-sm text-[var(--studio-text-primary)] underline">{part.name}</a>;
+    return null;
   };
 
   return (
@@ -233,7 +246,8 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
             )}
 
             {isStreaming && !displayContent && <p role="status" className="text-sm text-[var(--studio-text-muted)]">{locale === 'ar' ? 'جارٍ تحضير المعاينة…' : locale === 'fr' ? 'Préparation de l’aperçu…' : 'Preparing preview…'}</p>}
-            {displayContent && <div className={cn(
+            {toolProgress && <p className="mt-2 text-xs text-[var(--studio-text-secondary)]" role="status">{toolProgress}</p>}
+            {renderParts.map((part, index) => part.type === 'text' ? part.text && <div key={index} className={cn(
               "prose prose-invert max-w-none font-sans antialiased text-white/90 text-[15px] font-normal leading-relaxed",
               "prose-p:text-white/90 prose-p:text-[15px] prose-p:font-sans prose-p:antialiased prose-p:leading-relaxed prose-p:font-normal",
               "prose-headings:text-white/90 prose-headings:font-semibold prose-strong:text-white/90 prose-strong:font-semibold",
@@ -371,7 +385,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                   }
                 }}
               >
-                {displayContent}
+                {part.text}
               </ReactMarkdown>
 
               {/* Streaming Cursor */}
@@ -383,19 +397,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                   ▮
                 </span>
               )}
-            </div>}
-
-            {toolProgress && <p className="mt-2 text-xs text-[var(--studio-text-secondary)]" role="status">{toolProgress}</p>}
-            {artifactParts.map((part, index) => {
-              if (part.type === 'document') return <ArtifactDocumentPreview key={index} artifact={part.artifact} locale={locale} onClose={() => undefined} inline />;
-              if (part.type === 'spreadsheet') return <ArtifactSpreadsheetPreview key={index} initialArtifact={part.artifact} locale={locale} onClose={() => undefined} onAnalyze={() => undefined} inline />;
-              if (part.type === 'chart') return <div key={index} className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-3"><ArtifactChart artifact={part.artifact} /></div>;
-              if (part.type === 'presentation') return <ArtifactPresentationPreview key={index} artifact={part.artifact} onClose={() => undefined} inline />;
-              if (part.type === 'image') return <img key={index} src={part.url} alt={part.name} className="max-h-[30rem] max-w-full rounded-xl border border-[var(--studio-border)] object-contain" />;
-              if (part.type === 'video') return <video key={index} src={part.url} controls preload="metadata" aria-label={part.name} className="max-h-[30rem] max-w-full rounded-xl border border-[var(--studio-border)]" />;
-              if (part.type === 'file') return <a key={index} href={part.url} download={part.name} className="inline-flex rounded-lg border border-[var(--studio-border)] px-3 py-2 text-sm text-[var(--studio-text-primary)] underline">{part.name}</a>;
-              return null;
-            })}
+            </div> : renderArtifactPart(part, index))}
 
             {/* Message-Level Hover Controls */}
             {!isStreaming && (

@@ -45,7 +45,7 @@ test('the real PresentationArtifact shape and deterministic formatting variation
   const extracted = parsePresentationResponse(prose, 'en');
   assert.equal(extracted.reason, null);
   assert.deepEqual(extracted.shape, { fenced: false, proseBefore: true, proseAfter: true });
-  assert.equal(chatPartsFromMessage(prose, 'en')[0].type, 'presentation');
+  assert.deepEqual(chatPartsFromMessage(prose, 'en').map((part) => part.type), ['text', 'presentation', 'text']);
   assert.equal(parsePresentationResponse(presentationJson, 'en').artifact?.slides[0].id, 'slide-1');
   const kpi = parsePresentationResponse(JSON.stringify({ type: 'presentation', title: 'Summary', slides: [{ title: 'Key metrics', variant: 'kpi', blocks: [{ kind: 'table', rows: [['Revenue', '$1,200']] }] }] }), 'en');
   assert.equal(kpi.artifact?.slides[0].variant, 'kpi');

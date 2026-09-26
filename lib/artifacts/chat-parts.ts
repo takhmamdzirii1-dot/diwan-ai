@@ -59,13 +59,40 @@ export function presentationRequested(input: string): boolean {
 export const PRESENTATION_OUTPUT_INSTRUCTION =
   `When the user requests a presentation, return ONLY one JSON object matching this PresentationArtifact shape: ${JSON.stringify(PRESENTATION_MODEL_SHAPE)}. Replace the example values with the user's content. Use 1–8 concise slides and set each slide variant to cover, kpi, table, or insights as appropriate. Summarize source data into key metrics, trends, and evidence-based takeaways; never paste raw spreadsheet rows. For a KPI slide use a two-column table of metric labels and values. For a table slide use only a small summary table. Use only supported text, bullets, and table blocks; a chart block requires an existing chartId and must not be invented. Do not wrap the JSON in Markdown or add explanatory text. Do not include URLs, executable content, or unsupported blocks.`;
 
-const presentationLike = (content: string) => /"type"\s*:\s*"presentation"|"slides"\s*:/i.test(content);
+const presentationLike = (content: string) =>
+  /\{\s*"type"\s*:\s*"presentation"|\{\s*"slides"\s*:/i.test(content);
 
 function artifactCandidate(content: string): string | null {
   const fence = /```(?:json)?\s*([\s\S]*?)```/i.exec(content);
   const source = (fence?.[1] ?? content).trim();
   if (!source.startsWith('{') || source.length > 80_000) return null;
   return source;
+}
+
+function embeddedArtifact(content: string, language: string): { artifact: Artifact; start: number; end: number } | null {
+  const fence = /```(?:json)?\s*([\s\S]*?)```/i.exec(content);
+  if (fence) {
+    const artifact = parseChatArtifact(fence[1], language);
+    if (artifact) return { artifact, start: fence.index, end: fence.index + fence[0].length };
+  }
+  const start = content.search(/\{\s*"(?:type|tool)"\s*:\s*"(?:presentation|chart|document|spreadsheet|create_(?:table|chart|document|spreadsheet|presentation))"/i);
+  if (start < 0) return null;
+  let depth = 0;
+  let quoted = false;
+  let escaped = false;
+  for (let end = start; end < content.length; end++) {
+    const character = content[end];
+    if (escaped) { escaped = false; continue; }
+    if (quoted && character === '\\') { escaped = true; continue; }
+    if (character === '"') { quoted = !quoted; continue; }
+    if (quoted) continue;
+    if (character === '{') depth++;
+    if (character === '}' && --depth === 0) {
+      const artifact = parseChatArtifact(content.slice(start, end + 1), language);
+      return artifact ? { artifact, start, end: end + 1 } : null;
+    }
+  }
+  return null;
 }
 
 export function parseChatArtifact(content: string, language: string): Artifact | null {
@@ -105,11 +132,8 @@ function parseChatMedia(content: string): ChatMessagePart | null {
 }
 
 export function looksLikeArtifactOutput(content: string): boolean {
-  const trimmed = content.trimStart();
-  return /"tool"\s*:\s*"create_(?:table|chart|document|spreadsheet|presentation)"/i.test(content)
-    || presentationLike(content)
-    || trimmed.startsWith('{') && /"(?:type|schemaVersion|slides|sheets|blocks|series)"\s*:/.test(trimmed)
-    || /```(?:json)?\s*\{[\s\S]*?"(?:type|schemaVersion|slides|sheets|blocks|series)"\s*:/i.test(content);
+  const source = artifactCandidate(content);
+  return source !== null && /"tool"\s*:\s*"create_(?:table|chart|document|spreadsheet|presentation)"|"type"\s*:\s*"(?:table|chart|document|spreadsheet|presentation|image|video|file)"/i.test(source);
 }
 
 export function chatPartsFromToolInvocations(invocations: unknown, language: string): ChatMessagePart[] {
@@ -145,7 +169,18 @@ export function chatPartsFromMessage(content: string, language: string, stored?:
         parts.push(parsed.data as ChatMessagePart);
       }
     }
-    if (parts.length === stored.length && !(looksLikeArtifactOutput(content) && parts.some((part) => part.type === 'text'))) return parts;
+    if (parts.length === stored.length && !(parts.length === 1 && parts[0].type === 'text'
+      && parts[0].text === content && looksLikeArtifactOutput(content))) return parts;
+  }
+  const embedded = embeddedArtifact(content, language);
+  if (embedded && (embedded.start > 0 || embedded.end < content.length)) {
+    const before = content.slice(0, embedded.start);
+    const after = content.slice(embedded.end);
+    return [
+      ...(before ? [{ type: 'text' as const, text: before }] : []),
+      { type: embedded.artifact.type, artifact: embedded.artifact } as ChatMessagePart,
+      ...(after ? [{ type: 'text' as const, text: after }] : []),
+    ];
   }
   const artifact = parseChatArtifact(content, language);
   if (artifact) return [{ type: artifact.type, artifact } as ChatMessagePart];
@@ -167,9 +202,13 @@ export function chatPartsFromMessage(content: string, language: string, stored?:
 }
 
 export function streamingSafeText(content: string): string {
-  // Hold any opening object while streaming: the discriminator may not have arrived yet.
-  const start = content.search(/```(?:json)?\s*|\{/i);
-  if (start >= 0) return content.slice(0, start).trimEnd();
-  if (/^\s*(?:```(?:json)?\s*|\{)/.test(content)) return '';
+  // Only hold a structured artifact candidate. Ordinary braces and Markdown
+  // fences inside prose must never truncate the answer.
+  const leading = content.match(/^\s*/)?.[0].length ?? 0;
+  const source = content.slice(leading);
+  const fence = /```(?:json)?\s*\{\s*"(?:type|tool)"\s*:\s*"(?:presentation|chart|document|spreadsheet|create_(?:table|chart|document|spreadsheet|presentation))"/i.exec(content);
+  if (fence) return content.slice(0, fence.index).trimEnd();
+  const object = /\{\s*"(?:type|tool)"\s*:\s*"(?:presentation|chart|document|spreadsheet|create_(?:table|chart|document|spreadsheet|presentation))"/i.exec(source);
+  if (object) return content.slice(0, leading + object.index).trimEnd();
   return content;
 }

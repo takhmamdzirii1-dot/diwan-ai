@@ -12,7 +12,7 @@ export function useSmoothText(target: string, active: boolean): string {
   const shownRef = useRef(active ? 0 : target.length);
 
   useEffect(() => {
-    if (!active && shownRef.current >= target.length) {
+    if (!active) {
       shownRef.current = target.length;
       setShown(target);
       return;

@@ -29,6 +29,7 @@ import type { ChatModelOption } from '@/components/ui/model-picker';
 import { trackFunnelEvent } from '@/src/lib/funnel-analytics';
 import dynamic from 'next/dynamic';
 import { chatPartsFromMessage } from '@/lib/artifacts/chat-parts';
+import { chatRequestMessages, serializeChatSession } from '@/lib/chat/message-history';
 
 const ArtifactSpreadsheetPreview = dynamic(() => import('./ArtifactSpreadsheetPreview'), { ssr: false });
 
@@ -181,6 +182,10 @@ export default function StudioDashboard({
   } = useChat({
     id: activeSessionId || 'default-session',
     api: '/api/generate/chat',
+    experimental_prepareRequestBody: ({ messages: requestMessages, requestBody }) => ({
+      messages: chatRequestMessages(requestMessages),
+      ...requestBody,
+    }),
     onFinish: () => {
       if (sendStartRef.current) setLastLatencyMs(performance.now() - sendStartRef.current);
       setChatExchanges((count) => count + 1);
@@ -246,14 +251,13 @@ export default function StudioDashboard({
 
   useEffect(() => {
     if (!activeSessionId) return;
-    // Debounced + capped: persist only the last 50 messages per session
+    // Persist the complete current conversation, including every earlier turn.
     const t = setTimeout(() => {
       try {
         if (messages.length > 0) {
-          localStorage.setItem(`vantra_chat_${activeSessionId}`, JSON.stringify(messages.slice(-50).map((message) =>
-            message.role === 'assistant' && !isLoading
-              ? { ...message, vantraParts: chatPartsFromMessage(message.content, locale) }
-              : message)));
+          localStorage.setItem(`vantra_chat_${activeSessionId}`, isLoading ? JSON.stringify(messages)
+            : serializeChatSession(messages, (message) => chatPartsFromMessage(message.content, locale,
+              (message as typeof message & { vantraParts?: unknown }).vantraParts)));
         } else {
           localStorage.removeItem(`vantra_chat_${activeSessionId}`);
         }
