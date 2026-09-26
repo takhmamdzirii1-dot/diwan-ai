@@ -36,30 +36,110 @@ export type ArtifactSlide = { id: string; layout: 'title' | 'content'; title: st
 export type PresentationArtifact = ArtifactBase & { type: 'presentation'; slides: ArtifactSlide[] };
 export type Artifact = DocumentArtifact | SpreadsheetArtifact | ChartArtifact | PresentationArtifact;
 
-export function presentationFromResponse(content: string, language: string): PresentationArtifact | null {
-  const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(content);
-  const source = fenced?.[1] ?? content.trim();
-  if (source.length > 80_000 || !source.startsWith('{')) return null;
+// This typed example is the single model-facing shape; the parser below owns
+// normalization and validation before anything reaches the slide renderer.
+export const PRESENTATION_MODEL_SHAPE = {
+  schemaVersion: 1, id: 'presentation-id', type: 'presentation', title: 'Presentation title',
+  language: 'en', direction: 'ltr', metadata: {}, slides: [{
+    id: 'slide-1', layout: 'title', title: 'Slide title', subtitle: 'Optional subtitle',
+    blocks: [
+      { kind: 'text', text: 'Slide text' },
+      { kind: 'bullets', items: ['First point', 'Second point'] },
+      { kind: 'table', rows: [['Column', 'Value'], ['Row', 'Value']] },
+    ],
+  }],
+} satisfies PresentationArtifact;
+
+export type PresentationFailureCategory =
+  | 'presentation_json_not_found' | 'presentation_json_parse_failed'
+  | 'presentation_schema_invalid' | 'presentation_block_invalid';
+export type PresentationResponseShape = { fenced: boolean; proseBefore: boolean; proseAfter: boolean };
+export type PresentationParseResult =
+  | { artifact: PresentationArtifact; reason: null; shape: PresentationResponseShape }
+  | { artifact: null; reason: PresentationFailureCategory; shape: PresentationResponseShape; field?: string };
+
+class PresentationValidationError extends Error {
+  constructor(readonly category: PresentationFailureCategory, readonly field?: string) { super(category); }
+}
+
+function extractPresentationCandidate(content: string): { source: string; shape: PresentationResponseShape } {
+  if (content.length > 80_000) throw new PresentationValidationError('presentation_schema_invalid', 'length');
+  const fence = /```(?:json)?\s*([\s\S]*?)```/i.exec(content);
+  if (fence) return {
+    source: fence[1].trim(),
+    shape: { fenced: true, proseBefore: !!content.slice(0, fence.index).trim(), proseAfter: !!content.slice(fence.index + fence[0].length).trim() },
+  };
+  if (/```(?:json)?\s*\{/i.test(content)) throw new PresentationValidationError('presentation_json_parse_failed', 'fence');
+
+  // Find exactly one balanced object, ignoring braces inside quoted strings.
+  const spans: Array<[number, number]> = [];
+  let start = -1, depth = 0, quoted = false, escaped = false;
+  for (let index = 0; index < content.length; index++) {
+    const char = content[index];
+    if (quoted) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === '"') quoted = false;
+      continue;
+    }
+    if (char === '"' && depth > 0) { quoted = true; continue; }
+    if (char === '{') { if (depth === 0) start = index; depth++; }
+    else if (char === '}' && depth > 0 && --depth === 0) spans.push([start, index + 1]);
+  }
+  if (depth > 0) throw new PresentationValidationError('presentation_json_parse_failed', 'object');
+  if (spans.length !== 1) throw new PresentationValidationError('presentation_json_not_found', 'object');
+  const [from, to] = spans[0];
+  return { source: content.slice(from, to), shape: { fenced: false, proseBefore: !!content.slice(0, from).trim(), proseAfter: !!content.slice(to).trim() } };
+}
+
+export function parsePresentationResponse(content: string, language: string): PresentationParseResult {
+  const emptyShape: PresentationResponseShape = { fenced: false, proseBefore: false, proseAfter: false };
+  let shape = emptyShape;
   try {
-    const value = JSON.parse(source) as Record<string, unknown>;
-    if (value.type !== 'presentation' || !Array.isArray(value.slides) || value.slides.length < 1 || value.slides.length > 12) return null;
-    const slides: ArtifactSlide[] = value.slides.map((raw, index) => {
-      if (!raw || typeof raw !== 'object') throw new Error('Invalid slide');
-      const slide = raw as Record<string, unknown>;
-      if (typeof slide.title !== 'string' || !Array.isArray(slide.blocks)) throw new Error('Invalid slide');
-      const blocks: SlideBlock[] = slide.blocks.slice(0, 12).map((item: unknown) => {
-        if (!item || typeof item !== 'object') throw new Error('Invalid block');
-        const block = item as Record<string, unknown>;
+    const candidate = extractPresentationCandidate(content);
+    shape = candidate.shape;
+    let raw: unknown;
+    try { raw = JSON.parse(candidate.source); }
+    catch { throw new PresentationValidationError('presentation_json_parse_failed', 'json'); }
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new PresentationValidationError('presentation_schema_invalid', 'root');
+    const value = raw as Record<string, unknown>;
+    if (value.type !== 'presentation' || (value.schemaVersion != null && value.schemaVersion !== 1)
+      || (value.id != null && typeof value.id !== 'string') || (value.language != null && typeof value.language !== 'string')
+      || (value.direction != null && value.direction !== 'ltr' && value.direction !== 'rtl')) {
+      throw new PresentationValidationError('presentation_schema_invalid', 'root');
+    }
+    if (!Array.isArray(value.slides) || value.slides.length < 1 || value.slides.length > 12) throw new PresentationValidationError('presentation_schema_invalid', 'slides');
+    const slides: ArtifactSlide[] = value.slides.map((rawSlide, index) => {
+      if (!rawSlide || typeof rawSlide !== 'object' || Array.isArray(rawSlide)) throw new PresentationValidationError('presentation_schema_invalid', `slides[${index}]`);
+      const slide = rawSlide as Record<string, unknown>;
+      if (typeof slide.title !== 'string' || !slide.title.trim() || !Array.isArray(slide.blocks) || slide.blocks.length > 12
+        || (slide.id != null && typeof slide.id !== 'string')
+        || (slide.layout != null && slide.layout !== 'title' && slide.layout !== 'content')
+        || (slide.subtitle != null && typeof slide.subtitle !== 'string')) {
+        throw new PresentationValidationError('presentation_schema_invalid', `slides[${index}]`);
+      }
+      const blocks: SlideBlock[] = slide.blocks.map((rawBlock: unknown, blockIndex: number) => {
+        if (!rawBlock || typeof rawBlock !== 'object' || Array.isArray(rawBlock)) throw new PresentationValidationError('presentation_block_invalid', `slides[${index}].blocks[${blockIndex}]`);
+        const block = rawBlock as Record<string, unknown>;
         if (block.kind === 'text' && typeof block.text === 'string') return { kind: 'text', text: block.text.slice(0, 2000) };
-        if (block.kind === 'bullets' && Array.isArray(block.items) && block.items.every((entry) => typeof entry === 'string')) return { kind: 'bullets', items: block.items.slice(0, 8).map((entry: string) => entry.slice(0, 500)) };
-        if (block.kind === 'table' && Array.isArray(block.rows) && block.rows.every((row) => Array.isArray(row) && row.every((cell) => typeof cell === 'string'))) return { kind: 'table', rows: block.rows.slice(0, 10).map((row: string[]) => row.slice(0, 8).map((cell) => cell.slice(0, 300))) };
-        throw new Error('Unsupported block');
+        if (block.kind === 'bullets' && Array.isArray(block.items) && block.items.length <= 8 && block.items.every((entry) => typeof entry === 'string')) return { kind: 'bullets', items: block.items.map((entry: string) => entry.slice(0, 500)) };
+        if (block.kind === 'table' && Array.isArray(block.rows) && block.rows.length <= 10 && block.rows.every((row) => Array.isArray(row) && row.length <= 8 && row.every((cell) => typeof cell === 'string'))) return { kind: 'table', rows: block.rows.map((row: string[]) => row.map((cell) => cell.slice(0, 300))) };
+        throw new PresentationValidationError('presentation_block_invalid', `slides[${index}].blocks[${blockIndex}]`);
       });
       return { id: `slide-${index + 1}`, layout: slide.layout === 'title' ? 'title' : 'content', title: slide.title.slice(0, 160), subtitle: typeof slide.subtitle === 'string' ? slide.subtitle.slice(0, 300) : undefined, blocks };
     });
-    const title = typeof value.title === 'string' ? value.title.slice(0, 160) : slides[0].title;
-    return { schemaVersion: 1, id: crypto.randomUUID(), type: 'presentation', title, language, direction: artifactDirection(language, slides.map((slide) => slide.title).join(' ')), slides, metadata: {} };
-  } catch { return null; }
+    const title = typeof value.title === 'string' && value.title.trim() ? value.title.slice(0, 160) : slides[0].title;
+    const artifact: PresentationArtifact = { schemaVersion: 1, id: crypto.randomUUID(), type: 'presentation', title, language, direction: artifactDirection(language, slides.map((slide) => slide.title).join(' ')), slides, metadata: {} };
+    return { artifact, reason: null, shape };
+  } catch (cause) {
+    return cause instanceof PresentationValidationError
+      ? { artifact: null, reason: cause.category, shape, field: cause.field }
+      : { artifact: null, reason: 'presentation_schema_invalid', shape };
+  }
+}
+
+export function presentationFromResponse(content: string, language: string): PresentationArtifact | null {
+  return parsePresentationResponse(content, language).artifact;
 }
 
 export function isArtifact(value: unknown): value is Artifact {

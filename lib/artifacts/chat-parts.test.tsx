@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { chatPartsFromMessage, presentationRequested, streamingSafeText } from './chat-parts';
-import { documentFromMarkdown, type ChartArtifact, type SpreadsheetArtifact } from './core';
+import { chatPartsFromMessage, presentationRequested, streamingSafeText, PRESENTATION_OUTPUT_INSTRUCTION } from './chat-parts';
+import { documentFromMarkdown, parsePresentationResponse, PRESENTATION_MODEL_SHAPE, type ChartArtifact, type SpreadsheetArtifact } from './core';
 import ArtifactDocumentPreview from '@/src/components/studio/ArtifactDocumentPreview';
 import ArtifactSpreadsheetPreview from '@/src/components/studio/ArtifactSpreadsheetPreview';
 import ArtifactPresentationPreview from '@/src/components/studio/ArtifactPresentationPreview';
@@ -26,6 +26,57 @@ test('normal and old text messages remain text; one presentation pipeline handle
   assert.equal(chatPartsFromMessage(presentationJson, 'en')[0].type, 'presentation');
   assert.equal(streamingSafeText('```json\n' + presentationJson.slice(0, 30)), '');
   assert.equal(streamingSafeText(presentationJson.slice(0, 30)), '');
+});
+
+test('the real PresentationArtifact shape and deterministic formatting variations validate', () => {
+  const exact = JSON.stringify(PRESENTATION_MODEL_SHAPE);
+  const direct = parsePresentationResponse(exact, 'en');
+  assert.equal(direct.reason, null);
+  assert.equal(direct.artifact?.slides[0].blocks.length, 3);
+  assert.match(PRESENTATION_OUTPUT_INSTRUCTION, /schemaVersion/);
+  assert.match(PRESENTATION_OUTPUT_INSTRUCTION, /"kind":"bullets"/);
+
+  const fenced = parsePresentationResponse(`Before the deck.\n\x60\x60\x60json\n${exact}\n\x60\x60\x60\nAfter the deck.`, 'en');
+  assert.equal(fenced.reason, null);
+  assert.deepEqual(fenced.shape, { fenced: true, proseBefore: true, proseAfter: true });
+
+  // Representative LLM formatting: one unfenced JSON object with harmless prose.
+  const prose = `Here is your presentation:\n${presentationJson}\nYou can preview it below.`;
+  const extracted = parsePresentationResponse(prose, 'en');
+  assert.equal(extracted.reason, null);
+  assert.deepEqual(extracted.shape, { fenced: false, proseBefore: true, proseAfter: true });
+  assert.equal(chatPartsFromMessage(prose, 'en')[0].type, 'presentation');
+  assert.equal(parsePresentationResponse(presentationJson, 'en').artifact?.slides[0].id, 'slide-1');
+});
+
+test('presentation failures retain safe internal categories without showing JSON', () => {
+  assert.equal(parsePresentationResponse('No JSON here.', 'en').reason, 'presentation_json_not_found');
+  assert.equal(parsePresentationResponse('{"type":"presentation","slides":[', 'en').reason, 'presentation_json_parse_failed');
+  assert.equal(parsePresentationResponse('{"type":"presentation","slides":[]}', 'en').reason, 'presentation_schema_invalid');
+  const badBlock = '{"type":"presentation","slides":[{"title":"Slide","blocks":[{"kind":"video","src":"bad"}]}]}';
+  const failed = parsePresentationResponse(badBlock, 'en');
+  assert.equal(failed.reason, 'presentation_block_invalid');
+  if (failed.artifact !== null) assert.fail('Invalid block must not become an artifact');
+  const part = chatPartsFromMessage(badBlock, 'en')[0];
+  assert.equal(part.type, 'text');
+  if (part.type === 'text') {
+    assert.equal(part.failureCategory, 'presentation_block_invalid');
+    assert.doesNotMatch(part.text, /"kind"|"slides"|video/);
+  }
+  assert.equal(streamingSafeText('Here is a deck: {"type":"presentation","slides":['), 'Here is a deck:');
+});
+
+test('button and ordinary Chat presentation requests share one zero-repair parser', () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = (() => { calls++; throw new Error('Unexpected AI repair call'); }) as typeof fetch;
+  try {
+    for (const prompt of ['Create a concise presentation from this spreadsheet.', 'Create a presentation from this spreadsheet']) {
+      assert.equal(presentationRequested(prompt), true);
+      assert.equal(chatPartsFromMessage(presentationJson, 'en')[0].type, 'presentation');
+    }
+    assert.equal(calls, 0);
+  } finally { globalThis.fetch = originalFetch; }
 });
 
 test('the Chat bubble keeps old Markdown readable and never exposes presentation JSON', () => {

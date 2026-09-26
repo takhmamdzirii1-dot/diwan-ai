@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { presentationFromResponse, type Artifact } from './core';
+import { parsePresentationResponse, PRESENTATION_MODEL_SHAPE, type Artifact, type PresentationFailureCategory } from './core';
 
 const text = z.string().max(80_000);
 const base = z.object({
@@ -42,7 +42,7 @@ const safeMediaUrl = z.string().max(2048).refine((url) =>
   || /^https:\/\/[^\s]+$/i.test(url), 'Unsafe media URL');
 
 export type ChatMessagePart =
-  | { type: 'text'; text: string }
+  | { type: 'text'; text: string; failureCategory?: PresentationFailureCategory }
   | { [K in Artifact['type']]: { type: K; artifact: Extract<Artifact, { type: K }> } }[Artifact['type']]
   | { type: 'image'; url: string; name: string; mimeType?: string }
   | { type: 'video'; url: string; name: string; mimeType?: string }
@@ -56,7 +56,9 @@ export function presentationRequested(input: string): boolean {
 }
 
 export const PRESENTATION_OUTPUT_INSTRUCTION =
-  'When the user requests a presentation, return ONLY one JSON object shaped like {"type":"presentation","title":"...","slides":[{"title":"...","layout":"title","blocks":[{"kind":"text","text":"..."}]}]}. Use 1–8 slides. Blocks may only be text, bullets (items: string[]), or table (rows: string[][]). Do not wrap the JSON in Markdown or add explanatory text. Do not include URLs, executable content, or unsupported blocks.';
+  `When the user requests a presentation, return ONLY one JSON object matching this PresentationArtifact shape: ${JSON.stringify(PRESENTATION_MODEL_SHAPE)}. Replace the example values with the user's content. Use 1–8 slides, with only supported text, bullets, and table blocks. Do not wrap the JSON in Markdown or add explanatory text. Do not include URLs, executable content, or unsupported blocks.`;
+
+const presentationLike = (content: string) => /"type"\s*:\s*"presentation"|"slides"\s*:/i.test(content);
 
 function artifactCandidate(content: string): string | null {
   const fence = /```(?:json)?\s*([\s\S]*?)```/i.exec(content);
@@ -66,16 +68,17 @@ function artifactCandidate(content: string): string | null {
 }
 
 export function parseChatArtifact(content: string, language: string): Artifact | null {
+  if (presentationLike(content)) {
+    const result = parsePresentationResponse(content, language);
+    return result.artifact && artifactSchema.safeParse(result.artifact).success ? result.artifact : null;
+  }
   const source = artifactCandidate(content);
   if (!source) return null;
   try {
     const value = JSON.parse(source) as unknown;
     if (!value || typeof value !== 'object') return null;
     const type = (value as { type?: unknown }).type;
-    if (type === 'presentation') {
-      const presentation = presentationFromResponse(source, language);
-      return presentation && artifactSchema.safeParse(presentation).success ? presentation : null;
-    }
+    if (type === 'presentation') return null;
     const parsed = artifactSchema.safeParse(value);
     return parsed.success ? parsed.data as Artifact : null;
   } catch { return null; }
@@ -92,7 +95,8 @@ function parseChatMedia(content: string): ChatMessagePart | null {
 
 export function looksLikeArtifactOutput(content: string): boolean {
   const trimmed = content.trimStart();
-  return trimmed.startsWith('{') && /"(?:type|schemaVersion|slides|sheets|blocks|series)"\s*:/.test(trimmed)
+  return presentationLike(content)
+    || trimmed.startsWith('{') && /"(?:type|schemaVersion|slides|sheets|blocks|series)"\s*:/.test(trimmed)
     || /```(?:json)?\s*\{[\s\S]*?"(?:type|schemaVersion|slides|sheets|blocks|series)"\s*:/i.test(content);
 }
 
@@ -101,7 +105,9 @@ export function chatPartsFromMessage(content: string, language: string, stored?:
     const parts: ChatMessagePart[] = [];
     for (const part of stored) {
       if (!part || typeof part !== 'object') break;
-      if (part.type === 'text' && text.safeParse(part.text).success) parts.push({ type: 'text', text: part.text });
+      if (part.type === 'text' && text.safeParse(part.text).success) parts.push({ type: 'text', text: part.text,
+        ...(['presentation_json_not_found', 'presentation_json_parse_failed', 'presentation_schema_invalid', 'presentation_block_invalid'].includes(part.failureCategory)
+          ? { failureCategory: part.failureCategory as PresentationFailureCategory } : {}) });
       else if (['document', 'spreadsheet', 'chart', 'presentation'].includes(part.type)) {
         const parsed = artifactSchema.safeParse(part.artifact);
         if (!parsed.success || parsed.data.type !== part.type) break;
@@ -118,6 +124,14 @@ export function chatPartsFromMessage(content: string, language: string, stored?:
   if (artifact) return [{ type: artifact.type, artifact } as ChatMessagePart];
   const media = parseChatMedia(content);
   if (media) return [media];
+  if (presentationLike(content)) {
+    const result = parsePresentationResponse(content, language);
+    const reason = result.reason ?? 'presentation_schema_invalid';
+    return [{ type: 'text', failureCategory: reason, text: language === 'ar'
+      ? 'تعذر إنشاء معاينة صالحة للعرض التقديمي. حاول مرة أخرى.'
+      : language === 'fr' ? 'Impossible de créer un aperçu valide de la présentation. Réessayez.'
+        : "I couldn't create a valid presentation preview. Try again." }];
+  }
   if (looksLikeArtifactOutput(content)) return [{ type: 'text', text: language === 'ar'
     ? 'تعذر إنشاء معاينة آمنة لهذا المحتوى. حاول مرة أخرى.'
     : language === 'fr' ? 'Impossible de créer un aperçu sûr de ce contenu. Réessayez.'
