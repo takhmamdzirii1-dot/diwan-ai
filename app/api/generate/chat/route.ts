@@ -2,7 +2,7 @@ import { after, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { streamText } from 'ai';
 import { PRESENTATION_OUTPUT_INSTRUCTION, validatedArtifactPartFromToolResult } from '@/lib/artifacts/chat-parts';
-import { artifactTaskInstruction, resolveArtifactToolPath, selectArtifactTools } from '@/lib/artifacts/tool-registry';
+import { artifactTaskInstruction, documentToolChoice, resolveArtifactToolPath, selectArtifactTools } from '@/lib/artifacts/tool-registry';
 import { buildNativeArtifactTools } from '@/lib/artifacts/tool-native.server';
 import { completeMessageText, providerChatMessages } from '@/lib/chat/message-history';
 import { isChatTraceId, traceChatDataStream } from '@/lib/chat/debug-trace';
@@ -467,6 +467,7 @@ export async function POST(request: Request) {
         model: languageModel,
         messages: messagesPayload,
         tools: nativeTools,
+        toolChoice: documentToolChoice(taskSelection, toolPath),
         maxSteps: 1,
         temperature,
         maxTokens,

@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { ChartArtifact, DocumentArtifact, PresentationArtifact, SpreadsheetArtifact } from '@/lib/artifacts/core';
-import { attachmentMenuActions, getDocumentActionEligibility, chartFromStructuredRows, guidanceForChatError, guidanceForComposer,
+import { artifactActionLabel, attachmentMenuActions, getDocumentActionEligibility, chartFromStructuredRows, guidanceForChatError, guidanceForComposer,
   primaryArtifactActions, presentationFromChart, readableArtifactCopy, readableTableCopy, secondaryArtifactActions,
   shouldShowChatError } from './contextual-guidance';
 
 const base = { schemaVersion: 1 as const, id: 'a', title: 'Quarterly results', language: 'en', direction: 'ltr' as const, metadata: {} };
-const table: DocumentArtifact = { ...base, type: 'document', blocks: [{ kind: 'table', rows: [['Month', 'Sales'], ['Jan', '10'], ['Feb', '20']] }] };
+const table: DocumentArtifact = { ...base, metadata: { artifactKind: 'table' }, type: 'document', blocks: [{ kind: 'table', rows: [['Month', 'Sales'], ['Jan', '10'], ['Feb', '20']] }] };
 const sheet: SpreadsheetArtifact = { ...base, type: 'spreadsheet', sheets: [{ id: 's', name: 'Sales', columns: ['Month', 'Sales'], rows: [['Jan', 10], ['Feb', 20]] }] };
 const chart: ChartArtifact = { ...base, type: 'chart', chartType: 'bar', categories: ['Jan', 'Feb'], series: [{ name: 'Sales', values: [10, 20] }] };
 const presentation: PresentationArtifact = { ...base, type: 'presentation', slides: [
@@ -37,6 +37,9 @@ test('plan and credit guidance use supplied state without inventing unknown bala
 test('artifact actions are bounded and only structured data gets chart actions', () => {
   assert.deepEqual(primaryArtifactActions({ type: 'text', text: 'Compound interest grows over time.' }), []);
   assert.deepEqual(primaryArtifactActions({ type: 'document', artifact: table }), ['copy_table', 'create_chart']);
+  assert.deepEqual(primaryArtifactActions({ type: 'document', artifact: { ...table, metadata: {} } }), ['copy', 'create_chart']);
+  assert.equal(artifactActionLabel(primaryArtifactActions({ type: 'document', artifact: { ...table, metadata: {} } })[0], 'en'), 'Copy');
+  assert.equal(artifactActionLabel(primaryArtifactActions({ type: 'document', artifact: table })[0], 'en'), 'Copy table');
   assert.deepEqual(primaryArtifactActions({ type: 'spreadsheet', artifact: sheet }), ['analyze', 'create_chart', 'build_presentation']);
   assert.deepEqual(secondaryArtifactActions({ type: 'spreadsheet', artifact: sheet }), ['preview', 'download_xlsx']);
   assert.deepEqual(primaryArtifactActions({ type: 'chart', artifact: chart }), ['download_png', 'use_in_presentation']);

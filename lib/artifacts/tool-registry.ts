@@ -54,7 +54,7 @@ const definitions: Record<ArtifactToolName, ToolDefinition> = {
     progress: { en: 'Creating table…', fr: 'Création du tableau…', ar: 'جارٍ إنشاء الجدول…' }, inputSchema: tableInput,
     exampleInput: { title: 'Summary', columns: ['Metric', 'Value'], rows: [['Revenue', '1200']] },
     execute: (input: z.infer<typeof tableInput>) => ({ schemaVersion: 1, id: crypto.randomUUID(), type: 'document', title: input.title,
-      language: input.language, direction: artifactDirection(input.language, input.title), metadata: {},
+      language: input.language, direction: artifactDirection(input.language, input.title), metadata: { artifactKind: 'table' },
       blocks: [{ kind: 'table', rows: [input.columns, ...input.rows] }] }),
     verify: verifyDocument,
   },
@@ -126,8 +126,15 @@ export function runArtifactTool(name: string, rawInput: unknown): ArtifactToolRe
 
 export type ArtifactToolSelection = { names: ArtifactToolName[]; skill: ArtifactTaskSkill | null };
 const emptySelection: ArtifactToolSelection = { names: [], skill: null };
+export function isExplicitDocumentIntent(input: string): boolean {
+  const text = input.slice(0, 8_000).replace(/[\u064B-\u065F\u0670]/g, '');
+  return /\b(?:write|draft|create|prepare|generate|compose|make|build|produce|give me)\b[\s\S]{0,120}\b(?:report|article|brief|document|resume|cv|proposal|memo|executive summary|formal letter)\b/i.test(text)
+    || /(?:écris|écrivez|rédige|rédigez|crée|créez|prépare|préparez|fais|faites|génère|générez)[\s\S]{0,120}(?:rapport|article|document|cv|curriculum vitae|proposition|mémo|note de synthèse|résumé exécutif|lettre formelle|lettre officielle)/i.test(text)
+    || /(?:اكتب|اكتبي|اكتبوا|أنشئ|انشئ|حرر|صغ|أعد|اعد)[\s\S]{0,120}(?:تقرير|مقال|مستند|وثيقة|مذكرة|مقترح|سيرة ذاتية|خطاب رسمي|رسالة رسمية|ملخص تنفيذي)/.test(text);
+}
 export function selectArtifactTools(input: string): ArtifactToolSelection {
   const text = input.slice(0, 8_000).toLowerCase();
+  if (isExplicitDocumentIntent(text)) return { names: ['create_document'], skill: 'document' };
   const create = /\b(create|make|build|generate|draft|write|prepare|plot|visualize|need|want)\b|\bgive me\b|(?:أنشئ|انشئ|اكتب|حرر|صغ|اصنع|créer|créez|générer|écris|écrivez|rédige|rédigez)/i.test(text);
   if (create && /\b(presentation|slide deck|powerpoint|pptx|diaporama|présentation)\b|عرض\s*(?:تقديمي|شرائح)/i.test(text)) return { names: ['create_presentation'], skill: 'presentation' };
   if (create && /\b(chart|graph|plot|trend|graphique|graphe)\b|رسم\s*بياني/i.test(text)) return { names: ['create_chart'], skill: null };
@@ -141,6 +148,10 @@ export function selectArtifactTools(input: string): ArtifactToolSelection {
 export function resolveArtifactToolPath(selection: ArtifactToolSelection, capabilities: { tools: { state: string }; structuredOutput: { state: string } }): ArtifactToolPath {
   if (selection.names.length > 0 && capabilities.tools.state === 'supported') return 'native';
   return capabilities.structuredOutput.state === 'supported' ? 'structured' : 'fallback';
+}
+export function documentToolChoice(selection: ArtifactToolSelection, path: ArtifactToolPath): { type: 'tool'; toolName: 'create_document' } | undefined {
+  return path === 'native' && selection.names.length === 1 && selection.names[0] === 'create_document'
+    ? { type: 'tool', toolName: 'create_document' } : undefined;
 }
 
 const skills: Record<ArtifactTaskSkill, string> = {

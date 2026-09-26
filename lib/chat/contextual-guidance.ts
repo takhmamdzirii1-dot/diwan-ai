@@ -1,4 +1,5 @@
 import { chatPartsFromMessage, chatPartsFromToolInvocations, looksLikeArtifactOutput, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
+import { isExplicitDocumentIntent } from '@/lib/artifacts/tool-registry';
 import { documentToText, type ChartArtifact, type DocumentArtifact, type PresentationArtifact, type SheetCell, type SpreadsheetArtifact } from '@/lib/artifacts/core';
 import { formatCapacityWait } from './chat-usage';
 import type { ChatRequestOutcome } from './client-finalization';
@@ -19,11 +20,7 @@ export function getDocumentActionEligibility({ assistantMessage, precedingUserMe
   if (!content.trim() || looksLikeArtifactOutput(content)) return 'hidden';
 
   const request = precedingUserMessage?.content ?? '';
-  const english = /\b(?:write|draft|create|prepare|generate|compose|make|build|produce|give me)\b[\s\S]{0,120}\b(?:report|article|brief|document|resume|cv|proposal|memo|executive summary|formal letter)\b/i;
-  const french = /(?:écris|écrivez|rédige|rédigez|crée|créez|prépare|préparez|fais|faites|génère|générez)[\s\S]{0,120}(?:rapport|article|document|cv|curriculum vitae|proposition|mémo|note de synthèse|résumé exécutif|lettre formelle|lettre officielle)/i;
-  const arabic = /(?:اكتب|اكتبي|اكتبوا|أنشئ|انشئ|حرر|صغ|أعد|اعد)[\s\S]{0,120}(?:تقرير|مقال|مستند|وثيقة|مذكرة|مقترح|سيرة ذاتية|خطاب رسمي|رسالة رسمية|ملخص تنفيذي)/;
-  if (english.test(request) || french.test(request)
-    || arabic.test(request.replace(/[\u064B-\u065F\u0670]/g, ''))) return 'primary';
+  if (isExplicitDocumentIntent(request)) return 'primary';
 
   const headings = (content.match(/^#{1,3}\s+\S/gm) ?? []).length;
   const structured = headings >= 3 || (headings >= 2 && (/^\s*[-*+]\s+\S/m.test(content)
@@ -177,7 +174,8 @@ export function documentTable(artifact: DocumentArtifact): string[][] | null {
 export function primaryArtifactActions(part: ChatMessagePart): ArtifactAction[] {
   if (part.type === 'document') {
     const table = documentTable(part.artifact);
-    return table ? chartableRows(table.slice(1)) ? ['copy_table', 'create_chart'] : ['copy_table'] : ['copy', 'export_document'];
+    const copy: ArtifactAction = part.artifact.metadata.artifactKind === 'table' ? 'copy_table' : 'copy';
+    return table ? chartableRows(table.slice(1)) ? [copy, 'create_chart'] : [copy] : [copy, 'export_document'];
   }
   if (part.type === 'spreadsheet') {
     const sheet = part.artifact.sheets[0];

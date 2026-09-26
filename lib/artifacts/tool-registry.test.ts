@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { chatPartsFromMessage, chatPartsFromToolInvocations } from './chat-parts';
 import { buildNativeArtifactTools } from './tool-native.server';
-import { artifactTaskInstruction, artifactToolProgress, getArtifactTool, resolveArtifactToolPath, runArtifactTool, selectArtifactTools, verifyArtifactToolResult } from './tool-registry';
+import { artifactTaskInstruction, artifactToolProgress, documentToolChoice, getArtifactTool, resolveArtifactToolPath, runArtifactTool, selectArtifactTools, verifyArtifactToolResult } from './tool-registry';
 
 test('stable registry names resolve and invalid inputs/results fail safely', () => {
   for (const name of ['create_table', 'create_chart', 'create_document', 'create_spreadsheet', 'create_presentation']) {
@@ -19,7 +19,7 @@ test('stable registry names resolve and invalid inputs/results fail safely', () 
 test('table, chart, document, spreadsheet and presentation execute through Artifact Core', () => {
   const table = runArtifactTool('create_table', { title: 'Summary', columns: ['Metric', 'Value'], rows: [['Revenue', '1200']] });
   assert.equal(table.status, 'ok');
-  if (table.status === 'ok') { assert.equal(table.artifact.type, 'document'); assert.ok(verifyArtifactToolResult('create_table', table)); }
+  if (table.status === 'ok') { assert.equal(table.artifact.type, 'document'); assert.equal(table.artifact.metadata.artifactKind, 'table'); assert.ok(verifyArtifactToolResult('create_table', table)); }
   const chart = runArtifactTool('create_chart', { title: 'Trend', chartType: 'line', categories: ['Jan', 'Feb'], series: [{ name: 'Sales', values: [10, 20] }] });
   assert.equal(chart.status, 'ok');
   if (chart.status === 'ok') assert.equal(chart.artifact.type, 'chart');
@@ -54,9 +54,38 @@ test('tool selection and skill hooks expose only task-relevant definitions', () 
   assert.deepEqual(selectArtifactTools('Create a chart from this table').names, ['create_chart']);
   assert.deepEqual(selectArtifactTools('Create a document').names, ['create_document']);
   assert.deepEqual(selectArtifactTools('Write me a professional report about AI adoption in small businesses.').names, ['create_document']);
+  assert.deepEqual(selectArtifactTools("Write a detailed article titled 'The Future of AI Workspaces'.").names, ['create_document']);
   assert.deepEqual(selectArtifactTools('Écris-moi un rapport professionnel.').names, ['create_document']);
   assert.deepEqual(selectArtifactTools('اكتب لي تقريرًا احترافيًا.').names, ['create_document']);
   assert.equal(Object.keys(buildNativeArtifactTools(selectArtifactTools('Write me a professional report.'))).join(','), 'create_document');
+});
+
+test('explicit document intent requires one native document tool and uses structured fallback without another request', () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = (() => { calls++; throw new Error('Unexpected AI request'); }) as typeof fetch;
+  try {
+    for (const prompt of [
+      'Write me a professional report about AI adoption in small businesses.',
+      'Write a detailed article titled The Future of AI Workspaces.',
+      'Écris-moi un rapport professionnel.',
+      'اكتب لي تقريرًا احترافيًا.',
+    ]) {
+      const selection = selectArtifactTools(prompt);
+      const native = resolveArtifactToolPath(selection, { tools: { state: 'supported' }, structuredOutput: { state: 'unknown' } });
+      assert.deepEqual(documentToolChoice(selection, native), { type: 'tool', toolName: 'create_document' });
+      const structured = resolveArtifactToolPath(selection, { tools: { state: 'unknown' }, structuredOutput: { state: 'supported' } });
+      assert.equal(structured, 'structured');
+      assert.equal(documentToolChoice(selection, structured), undefined);
+      assert.match(artifactTaskInstruction(selection, structured), /create_document/);
+      const parts = chatPartsFromMessage(JSON.stringify({ tool: 'create_document', input: { title: 'Report', markdown: '# Report\n\nComplete.' } }), 'en');
+      assert.equal(parts[0].type, 'document');
+    }
+    const ordinary = selectArtifactTools('What is compound interest?');
+    assert.deepEqual(ordinary.names, []);
+    assert.equal(documentToolChoice(ordinary, 'native'), undefined);
+    assert.equal(calls, 0);
+  } finally { globalThis.fetch = originalFetch; }
 });
 
 test('Capability V2 chooses native, structured, or safe fallback without probing', async () => {
