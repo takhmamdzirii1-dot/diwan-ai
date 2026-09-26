@@ -1,4 +1,9 @@
+import { validatedArtifactPartFromToolResult, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
+
 export type CanonicalStreamStatus = 'completed' | 'aborted' | 'error';
+export function hasUsableCanonicalOutput(status: CanonicalStreamStatus, text: string, artifacts: ChatMessagePart[]): boolean {
+  return status === 'completed' && (text.trim().length > 0 || artifacts.some((part) => part.type === 'document'));
+}
 export type ChatTerminationReason = 'completed' | 'provider_error' | 'network_error' | 'user_stop'
   | 'navigation_abort' | 'conversation_switch_abort';
 export type ChatRequestOutcome = { requestId: string; conversationId: string; reason: ChatTerminationReason };
@@ -29,19 +34,26 @@ export function restoreCanonicalAssistantText<T extends { id: string; role: stri
 
 export class ChatStreamFinalizer {
   private text = '';
+  private artifacts: ChatMessagePart[] = [];
   private rawStatus: CanonicalStreamStatus | null = null;
   private consumerSettled = false;
   private finalized = false;
   private invalidated = false;
 
   constructor(readonly requestId: string,
-    private readonly commit: (result: { requestId: string; text: string; status: CanonicalStreamStatus }) => void) {}
+    private readonly commit: (result: { requestId: string; text: string; artifacts: ChatMessagePart[]; status: CanonicalStreamStatus }) => void) {}
 
   append(delta: string) {
     if (!this.rawStatus && !this.invalidated) this.text += delta;
   }
 
   get textChars() { return this.text.length; }
+  get artifactCount() { return this.artifacts.length; }
+
+  appendArtifact(part: ChatMessagePart) {
+    if (!this.rawStatus && !this.invalidated && part.type === 'document'
+      && !this.artifacts.some((existing) => existing.type === 'document' && existing.artifact.id === part.artifact.id)) this.artifacts.push(part);
+  }
 
   consumerDone() {
     this.consumerSettled = true;
@@ -60,7 +72,7 @@ export class ChatStreamFinalizer {
     if (this.invalidated || this.finalized || !this.rawStatus) return;
     if (this.rawStatus === 'completed' && !this.consumerSettled) return;
     this.finalized = true;
-    this.commit({ requestId: this.requestId, text: this.text, status: this.rawStatus });
+    this.commit({ requestId: this.requestId, text: this.text, artifacts: this.artifacts, status: this.rawStatus });
   }
 }
 
@@ -68,12 +80,15 @@ export class ChatStreamFinalizer {
 // independently; only these original text frames form the canonical answer.
 export async function consumeCanonicalChatStream(stream: ReadableStream<Uint8Array>,
   append: (delta: string) => void, signal?: AbortSignal,
-  onErrorKind?: (reason: 'provider_error' | 'network_error') => void): Promise<CanonicalStreamStatus> {
+  onErrorKind?: (reason: 'provider_error' | 'network_error') => void,
+  onArtifact?: (part: ChatMessagePart) => void,
+  onToolEvent?: (event: { called: boolean; resultValidated: boolean }) => void): Promise<CanonicalStreamStatus> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let pending = '';
   let streamError = false;
   let providerError = false;
+  const documentCalls = new Set<string>();
   const abort = () => { void reader.cancel().catch(() => undefined); };
   signal?.addEventListener('abort', abort, { once: true });
   try {
@@ -91,11 +106,42 @@ export async function consumeCanonicalChatStream(stream: ReadableStream<Uint8Arr
             if (typeof delta === 'string') append(delta);
             else streamError = true;
           } catch { streamError = true; }
+        } else if (line.startsWith('9:')) {
+          try {
+            const call: unknown = JSON.parse(line.slice(2));
+            if (call && typeof call === 'object' && 'toolName' in call && call.toolName === 'create_document'
+              && 'toolCallId' in call && typeof call.toolCallId === 'string') {
+              documentCalls.add(call.toolCallId);
+              onToolEvent?.({ called: true, resultValidated: false });
+            }
+          } catch { streamError = true; }
+        } else if (line.startsWith('a:')) {
+          try {
+            const result: unknown = JSON.parse(line.slice(2));
+            if (result && typeof result === 'object' && 'toolCallId' in result
+              && typeof result.toolCallId === 'string' && documentCalls.has(result.toolCallId)) {
+              const part = validatedArtifactPartFromToolResult('create_document',
+                'result' in result ? result.result : null);
+              onToolEvent?.({ called: false, resultValidated: part?.type === 'document' });
+              if (part?.type === 'document') onArtifact?.(part);
+              else { streamError = true; providerError = true; }
+              documentCalls.delete(result.toolCallId);
+            }
+          } catch { streamError = true; }
+        } else if (line.startsWith('d:')) {
+          try {
+            const finish: unknown = JSON.parse(line.slice(2));
+            if (finish && typeof finish === 'object' && 'finishReason' in finish && finish.finishReason === 'error') {
+              streamError = true;
+              providerError = true;
+            }
+          } catch { streamError = true; }
         } else if (line.startsWith('3:')) { streamError = true; providerError = true; }
         newline = pending.indexOf('\n');
       }
     }
     if (signal?.aborted) return 'aborted';
+    if (documentCalls.size > 0) { streamError = true; providerError = true; }
     if (streamError || pending.trim()) {
       onErrorKind?.(providerError ? 'provider_error' : 'network_error');
       return 'error';

@@ -26,9 +26,9 @@ import ActivationOffer, { type ActivationPrompt, type ActivationReason } from '.
 import type { ChatModelOption } from '@/components/ui/model-picker';
 import { trackFunnelEvent } from '@/src/lib/funnel-analytics';
 import dynamic from 'next/dynamic';
-import { chatPartsFromMessage } from '@/lib/artifacts/chat-parts';
+import { chatPartsFromMessage, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
 import { chatRequestMessages, serializeChatSession } from '@/lib/chat/message-history';
-import { ChatRequestTracker, ChatStreamFinalizer, consumeCanonicalChatStream, restoreCanonicalAssistantText,
+import { ChatRequestTracker, ChatStreamFinalizer, consumeCanonicalChatStream, hasUsableCanonicalOutput, restoreCanonicalAssistantText,
   type ChatRequestOutcome, type ChatTerminationReason } from '@/lib/chat/client-finalization';
 import { guidanceForChatError, shouldShowChatError, type GuidanceAction } from '@/lib/chat/contextual-guidance';
 import ChatGuidanceCard from './ChatGuidanceCard';
@@ -217,27 +217,32 @@ export default function StudioDashboard({
       const requestId = debugRequestIdRef.current ?? crypto.randomUUID();
       const sessionId = activeSessionId ?? 'default-session';
       let streamErrorReason: 'provider_error' | 'network_error' = 'network_error';
-      const finalizer = new ChatStreamFinalizer(requestId, ({ text, status }) => {
+      const finalizer = new ChatStreamFinalizer(requestId, ({ text, artifacts, status }) => {
         if (activeFinalizerRef.current !== finalizer) return;
         if ((activeSessionIdRef.current ?? 'default-session') !== sessionId) return;
-        if (status === 'completed' && text.length > 0) {
-          recordRequestOutcome(requestId, sessionId, text.trim() ? 'completed' : 'provider_error');
+        if (hasUsableCanonicalOutput(status, text, artifacts)) {
+          recordRequestOutcome(requestId, sessionId, 'completed');
           setMessages((current) => {
             if ((activeSessionIdRef.current ?? 'default-session') !== sessionId) return current;
             const last = current[current.length - 1];
+            const vantraParts: ChatMessagePart[] = [
+              ...(text ? [{ type: 'text' as const, text }] : []), ...artifacts,
+            ];
             if (last?.role === 'assistant') {
               canonicalFinalRef.current = { sessionId, messageId: last.id, text };
-              return [...current.slice(0, -1), { ...last, content: text }];
+              return [...current.slice(0, -1), { ...last, content: text,
+                ...(artifacts.length > 0 ? { vantraParts } : {}) }];
             }
             if (last?.role === 'user') {
-              const assistant = { id: crypto.randomUUID(), role: 'assistant' as const, content: text };
+              const assistant = { id: crypto.randomUUID(), role: 'assistant' as const, content: text,
+                ...(artifacts.length > 0 ? { vantraParts } : {}) };
               canonicalFinalRef.current = { sessionId, messageId: assistant.id, text };
               return [...current, assistant];
             }
             return current;
           });
         } else {
-          recordRequestOutcome(requestId, sessionId, status === 'error' ? streamErrorReason : 'network_error');
+          recordRequestOutcome(requestId, sessionId, status === 'error' ? streamErrorReason : 'provider_error');
         }
         activeFinalizerRef.current = null;
         canonicalPendingRef.current = false;
@@ -260,12 +265,19 @@ export default function StudioDashboard({
           return response;
         }
         const [sdkBody, canonicalBody] = response.body.tee();
+        let documentToolCalls = 0;
+        let validatedDocumentResults = 0;
         void consumeCanonicalChatStream(canonicalBody, (delta) => {
           finalizer.append(delta);
           debugClientCharsRef.current = finalizer.textChars;
-        }, init?.signal ?? undefined, (reason) => { streamErrorReason = reason; }).then((status) => {
+        }, init?.signal ?? undefined, (reason) => { streamErrorReason = reason; },
+        (part) => finalizer.appendArtifact(part), (event) => {
+          if (event.called) documentToolCalls++;
+          if (event.resultValidated) validatedDocumentResults++;
+        }).then((status) => {
           if (chatDebugEnabled) console.info('[VANTRA_CHAT_DEBUG] CLIENT_STREAM', {
-            requestId, textChars: finalizer.textChars, status,
+            requestId, textChars: finalizer.textChars, documentToolCalls,
+            validatedDocumentResults, artifactPartCount: finalizer.artifactCount, status,
             errorCategory: status === 'error' ? 'stream_error' : null,
           });
           finalizer.rawDone(status);
@@ -886,6 +898,8 @@ export default function StudioDashboard({
                               <MessageBubble
                                 key={msg.id || idx}
                                 message={msg}
+                                precedingUserMessage={msg.role === 'assistant'
+                                  ? [...messages.slice(0, idx)].reverse().find((entry) => entry.role === 'user') ?? null : null}
                                 isLatest={idx === messages.length - 1}
                                 isStreaming={chatBusy && idx === messages.length - 1 && msg.role === 'assistant'}
                                 onRegenerate={chatBusy ? undefined : () => reload()}

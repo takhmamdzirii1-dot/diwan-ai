@@ -53,6 +53,10 @@ test('tool selection and skill hooks expose only task-relevant definitions', () 
   assert.match(artifactTaskInstruction(analysis, 'fallback'), /bounded spreadsheet context/);
   assert.deepEqual(selectArtifactTools('Create a chart from this table').names, ['create_chart']);
   assert.deepEqual(selectArtifactTools('Create a document').names, ['create_document']);
+  assert.deepEqual(selectArtifactTools('Write me a professional report about AI adoption in small businesses.').names, ['create_document']);
+  assert.deepEqual(selectArtifactTools('Écris-moi un rapport professionnel.').names, ['create_document']);
+  assert.deepEqual(selectArtifactTools('اكتب لي تقريرًا احترافيًا.').names, ['create_document']);
+  assert.equal(Object.keys(buildNativeArtifactTools(selectArtifactTools('Write me a professional report.'))).join(','), 'create_document');
 });
 
 test('Capability V2 chooses native, structured, or safe fallback without probing', async () => {

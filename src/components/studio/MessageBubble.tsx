@@ -11,9 +11,9 @@ import { cn } from '@/lib/utils';
 import { useLocale, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { documentFromMarkdown } from '@/lib/artifacts/core';
-import { chatPartsFromMessage, chatPartsFromToolInvocations, looksLikeArtifactOutput, streamingSafeText, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
+import { chatPartsFromMessage, chatPartsFromToolInvocations, streamingSafeText, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
 import { artifactToolProgress } from '@/lib/artifacts/tool-registry';
-import { canOpenAsDocument, readableArtifactCopy } from '@/lib/chat/contextual-guidance';
+import { getDocumentActionEligibility, readableArtifactCopy } from '@/lib/chat/contextual-guidance';
 
 const ArtifactDocumentPreview = dynamic(() => import('./ArtifactDocumentPreview'), { ssr: false });
 const ArtifactSmartCard = dynamic(() => import('./ArtifactSmartCard'), { ssr: false });
@@ -25,6 +25,7 @@ export interface MessageBubbleProps {
   isThinking?: boolean;
   onRegenerate?: () => void;
   onRequestPrompt?: (prompt: string) => void;
+  precedingUserMessage?: Message | null;
 }
 
 function AttachmentThumbnail({ attachment }: { attachment: { name: string; url?: string | File | Blob } }) {
@@ -77,14 +78,11 @@ function AttachmentThumbnail({ attachment }: { attachment: { name: string; url?:
   );
 }
 
-export default function MessageBubble({ message, isLatest, isStreaming, isThinking, onRegenerate, onRequestPrompt }: MessageBubbleProps) {
+export default function MessageBubble({ message, isLatest, isStreaming, isThinking, onRegenerate, onRequestPrompt, precedingUserMessage }: MessageBubbleProps) {
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
   const [copiedMessage, setCopiedMessage] = useState(false);
   const [documentOpen, setDocumentOpen] = useState(false);
   const locale = useLocale();
-  const openDocument = useMemo(() => documentOpen
-    ? documentFromMarkdown(message.id, message.content, locale) : null,
-  [documentOpen, message.id, message.content, locale]);
   const reduceMotion = useReducedMotion();
   const t = useTranslations('studio.chat');
   const codeBlockCounter = useRef(0);
@@ -93,19 +91,29 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   const isUser = message.role === 'user';
   const toolInvocations = (message as Message & { toolInvocations?: unknown }).toolInvocations;
   const parts = !isUser && !isStreaming
-    ? [...chatPartsFromMessage(message.content, locale, (message as Message & { vantraParts?: unknown }).vantraParts), ...chatPartsFromToolInvocations(toolInvocations, locale)]
+    ? (() => {
+      const stored = chatPartsFromMessage(message.content, locale, (message as Message & { vantraParts?: unknown }).vantraParts);
+      const native = chatPartsFromToolInvocations(toolInvocations, locale);
+      return [...stored, ...native.filter((part) => !('artifact' in part && stored.some((existing) =>
+        'artifact' in existing && existing.artifact.id === part.artifact.id)))];
+    })()
     : [];
   const toolProgress = !isUser && isStreaming && Array.isArray(toolInvocations)
     ? toolInvocations.map((invocation) => invocation && typeof invocation.toolName === 'string' && invocation.state !== 'result'
       ? artifactToolProgress(invocation.toolName, locale) : null).find(Boolean) : null;
   const artifactParts = parts.filter((part) => part.type !== 'text');
+  const documentArtifact = parts.find((part) => part.type === 'document');
+  const openDocument = useMemo(() => documentOpen
+    ? documentArtifact?.artifact ?? documentFromMarkdown(message.id, message.content, locale) : null,
+  [documentOpen, documentArtifact, message.id, message.content, locale]);
   const safeContent = isStreaming ? streamingSafeText(message.content)
     : parts.filter((part) => part.type === 'text').map((part) => part.text).join('');
   const isRTL = artifactParts[0] && 'artifact' in artifactParts[0]
     ? artifactParts[0].artifact.direction === 'rtl'
     : detectDir(isUser ? message.content : safeContent) === 'rtl';
-  const canOpenDocument = !isUser && !isStreaming && artifactParts.length === 0
-    && !looksLikeArtifactOutput(message.content) && canOpenAsDocument(safeContent);
+  const documentEligibility = !isUser && !isStreaming
+    ? getDocumentActionEligibility({ assistantMessage: message as Message & { vantraParts?: unknown }, precedingUserMessage })
+    : 'hidden';
 
   // Visual Attachment Rendering parser for user messages
   const attachmentRegex = /\[Attachment:\s*([^\]]+)\]/g;
@@ -421,7 +429,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                     <RefreshCw className="h-3.5 w-3.5" />
                   </button>
                 )}
-                {canOpenDocument && <button type="button" onClick={() => setDocumentOpen(true)} className="ms-2 rounded-lg px-2.5 py-1.5 text-xs text-white/70 transition-colors duration-150 hover:bg-white/[0.05] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">{locale === 'ar' ? 'فتح كمستند' : locale === 'fr' ? 'Ouvrir en document' : 'Open as document'}</button>}
+                {documentEligibility !== 'hidden' && <button type="button" onClick={() => setDocumentOpen(true)} className={cn('ms-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors duration-150 hover:bg-white/[0.05] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40', documentEligibility === 'secondary' ? 'text-white/45' : 'text-white/70')}>{locale === 'ar' ? 'فتح كمستند' : locale === 'fr' ? 'Ouvrir en document' : 'Open as document'}</button>}
               </div>
             )}
           </div>

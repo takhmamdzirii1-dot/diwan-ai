@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { ChartArtifact, DocumentArtifact, PresentationArtifact, SpreadsheetArtifact } from '@/lib/artifacts/core';
-import { attachmentMenuActions, canOpenAsDocument, chartFromStructuredRows, guidanceForChatError, guidanceForComposer,
+import { attachmentMenuActions, getDocumentActionEligibility, chartFromStructuredRows, guidanceForChatError, guidanceForComposer,
   primaryArtifactActions, presentationFromChart, readableArtifactCopy, readableTableCopy, secondaryArtifactActions,
   shouldShowChatError } from './contextual-guidance';
 
@@ -88,13 +88,28 @@ test('technical errors become safe customer guidance', () => {
   assert.doesNotMatch(unknown.message, /provider|stack|JSON|secret/i);
 });
 
-test('primary document action requires explicit document output', () => {
-  const conversational = '# How compound interest works\n\n' + 'Interest grows on both principal and prior interest. '.repeat(30);
-  assert.equal(canOpenAsDocument(conversational), false);
-  assert.equal(canOpenAsDocument('## Key points\n\n- Save regularly\n- Compare rates'), false);
-  assert.equal(canOpenAsDocument('# Quarterly Report\n\nRevenue increased.'), true);
-  assert.equal(canOpenAsDocument('Report: Annual results\n\nRevenue increased.'), true);
-  assert.equal(canOpenAsDocument('# What is an article?\n\nAn article is...'), false);
+test('document action uses explicit intent, artifacts, and historical structure without network', () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = (() => { calls++; throw new Error('Unexpected request'); }) as typeof fetch;
+  try {
+    const eligibility = (content: string, request?: string) => getDocumentActionEligibility({
+      assistantMessage: { content }, precedingUserMessage: request ? { content: request } : null,
+    });
+    const conversational = '# How compound interest works\n\n' + 'Interest grows on both principal and prior interest. '.repeat(30);
+    assert.equal(eligibility(conversational, 'What is compound interest?'), 'hidden');
+    assert.equal(eligibility('A concise answer.', 'Explain this briefly.'), 'hidden');
+    assert.equal(eligibility('# Report\n\nA clear report.', 'Write me a professional report about AI adoption.'), 'primary');
+    assert.equal(eligibility('# The Future of AI Workspaces\n\nArticle body.', "Write a detailed article titled 'The Future of AI Workspaces'."), 'primary');
+    assert.equal(eligibility('Contenu du rapport.', 'Écris-moi un rapport professionnel.'), 'primary');
+    assert.equal(eligibility('محتوى التقرير.', 'اكتب لي تقريرًا احترافيًا.'), 'primary');
+    const structured = '# The Future of AI Workspaces\n\n' + 'Introductory analysis. '.repeat(20)
+      + '\n## Current landscape\n\n- Evidence one\n- Evidence two\n\n## Outlook\n\n' + 'Further analysis. '.repeat(20);
+    assert.equal(eligibility(structured), 'secondary');
+    assert.equal(eligibility(structured, 'What are the trends?'), 'secondary');
+    assert.equal(getDocumentActionEligibility({ assistantMessage: { content: '', vantraParts: [{ type: 'document', artifact: { ...base, type: 'document', blocks: [{ kind: 'paragraph', text: 'Report' }] } }] } }), 'primary');
+    assert.equal(calls, 0);
+  } finally { globalThis.fetch = originalFetch; }
   assert.deepEqual(primaryArtifactActions({ type: 'document', artifact: { ...base, type: 'document', blocks: [{ kind: 'paragraph', text: 'Revenue increased.' }] } }), ['copy', 'export_document']);
 });
 

@@ -91,6 +91,19 @@ test('the Chat bubble keeps old Markdown readable and never exposes presentation
   assert.doesNotMatch(renderBubble(presentationJson), /&quot;slides&quot;|"slides"|Revenue grew\./);
 });
 
+test('artifact-only document and explicit report expose the existing document preview action', () => {
+  const document = documentFromMarkdown('report', '# AI adoption report\n\nFindings.', 'en');
+  const render = (content: string, vantraParts?: unknown, request?: string) => renderToStaticMarkup(
+    <IntlProvider locale="en" messages={studioMessages}>
+      <MessageBubble message={{ id: 'assistant-report', role: 'assistant', content, vantraParts } as never}
+        precedingUserMessage={request ? { id: 'user-report', role: 'user', content: request } : null} isLatest={false} />
+    </IntlProvider>,
+  );
+  assert.match(render('', [{ type: 'document', artifact: document }]), /Open as document/);
+  assert.match(render('# Report\n\nA written report.', undefined, 'Write me a report.'), /Open as document/);
+  assert.doesNotMatch(render('A short answer.', undefined, 'What is a report?'), /Open as document/);
+});
+
 test('structured spreadsheet, chart, document and presentation render inline with existing previews', () => {
   const sheet: SpreadsheetArtifact = { ...base, type: 'spreadsheet', sheets: [
     { id: 'sheet-1', name: 'Sales', columns: ['Month', 'Sales'], rows: [['Jan', 10]] },

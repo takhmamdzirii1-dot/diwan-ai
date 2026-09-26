@@ -128,7 +128,7 @@ export type ArtifactToolSelection = { names: ArtifactToolName[]; skill: Artifact
 const emptySelection: ArtifactToolSelection = { names: [], skill: null };
 export function selectArtifactTools(input: string): ArtifactToolSelection {
   const text = input.slice(0, 8_000).toLowerCase();
-  const create = /\b(create|make|build|generate|draft|write|prepare|plot|visualize|need|want)\b|\bgive me\b|(?:أنشئ|اصنع|créer|créez|générer)/i.test(text);
+  const create = /\b(create|make|build|generate|draft|write|prepare|plot|visualize|need|want)\b|\bgive me\b|(?:أنشئ|انشئ|اكتب|حرر|صغ|اصنع|créer|créez|générer|écris|écrivez|rédige|rédigez)/i.test(text);
   if (create && /\b(presentation|slide deck|powerpoint|pptx|diaporama|présentation)\b|عرض\s*(?:تقديمي|شرائح)/i.test(text)) return { names: ['create_presentation'], skill: 'presentation' };
   if (create && /\b(chart|graph|plot|trend|graphique|graphe)\b|رسم\s*بياني/i.test(text)) return { names: ['create_chart'], skill: null };
   if (create && /\b(spreadsheet|workbook|xlsx|tableur|feuille de calcul)\b|جدول\s*بيانات/i.test(text)) return { names: ['create_spreadsheet'], skill: 'spreadsheet-analysis' };

@@ -1,8 +1,8 @@
 import { after, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { streamText } from 'ai';
-import { PRESENTATION_OUTPUT_INSTRUCTION } from '@/lib/artifacts/chat-parts';
-import { artifactTaskInstruction, resolveArtifactToolPath, selectArtifactTools, verifyArtifactToolResult } from '@/lib/artifacts/tool-registry';
+import { PRESENTATION_OUTPUT_INSTRUCTION, validatedArtifactPartFromToolResult } from '@/lib/artifacts/chat-parts';
+import { artifactTaskInstruction, resolveArtifactToolPath, selectArtifactTools } from '@/lib/artifacts/tool-registry';
 import { buildNativeArtifactTools } from '@/lib/artifacts/tool-native.server';
 import { completeMessageText, providerChatMessages } from '@/lib/chat/message-history';
 import { isChatTraceId, traceChatDataStream } from '@/lib/chat/debug-trace';
@@ -454,6 +454,14 @@ export async function POST(request: Request) {
       );
       providerStarted = true;
       const nativeTools = toolPath === 'native' ? buildNativeArtifactTools(taskSelection) : undefined;
+      let documentToolCalls = 0;
+      let documentToolResults = 0;
+      let successfulDocumentExecutions = 0;
+      let validatedDocumentResults = 0;
+      let emittedTextChars = 0;
+      trace('DOCUMENT_PATH', { createDocumentSelected: taskSelection.names.includes('create_document'),
+        toolsExposed: nativeTools ? Object.keys(nativeTools).length : 0,
+        createDocumentExposed: Boolean(nativeTools?.create_document), toolPath });
       trace('PROVIDER', { callStarted: true, streamReturned: false, finishReason: null, errorCategory: null });
       const result = await streamText({
         model: languageModel,
@@ -466,14 +474,31 @@ export async function POST(request: Request) {
         maxRetries: 0,
         abortSignal: request.signal,
         onChunk: ({ chunk }) => {
-          if (chunk.type === 'text-delta' && chunk.textDelta.length > 0) outputStarted = true;
-          if (chunk.type === 'tool-result' && verifyArtifactToolResult(chunk.toolName, chunk.result)) outputStarted = true;
+          if (chunk.type === 'text-delta') {
+            emittedTextChars += chunk.textDelta.length;
+            if (chunk.textDelta.length > 0) outputStarted = true;
+          }
+          if (chunk.type === 'tool-call' && chunk.toolName === 'create_document') documentToolCalls++;
+          if (chunk.type === 'tool-result') {
+            const valid = Boolean(validatedArtifactPartFromToolResult(chunk.toolName, chunk.result));
+            if (valid) outputStarted = true;
+            if (chunk.toolName === 'create_document') {
+              documentToolResults++;
+              if (chunk.result && typeof chunk.result === 'object' && 'status' in chunk.result
+                && chunk.result.status === 'ok') successfulDocumentExecutions++;
+              if (valid) validatedDocumentResults++;
+            }
+          }
         },
         onFinish: async ({ finishReason, usage, toolResults }) => {
+          trace('DOCUMENT_RESULT', { createDocumentCalled: documentToolCalls > 0, toolCallCount: documentToolCalls,
+            toolResultCount: documentToolResults, toolExecutionSuccess: successfulDocumentExecutions > 0,
+            toolResultValidationSuccess: validatedDocumentResults > 0,
+            artifactPartCount: validatedDocumentResults, textChars: emittedTextChars, finishReason });
           trace('PROVIDER', { callStarted: true, streamReturned: true, finishReason,
             errorCategory: finishReason === 'error' ? 'provider_stream_error' : null });
           try {
-            if (toolResults.some((entry) => verifyArtifactToolResult(entry.toolName, entry.result))) outputStarted = true;
+            if (toolResults.some((entry) => validatedArtifactPartFromToolResult(entry.toolName, entry.result))) outputStarted = true;
             if (request.signal.aborted) {
               await finalizeOnce({
                 terminalStatus: 'user_cancelled',

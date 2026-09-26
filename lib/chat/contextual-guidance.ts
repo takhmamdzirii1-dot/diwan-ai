@@ -1,4 +1,4 @@
-import type { ChatMessagePart } from '@/lib/artifacts/chat-parts';
+import { chatPartsFromMessage, chatPartsFromToolInvocations, looksLikeArtifactOutput, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
 import { documentToText, type ChartArtifact, type DocumentArtifact, type PresentationArtifact, type SheetCell, type SpreadsheetArtifact } from '@/lib/artifacts/core';
 import { formatCapacityWait } from './chat-usage';
 import type { ChatRequestOutcome } from './client-finalization';
@@ -7,14 +7,28 @@ export type GuidanceKind = 'requirement' | 'suggestion' | 'warning' | 'confirmat
 export type GuidanceAction = 'upload_image' | 'upload_document' | 'upload_spreadsheet' | 'switch_model' | 'add_credits' | 'get_pro' | 'view_plans' | 'choose_file' | 'try_again';
 export type ChatGuidance = { kind: GuidanceKind; message: string; actions: GuidanceAction[] };
 
-// Only explicit document output earns a primary document action. Length, lists,
-// and ordinary Markdown headings are common in conversational answers.
-export function canOpenAsDocument(text: string): boolean {
-  const heading = text.match(/^#{1,2}\s+(.+)$/m)?.[1]?.trim() ?? '';
-  return (Boolean(heading) && !/[?؟]/.test(heading) && (
-    /\b(?:report|article|brief|executive summary|research summary|rapport|note de synthèse|résumé exécutif)\b/i.test(heading)
-    || /(?:تقرير|مقال|ملخص تنفيذي)/.test(heading)))
-    || /^(?:(?:here is|here's) (?:the|your|a) )?(?:report|article|brief|document|executive summary|research summary)\s*[:—-]/i.test(text.trim());
+export type DocumentActionEligibility = 'primary' | 'secondary' | 'hidden';
+export function getDocumentActionEligibility({ assistantMessage, precedingUserMessage }: {
+  assistantMessage: { content: string; vantraParts?: unknown; toolInvocations?: unknown };
+  precedingUserMessage?: { content: string } | null;
+}): DocumentActionEligibility {
+  const content = assistantMessage.content ?? '';
+  const parts = chatPartsFromMessage(content, 'en', assistantMessage.vantraParts);
+  if (parts.some((part) => part.type === 'document')
+    || chatPartsFromToolInvocations(assistantMessage.toolInvocations, 'en').some((part) => part.type === 'document')) return 'primary';
+  if (!content.trim() || looksLikeArtifactOutput(content)) return 'hidden';
+
+  const request = precedingUserMessage?.content ?? '';
+  const english = /\b(?:write|draft|create|prepare|generate|compose|make|build|produce|give me)\b[\s\S]{0,120}\b(?:report|article|brief|document|resume|cv|proposal|memo|executive summary|formal letter)\b/i;
+  const french = /(?:écris|écrivez|rédige|rédigez|crée|créez|prépare|préparez|fais|faites|génère|générez)[\s\S]{0,120}(?:rapport|article|document|cv|curriculum vitae|proposition|mémo|note de synthèse|résumé exécutif|lettre formelle|lettre officielle)/i;
+  const arabic = /(?:اكتب|اكتبي|اكتبوا|أنشئ|انشئ|حرر|صغ|أعد|اعد)[\s\S]{0,120}(?:تقرير|مقال|مستند|وثيقة|مذكرة|مقترح|سيرة ذاتية|خطاب رسمي|رسالة رسمية|ملخص تنفيذي)/;
+  if (english.test(request) || french.test(request)
+    || arabic.test(request.replace(/[\u064B-\u065F\u0670]/g, ''))) return 'primary';
+
+  const headings = (content.match(/^#{1,3}\s+\S/gm) ?? []).length;
+  const structured = headings >= 3 || (headings >= 2 && (/^\s*[-*+]\s+\S/m.test(content)
+    || /^\s*\d+[.)]\s+\S/m.test(content) || /^\s*\|.+\|\s*$/m.test(content)));
+  return content.length >= 600 && structured ? 'secondary' : 'hidden';
 }
 
 export function shouldShowChatError(input: {

@@ -141,14 +141,20 @@ export function chatPartsFromToolInvocations(invocations: unknown, language: str
   const parts: ChatMessagePart[] = [];
   for (const invocation of invocations.slice(0, 5)) {
     if (!invocation || typeof invocation !== 'object' || invocation.state !== 'result' || typeof invocation.toolName !== 'string') continue;
-    const artifact = verifyArtifactToolResult(invocation.toolName, invocation.result);
-    const valid = artifact && artifactSchema.safeParse(artifact);
-    if (valid?.success) parts.push({ type: artifact.type, artifact: valid.data } as ChatMessagePart);
+    const valid = validatedArtifactPartFromToolResult(invocation.toolName, invocation.result);
+    if (valid) parts.push(valid);
     else if (getArtifactTool(invocation.toolName)) parts.push({ type: 'text', text: language === 'ar'
       ? 'تعذر إنشاء معاينة آمنة لهذا المحتوى. حاول مرة أخرى.' : language === 'fr'
         ? 'Impossible de créer un aperçu sûr de ce contenu. Réessayez.' : 'A safe preview could not be created for this content. Please try again.' });
   }
   return parts;
+}
+
+export function validatedArtifactPartFromToolResult(name: string, result: unknown): ChatMessagePart | null {
+  const artifact = verifyArtifactToolResult(name, result);
+  if (!artifact) return null;
+  const valid = artifactSchema.safeParse(artifact);
+  return valid.success ? { type: artifact.type, artifact: valid.data } as ChatMessagePart : null;
 }
 
 export function chatPartsFromMessage(content: string, language: string, stored?: unknown): ChatMessagePart[] {

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ChatRequestTracker, ChatStreamFinalizer, consumeCanonicalChatStream, restoreCanonicalAssistantText } from './client-finalization';
+import { ChatRequestTracker, ChatStreamFinalizer, consumeCanonicalChatStream, hasUsableCanonicalOutput, restoreCanonicalAssistantText } from './client-finalization';
+import { chatPartsFromMessage } from '@/lib/artifacts/chat-parts';
+import { runArtifactTool } from '@/lib/artifacts/tool-registry';
 
 const answer = 'Understood. I have noted: red lion 1992';
 const deltas = ['Understood. ', 'I have ', 'noted: ', 'red lion ', '1992'];
@@ -40,12 +42,12 @@ test('consumer error does not finalize before a delayed final delta arrives', as
   controller.enqueue(frame(deltas[deltas.length - 1]));
   controller.close();
   finalizer.rawDone(await read);
-  assert.deepEqual(committed, [{ requestId: 'request-2', text: answer, status: 'completed' }]);
+  assert.deepEqual(committed, [{ requestId: 'request-2', text: answer, artifacts: [], status: 'completed' }]);
 
   finalizer.append(' stale partial callback');
   finalizer.consumerDone();
   finalizer.rawDone('error');
-  assert.deepEqual(committed, [{ requestId: 'request-2', text: answer, status: 'completed' }]);
+  assert.deepEqual(committed, [{ requestId: 'request-2', text: answer, artifacts: [], status: 'completed' }]);
 });
 
 test('terminal stream error can settle without a successful SDK consumer', async () => {
@@ -107,4 +109,53 @@ test('user Stop is a terminal intentional reason', () => {
   tracker.begin('request', 'conversation');
   assert.equal(tracker.finish('request', 'conversation', 'user_stop')?.reason, 'user_stop');
   assert.equal(tracker.finish('request', 'conversation', 'network_error'), null);
+});
+
+test('valid document tool-only stream becomes a visible artifact with zero text and no extra call', async () => {
+  const previousFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = (() => { calls++; throw new Error('Unexpected AI call'); }) as typeof fetch;
+  try {
+    const result = runArtifactTool('create_document', { title: 'AI adoption report',
+      markdown: '# AI adoption report\n\n## Findings\n\nSmall businesses are adopting AI.', language: 'en' });
+    assert.equal(result.status, 'ok');
+    const stream = new ReadableStream<Uint8Array>({ start(controller) {
+      controller.enqueue(new TextEncoder().encode(`9:${JSON.stringify({ toolCallId: 'call-1', toolName: 'create_document', args: {} })}\n`));
+      controller.enqueue(new TextEncoder().encode(`a:${JSON.stringify({ toolCallId: 'call-1', result })}\n`));
+      controller.close();
+    } });
+    const committed: Array<{ text: string; artifacts: unknown[]; status: string }> = [];
+    const finalizer = new ChatStreamFinalizer('report-request', (value) => committed.push(value));
+    const status = await consumeCanonicalChatStream(stream, (delta) => finalizer.append(delta), undefined, undefined,
+      (part) => finalizer.appendArtifact(part));
+    finalizer.rawDone(status);
+    finalizer.consumerDone();
+    assert.equal(status, 'completed');
+    assert.equal(finalizer.textChars, 0);
+    assert.equal(finalizer.artifactCount, 1);
+    assert.equal(hasUsableCanonicalOutput(status, committed[0].text, committed[0].artifacts as never), true);
+    assert.deepEqual(chatPartsFromMessage('', 'en', committed[0].artifacts).map((part) => part.type), ['document']);
+    assert.equal(calls, 0);
+  } finally { globalThis.fetch = previousFetch; }
+});
+
+test('invalid document result and empty completed stream fail safely', async () => {
+  const invalid = new ReadableStream<Uint8Array>({ start(controller) {
+    controller.enqueue(new TextEncoder().encode(`9:${JSON.stringify({ toolCallId: 'bad', toolName: 'create_document', args: {} })}\n`));
+    controller.enqueue(new TextEncoder().encode(`a:${JSON.stringify({ toolCallId: 'bad', result: { status: 'ok', artifact: { type: 'document' } } })}\n`));
+    controller.close();
+  } });
+  let category = '';
+  const status = await consumeCanonicalChatStream(invalid, () => undefined, undefined,
+    (reason) => { category = reason; });
+  assert.equal(status, 'error');
+  assert.equal(category, 'provider_error');
+  assert.equal(hasUsableCanonicalOutput(status, '', []), false);
+  assert.equal(hasUsableCanonicalOutput('completed', '', []), false);
+  assert.equal(hasUsableCanonicalOutput('completed', 'Normal answer', []), true);
+  const failedFinish = new ReadableStream<Uint8Array>({ start(controller) {
+    controller.enqueue(new TextEncoder().encode('d:{"finishReason":"error","usage":{"promptTokens":0,"completionTokens":0}}\n'));
+    controller.close();
+  } });
+  assert.equal(await consumeCanonicalChatStream(failedFinish, () => undefined), 'error');
 });
