@@ -11,6 +11,7 @@ import ArtifactChart from '@/src/components/studio/ArtifactChart';
 import MessageBubble from '@/src/components/studio/MessageBubble';
 import { IntlProvider } from 'use-intl';
 import studioMessages from '@/messages/studio-en.json';
+import { createAgentRun } from '@/lib/chat/agent-runtime';
 
 const base = { schemaVersion: 1, id: 'artifact-1', title: 'Quarterly report', language: 'en', direction: 'ltr', metadata: {} } as const;
 const presentationJson = JSON.stringify({ type: 'presentation', title: 'Quarterly report', slides: [
@@ -102,6 +103,24 @@ test('artifact-only document and explicit report expose the existing document pr
   assert.match(render('', [{ type: 'document', artifact: document }]), /Open as document/);
   assert.match(render('# Report\n\nA written report.', undefined, 'Write me a report.'), /Open as document/);
   assert.doesNotMatch(render('A short answer.', undefined, 'What is a report?'), /Open as document/);
+});
+
+test('Agent progress is one customer-safe inline card with Stop and no internal prompt', () => {
+  const run = createAgentRun('Analyze this spreadsheet, create two charts, and build a 6-slide presentation.', 'conversation', 'run')!;
+  const html = renderToStaticMarkup(<IntlProvider locale="en" messages={studioMessages}>
+    <MessageBubble message={{ id: 'assistant', role: 'assistant', content: '' } as never} isLatest
+      agentRun={{ ...run, status: 'running', currentStep: 'charts', completedSteps: ['reading', 'analyzing'] }} onStopAgent={() => {}} />
+  </IntlProvider>);
+  assert.match(html, /Working on your task/);
+  assert.match(html, /Reading spreadsheet/);
+  assert.match(html, /Creating charts/);
+  assert.match(html, />Stop</);
+  assert.doesNotMatch(html, /agentRunId|conversationId|toolCallCount|Analyze this spreadsheet/);
+  const waiting = renderToStaticMarkup(<IntlProvider locale="en" messages={studioMessages}>
+    <MessageBubble message={{ id: 'assistant', role: 'assistant', content: '' } as never} isLatest
+      agentRun={{ ...run, status: 'waiting_for_user' }} onStopAgent={() => {}} />
+  </IntlProvider>);
+  assert.match(waiting, />Stop</);
 });
 
 test('structured spreadsheet, chart, document and presentation render inline with existing previews', () => {

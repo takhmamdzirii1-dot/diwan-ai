@@ -2,7 +2,7 @@ import { after, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { streamText } from 'ai';
 import { PRESENTATION_OUTPUT_INSTRUCTION, validatedArtifactPartFromToolResult } from '@/lib/artifacts/chat-parts';
-import { artifactTaskInstruction, documentToolChoice, resolveArtifactToolPath, selectArtifactTools } from '@/lib/artifacts/tool-registry';
+import { agentToolSelection, artifactTaskInstruction, documentToolChoice, resolveArtifactToolPath, selectArtifactTools } from '@/lib/artifacts/tool-registry';
 import { buildNativeArtifactTools } from '@/lib/artifacts/tool-native.server';
 import { completeMessageText, providerChatMessages } from '@/lib/chat/message-history';
 import { isChatTraceId, traceChatDataStream } from '@/lib/chat/debug-trace';
@@ -107,7 +107,11 @@ export async function POST(request: Request) {
     const latestUserText = Array.isArray(messages)
       ? completeMessageText([...messages].reverse().find((entry) => entry?.role === 'user') ?? { role: 'user' })
       : prompt;
-    const taskSelection = selectArtifactTools(typeof latestUserText === 'string' ? latestUserText : '');
+    const agentStep = body.agentStep === 'analysis' || body.agentStep === 'presentation' ? body.agentStep : null;
+    const agentToolBudget = Number.isInteger(body.agentToolBudget) && body.agentToolBudget >= 1 && body.agentToolBudget <= 8
+      ? body.agentToolBudget : 1;
+    const taskSelection = agentStep ? agentToolSelection(agentStep)
+      : selectArtifactTools(typeof latestUserText === 'string' ? latestUserText : '');
     const SYSTEM_PROMPT = `${customSystem || DEFAULT_SYSTEM}\n\n${DATETIME_CONTEXT}`;
 
     let messagesPayload = messages;
@@ -214,6 +218,9 @@ export async function POST(request: Request) {
       route: { id: route.id, providerId: route.providerId, providerModelId: route.providerModelId },
       stored: runtimeModel.routeCapabilitiesV2,
     }).resolved;
+    if (agentStep && native.tools.state !== 'supported') {
+      return NextResponse.json({ error: 'MODEL_CAPABILITY_UNSUPPORTED' }, { status: 409 });
+    }
     const toolPath = resolveArtifactToolPath(taskSelection, native);
     const taskInstruction = taskSelection.skill === 'presentation' && toolPath !== 'native'
       ? PRESENTATION_OUTPUT_INSTRUCTION : artifactTaskInstruction(taskSelection, toolPath);
@@ -453,7 +460,8 @@ export async function POST(request: Request) {
         null
       );
       providerStarted = true;
-      const nativeTools = toolPath === 'native' ? buildNativeArtifactTools(taskSelection) : undefined;
+      const nativeTools = toolPath === 'native' ? buildNativeArtifactTools(taskSelection,
+        agentStep ? agentToolBudget : Number.POSITIVE_INFINITY) : undefined;
       let documentToolCalls = 0;
       let documentToolResults = 0;
       let successfulDocumentExecutions = 0;
@@ -467,7 +475,8 @@ export async function POST(request: Request) {
         model: languageModel,
         messages: messagesPayload,
         tools: nativeTools,
-        toolChoice: documentToolChoice(taskSelection, toolPath),
+        toolChoice: agentStep === 'presentation' ? { type: 'tool', toolName: 'create_presentation' }
+          : documentToolChoice(taskSelection, toolPath),
         maxSteps: 1,
         temperature,
         maxTokens,

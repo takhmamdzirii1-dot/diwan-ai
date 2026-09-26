@@ -1,4 +1,5 @@
 import { validatedArtifactPartFromToolResult, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
+import { getArtifactTool } from '@/lib/artifacts/tool-registry';
 
 export type CanonicalStreamStatus = 'completed' | 'aborted' | 'error';
 export function hasUsableCanonicalOutput(status: CanonicalStreamStatus, text: string, artifacts: ChatMessagePart[]): boolean {
@@ -82,13 +83,13 @@ export async function consumeCanonicalChatStream(stream: ReadableStream<Uint8Arr
   append: (delta: string) => void, signal?: AbortSignal,
   onErrorKind?: (reason: 'provider_error' | 'network_error') => void,
   onArtifact?: (part: ChatMessagePart) => void,
-  onToolEvent?: (event: { called: boolean; resultValidated: boolean }) => void): Promise<CanonicalStreamStatus> {
+  onToolEvent?: (event: { toolName: string; called: boolean; resultValidated: boolean }) => void): Promise<CanonicalStreamStatus> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let pending = '';
   let streamError = false;
   let providerError = false;
-  const documentCalls = new Set<string>();
+  const toolCalls = new Map<string, string>();
   const abort = () => { void reader.cancel().catch(() => undefined); };
   signal?.addEventListener('abort', abort, { once: true });
   try {
@@ -109,23 +110,24 @@ export async function consumeCanonicalChatStream(stream: ReadableStream<Uint8Arr
         } else if (line.startsWith('9:')) {
           try {
             const call: unknown = JSON.parse(line.slice(2));
-            if (call && typeof call === 'object' && 'toolName' in call && call.toolName === 'create_document'
-              && 'toolCallId' in call && typeof call.toolCallId === 'string') {
-              documentCalls.add(call.toolCallId);
-              onToolEvent?.({ called: true, resultValidated: false });
+            if (call && typeof call === 'object' && 'toolName' in call && typeof call.toolName === 'string'
+              && getArtifactTool(call.toolName) && 'toolCallId' in call && typeof call.toolCallId === 'string') {
+              toolCalls.set(call.toolCallId, call.toolName);
+              onToolEvent?.({ toolName: call.toolName, called: true, resultValidated: false });
             }
           } catch { streamError = true; }
         } else if (line.startsWith('a:')) {
           try {
             const result: unknown = JSON.parse(line.slice(2));
             if (result && typeof result === 'object' && 'toolCallId' in result
-              && typeof result.toolCallId === 'string' && documentCalls.has(result.toolCallId)) {
-              const part = validatedArtifactPartFromToolResult('create_document',
+              && typeof result.toolCallId === 'string' && toolCalls.has(result.toolCallId)) {
+              const toolName = toolCalls.get(result.toolCallId)!;
+              const part = validatedArtifactPartFromToolResult(toolName,
                 'result' in result ? result.result : null);
-              onToolEvent?.({ called: false, resultValidated: part?.type === 'document' });
-              if (part?.type === 'document') onArtifact?.(part);
+              onToolEvent?.({ toolName, called: false, resultValidated: Boolean(part) });
+              if (part) onArtifact?.(part);
               else { streamError = true; providerError = true; }
-              documentCalls.delete(result.toolCallId);
+              toolCalls.delete(result.toolCallId);
             }
           } catch { streamError = true; }
         } else if (line.startsWith('d:')) {
@@ -141,7 +143,7 @@ export async function consumeCanonicalChatStream(stream: ReadableStream<Uint8Arr
       }
     }
     if (signal?.aborted) return 'aborted';
-    if (documentCalls.size > 0) { streamError = true; providerError = true; }
+    if (toolCalls.size > 0) { streamError = true; providerError = true; }
     if (streamError || pending.trim()) {
       onErrorKind?.(providerError ? 'provider_error' : 'network_error');
       return 'error';

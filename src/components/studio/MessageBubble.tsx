@@ -14,6 +14,7 @@ import { documentFromMarkdown } from '@/lib/artifacts/core';
 import { chatPartsFromMessage, chatPartsFromToolInvocations, streamingSafeText, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
 import { artifactToolProgress } from '@/lib/artifacts/tool-registry';
 import { getDocumentActionEligibility, readableArtifactCopy } from '@/lib/chat/contextual-guidance';
+import type { AgentRun, AgentStep } from '@/lib/chat/agent-runtime';
 
 const ArtifactDocumentPreview = dynamic(() => import('./ArtifactDocumentPreview'), { ssr: false });
 const ArtifactSmartCard = dynamic(() => import('./ArtifactSmartCard'), { ssr: false });
@@ -26,6 +27,8 @@ export interface MessageBubbleProps {
   onRegenerate?: () => void;
   onRequestPrompt?: (prompt: string) => void;
   precedingUserMessage?: Message | null;
+  agentRun?: AgentRun | null;
+  onStopAgent?: () => void;
 }
 
 function AttachmentThumbnail({ attachment }: { attachment: { name: string; url?: string | File | Blob } }) {
@@ -78,7 +81,7 @@ function AttachmentThumbnail({ attachment }: { attachment: { name: string; url?:
   );
 }
 
-export default function MessageBubble({ message, isLatest, isStreaming, isThinking, onRegenerate, onRequestPrompt, precedingUserMessage }: MessageBubbleProps) {
+export default function MessageBubble({ message, isLatest, isStreaming, isThinking, onRegenerate, onRequestPrompt, precedingUserMessage, agentRun, onStopAgent }: MessageBubbleProps) {
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
   const [copiedMessage, setCopiedMessage] = useState(false);
   const [documentOpen, setDocumentOpen] = useState(false);
@@ -246,6 +249,20 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
             className="w-full max-w-4xl min-w-0 bg-transparent shadow-none border-none pt-0.5"
           >
             {/* Thinking state indicator */}
+            {agentRun && <section className="mb-3 max-w-md rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-white/70" role="status" aria-live="polite">
+              <div className="mb-2 flex items-center justify-between gap-3"><span className="font-medium text-white/85">{agentRun.status === 'completed'
+                ? locale === 'ar' ? 'اكتملت المهمة' : locale === 'fr' ? 'Tâche terminée' : 'Task complete'
+                : agentRun.status === 'cancelled' ? locale === 'ar' ? 'توقفت المهمة' : locale === 'fr' ? 'Tâche arrêtée' : 'Task stopped'
+                  : locale === 'ar' ? 'جارٍ العمل على مهمتك' : locale === 'fr' ? 'Travail sur votre tâche' : 'Working on your task'}</span>
+                {(agentRun.status === 'running' || agentRun.status === 'waiting_for_user') && onStopAgent && <button type="button" onClick={onStopAgent} className="rounded-md border border-white/15 px-2 py-1 text-white/70 hover:text-white">{locale === 'ar' ? 'إيقاف' : locale === 'fr' ? 'Arrêter' : 'Stop'}</button>}</div>
+              <ol className="space-y-1">{(['reading', 'analyzing', 'charts', 'presentation'] as AgentStep[]).map((step) => {
+                const labels = { reading: locale === 'ar' ? 'قراءة جدول البيانات' : locale === 'fr' ? 'Lecture du tableur' : 'Reading spreadsheet',
+                  analyzing: locale === 'ar' ? 'تحليل البيانات' : locale === 'fr' ? 'Analyse des données' : 'Analyzing data',
+                  charts: locale === 'ar' ? 'إنشاء الرسوم البيانية' : locale === 'fr' ? 'Création des graphiques' : 'Creating charts',
+                  presentation: locale === 'ar' ? 'إنشاء العرض التقديمي' : locale === 'fr' ? 'Création de la présentation' : 'Building presentation' };
+                return <li key={step}>{agentRun.completedSteps.includes(step) ? '✓' : agentRun.currentStep === step ? '●' : '○'} {labels[step]}</li>;
+              })}</ol>
+            </section>}
             {isThinking && (
               <div className="flex items-center gap-2 text-[13.5px] text-white/60 animate-pulse mb-3" role="status">
                 <span className="font-sans antialiased text-white/70 font-normal">{t('thinking')}</span>

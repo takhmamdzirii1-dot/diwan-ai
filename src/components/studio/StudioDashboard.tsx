@@ -27,7 +27,10 @@ import type { ChatModelOption } from '@/components/ui/model-picker';
 import { trackFunnelEvent } from '@/src/lib/funnel-analytics';
 import dynamic from 'next/dynamic';
 import { chatPartsFromMessage, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
+import type { SpreadsheetArtifact } from '@/lib/artifacts/core';
 import { chatRequestMessages, serializeChatSession } from '@/lib/chat/message-history';
+import { executeAgentSemanticStep } from '@/lib/chat/agent-client';
+import { agentTaskFor, cancelAgentRun, createAgentRun, executeAgentRun, isCurrentAgentUpdate, type AgentRun } from '@/lib/chat/agent-runtime';
 import { ChatRequestTracker, ChatStreamFinalizer, consumeCanonicalChatStream, hasUsableCanonicalOutput, restoreCanonicalAssistantText,
   type ChatRequestOutcome, type ChatTerminationReason } from '@/lib/chat/client-finalization';
 import { guidanceForChatError, shouldShowChatError, type GuidanceAction } from '@/lib/chat/contextual-guidance';
@@ -85,6 +88,11 @@ export default function StudioDashboard({
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [spreadsheetFile, setSpreadsheetFile] = useState<File | null>(null);
+  const [availableSpreadsheet, setAvailableSpreadsheet] = useState<SpreadsheetArtifact | null>(null);
+  const [agentRun, setAgentRun] = useState<AgentRun | null>(null);
+  const agentRunRef = useRef<AgentRun | null>(null);
+  const agentAbortRef = useRef<AbortController | null>(null);
+  const agentMessageRef = useRef<{ assistantId: string; history: Array<{ role: string; content: string }>; modelId: string; spreadsheet: SpreadsheetArtifact | null } | null>(null);
 
   const showActivation = useCallback((reason: ActivationReason, modality: 'chat' | 'image' | 'video', model?: { id: string; name: string; requiredPlan?: import('@/lib/models/plan-entitlements').ModelPlanCode | null }) => {
     if (model && (reason === 'model_locked' || reason === 'model_trial_exhausted')) {
@@ -272,8 +280,8 @@ export default function StudioDashboard({
           debugClientCharsRef.current = finalizer.textChars;
         }, init?.signal ?? undefined, (reason) => { streamErrorReason = reason; },
         (part) => finalizer.appendArtifact(part), (event) => {
-          if (event.called) documentToolCalls++;
-          if (event.resultValidated) validatedDocumentResults++;
+          if (event.toolName === 'create_document' && event.called) documentToolCalls++;
+          if (event.toolName === 'create_document' && event.resultValidated) validatedDocumentResults++;
         }).then((status) => {
           if (chatDebugEnabled) console.info('[VANTRA_CHAT_DEBUG] CLIENT_STREAM', {
             requestId, textChars: finalizer.textChars, documentToolCalls,
@@ -323,7 +331,62 @@ export default function StudioDashboard({
     },
   });
 
-  const chatBusy = isLoading || canonicalPending;
+  const runAgentRequest = useCallback(async (run: AgentRun, spreadsheet: SpreadsheetArtifact | null,
+    context: { assistantId: string; history: Array<{ role: string; content: string }>; modelId: string }) => {
+    const controller = new AbortController();
+    agentAbortRef.current = controller;
+    const result = await executeAgentRun(run, spreadsheet, {
+      operationId: () => crypto.randomUUID(), signal: controller.signal,
+      semantic: async (stage, prompt, operationId, toolBudget, signal) => {
+        const output = await executeAgentSemanticStep({ stage, prompt, model: context.modelId,
+          history: context.history, operationId, toolBudget, signal });
+        refreshBalance();
+        return output;
+      },
+      onUpdate: (state) => {
+        if (!isCurrentAgentUpdate(state, agentRunRef.current)
+          || (activeSessionIdRef.current ?? 'default-session') !== state.conversationId) return;
+        agentRunRef.current = state;
+        setAgentRun(state);
+        const vantraParts: ChatMessagePart[] = [...(state.analysisText ? [{ type: 'text' as const, text: state.analysisText }] : []), ...state.artifacts];
+        setMessages((current) => current.map((message) => message.id === context.assistantId
+          ? { ...message, content: state.analysisText, vantraParts } : message));
+      },
+    });
+    if (agentAbortRef.current === controller) agentAbortRef.current = null;
+    return result;
+  }, [refreshBalance, setMessages]);
+
+  useEffect(() => {
+    const run = agentRunRef.current;
+    const context = agentMessageRef.current;
+    if (run?.status === 'waiting_for_user' && availableSpreadsheet && context
+      && run.conversationId === (activeSessionId ?? 'default-session')) {
+      context.spreadsheet = availableSpreadsheet;
+      void runAgentRequest(run, availableSpreadsheet, context);
+    }
+  }, [availableSpreadsheet, activeSessionId, runAgentRequest]);
+
+  useEffect(() => {
+    const run = agentRunRef.current;
+    const context = agentMessageRef.current;
+    if (run?.status === 'failed' && run.terminalError === 'switch_model' && context
+      && context.modelId !== selectedModelId && run.conversationId === (activeSessionId ?? 'default-session')) {
+      context.modelId = selectedModelId;
+      void runAgentRequest(run, context.spreadsheet, context);
+    }
+  }, [selectedModelId, activeSessionId, runAgentRequest]);
+
+  const abortAgentRun = useCallback(() => {
+    const run = agentRunRef.current;
+    if (!run || (run.status !== 'running' && run.status !== 'waiting_for_user')) return;
+    agentAbortRef.current?.abort();
+    const cancelled = cancelAgentRun(run);
+    agentRunRef.current = cancelled;
+    setAgentRun(cancelled);
+  }, []);
+
+  const chatBusy = isLoading || canonicalPending || agentRun?.status === 'running';
   const wasSdkLoadingRef = useRef(false);
   useEffect(() => {
     if (wasSdkLoadingRef.current && !isLoading) activeFinalizerRef.current?.consumerDone();
@@ -337,6 +400,14 @@ export default function StudioDashboard({
     setCanonicalPending(false);
   }, []);
   const abortChatRequest = useCallback((reason: 'user_stop' | 'navigation_abort' | 'conversation_switch_abort') => {
+    const agent = agentRunRef.current;
+    if (agent && (agent.status === 'running' || agent.status === 'waiting_for_user')
+      && agent.conversationId === (activeSessionIdRef.current ?? 'default-session') && messages.length > 0) {
+      try { localStorage.setItem(`vantra_chat_${agent.conversationId}`, serializeChatSession(messages,
+        (message) => chatPartsFromMessage(message.content, locale,
+          (message as typeof message & { vantraParts?: unknown }).vantraParts))); } catch { /* Keep in-memory results. */ }
+    }
+    abortAgentRun();
     const current = requestTrackerRef.current.current;
     if (!current || current.reason) return;
     if (activeSessionIdRef.current === current.conversationId && messages.length > 0) {
@@ -349,7 +420,7 @@ export default function StudioDashboard({
     recordRequestOutcome(current.requestId, current.conversationId, reason);
     discardFinalization();
     stop();
-  }, [discardFinalization, locale, messages, recordRequestOutcome, stop]);
+  }, [abortAgentRun, discardFinalization, locale, messages, recordRequestOutcome, stop]);
   const abortOnUnmountRef = useRef(abortChatRequest);
   abortOnUnmountRef.current = abortChatRequest;
   useEffect(() => {
@@ -369,6 +440,7 @@ export default function StudioDashboard({
   const handleNewChat = useCallback(() => {
     // Abort any active text stream
     abortChatRequest('conversation_switch_abort');
+    agentRunRef.current = null; agentMessageRef.current = null; setAgentRun(null); setAvailableSpreadsheet(null);
     // Lazy creation: no DB/list record yet â€” just a draft id so the composer stays live.
     setActiveSessionId(`draft-${Date.now()}`);
     setMessages([]);
@@ -377,12 +449,14 @@ export default function StudioDashboard({
 
   const handleSelectSession = useCallback((sessionId: string) => {
     abortChatRequest('conversation_switch_abort');
+    agentRunRef.current = null; agentMessageRef.current = null; setAgentRun(null); setAvailableSpreadsheet(null);
     setActiveSessionId(sessionId);
     onWorkspaceChange('chat');
   }, [abortChatRequest, onWorkspaceChange]);
 
   const handleDeleteSession = useCallback((sessionId: string) => {
     if (sessionId === activeSessionId) abortChatRequest('conversation_switch_abort');
+    if (sessionId === activeSessionId) { agentRunRef.current = null; agentMessageRef.current = null; setAgentRun(null); setAvailableSpreadsheet(null); }
     try {
       localStorage.removeItem(`vantra_chat_${sessionId}`);
     } catch {}
@@ -541,7 +615,7 @@ export default function StudioDashboard({
 
   const handleSend = useCallback(
     async (data: { message: string; isThinkingEnabled: boolean; files?: Array<{ file: File; preview?: string | null; type: string }> }) => {
-      if (canonicalPendingRef.current) return;
+      if (canonicalPendingRef.current || agentRunRef.current?.status === 'running') return;
       if (!activeModel || !isModelSelectable(activeModel)) return;
       if (access?.kind !== 'paid_active' && access?.freeEligibility && !['eligible', 'manually_approved'].includes(access.freeEligibility)) {
         showActivation('free_access_restricted', 'chat');
@@ -560,7 +634,8 @@ export default function StudioDashboard({
         return;
       }
       let content = data.message;
-      if (data.isThinkingEnabled) {
+      const agentRequested = Boolean(agentTaskFor(data.message));
+      if (data.isThinkingEnabled && !agentRequested) {
         content = `Think through this step-by-step with careful reasoning before answering.\n\n${content}`;
       }
 
@@ -598,6 +673,23 @@ export default function StudioDashboard({
       }
       sendStartRef.current = performance.now();
       pendingSendRef.current = true;
+      if (agentRequested) {
+        const conversationId = activeSessionId ?? 'default-session';
+        const run = createAgentRun(data.message, conversationId, crypto.randomUUID());
+        if (!run) return;
+        const userMessage = { id: crypto.randomUUID(), role: 'user' as const, content };
+        const assistantId = crypto.randomUUID();
+        const priorSpreadsheet = [...messages].reverse().flatMap((message) => chatPartsFromMessage(message.content, locale,
+          (message as typeof message & { vantraParts?: unknown }).vantraParts)).find((part) => part.type === 'spreadsheet');
+        const spreadsheet = availableSpreadsheet ?? (priorSpreadsheet?.type === 'spreadsheet' ? priorSpreadsheet.artifact : null);
+        const context = { assistantId, history: chatRequestMessages([...messages, userMessage]), modelId: selectedModelId, spreadsheet };
+        agentRunRef.current = run;
+        agentMessageRef.current = context;
+        setAgentRun(run);
+        setMessages((current) => [...current, userMessage, { id: assistantId, role: 'assistant' as const, content: '' }]);
+        void runAgentRequest(run, spreadsheet, context);
+        return;
+      }
       await append(
         {
           role: 'user',
@@ -612,10 +704,20 @@ export default function StudioDashboard({
         }
       );
     },
-    [append, selectedModelId, activeSessionId, sessions, activeModel, user, openAuthModal, access?.kind, showActivation]
+    [append, selectedModelId, activeSessionId, sessions, activeModel, user, openAuthModal, access?.kind, showActivation,
+      messages, locale, availableSpreadsheet, runAgentRequest, setMessages]
   );
 
   const handleChatGuidanceAction = (action: GuidanceAction) => {
+    if (action === 'try_again' && agentRunRef.current?.status === 'failed' && agentMessageRef.current) {
+      void runAgentRequest(agentRunRef.current, agentMessageRef.current.spreadsheet ?? availableSpreadsheet,
+        { ...agentMessageRef.current, modelId: selectedModelId });
+      return;
+    }
+    if (action === 'switch_model' && agentRunRef.current?.terminalError === 'switch_model') {
+      setSettingsOpen(true);
+      return;
+    }
     if (action === 'add_credits') openTopUpModal();
     else if ((action === 'get_pro' || action === 'view_plans') && activeModel) showActivation('model_locked', 'chat', {
       id: activeModel.id, name: activeModel.displayName, requiredPlan: activeModel.requiredPlan,
@@ -641,6 +743,12 @@ export default function StudioDashboard({
       if (candidate) setSelectedModelId(candidate.id);
     }
   };
+
+  const onSpreadsheetArtifactReady = useCallback((artifact: SpreadsheetArtifact) => {
+    setAvailableSpreadsheet(artifact);
+    if (agentMessageRef.current) agentMessageRef.current.spreadsheet = artifact;
+    if (agentRunRef.current?.status === 'waiting_for_user') setSpreadsheetFile(null);
+  }, []);
 
   const handleStarter = useCallback((text: string) => {
     window.dispatchEvent(new CustomEvent('vantra-prefill-prompt', { detail: { prompt: text } }));
@@ -898,11 +1006,14 @@ export default function StudioDashboard({
                               <MessageBubble
                                 key={msg.id || idx}
                                 message={msg}
+                                agentRun={msg.role === 'assistant' && msg.id === agentMessageRef.current?.assistantId
+                                  && agentRun?.conversationId === (activeSessionId ?? 'default-session') ? agentRun : null}
+                                onStopAgent={() => abortChatRequest('user_stop')}
                                 precedingUserMessage={msg.role === 'assistant'
                                   ? [...messages.slice(0, idx)].reverse().find((entry) => entry.role === 'user') ?? null : null}
                                 isLatest={idx === messages.length - 1}
-                                isStreaming={chatBusy && idx === messages.length - 1 && msg.role === 'assistant'}
-                                onRegenerate={chatBusy ? undefined : () => reload()}
+                                isStreaming={(isLoading || canonicalPending) && idx === messages.length - 1 && msg.role === 'assistant'}
+                                onRegenerate={chatBusy || msg.id === agentMessageRef.current?.assistantId ? undefined : () => reload()}
                                 onRequestPrompt={(prompt) => void handleSend({ message: prompt, isThinkingEnabled: false })}
                               />
                             ))}
@@ -926,6 +1037,14 @@ export default function StudioDashboard({
                           conversationId: activeSessionId ?? 'default-session', outcome: requestOutcome,
                         }) && <div className="max-w-lg"><ChatGuidanceCard
                           guidance={guidanceForChatError(error?.message ?? 'CHAT_REQUEST_FAILED', locale)} locale={locale} onAction={handleChatGuidanceAction} /></div>}
+                        {agentRun?.conversationId === (activeSessionId ?? 'default-session')
+                          && (agentRun.status === 'waiting_for_user' || agentRun.status === 'failed') && <div className="max-w-lg"><ChatGuidanceCard
+                            guidance={agentRun.status === 'waiting_for_user' ? { kind: 'requirement',
+                              message: locale === 'ar' ? 'أحتاج جدول البيانات أولاً.' : locale === 'fr' ? "J'ai d'abord besoin de la feuille de calcul." : 'I need the spreadsheet first.',
+                              actions: ['upload_spreadsheet'] } : agentRun.terminalError === 'switch_model'
+                              ? guidanceForChatError('MODEL_CAPABILITY_UNSUPPORTED', locale) : { kind: 'recoverable_error',
+                                message: locale === 'ar' ? 'تعذر إكمال الخطوة المتبقية.' : locale === 'fr' ? "Je n'ai pas pu terminer l'étape restante." : "I couldn't complete the remaining step.",
+                                actions: ['try_again'] }} locale={locale} onAction={handleChatGuidanceAction} /></div>}
 
                       </div>
                     </div>
@@ -1032,7 +1151,7 @@ export default function StudioDashboard({
         models={entitledModels}
       />
       <ActivationOffer prompt={activationPrompt} onClose={() => setActivationPrompt(null)} />
-      {spreadsheetFile && <ArtifactSpreadsheetPreview file={spreadsheetFile} locale={locale} onClose={() => setSpreadsheetFile(null)} onAnalyze={(prompt) => void handleSend({ message: prompt, isThinkingEnabled: false })} />}
+      {spreadsheetFile && <ArtifactSpreadsheetPreview file={spreadsheetFile} locale={locale} onClose={() => setSpreadsheetFile(null)} onAnalyze={(prompt) => void handleSend({ message: prompt, isThinkingEnabled: false })} onArtifactReady={onSpreadsheetArtifactReady} />}
     </div>
   );
 }

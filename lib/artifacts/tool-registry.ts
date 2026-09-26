@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { artifactDirection, documentFromMarkdown, isArtifact, parsePresentationResponse, type Artifact, type ChartArtifact, type DocumentArtifact, type PresentationArtifact, type SpreadsheetArtifact } from './core';
+import { spreadsheetContext } from './spreadsheet-actions';
 
 const short = z.string().trim().min(1).max(160);
 const text = z.string().trim().min(1).max(2_000);
@@ -126,6 +127,10 @@ export function runArtifactTool(name: string, rawInput: unknown): ArtifactToolRe
 
 export type ArtifactToolSelection = { names: ArtifactToolName[]; skill: ArtifactTaskSkill | null };
 const emptySelection: ArtifactToolSelection = { names: [], skill: null };
+export function agentToolSelection(step: 'analysis' | 'presentation'): ArtifactToolSelection {
+  return step === 'analysis' ? { names: [], skill: 'spreadsheet-analysis' }
+    : { names: ['create_presentation'], skill: 'presentation' };
+}
 export function isExplicitDocumentIntent(input: string): boolean {
   const text = input.slice(0, 8_000).replace(/[\u064B-\u065F\u0670]/g, '');
   return /\b(?:write|draft|create|prepare|generate|compose|make|build|produce|give me)\b[\s\S]{0,120}\b(?:report|article|brief|document|resume|cv|proposal|memo|executive summary|formal letter)\b/i.test(text)
@@ -179,4 +184,15 @@ export function artifactToolProgress(name: string, locale: string): string | nul
 
 export function selectedNativeArtifactTools(selection: ArtifactToolSelection) {
   return Object.fromEntries(selection.names.map((name) => [name, definitions[name]])) as Partial<Record<ArtifactToolName, ToolDefinition>>;
+}
+
+export const readSpreadsheetContextTool = { name: 'read_spreadsheet_context', group: 'spreadsheet', risk: 'READ',
+  progress: { en: 'Reading spreadsheet', fr: 'Lecture de la feuille de calcul', ar: 'قراءة جدول البيانات' } } as const;
+export function runReadSpreadsheetContextTool(artifact: unknown, sheetId: string, rowStart = 0, rowEnd = 40):
+  { status: 'ok'; sheetName: string; headers: string[]; rowCount: number; context: string } | { status: 'error' } {
+  if (!isArtifact(artifact) || artifact.type !== 'spreadsheet' || !verifySpreadsheet(artifact)) return { status: 'error' };
+  const sheet = artifact.sheets.find((entry) => entry.id === sheetId);
+  if (!sheet || !Number.isInteger(rowStart) || !Number.isInteger(rowEnd) || rowStart < 0 || rowEnd <= rowStart) return { status: 'error' };
+  return { status: 'ok', sheetName: sheet.name, headers: sheet.columns.slice(0, 16), rowCount: sheet.rows.length,
+    context: spreadsheetContext(artifact, sheet, rowStart, Math.min(rowEnd, rowStart + 40)) };
 }

@@ -25,7 +25,7 @@ const chartNames: Record<ChartType, [string, string, string]> = {
 
 function download(blob: Blob, filename: string) { const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = filename.replace(/[\\/:*?"<>|]/g, '').slice(0, 90); link.click(); window.setTimeout(() => URL.revokeObjectURL(url), 60_000); }
 
-export default function ArtifactSpreadsheetPreview({ file: sourceFile, initialArtifact, locale, onClose, onAnalyze, inline = false, inlineActionsHandledExternally = false }: { file?: File; initialArtifact?: SpreadsheetArtifact; locale: string; onClose: () => void; onAnalyze: (prompt: string) => void | Promise<void>; inline?: boolean; inlineActionsHandledExternally?: boolean }) {
+export default function ArtifactSpreadsheetPreview({ file: sourceFile, initialArtifact, locale, onClose, onAnalyze, onArtifactReady, inline = false, inlineActionsHandledExternally = false }: { file?: File; initialArtifact?: SpreadsheetArtifact; locale: string; onClose: () => void; onAnalyze: (prompt: string) => void | Promise<void>; onArtifactReady?: (artifact: SpreadsheetArtifact) => void; inline?: boolean; inlineActionsHandledExternally?: boolean }) {
   const file = sourceFile ?? { name: initialArtifact?.title ?? 'Spreadsheet' };
   const t = copy[locale as keyof typeof copy] ?? copy.en;
   const safe = safeError[locale as keyof typeof safeError] ?? safeError.en;
@@ -41,7 +41,7 @@ export default function ArtifactSpreadsheetPreview({ file: sourceFile, initialAr
   const [error, setError] = useState('');
   const [exportPng, setExportPng] = useState<(() => string) | null>(null);
   const handleChartReady = useCallback((fn: () => string) => setExportPng(() => fn), []);
-  useEffect(() => { if (!sourceFile) return; let cancelled = false; void import('@/lib/artifacts/spreadsheet-io').then(({ importSpreadsheet }) => importSpreadsheet(sourceFile, locale)).then((result) => { if (!cancelled) setArtifact(result); }).catch(() => { if (!cancelled) setError(safe.file); }); return () => { cancelled = true; }; }, [sourceFile, locale, safe.file]);
+  useEffect(() => { if (!sourceFile) return; let cancelled = false; void import('@/lib/artifacts/spreadsheet-io').then(({ importSpreadsheet }) => importSpreadsheet(sourceFile, locale)).then((result) => { if (!cancelled) { setArtifact(result); onArtifactReady?.(result); } }).catch(() => { if (!cancelled) setError(safe.file); }); return () => { cancelled = true; }; }, [sourceFile, locale, safe.file, onArtifactReady]);
   const sheet = artifact?.sheets[sheetIndex];
   const makeChart = () => { if (!artifact || !sheet) return; try { setExportPng(null); setChart(chartFromSheet(artifact, sheet, chartType, Math.max(0, rangeStart - 1), Math.min(sheet.rows.length, rangeEnd))); setError(''); } catch { setError(safe.chart); } };
   const exportXlsx = async () => { if (!artifact) return; try { const { exportSpreadsheet } = await import('@/lib/artifacts/spreadsheet-io'); download(await exportSpreadsheet(artifact), `${artifact.title}.xlsx`); } catch { setError(safe.export); } };

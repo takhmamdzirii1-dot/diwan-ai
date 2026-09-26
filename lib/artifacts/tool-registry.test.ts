@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { chatPartsFromMessage, chatPartsFromToolInvocations } from './chat-parts';
 import { buildNativeArtifactTools } from './tool-native.server';
-import { artifactTaskInstruction, artifactToolProgress, documentToolChoice, getArtifactTool, resolveArtifactToolPath, runArtifactTool, selectArtifactTools, verifyArtifactToolResult } from './tool-registry';
+import { agentToolSelection, artifactTaskInstruction, artifactToolProgress, documentToolChoice, getArtifactTool, resolveArtifactToolPath, runArtifactTool, selectArtifactTools, verifyArtifactToolResult } from './tool-registry';
 
 test('stable registry names resolve and invalid inputs/results fail safely', () => {
   for (const name of ['create_table', 'create_chart', 'create_document', 'create_spreadsheet', 'create_presentation']) {
@@ -86,6 +86,19 @@ test('explicit document intent requires one native document tool and uses struct
     assert.equal(documentToolChoice(ordinary, 'native'), undefined);
     assert.equal(calls, 0);
   } finally { globalThis.fetch = originalFetch; }
+});
+
+test('Agent stages expose only the relevant skill and native tool', async () => {
+  const analysis = agentToolSelection('analysis');
+  const presentation = agentToolSelection('presentation');
+  assert.deepEqual(analysis, { names: [], skill: 'spreadsheet-analysis' });
+  assert.deepEqual(presentation, { names: ['create_presentation'], skill: 'presentation' });
+  assert.deepEqual(Object.keys(buildNativeArtifactTools(analysis)), []);
+  assert.deepEqual(Object.keys(buildNativeArtifactTools(presentation)), ['create_presentation']);
+  const limited = buildNativeArtifactTools(presentation, 1);
+  const input = { title: 'Review', slides: [{ title: 'Review', variant: 'cover', blocks: [] }] };
+  assert.equal((await limited.create_presentation.execute?.(input) as { status: string }).status, 'ok');
+  assert.equal((await limited.create_presentation.execute?.(input) as { status: string }).status, 'error');
 });
 
 test('Capability V2 chooses native, structured, or safe fallback without probing', async () => {
