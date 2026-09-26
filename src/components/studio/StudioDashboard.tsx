@@ -28,7 +28,8 @@ import { trackFunnelEvent } from '@/src/lib/funnel-analytics';
 import dynamic from 'next/dynamic';
 import { chatPartsFromMessage } from '@/lib/artifacts/chat-parts';
 import { chatRequestMessages, serializeChatSession } from '@/lib/chat/message-history';
-import { ChatStreamFinalizer, consumeCanonicalChatStream, restoreCanonicalAssistantText } from '@/lib/chat/client-finalization';
+import { ChatRequestTracker, ChatStreamFinalizer, consumeCanonicalChatStream, restoreCanonicalAssistantText,
+  type ChatRequestOutcome, type ChatTerminationReason } from '@/lib/chat/client-finalization';
 import { guidanceForChatError, shouldShowChatError, type GuidanceAction } from '@/lib/chat/contextual-guidance';
 import ChatGuidanceCard from './ChatGuidanceCard';
 
@@ -116,7 +117,12 @@ export default function StudioDashboard({
     catch { return false; }
   });
   const debugRequestIdRef = useRef<string | null>(null);
-  const [completedCanonicalRequest, setCompletedCanonicalRequest] = useState<string | null>(null);
+  const requestTrackerRef = useRef(new ChatRequestTracker());
+  const [requestOutcome, setRequestOutcome] = useState<ChatRequestOutcome | null>(null);
+  const recordRequestOutcome = useCallback((requestId: string, conversationId: string, reason: ChatTerminationReason) => {
+    const outcome = requestTrackerRef.current.finish(requestId, conversationId, reason);
+    if (outcome) setRequestOutcome(outcome);
+  }, []);
   const debugClientCharsRef = useRef(0);
   const [canonicalPending, setCanonicalPending] = useState(false);
   const canonicalPendingRef = useRef(false);
@@ -199,7 +205,8 @@ export default function StudioDashboard({
     experimental_prepareRequestBody: ({ messages: requestMessages, requestBody }) => {
       const requestId = crypto.randomUUID();
       debugRequestIdRef.current = requestId;
-      setCompletedCanonicalRequest(null);
+      requestTrackerRef.current.begin(requestId, activeSessionId ?? 'default-session');
+      setRequestOutcome(null);
       debugClientCharsRef.current = 0;
       if (chatDebugEnabled) {
         console.info('[VANTRA_CHAT_DEBUG] CLIENT_SEND', { requestId, messageCount: requestMessages.length, started: true });
@@ -208,13 +215,15 @@ export default function StudioDashboard({
     },
     fetch: async (input, init) => {
       const requestId = debugRequestIdRef.current ?? crypto.randomUUID();
-      const sessionId = activeSessionId;
+      const sessionId = activeSessionId ?? 'default-session';
+      let streamErrorReason: 'provider_error' | 'network_error' = 'network_error';
       const finalizer = new ChatStreamFinalizer(requestId, ({ text, status }) => {
         if (activeFinalizerRef.current !== finalizer) return;
+        if ((activeSessionIdRef.current ?? 'default-session') !== sessionId) return;
         if (status === 'completed' && text.length > 0) {
-          if (activeSessionIdRef.current === sessionId && text.trim()) setCompletedCanonicalRequest(requestId);
+          recordRequestOutcome(requestId, sessionId, text.trim() ? 'completed' : 'provider_error');
           setMessages((current) => {
-            if (activeSessionIdRef.current !== sessionId) return current;
+            if ((activeSessionIdRef.current ?? 'default-session') !== sessionId) return current;
             const last = current[current.length - 1];
             if (last?.role === 'assistant') {
               canonicalFinalRef.current = { sessionId, messageId: last.id, text };
@@ -227,6 +236,8 @@ export default function StudioDashboard({
             }
             return current;
           });
+        } else {
+          recordRequestOutcome(requestId, sessionId, status === 'error' ? streamErrorReason : 'network_error');
         }
         activeFinalizerRef.current = null;
         canonicalPendingRef.current = false;
@@ -241,6 +252,7 @@ export default function StudioDashboard({
       try {
         const response = await fetch(input, { ...init, headers });
         if (!response.ok || !response.body) {
+          streamErrorReason = 'provider_error';
           if (chatDebugEnabled) console.info('[VANTRA_CHAT_DEBUG] CLIENT_STREAM', {
             requestId, textChars: 0, status: 'error', errorCategory: 'http_error',
           });
@@ -251,7 +263,7 @@ export default function StudioDashboard({
         void consumeCanonicalChatStream(canonicalBody, (delta) => {
           finalizer.append(delta);
           debugClientCharsRef.current = finalizer.textChars;
-        }, init?.signal ?? undefined).then((status) => {
+        }, init?.signal ?? undefined, (reason) => { streamErrorReason = reason; }).then((status) => {
           if (chatDebugEnabled) console.info('[VANTRA_CHAT_DEBUG] CLIENT_STREAM', {
             requestId, textChars: finalizer.textChars, status,
             errorCategory: status === 'error' ? 'stream_error' : null,
@@ -261,6 +273,7 @@ export default function StudioDashboard({
         return new Response(sdkBody, { status: response.status, statusText: response.statusText, headers: response.headers });
       } catch (error) {
         const status = init?.signal?.aborted ? 'aborted' : 'error';
+        streamErrorReason = 'network_error';
         if (chatDebugEnabled) console.info('[VANTRA_CHAT_DEBUG] CLIENT_STREAM', { requestId, textChars: finalizer.textChars,
           status, errorCategory: status === 'aborted' ? null : 'fetch_error' });
         finalizer.rawDone(status);
@@ -268,13 +281,19 @@ export default function StudioDashboard({
       }
     },
     onFinish: () => {
-      activeFinalizerRef.current?.consumerDone();
+      const current = requestTrackerRef.current.current;
+      if (!current || current.conversationId !== (activeSessionId ?? 'default-session')
+        || current.reason === 'user_stop' || current.reason === 'navigation_abort'
+        || current.reason === 'conversation_switch_abort') return;
       if (sendStartRef.current) setLastLatencyMs(performance.now() - sendStartRef.current);
       setChatExchanges((count) => count + 1);
       refreshBalance();
     },
     onError: (chatError) => {
-      activeFinalizerRef.current?.consumerDone();
+      const current = requestTrackerRef.current.current;
+      if (!current || current.conversationId !== (activeSessionId ?? 'default-session')
+        || current.reason === 'user_stop' || current.reason === 'navigation_abort'
+        || current.reason === 'conversation_switch_abort' || current.reason === 'completed') return;
       if (chatDebugEnabled && debugRequestIdRef.current) console.info('[VANTRA_CHAT_DEBUG] CLIENT_STREAM', {
         requestId: debugRequestIdRef.current, textChars: debugClientCharsRef.current, status: 'error', errorCategory: 'consumer_error',
       });
@@ -302,10 +321,29 @@ export default function StudioDashboard({
     activeFinalizerRef.current?.invalidate();
     activeFinalizerRef.current = null;
     canonicalFinalRef.current = null;
-    setCompletedCanonicalRequest(null);
     canonicalPendingRef.current = false;
     setCanonicalPending(false);
   }, []);
+  const abortChatRequest = useCallback((reason: 'user_stop' | 'navigation_abort' | 'conversation_switch_abort') => {
+    const current = requestTrackerRef.current.current;
+    if (!current || current.reason) return;
+    if (activeSessionIdRef.current === current.conversationId && messages.length > 0) {
+      try {
+        localStorage.setItem(`vantra_chat_${current.conversationId}`, serializeChatSession(messages,
+          (message) => chatPartsFromMessage(message.content, locale,
+            (message as typeof message & { vantraParts?: unknown }).vantraParts)));
+      } catch { /* Keep the in-memory partial message if storage is unavailable. */ }
+    }
+    recordRequestOutcome(current.requestId, current.conversationId, reason);
+    discardFinalization();
+    stop();
+  }, [discardFinalization, locale, messages, recordRequestOutcome, stop]);
+  const abortOnUnmountRef = useRef(abortChatRequest);
+  abortOnUnmountRef.current = abortChatRequest;
+  useEffect(() => {
+    if (activeWorkspace !== 'chat') abortChatRequest('navigation_abort');
+  }, [activeWorkspace, abortChatRequest]);
+  useEffect(() => () => abortOnUnmountRef.current('navigation_abort'), []);
 
   useEffect(() => {
     const final = canonicalFinalRef.current;
@@ -318,23 +356,21 @@ export default function StudioDashboard({
 
   const handleNewChat = useCallback(() => {
     // Abort any active text stream
-    discardFinalization();
-    stop();
+    abortChatRequest('conversation_switch_abort');
     // Lazy creation: no DB/list record yet â€” just a draft id so the composer stays live.
     setActiveSessionId(`draft-${Date.now()}`);
     setMessages([]);
     onWorkspaceChange('chat');
-  }, [discardFinalization, onWorkspaceChange, stop, setMessages]);
+  }, [abortChatRequest, onWorkspaceChange, setMessages]);
 
   const handleSelectSession = useCallback((sessionId: string) => {
-    discardFinalization();
-    stop();
+    abortChatRequest('conversation_switch_abort');
     setActiveSessionId(sessionId);
     onWorkspaceChange('chat');
-  }, [discardFinalization, onWorkspaceChange, stop]);
+  }, [abortChatRequest, onWorkspaceChange]);
 
   const handleDeleteSession = useCallback((sessionId: string) => {
-    if (sessionId === activeSessionId) discardFinalization();
+    if (sessionId === activeSessionId) abortChatRequest('conversation_switch_abort');
     try {
       localStorage.removeItem(`vantra_chat_${sessionId}`);
     } catch {}
@@ -346,7 +382,7 @@ export default function StudioDashboard({
       }
       return next;
     });
-  }, [activeSessionId, discardFinalization]);
+  }, [activeSessionId, abortChatRequest]);
 
   // Persistence per session
   useEffect(() => {
@@ -872,12 +908,10 @@ export default function StudioDashboard({
                         )}
 
                         {/* Error + retry */}
-                        {shouldShowChatError({ hasError: Boolean(error), busy: chatBusy,
-                          requestId: debugRequestIdRef.current, completedRequestId: completedCanonicalRequest,
-                          hasUsableAssistantContent: messages[messages.length - 1]?.role === 'assistant'
-                            && Boolean(messages[messages.length - 1]?.content.trim()),
-                        }) && error && <div className="max-w-lg"><ChatGuidanceCard
-                          guidance={guidanceForChatError(error.message, locale)} locale={locale} onAction={handleChatGuidanceAction} /></div>}
+                        {shouldShowChatError({ busy: chatBusy, requestId: debugRequestIdRef.current,
+                          conversationId: activeSessionId ?? 'default-session', outcome: requestOutcome,
+                        }) && <div className="max-w-lg"><ChatGuidanceCard
+                          guidance={guidanceForChatError(error?.message ?? 'CHAT_REQUEST_FAILED', locale)} locale={locale} onAction={handleChatGuidanceAction} /></div>}
 
                       </div>
                     </div>
@@ -937,7 +971,7 @@ export default function StudioDashboard({
                       selectedModelId={selectedModelId}
                       onSelectModel={setSelectedModelId}
                       isLoading={chatBusy}
-                      onStop={stop}
+                      onStop={() => abortChatRequest('user_stop')}
                       placeholder={isEmpty ? t('emptyPlaceholder') : t('placeholder')}
                       autoFocus={isEmpty}
                       onSignInClick={user ? undefined : () => openAuthModal('signin')}

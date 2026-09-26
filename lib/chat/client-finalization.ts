@@ -1,4 +1,23 @@
 export type CanonicalStreamStatus = 'completed' | 'aborted' | 'error';
+export type ChatTerminationReason = 'completed' | 'provider_error' | 'network_error' | 'user_stop'
+  | 'navigation_abort' | 'conversation_switch_abort';
+export type ChatRequestOutcome = { requestId: string; conversationId: string; reason: ChatTerminationReason };
+
+export class ChatRequestTracker {
+  private active: { requestId: string; conversationId: string; reason: ChatTerminationReason | null } | null = null;
+
+  begin(requestId: string, conversationId: string) {
+    this.active = { requestId, conversationId, reason: null };
+  }
+
+  finish(requestId: string, conversationId: string, reason: ChatTerminationReason): ChatRequestOutcome | null {
+    if (!this.active || this.active.requestId !== requestId || this.active.conversationId !== conversationId || this.active.reason) return null;
+    this.active.reason = reason;
+    return { requestId, conversationId, reason };
+  }
+
+  get current() { return this.active && { ...this.active }; }
+}
 
 export function restoreCanonicalAssistantText<T extends { id: string; role: string; content: string }>(
   messages: T[], messageId: string, text: string,
@@ -48,11 +67,13 @@ export class ChatStreamFinalizer {
 // Read a separate branch of the AI SDK data stream. The SDK consumer may fail
 // independently; only these original text frames form the canonical answer.
 export async function consumeCanonicalChatStream(stream: ReadableStream<Uint8Array>,
-  append: (delta: string) => void, signal?: AbortSignal): Promise<CanonicalStreamStatus> {
+  append: (delta: string) => void, signal?: AbortSignal,
+  onErrorKind?: (reason: 'provider_error' | 'network_error') => void): Promise<CanonicalStreamStatus> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let pending = '';
   let streamError = false;
+  let providerError = false;
   const abort = () => { void reader.cancel().catch(() => undefined); };
   signal?.addEventListener('abort', abort, { once: true });
   try {
@@ -70,12 +91,18 @@ export async function consumeCanonicalChatStream(stream: ReadableStream<Uint8Arr
             if (typeof delta === 'string') append(delta);
             else streamError = true;
           } catch { streamError = true; }
-        } else if (line.startsWith('3:')) streamError = true;
+        } else if (line.startsWith('3:')) { streamError = true; providerError = true; }
         newline = pending.indexOf('\n');
       }
     }
-    return signal?.aborted ? 'aborted' : streamError || pending.trim() ? 'error' : 'completed';
+    if (signal?.aborted) return 'aborted';
+    if (streamError || pending.trim()) {
+      onErrorKind?.(providerError ? 'provider_error' : 'network_error');
+      return 'error';
+    }
+    return 'completed';
   } catch {
+    if (!signal?.aborted) onErrorKind?.('network_error');
     return signal?.aborted ? 'aborted' : 'error';
   } finally {
     signal?.removeEventListener('abort', abort);

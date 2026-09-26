@@ -1,6 +1,7 @@
 import type { ChatMessagePart } from '@/lib/artifacts/chat-parts';
 import { documentToText, type ChartArtifact, type DocumentArtifact, type PresentationArtifact, type SheetCell, type SpreadsheetArtifact } from '@/lib/artifacts/core';
 import { formatCapacityWait } from './chat-usage';
+import type { ChatRequestOutcome } from './client-finalization';
 
 export type GuidanceKind = 'requirement' | 'suggestion' | 'warning' | 'confirmation' | 'success' | 'recoverable_error' | 'next_action';
 export type GuidanceAction = 'upload_image' | 'upload_document' | 'upload_spreadsheet' | 'switch_model' | 'add_credits' | 'get_pro' | 'view_plans' | 'choose_file' | 'try_again';
@@ -17,11 +18,12 @@ export function canOpenAsDocument(text: string): boolean {
 }
 
 export function shouldShowChatError(input: {
-  hasError: boolean; busy: boolean; requestId: string | null;
-  completedRequestId: string | null; hasUsableAssistantContent: boolean;
+  busy: boolean; requestId: string | null; conversationId: string | null;
+  outcome: ChatRequestOutcome | null;
 }): boolean {
-  return input.hasError && !input.busy
-    && !(input.requestId !== null && input.completedRequestId === input.requestId && input.hasUsableAssistantContent);
+  if (input.busy || !input.outcome || input.requestId !== input.outcome.requestId
+    || input.conversationId !== input.outcome.conversationId) return false;
+  return input.outcome.reason === 'provider_error' || input.outcome.reason === 'network_error';
 }
 export type ArtifactAction = 'copy' | 'copy_table' | 'create_chart' | 'preview' | 'analyze' | 'build_presentation'
   | 'download_xlsx' | 'download_png' | 'use_in_presentation' | 'download_pptx' | 'copy_outline' | 'export_document';

@@ -99,11 +99,14 @@ test('primary document action requires explicit document output', () => {
 });
 
 test('completed canonical content supersedes an intermediate consumer error', () => {
-  const state = { hasError: true, busy: false, requestId: 'request-1', completedRequestId: null,
-    hasUsableAssistantContent: false };
-  assert.equal(shouldShowChatError(state), true);
-  assert.equal(shouldShowChatError({ ...state, completedRequestId: 'request-1', hasUsableAssistantContent: true }), false);
-  assert.equal(shouldShowChatError({ ...state, completedRequestId: 'request-1' }), true);
-  assert.equal(shouldShowChatError({ ...state, completedRequestId: 'request-previous', hasUsableAssistantContent: true }), true);
+  const state = { busy: false, requestId: 'request-1', conversationId: 'conversation-1', outcome: null };
+  assert.equal(shouldShowChatError(state), false);
+  assert.equal(shouldShowChatError({ ...state, outcome: { requestId: 'request-1', conversationId: 'conversation-1', reason: 'completed' } }), false);
+  assert.equal(shouldShowChatError({ ...state, outcome: { requestId: 'request-1', conversationId: 'conversation-1', reason: 'provider_error' } }), true);
+  assert.equal(shouldShowChatError({ ...state, outcome: { requestId: 'request-1', conversationId: 'conversation-1', reason: 'network_error' } }), true);
+  assert.equal(shouldShowChatError({ ...state, outcome: { requestId: 'request-1', conversationId: 'conversation-1', reason: 'user_stop' } }), false);
+  assert.equal(shouldShowChatError({ ...state, outcome: { requestId: 'request-1', conversationId: 'conversation-1', reason: 'navigation_abort' } }), false);
+  assert.equal(shouldShowChatError({ ...state, outcome: { requestId: 'request-1', conversationId: 'conversation-1', reason: 'conversation_switch_abort' } }), false);
+  assert.equal(shouldShowChatError({ ...state, outcome: { requestId: 'request-1', conversationId: 'conversation-previous', reason: 'provider_error' } }), false);
   assert.deepEqual(guidanceForChatError('NETWORK_ERROR', 'en').actions, ['try_again']);
 });
