@@ -30,7 +30,7 @@ import { trackFunnelEvent } from '@/src/lib/funnel-analytics';
 import dynamic from 'next/dynamic';
 import { chatPartsFromMessage } from '@/lib/artifacts/chat-parts';
 import { chatRequestMessages, serializeChatSession } from '@/lib/chat/message-history';
-import { traceChatDataStream } from '@/lib/chat/debug-trace';
+import { ChatStreamFinalizer, consumeCanonicalChatStream, restoreCanonicalAssistantText } from '@/lib/chat/client-finalization';
 
 const ArtifactSpreadsheetPreview = dynamic(() => import('./ArtifactSpreadsheetPreview'), { ssr: false });
 
@@ -117,9 +117,15 @@ export default function StudioDashboard({
   });
   const debugRequestIdRef = useRef<string | null>(null);
   const debugClientCharsRef = useRef(0);
+  const [canonicalPending, setCanonicalPending] = useState(false);
+  const canonicalPendingRef = useRef(false);
+  const activeFinalizerRef = useRef<ChatStreamFinalizer | null>(null);
+  const canonicalFinalRef = useRef<{ sessionId: string | null; messageId: string; text: string } | null>(null);
 
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const activeSessionIdRef = useRef(activeSessionId);
+  activeSessionIdRef.current = activeSessionId;
 
   const activeModel = chatModels.find((model) => model.id === selectedModelId) ?? defaultChatModel;
 
@@ -190,41 +196,82 @@ export default function StudioDashboard({
     id: activeSessionId || 'default-session',
     api: '/api/generate/chat',
     experimental_prepareRequestBody: ({ messages: requestMessages, requestBody }) => {
+      const requestId = crypto.randomUUID();
+      debugRequestIdRef.current = requestId;
+      debugClientCharsRef.current = 0;
       if (chatDebugEnabled) {
-        const requestId = crypto.randomUUID();
-        debugRequestIdRef.current = requestId;
-        debugClientCharsRef.current = 0;
         console.info('[VANTRA_CHAT_DEBUG] CLIENT_SEND', { requestId, messageCount: requestMessages.length, started: true });
       }
       return { messages: chatRequestMessages(requestMessages), ...requestBody };
     },
-    fetch: chatDebugEnabled ? async (input, init) => {
-      const requestId = debugRequestIdRef.current;
+    fetch: async (input, init) => {
+      const requestId = debugRequestIdRef.current ?? crypto.randomUUID();
+      const sessionId = activeSessionId;
+      const finalizer = new ChatStreamFinalizer(requestId, ({ text, status }) => {
+        if (activeFinalizerRef.current !== finalizer) return;
+        if (status === 'completed' && text.length > 0) {
+          setMessages((current) => {
+            if (activeSessionIdRef.current !== sessionId) return current;
+            const last = current[current.length - 1];
+            if (last?.role === 'assistant') {
+              canonicalFinalRef.current = { sessionId, messageId: last.id, text };
+              return [...current.slice(0, -1), { ...last, content: text }];
+            }
+            if (last?.role === 'user') {
+              const assistant = { id: crypto.randomUUID(), role: 'assistant' as const, content: text };
+              canonicalFinalRef.current = { sessionId, messageId: assistant.id, text };
+              return [...current, assistant];
+            }
+            return current;
+          });
+        }
+        activeFinalizerRef.current = null;
+        canonicalPendingRef.current = false;
+        setCanonicalPending(false);
+      });
+      activeFinalizerRef.current = finalizer;
+      canonicalFinalRef.current = null;
+      canonicalPendingRef.current = true;
+      setCanonicalPending(true);
       const headers = new Headers(init?.headers);
-      if (requestId) headers.set('x-vantra-chat-debug-id', requestId);
+      if (chatDebugEnabled) headers.set('x-vantra-chat-debug-id', requestId);
       try {
         const response = await fetch(input, { ...init, headers });
-        if (!requestId) return response;
-        if (!response.ok) {
-          console.info('[VANTRA_CHAT_DEBUG] CLIENT_STREAM', { requestId, textChars: 0, status: 'error', errorCategory: 'http_error' });
+        if (!response.ok || !response.body) {
+          if (chatDebugEnabled) console.info('[VANTRA_CHAT_DEBUG] CLIENT_STREAM', {
+            requestId, textChars: 0, status: 'error', errorCategory: 'http_error',
+          });
+          finalizer.rawDone('error');
           return response;
         }
-        return traceChatDataStream(response, requestId, ({ textChars, status, errorCategory }) => {
-          debugClientCharsRef.current = textChars;
-          console.info('[VANTRA_CHAT_DEBUG] CLIENT_STREAM', { requestId, textChars, status, errorCategory: errorCategory ?? null });
-        }, init?.signal ?? undefined);
+        const [sdkBody, canonicalBody] = response.body.tee();
+        void consumeCanonicalChatStream(canonicalBody, (delta) => {
+          finalizer.append(delta);
+          debugClientCharsRef.current = finalizer.textChars;
+        }, init?.signal ?? undefined).then((status) => {
+          if (chatDebugEnabled) console.info('[VANTRA_CHAT_DEBUG] CLIENT_STREAM', {
+            requestId, textChars: finalizer.textChars, status,
+            errorCategory: status === 'error' ? 'stream_error' : null,
+          });
+          finalizer.rawDone(status);
+        });
+        return new Response(sdkBody, { status: response.status, statusText: response.statusText, headers: response.headers });
       } catch (error) {
-        if (requestId) console.info('[VANTRA_CHAT_DEBUG] CLIENT_STREAM', { requestId, textChars: debugClientCharsRef.current,
-          status: init?.signal?.aborted ? 'aborted' : 'error', errorCategory: init?.signal?.aborted ? null : 'fetch_error' });
+        const status = init?.signal?.aborted ? 'aborted' : 'error';
+        if (chatDebugEnabled) console.info('[VANTRA_CHAT_DEBUG] CLIENT_STREAM', { requestId, textChars: finalizer.textChars,
+          status, errorCategory: status === 'aborted' ? null : 'fetch_error' });
+        finalizer.rawDone(status);
         throw error;
       }
-    } : undefined,
+    },
     onFinish: () => {
+      activeFinalizerRef.current?.consumerDone();
       if (sendStartRef.current) setLastLatencyMs(performance.now() - sendStartRef.current);
       setChatExchanges((count) => count + 1);
       refreshBalance();
     },
     onError: (chatError) => {
+      activeFinalizerRef.current?.consumerDone();
       if (chatDebugEnabled && debugRequestIdRef.current) console.info('[VANTRA_CHAT_DEBUG] CLIENT_STREAM', {
         requestId: debugRequestIdRef.current, textChars: debugClientCharsRef.current, status: 'error', errorCategory: 'consumer_error',
       });
@@ -242,22 +289,48 @@ export default function StudioDashboard({
     },
   });
 
+  const chatBusy = isLoading || canonicalPending;
+  const wasSdkLoadingRef = useRef(false);
+  useEffect(() => {
+    if (wasSdkLoadingRef.current && !isLoading) activeFinalizerRef.current?.consumerDone();
+    wasSdkLoadingRef.current = isLoading;
+  }, [isLoading]);
+  const discardFinalization = useCallback(() => {
+    activeFinalizerRef.current?.invalidate();
+    activeFinalizerRef.current = null;
+    canonicalFinalRef.current = null;
+    canonicalPendingRef.current = false;
+    setCanonicalPending(false);
+  }, []);
+
+  useEffect(() => {
+    const final = canonicalFinalRef.current;
+    if (!final || final.sessionId !== activeSessionId) return;
+    const current = messages.find((message) => message.id === final.messageId);
+    if (current?.role === 'assistant' && current.content !== final.text) {
+      setMessages((latest) => restoreCanonicalAssistantText(latest, final.messageId, final.text));
+    }
+  }, [messages, activeSessionId, setMessages]);
+
   const handleNewChat = useCallback(() => {
     // Abort any active text stream
+    discardFinalization();
     stop();
     // Lazy creation: no DB/list record yet â€” just a draft id so the composer stays live.
     setActiveSessionId(`draft-${Date.now()}`);
     setMessages([]);
     onWorkspaceChange('chat');
-  }, [onWorkspaceChange, stop, setMessages]);
+  }, [discardFinalization, onWorkspaceChange, stop, setMessages]);
 
   const handleSelectSession = useCallback((sessionId: string) => {
+    discardFinalization();
     stop();
     setActiveSessionId(sessionId);
     onWorkspaceChange('chat');
-  }, [onWorkspaceChange, stop]);
+  }, [discardFinalization, onWorkspaceChange, stop]);
 
   const handleDeleteSession = useCallback((sessionId: string) => {
+    if (sessionId === activeSessionId) discardFinalization();
     try {
       localStorage.removeItem(`vantra_chat_${sessionId}`);
     } catch {}
@@ -269,7 +342,7 @@ export default function StudioDashboard({
       }
       return next;
     });
-  }, [activeSessionId]);
+  }, [activeSessionId, discardFinalization]);
 
   // Persistence per session
   useEffect(() => {
@@ -286,13 +359,13 @@ export default function StudioDashboard({
   }, [activeSessionId, setMessages]);
 
   useEffect(() => {
-    if (!activeSessionId) return;
+    if (!activeSessionId || chatBusy) return;
     // Persist the complete current conversation, including every earlier turn.
     const t = setTimeout(() => {
       try {
         if (messages.length > 0) {
-          localStorage.setItem(`vantra_chat_${activeSessionId}`, isLoading ? JSON.stringify(messages)
-            : serializeChatSession(messages, (message) => chatPartsFromMessage(message.content, locale,
+          localStorage.setItem(`vantra_chat_${activeSessionId}`, serializeChatSession(messages,
+            (message) => chatPartsFromMessage(message.content, locale,
               (message as typeof message & { vantraParts?: unknown }).vantraParts)));
         } else {
           localStorage.removeItem(`vantra_chat_${activeSessionId}`);
@@ -300,15 +373,15 @@ export default function StudioDashboard({
       } catch {}
     }, 400);
     return () => clearTimeout(t);
-  }, [messages, activeSessionId, isLoading, locale]);
+  }, [messages, activeSessionId, chatBusy, locale]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
   const previousChatLoadingRef = useRef(false);
   useEffect(() => {
     const wasLoading = previousChatLoadingRef.current;
-    previousChatLoadingRef.current = isLoading;
-    if (!chatDebugEnabled || !wasLoading || isLoading || !debugRequestIdRef.current) return;
+    previousChatLoadingRef.current = chatBusy;
+    if (!chatDebugEnabled || !wasLoading || chatBusy || !debugRequestIdRef.current) return;
     const requestId = debugRequestIdRef.current;
     requestAnimationFrame(() => {
       const last = messages[messages.length - 1];
@@ -318,7 +391,7 @@ export default function StudioDashboard({
           - Array.from(element.querySelectorAll('button')).reduce((controls, button) => controls + (button.textContent?.length ?? 0), 0), 0);
       console.info('[VANTRA_CHAT_DEBUG] FINAL_UI', { requestId, storedAssistantTextChars: storedTextChars, renderedAssistantTextChars: renderedTextChars });
     });
-  }, [chatDebugEnabled, isLoading, messages]);
+  }, [chatDebugEnabled, chatBusy, messages]);
   const composerRef = useRef<HTMLDivElement>(null);
   const followLatestRef = useRef(true);
   const lastScrollTopRef = useRef(0);
@@ -416,6 +489,7 @@ export default function StudioDashboard({
 
   const handleSend = useCallback(
     async (data: { message: string; isThinkingEnabled: boolean; files?: Array<{ file: File; preview?: string | null; type: string }> }) => {
+      if (canonicalPendingRef.current) return;
       if (!activeModel || !isModelSelectable(activeModel)) return;
       if (access?.kind !== 'paid_active' && access?.freeEligibility && !['eligible', 'manually_approved'].includes(access.freeEligibility)) {
         showActivation('free_access_restricted', 'chat');
@@ -746,15 +820,15 @@ export default function StudioDashboard({
                                 key={msg.id || idx}
                                 message={msg}
                                 isLatest={idx === messages.length - 1}
-                                isStreaming={isLoading && idx === messages.length - 1 && msg.role === 'assistant'}
-                                onRegenerate={isLoading ? undefined : () => reload()}
+                                isStreaming={chatBusy && idx === messages.length - 1 && msg.role === 'assistant'}
+                                onRegenerate={chatBusy ? undefined : () => reload()}
                               />
                             ))}
                           </motion.div>
                         )}
 
                         {/* Loading / Thinking */}
-                        {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
+                        {chatBusy && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
                           <div className="flex items-center gap-2.5 py-1 text-[13.5px] text-white/60 animate-pulse" role="status" aria-live="polite">
                             <div className="ai-avatar-ring h-6 w-6 rounded-md p-[1px] shrink-0">
                               <div className="w-full h-full rounded-[calc(0.375rem-1px)] bg-[var(--studio-selected)] flex items-center justify-center">
@@ -860,7 +934,7 @@ export default function StudioDashboard({
                       }))}
                       selectedModelId={selectedModelId}
                       onSelectModel={setSelectedModelId}
-                      isLoading={isLoading}
+                      isLoading={chatBusy}
                       onStop={stop}
                       placeholder={isEmpty ? t('emptyPlaceholder') : t('placeholder')}
                       autoFocus={isEmpty}
