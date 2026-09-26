@@ -4,6 +4,7 @@ import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { DocumentArtifact } from '@/lib/artifacts/core';
 import { documentToMarkdown, documentToText } from '@/lib/artifacts/core';
+import styles from './ArtifactDocumentPreview.module.css';
 
 const labels = {
   en: { close: 'Close', copy: 'Copy', txt: 'TXT', markdown: 'Markdown', word: 'Word', pdf: 'PDF / Print', exportError: 'Export failed. Try again.' },
@@ -40,7 +41,7 @@ export default function ArtifactDocumentPreview({ artifact, locale, onClose, inl
         {!inline && <button type="button" onClick={onClose} className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-black">{t.close}</button>}
       </div>
       {error && <p role="alert" className="mb-3 text-sm text-red-200 print:hidden">{t.exportError}</p>}
-      <article lang={artifact.language} dir={artifact.direction} className={inline ? 'max-h-[28rem] overflow-y-auto rounded-xl bg-white px-5 py-6 text-neutral-900 sm:px-8 print:max-h-none print:p-0' : 'min-h-[70vh] rounded-xl bg-white px-7 py-10 text-neutral-900 shadow-2xl sm:px-14 print:min-h-0 print:rounded-none print:p-0 print:shadow-none'}>
+      <article lang={artifact.language} dir={artifact.direction} className={`${styles.paper} ${inline ? 'max-h-[28rem] overflow-y-auto rounded-xl px-5 py-6 sm:px-8 print:max-h-none print:p-0' : 'min-h-[70vh] rounded-xl px-7 py-10 shadow-2xl sm:px-14 print:min-h-0 print:rounded-none print:p-0 print:shadow-none'}`}>
         {artifact.blocks.map((block, index) => {
           if (block.kind === 'heading') { const Heading = (`h${block.level}` as 'h1' | 'h2' | 'h3'); return <Heading key={index} dir="auto" className={`${block.level === 1 ? 'text-2xl' : block.level === 2 ? 'text-xl' : 'text-lg'} mb-3 mt-6 font-bold`}>{block.text}</Heading>; }
           if (block.kind === 'paragraph') return <div key={index} dir="auto" className="mb-4 leading-7"><ReactMarkdown>{block.text}</ReactMarkdown></div>;

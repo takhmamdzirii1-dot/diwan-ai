@@ -1,0 +1,51 @@
+.paper {
+  --document-paper: #ffffff;
+  --document-ink: #171717;
+  --document-muted: #525252;
+  --document-link: #1d4ed8;
+  --document-line: #d4d4d4;
+  --document-code: #f5f5f5;
+  --document-selection: #bfdbfe;
+  color-scheme: light;
+  background: var(--document-paper);
+  color: var(--document-ink);
+}
+
+.paper :is(h1, h2, h3, h4, h5, h6, p, li, th, td, blockquote) {
+  color: var(--document-ink);
+}
+
+.paper :is(small, figcaption) {
+  color: var(--document-muted);
+}
+
+.paper a {
+  color: var(--document-link);
+  text-decoration: underline;
+}
+
+.paper :is(code, pre) {
+  color: var(--document-ink);
+  background: var(--document-code);
+}
+
+.paper :is(table, th, td) {
+  border-color: var(--document-line);
+}
+
+.paper li::marker {
+  color: var(--document-muted);
+}
+
+.paper ::selection {
+  background: var(--document-selection);
+  color: var(--document-ink);
+}
+
+@media print {
+  .paper {
+    background: var(--document-paper);
+    color: var(--document-ink);
+    print-color-adjust: exact;
+  }
+}

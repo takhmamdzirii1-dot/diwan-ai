@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -82,6 +82,9 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   const [copiedMessage, setCopiedMessage] = useState(false);
   const [documentOpen, setDocumentOpen] = useState(false);
   const locale = useLocale();
+  const openDocument = useMemo(() => documentOpen
+    ? documentFromMarkdown(message.id, message.content, locale) : null,
+  [documentOpen, message.id, message.content, locale]);
   const reduceMotion = useReducedMotion();
   const t = useTranslations('studio.chat');
   const codeBlockCounter = useRef(0);
@@ -429,7 +432,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
           </div>
         )}
       </div>
-      {documentOpen && <ArtifactDocumentPreview artifact={documentFromMarkdown(message.id, message.content, locale)} locale={locale} onClose={() => setDocumentOpen(false)} />}
+      {openDocument && <ArtifactDocumentPreview artifact={openDocument} locale={locale} onClose={() => setDocumentOpen(false)} />}
     </motion.div>
   );
 }
