@@ -29,7 +29,7 @@ import dynamic from 'next/dynamic';
 import { chatPartsFromMessage } from '@/lib/artifacts/chat-parts';
 import { chatRequestMessages, serializeChatSession } from '@/lib/chat/message-history';
 import { ChatStreamFinalizer, consumeCanonicalChatStream, restoreCanonicalAssistantText } from '@/lib/chat/client-finalization';
-import { guidanceForChatError, type GuidanceAction } from '@/lib/chat/contextual-guidance';
+import { guidanceForChatError, shouldShowChatError, type GuidanceAction } from '@/lib/chat/contextual-guidance';
 import ChatGuidanceCard from './ChatGuidanceCard';
 
 const ArtifactSpreadsheetPreview = dynamic(() => import('./ArtifactSpreadsheetPreview'), { ssr: false });
@@ -116,6 +116,7 @@ export default function StudioDashboard({
     catch { return false; }
   });
   const debugRequestIdRef = useRef<string | null>(null);
+  const [completedCanonicalRequest, setCompletedCanonicalRequest] = useState<string | null>(null);
   const debugClientCharsRef = useRef(0);
   const [canonicalPending, setCanonicalPending] = useState(false);
   const canonicalPendingRef = useRef(false);
@@ -198,6 +199,7 @@ export default function StudioDashboard({
     experimental_prepareRequestBody: ({ messages: requestMessages, requestBody }) => {
       const requestId = crypto.randomUUID();
       debugRequestIdRef.current = requestId;
+      setCompletedCanonicalRequest(null);
       debugClientCharsRef.current = 0;
       if (chatDebugEnabled) {
         console.info('[VANTRA_CHAT_DEBUG] CLIENT_SEND', { requestId, messageCount: requestMessages.length, started: true });
@@ -210,6 +212,7 @@ export default function StudioDashboard({
       const finalizer = new ChatStreamFinalizer(requestId, ({ text, status }) => {
         if (activeFinalizerRef.current !== finalizer) return;
         if (status === 'completed' && text.length > 0) {
+          if (activeSessionIdRef.current === sessionId && text.trim()) setCompletedCanonicalRequest(requestId);
           setMessages((current) => {
             if (activeSessionIdRef.current !== sessionId) return current;
             const last = current[current.length - 1];
@@ -299,6 +302,7 @@ export default function StudioDashboard({
     activeFinalizerRef.current?.invalidate();
     activeFinalizerRef.current = null;
     canonicalFinalRef.current = null;
+    setCompletedCanonicalRequest(null);
     canonicalPendingRef.current = false;
     setCanonicalPending(false);
   }, []);
@@ -868,7 +872,11 @@ export default function StudioDashboard({
                         )}
 
                         {/* Error + retry */}
-                        {error && !chatBusy && <div className="max-w-lg"><ChatGuidanceCard
+                        {shouldShowChatError({ hasError: Boolean(error), busy: chatBusy,
+                          requestId: debugRequestIdRef.current, completedRequestId: completedCanonicalRequest,
+                          hasUsableAssistantContent: messages[messages.length - 1]?.role === 'assistant'
+                            && Boolean(messages[messages.length - 1]?.content.trim()),
+                        }) && error && <div className="max-w-lg"><ChatGuidanceCard
                           guidance={guidanceForChatError(error.message, locale)} locale={locale} onAction={handleChatGuidanceAction} /></div>}
 
                       </div>

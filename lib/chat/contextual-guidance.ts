@@ -5,6 +5,24 @@ import { formatCapacityWait } from './chat-usage';
 export type GuidanceKind = 'requirement' | 'suggestion' | 'warning' | 'confirmation' | 'success' | 'recoverable_error' | 'next_action';
 export type GuidanceAction = 'upload_image' | 'upload_document' | 'upload_spreadsheet' | 'switch_model' | 'add_credits' | 'get_pro' | 'view_plans' | 'choose_file' | 'try_again';
 export type ChatGuidance = { kind: GuidanceKind; message: string; actions: GuidanceAction[] };
+
+// Only explicit document output earns a primary document action. Length, lists,
+// and ordinary Markdown headings are common in conversational answers.
+export function canOpenAsDocument(text: string): boolean {
+  const heading = text.match(/^#{1,2}\s+(.+)$/m)?.[1]?.trim() ?? '';
+  return (Boolean(heading) && !/[?؟]/.test(heading) && (
+    /\b(?:report|article|brief|executive summary|research summary|rapport|note de synthèse|résumé exécutif)\b/i.test(heading)
+    || /(?:تقرير|مقال|ملخص تنفيذي)/.test(heading)))
+    || /^(?:(?:here is|here's) (?:the|your|a) )?(?:report|article|brief|document|executive summary|research summary)\s*[:—-]/i.test(text.trim());
+}
+
+export function shouldShowChatError(input: {
+  hasError: boolean; busy: boolean; requestId: string | null;
+  completedRequestId: string | null; hasUsableAssistantContent: boolean;
+}): boolean {
+  return input.hasError && !input.busy
+    && !(input.requestId !== null && input.completedRequestId === input.requestId && input.hasUsableAssistantContent);
+}
 export type ArtifactAction = 'copy' | 'copy_table' | 'create_chart' | 'preview' | 'analyze' | 'build_presentation'
   | 'download_xlsx' | 'download_png' | 'use_in_presentation' | 'download_pptx' | 'copy_outline' | 'export_document';
 type Locale = 'en' | 'fr' | 'ar';

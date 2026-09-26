@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { ChartArtifact, DocumentArtifact, PresentationArtifact, SpreadsheetArtifact } from '@/lib/artifacts/core';
-import { attachmentMenuActions, chartFromStructuredRows, guidanceForChatError, guidanceForComposer,
-  primaryArtifactActions, presentationFromChart, readableArtifactCopy, readableTableCopy, secondaryArtifactActions } from './contextual-guidance';
+import { attachmentMenuActions, canOpenAsDocument, chartFromStructuredRows, guidanceForChatError, guidanceForComposer,
+  primaryArtifactActions, presentationFromChart, readableArtifactCopy, readableTableCopy, secondaryArtifactActions,
+  shouldShowChatError } from './contextual-guidance';
 
 const base = { schemaVersion: 1 as const, id: 'a', title: 'Quarterly results', language: 'en', direction: 'ltr' as const, metadata: {} };
 const table: DocumentArtifact = { ...base, type: 'document', blocks: [{ kind: 'table', rows: [['Month', 'Sales'], ['Jan', '10'], ['Feb', '20']] }] };
@@ -85,4 +86,24 @@ test('technical errors become safe customer guidance', () => {
   const unknown = guidanceForChatError('{"error":"provider-secret-stack-trace"}', 'en');
   assert.equal(unknown.kind, 'recoverable_error');
   assert.doesNotMatch(unknown.message, /provider|stack|JSON|secret/i);
+});
+
+test('primary document action requires explicit document output', () => {
+  const conversational = '# How compound interest works\n\n' + 'Interest grows on both principal and prior interest. '.repeat(30);
+  assert.equal(canOpenAsDocument(conversational), false);
+  assert.equal(canOpenAsDocument('## Key points\n\n- Save regularly\n- Compare rates'), false);
+  assert.equal(canOpenAsDocument('# Quarterly Report\n\nRevenue increased.'), true);
+  assert.equal(canOpenAsDocument('Report: Annual results\n\nRevenue increased.'), true);
+  assert.equal(canOpenAsDocument('# What is an article?\n\nAn article is...'), false);
+  assert.deepEqual(primaryArtifactActions({ type: 'document', artifact: { ...base, type: 'document', blocks: [{ kind: 'paragraph', text: 'Revenue increased.' }] } }), ['copy', 'export_document']);
+});
+
+test('completed canonical content supersedes an intermediate consumer error', () => {
+  const state = { hasError: true, busy: false, requestId: 'request-1', completedRequestId: null,
+    hasUsableAssistantContent: false };
+  assert.equal(shouldShowChatError(state), true);
+  assert.equal(shouldShowChatError({ ...state, completedRequestId: 'request-1', hasUsableAssistantContent: true }), false);
+  assert.equal(shouldShowChatError({ ...state, completedRequestId: 'request-1' }), true);
+  assert.equal(shouldShowChatError({ ...state, completedRequestId: 'request-previous', hasUsableAssistantContent: true }), true);
+  assert.deepEqual(guidanceForChatError('NETWORK_ERROR', 'en').actions, ['try_again']);
 });

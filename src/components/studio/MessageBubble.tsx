@@ -13,7 +13,7 @@ import dynamic from 'next/dynamic';
 import { documentFromMarkdown } from '@/lib/artifacts/core';
 import { chatPartsFromMessage, chatPartsFromToolInvocations, looksLikeArtifactOutput, streamingSafeText, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
 import { artifactToolProgress } from '@/lib/artifacts/tool-registry';
-import { readableArtifactCopy } from '@/lib/chat/contextual-guidance';
+import { canOpenAsDocument, readableArtifactCopy } from '@/lib/chat/contextual-guidance';
 
 const ArtifactDocumentPreview = dynamic(() => import('./ArtifactDocumentPreview'), { ssr: false });
 const ArtifactSmartCard = dynamic(() => import('./ArtifactSmartCard'), { ssr: false });
@@ -105,8 +105,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
     ? artifactParts[0].artifact.direction === 'rtl'
     : detectDir(isUser ? message.content : safeContent) === 'rtl';
   const canOpenDocument = !isUser && !isStreaming && artifactParts.length === 0
-    && !looksLikeArtifactOutput(message.content) && message.content.length >= 300
-    && (/^#{1,3}\s/m.test(message.content) || /\n\s*[-*]\s/.test(message.content) || message.content.length >= 900);
+    && !looksLikeArtifactOutput(message.content) && canOpenAsDocument(safeContent);
 
   // Visual Attachment Rendering parser for user messages
   const attachmentRegex = /\[Attachment:\s*([^\]]+)\]/g;

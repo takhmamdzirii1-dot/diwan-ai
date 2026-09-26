@@ -5,6 +5,7 @@ import puppeteer from 'puppeteer-core';
 import { documentFromMarkdown, documentToMarkdown, documentToText } from '@/lib/artifacts/core';
 
 const css = readFileSync(new URL('./ArtifactDocumentPreview.module.css', import.meta.url), 'utf8');
+const printCss = readFileSync(new URL('../../../app/globals.css', import.meta.url), 'utf8');
 const previewSource = readFileSync(new URL('./ArtifactDocumentPreview.tsx', import.meta.url), 'utf8');
 const executablePath = [
   process.env.CHROME_PATH,
@@ -68,4 +69,35 @@ test('document actions preserve content and Word export loads only on export', (
   assert.match(previewSource, /onClick=\{\(\) => window\.print\(\)\}/);
   assert.match(previewSource, /const exportWord = async \(\) => \{[\s\S]*?await import\('@\/lib\/artifacts\/docx-export'\)/);
   assert.doesNotMatch(previewSource, /^import .*docx-export/m);
+});
+
+test('printing an open document excludes Studio chrome and preserves RTL content', { skip: !executablePath }, async () => {
+  const browser = await puppeteer.launch({ executablePath, headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.setContent(`<style>${css}\n${printCss}</style><aside id="sidebar">Sidebar</aside>
+      <main class="studio"><div id="other-message">Other chat message</div>
+        <div data-vantra-print-document dir="rtl"><div class="document-inner">
+          <div id="actions" data-vantra-document-actions>PDF / Print <button>Close</button></div>
+          <article class="paper" dir="rtl" lang="ar"><h1>تقرير</h1><p>نص عربي</p>
+            <ul><li>بند</li></ul><table><tbody><tr><td>قيمة</td></tr></tbody></table>
+          </article></div></div><div id="composer">Chat composer</div></main>`);
+    await page.emulateMediaType('print');
+    const result = await page.evaluate(() => {
+      return {
+        hidden: ['#sidebar', '#other-message', '#composer', '#actions'].map((selector) => getComputedStyle(document.querySelector(selector)!).display),
+        paper: getComputedStyle(document.querySelector('article')!).backgroundColor,
+        text: getComputedStyle(document.querySelector('p')!).color,
+        direction: getComputedStyle(document.querySelector('article')!).direction,
+        heading: getComputedStyle(document.querySelector('h1')!).display,
+        root: getComputedStyle(document.querySelector('[data-vantra-print-document]')!).display,
+      };
+    });
+    assert.deepEqual(result.hidden, ['none', 'none', 'none', 'none']);
+    assert.equal(result.root, 'block');
+    assert.equal(result.heading, 'block');
+    assert.equal(result.paper, 'rgb(255, 255, 255)');
+    assert.equal(result.text, 'rgb(23, 23, 23)');
+    assert.equal(result.direction, 'rtl');
+  } finally { await browser.close(); }
 });

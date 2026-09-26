@@ -3790,6 +3790,51 @@ html[lang="ar"] .lux-prose table,
 .vantra-orbit-ring {
   animation: vantra-orbit 8s linear infinite;
 }
+
+/* The open document is the complete print surface; Studio remains screen-only. */
+@media print {
+  @page { margin: 16mm; }
+  html:has([data-vantra-print-document]),
+  body:has([data-vantra-print-document]) {
+    background: #fff !important;
+    color: #171717 !important;
+    overflow: visible !important;
+  }
+  body:has([data-vantra-print-document]) *:not(:has([data-vantra-print-document])):not([data-vantra-print-document]):not([data-vantra-print-document] *) {
+    display: none !important;
+  }
+  body:has([data-vantra-print-document]) *:has([data-vantra-print-document]),
+  body:has([data-vantra-print-document]) [data-vantra-print-document],
+  body:has([data-vantra-print-document]) [data-vantra-print-document] > div {
+    display: block !important;
+    position: static !important;
+    transform: none !important;
+    overflow: visible !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+  [data-vantra-print-document] [data-vantra-document-actions],
+  [data-vantra-print-document] [role="alert"] { display: none !important; }
+  [data-vantra-print-document] article {
+    width: 100% !important;
+    max-width: none !important;
+    overflow: visible !important;
+    overflow-wrap: anywhere;
+    box-shadow: none !important;
+  }
+  [data-vantra-print-document] table { max-width: 100%; }
+  [data-vantra-print-document] pre,
+  [data-vantra-print-document] code { white-space: pre-wrap; overflow-wrap: anywhere; }
+  [data-vantra-print-document] tr { break-inside: avoid; }
+}
 @media (prefers-reduced-motion: reduce) {
   .vantra-glow-breathe { animation: none; opacity: 0.15; }
   .vantra-orbit-ring { animation: none; opacity: 0.3; }
