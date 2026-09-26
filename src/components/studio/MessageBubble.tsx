@@ -260,7 +260,9 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                   analyzing: locale === 'ar' ? 'تحليل البيانات' : locale === 'fr' ? 'Analyse des données' : 'Analyzing data',
                   charts: locale === 'ar' ? 'إنشاء الرسوم البيانية' : locale === 'fr' ? 'Création des graphiques' : 'Creating charts',
                   presentation: locale === 'ar' ? 'إنشاء العرض التقديمي' : locale === 'fr' ? 'Création de la présentation' : 'Building presentation' };
-                return <li key={step}>{agentRun.completedSteps.includes(step) ? '✓' : agentRun.currentStep === step ? '●' : '○'} {labels[step]}</li>;
+                return <li key={step}>{agentRun.completedSteps.includes(step) ? '✓'
+                  : agentRun.status === 'failed' && agentRun.failedStep === step ? '!'
+                    : agentRun.currentStep === step ? '●' : '○'} {labels[step]}</li>;
               })}</ol>
             </section>}
             {isThinking && (

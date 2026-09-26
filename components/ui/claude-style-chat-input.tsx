@@ -33,8 +33,9 @@ export interface ClaudeChatInputProps {
     onSendMessage: (data: ClaudeSendPayload) => void | Promise<void>;
     onSelectFile?: (file: File) => void;
     conversationAttachments?: ConversationAttachment[];
-    onRemoveConversationAttachment?: (name: string) => void;
+    onRemoveConversationAttachment?: (attachmentId: string) => void;
     onConversationAttachmentAction?: (action: 'analyze' | 'chart' | 'presentation' | 'summarize' | 'ask', attachment: ConversationAttachment) => void;
+    pendingAttachmentActions?: Set<string>;
     locale?: string;
     models?: ChatModelOption[];
     selectedModelId?: string;
@@ -157,6 +158,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
     onSelectFile,
     conversationAttachments = [],
     onRemoveConversationAttachment,
+    pendingAttachmentActions,
     onConversationAttachmentAction,
     locale = 'en',
     models = [],
@@ -445,7 +447,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                 {guidance && <div className="px-1 pb-2"><ChatGuidanceCard guidance={guidance} locale={locale} onAction={handleGuidanceAction} /></div>}
                 {(files.length > 0 || pastedContent.length > 0 || conversationAttachments.length > 0) && (
                     <div className="flex gap-3 overflow-x-auto custom-scrollbar pb-2 px-1">
-                        {conversationAttachments.map((attachment) => <div key={attachment.name} className="flex shrink-0 flex-col gap-1 rounded-lg border border-white/15 bg-white/[0.04] px-3 py-2 text-xs text-white/80"><div className="flex items-center gap-2"><span className="max-w-48 truncate">{attachment.name}</span><span className="text-white/40">{attachmentKindLabel(attachment.kind, locale)}{attachment.kind === 'spreadsheet' && ` · ${attachment.artifact.sheets[0]?.name ?? ''} · ${attachment.artifact.sheets[0]?.rows.length ?? 0} ${locale.startsWith('ar') ? 'صفوف' : locale.startsWith('fr') ? 'lignes' : 'rows'}`}</span><button type="button" aria-label={`${locale.startsWith('ar') ? 'إزالة' : locale.startsWith('fr') ? 'Retirer' : 'Remove'} ${attachment.name}`} onClick={() => onRemoveConversationAttachment?.(attachment.name)}><X className="h-3.5 w-3.5" /></button></div><div className="flex gap-2 text-[11px] text-white/60">{(attachment.kind === 'spreadsheet' ? ['analyze', 'chart', 'presentation'] : attachment.kind === 'document' || attachment.kind === 'file' ? ['summarize', 'ask', 'presentation'] : []).map((action) => <button key={action} type="button" disabled={isLoading} onClick={() => onConversationAttachmentAction?.(action as 'analyze' | 'chart' | 'presentation' | 'summarize' | 'ask', attachment)} className="hover:text-white disabled:opacity-40">{attachmentActionLabel(action, locale)}</button>)}</div></div>)}
+                        {conversationAttachments.map((attachment) => <div key={attachment.attachmentId} className="flex shrink-0 flex-col gap-1 rounded-lg border border-white/15 bg-white/[0.04] px-3 py-2 text-xs text-white/80"><div className="flex items-center gap-2"><span className="max-w-48 truncate">{attachment.name}</span><span className="text-white/40">{attachmentKindLabel(attachment.kind, locale)}{attachment.kind === 'spreadsheet' && ` · ${attachment.artifact.sheets[0]?.name ?? ''} · ${attachment.artifact.sheets[0]?.rows.length ?? 0} ${locale.startsWith('ar') ? 'صفوف' : locale.startsWith('fr') ? 'lignes' : 'rows'}`}</span><button type="button" aria-label={`${locale.startsWith('ar') ? 'إزالة' : locale.startsWith('fr') ? 'Retirer' : 'Remove'} ${attachment.name}`} onClick={() => onRemoveConversationAttachment?.(attachment.attachmentId)}><X className="h-3.5 w-3.5" /></button></div><div className="flex gap-2 text-[11px] text-white/60">{(attachment.kind === 'spreadsheet' ? ['analyze', 'chart', 'presentation'] : attachment.kind === 'document' || attachment.kind === 'file' ? ['summarize', 'ask', 'presentation'] : []).map((action) => <button key={action} type="button" disabled={isLoading || pendingAttachmentActions?.has(`${attachment.conversationId}:${attachment.attachmentId}:${action}`)} onClick={() => onConversationAttachmentAction?.(action as 'analyze' | 'chart' | 'presentation' | 'summarize' | 'ask', attachment)} className="hover:text-white disabled:opacity-40">{attachmentActionLabel(action, locale)}</button>)}</div></div>)}
                         {pastedContent.map(content => (
                             <PastedContentCard
                                 key={content.id}

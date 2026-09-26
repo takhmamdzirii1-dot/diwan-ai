@@ -3,16 +3,42 @@ import { artifactDirection, type ArtifactSheet, type ChartArtifact, type ChartTy
 export function chartFromSheet(artifact: SpreadsheetArtifact, sheet: ArtifactSheet, chartType: ChartType, rowStart = 0, rowEnd = Math.min(sheet.rows.length, 100)): ChartArtifact {
   const start = Math.max(0, rowStart);
   const rows = sheet.rows.slice(start, Math.min(sheet.rows.length, rowEnd, start + 501));
-  const header = rows[0] ?? [];
-  const values = rows.slice(1);
-  const numericColumns = sheet.columns.map((_, index) => index).filter((index) => index > 0 && values.some((row) => typeof row[index] === 'number'));
-  if (!numericColumns.length || !values.length) throw new Error('Select a range with labels and numeric values.');
-  const categories = values.map((row, index) => String(row[0] ?? index + rowStart + 2));
-  const series = numericColumns.map((index) => ({ name: String(header[index] ?? sheet.columns[index]), values: values.map((row) => typeof row[index] === 'number' ? row[index] as number : null) }));
+  const genericColumns = sheet.columns.every((name, index) => name === spreadsheetColumnName(index));
+  const firstRowIsHeader = start === 0 && (genericColumns
+    || sheet.columns.every((name, index) => String(rows[0]?.[index] ?? '').trim() === name));
+  const header = genericColumns ? sheet.rows[0] ?? [] : sheet.columns;
+  const values = firstRowIsHeader ? rows.slice(1) : rows;
+  if (values.length < 2) throw new Error('CHART_COLUMNS_REQUIRED');
+  const names = sheet.columns.map((name, index) => String(header[index] ?? name).trim());
+  const isIdentifier = (name: string) => /(?:^|[_\s-])(?:id|code|index|serial|sku|key)(?:$|[_\s-])|(?:id|code)$/i.test(name);
+  const measureName = (name: string) => /price|sales|revenue|quantity|cost|amount|results?|spend|reach|impressions?|units?|profit|total|value|count|volume|score|rate/i.test(name);
+  const numeric = names.map((_, index) => index).filter((index) => !isIdentifier(names[index])
+    && values.some((row) => typeof row[index] === 'number' && Number.isFinite(row[index])));
+  const measures = numeric.filter((index) => measureName(names[index]));
+  const candidates = measures.length ? measures : numeric.filter((index) => {
+    const numbers = values.map((row) => row[index]);
+    const first = numbers[0];
+    return !(typeof first === 'number' && numbers.every((value, position) => typeof value === 'number'
+      && value === first + position));
+  });
+  const labelIndex = names.findIndex((name, index) => !numeric.includes(index) && !isIdentifier(name)
+    && values.some((row) => typeof row[index] === 'string' && String(row[index]).trim()));
+  if (labelIndex < 0 || !candidates.length) throw new Error('CHART_COLUMNS_REQUIRED');
+  const categories = values.map((row) => String(row[labelIndex] ?? '').slice(0, 160));
+  if (categories.some((category) => !category.trim())) throw new Error('CHART_COLUMNS_REQUIRED');
+  const series = candidates.slice(0, 2).map((index) => ({ name: names[index],
+    values: values.map((row) => typeof row[index] === 'number' && Number.isFinite(row[index]) ? row[index] as number : null) }));
   const title = `${sheet.name} chart`;
   return { schemaVersion: 1, id: crypto.randomUUID(), type: 'chart', title, chartType, language: artifact.language,
     direction: artifactDirection(artifact.language, `${title} ${categories.join(' ')}`, artifact.direction), categories, series,
     source: { artifactId: artifact.id, sheetId: sheet.id, rowStart, rowEnd }, metadata: {} };
+}
+
+function spreadsheetColumnName(index: number): string {
+  let value = index + 1;
+  let result = '';
+  while (value > 0) { value--; result = String.fromCharCode(65 + value % 26) + result; value = Math.floor(value / 26); }
+  return result;
 }
 
 export function spreadsheetContext(artifact: SpreadsheetArtifact, sheet: ArtifactSheet, rowStart = 0, rowEnd = Math.min(sheet.rows.length, 40)): string {

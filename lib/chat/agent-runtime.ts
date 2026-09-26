@@ -1,36 +1,46 @@
-import type { ChatMessagePart } from '@/lib/artifacts/chat-parts';
+import { requestedPresentationSlideCount, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
 import type { SpreadsheetArtifact } from '@/lib/artifacts/core';
 import { readSpreadsheetContextTool, runReadSpreadsheetContextTool, runArtifactTool } from '@/lib/artifacts/tool-registry';
+import { chartFromSheet } from '@/lib/artifacts/spreadsheet-actions';
 
 export type AgentStatus = 'idle' | 'running' | 'waiting_for_user' | 'completed' | 'cancelled' | 'failed';
 export type AgentStep = 'reading' | 'analyzing' | 'charts' | 'presentation';
 export type AgentTask = { kind: 'spreadsheet_presentation'; chartCount: number; slideCount: number };
 export type AgentRun = {
-  agentRunId: string; conversationId: string; requestId: string | null; originalUserRequest: string; status: AgentStatus;
+  agentRunId: string; conversationId: string; attachmentId: string | null; requestId: string | null; originalUserRequest: string; status: AgentStatus;
   currentStep: AgentStep | null; completedSteps: AgentStep[]; semanticCallCount: number; toolCallCount: number;
   maxSemanticCalls: number; maxToolCalls: number; cancelled: boolean; waitingForUser: boolean;
-  artifacts: ChatMessagePart[]; analysisText: string; contextText: string; terminalError: 'switch_model' | 'tool_failure' | 'model_failure' | null;
+  artifacts: ChatMessagePart[]; analysisText: string; contextText: string;
+  failedStep: AgentStep | null;
+  terminalError: 'switch_model' | 'analysis_failed' | 'chart_failed' | 'presentation_failed' | 'provider_or_network_failed' | null;
   task: AgentTask;
 };
 export type AgentSemanticResult = { text: string; artifacts: ChatMessagePart[]; toolCallCount: number };
 
-export function agentTaskFor(request: string): AgentTask | null {
+export function isSingleSpreadsheetChartRequest(request: string): boolean {
+  const text = request.slice(0, 8_000).toLowerCase();
+  return /\b(create|make|build|plot)\b.*\b(charts?|graphs?|plots?)\b/.test(text)
+    && !/\b(presentation|slides?|powerpoint|analy[sz]e|summari[sz]e|report|document|article|brief|memo)\b/.test(text);
+}
+
+export function agentTaskFor(request: string, hasAttachedSpreadsheet = false): AgentTask | null {
   const text = request.slice(0, 8_000).toLowerCase();
   const spreadsheet = /\b(spreadsheet|workbook|sheet|tableur|feuille de calcul)\b|جدول\s*بيانات/.test(text);
-  const analysis = /\b(analy[sz]e|inspect|review|summari[sz]e|analyse|analyser)\b|حلل|لخص/.test(text);
   const chart = /\b(charts?|graphs?|plots?|graphiques?)\b|رسوم?\s*بياني/.test(text);
   const presentation = /\b(presentation|slides?|powerpoint|présentation|diaporama)\b|عرض\s*تقديمي/.test(text);
-  if (!spreadsheet || !analysis || !chart || !presentation) return null;
+  if (!(spreadsheet || hasAttachedSpreadsheet) || !chart || !presentation) return null;
   const chartCount = /\b(?:two|2|deux)\s+(?:useful\s+)?(?:charts?|graphs?|graphiques?)\b/.test(text) ? 2 : 1;
-  const slideCount = Number(/\b([2-8])[- ]slide\b|\b([2-8])\s+slides?\b/.exec(text)?.[1] ?? /\b([2-8])\s+slides?\b/.exec(text)?.[1] ?? 6);
+  const slideCount = requestedPresentationSlideCount(request) ?? 6;
   return { kind: 'spreadsheet_presentation', chartCount, slideCount };
 }
 
-export function createAgentRun(request: string, conversationId: string, agentRunId: string): AgentRun | null {
-  const task = agentTaskFor(request);
-  return task ? { agentRunId, conversationId, requestId: null, originalUserRequest: request, task, status: 'idle', currentStep: null,
+export function createAgentRun(request: string, conversationId: string, agentRunId: string,
+  hasAttachedSpreadsheet = false, attachmentId: string | null = null): AgentRun | null {
+  const task = agentTaskFor(request, hasAttachedSpreadsheet);
+  return task ? { agentRunId, conversationId, attachmentId, requestId: null, originalUserRequest: request, task, status: 'idle', currentStep: null,
     completedSteps: [], semanticCallCount: 0, toolCallCount: 0, maxSemanticCalls: 4, maxToolCalls: 8,
-    cancelled: false, waitingForUser: false, artifacts: [], analysisText: '', contextText: '', terminalError: null } : null;
+    cancelled: false, waitingForUser: false, artifacts: [], analysisText: '', contextText: '', failedStep: null,
+    terminalError: null } : null;
 }
 
 export function cancelAgentRun(run: AgentRun): AgentRun {
@@ -45,7 +55,8 @@ export async function executeAgentRun(run: AgentRun, spreadsheet: SpreadsheetArt
   semantic: (stage: 'analysis' | 'presentation', prompt: string, operationId: string, toolBudget: number, signal: AbortSignal) => Promise<AgentSemanticResult>;
   operationId: () => string; signal: AbortSignal; onUpdate: (state: AgentRun) => void;
 }): Promise<AgentRun> {
-  const state: AgentRun = { ...run, completedSteps: [...run.completedSteps], artifacts: [...run.artifacts], terminalError: null };
+  const state: AgentRun = { ...run, completedSteps: [...run.completedSteps], artifacts: [...run.artifacts],
+    failedStep: null, terminalError: null };
   const update = () => deps.onUpdate({ ...state, completedSteps: [...state.completedSteps], artifacts: [...state.artifacts] });
   const checkCancelled = () => { if (state.cancelled || deps.signal.aborted) throw new Error('AGENT_CANCELLED'); };
   const begin = (step: AgentStep) => { checkCancelled(); state.status = 'running'; state.currentStep = step; update(); };
@@ -92,15 +103,11 @@ export async function executeAgentRun(run: AgentRun, spreadsheet: SpreadsheetArt
     }
     if (!state.completedSteps.includes('charts')) {
       begin('charts');
-      const rows = sheet.rows.slice(0, 40);
-      const numeric = sheet.columns.map((_, index) => index).filter((index) => index > 0 && rows.some((row) => typeof row[index] === 'number')).slice(0, 2);
-      if (!numeric.length || !rows.length) throw new Error('TOOL_FAILURE');
+      const chart = chartFromSheet(spreadsheet, sheet, 'bar', 0, Math.min(sheet.rows.length, 40));
       for (let index = state.artifacts.filter((part) => part.type === 'chart').length; index < state.task.chartCount; index++) {
-        const column = numeric[index % numeric.length];
-        const input = { title: `${sheet.name}: ${sheet.columns[column]}`, chartType: index === 0 ? 'bar' : 'line',
-          categories: rows.map((row, rowIndex) => String(row[0] ?? rowIndex + 1).slice(0, 160)),
-          series: [{ name: sheet.columns[column], values: rows.map((row) => typeof row[column] === 'number' ? row[column] as number : null) }],
-          language: spreadsheet.language };
+        const selected = chart.series[index % chart.series.length];
+        const input = { title: `${sheet.name}: ${selected.name}`, chartType: index === 0 ? 'bar' : 'line',
+          categories: chart.categories, series: [selected], language: spreadsheet.language };
         const result = tool(() => runArtifactTool('create_chart', input));
         if (result.status !== 'ok' || result.artifact.type !== 'chart') throw new Error('TOOL_FAILURE');
         state.artifacts.push({ type: 'chart', artifact: result.artifact });
@@ -133,8 +140,12 @@ export async function executeAgentRun(run: AgentRun, spreadsheet: SpreadsheetArt
       state.status = 'cancelled'; state.cancelled = true;
     } else {
       state.status = 'failed';
+      state.failedStep = state.currentStep;
       state.terminalError = error instanceof Error && error.message === 'SWITCH_MODEL' ? 'switch_model'
-        : error instanceof Error && /TOOL/.test(error.message) ? 'tool_failure' : 'model_failure';
+        : state.currentStep === 'presentation' ? 'presentation_failed'
+          : state.currentStep === 'charts' ? 'chart_failed'
+            : state.currentStep === 'analyzing' || state.currentStep === 'reading' ? 'analysis_failed'
+              : 'provider_or_network_failed';
     }
     state.currentStep = null; state.requestId = null; update();
   }

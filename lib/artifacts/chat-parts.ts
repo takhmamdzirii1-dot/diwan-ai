@@ -56,11 +56,19 @@ export function presentationRequested(input: string): boolean {
   return /\b(presentation|slide\s*deck|powerpoint|pptx|diaporama|présentation|diapositives)\b|عرض\s*(?:تقديمي|شرائح)|شرائح/i.test(input);
 }
 
+export function requestedPresentationSlideCount(input: string): number | null {
+  if (!presentationRequested(input)) return null;
+  const match = /\b([2-8])(?:[- ]slides?\b|\s+diapositives?\b)|([2-8])\s*شرائح/i.exec(input);
+  return match ? Number(match[1] ?? match[2]) : null;
+}
+
 export const PRESENTATION_OUTPUT_INSTRUCTION =
   `When the user requests a presentation, return ONLY one JSON object matching this PresentationArtifact shape: ${JSON.stringify(PRESENTATION_MODEL_SHAPE)}. Replace the example values with the user's content. Use 1–8 concise slides and set each slide variant to cover, kpi, table, or insights as appropriate. Summarize source data into key metrics, trends, and evidence-based takeaways; never paste raw spreadsheet rows. For a KPI slide use a two-column table of metric labels and values. For a table slide use only a small summary table. Use only supported text, bullets, and table blocks; a chart block requires an existing chartId and must not be invented. Do not wrap the JSON in Markdown or add explanatory text. Do not include URLs, executable content, or unsupported blocks.`;
 
-const presentationLike = (content: string) =>
-  /\{\s*"type"\s*:\s*"presentation"|\{\s*"slides"\s*:/i.test(content);
+const presentationLike = (content: string) => {
+  const candidate = artifactCandidate(content);
+  return candidate !== null && /"type"\s*:\s*"presentation"|"slides"\s*:/i.test(candidate);
+};
 
 function artifactCandidate(content: string): string | null {
   const fence = /```(?:json)?\s*([\s\S]*?)```/i.exec(content);

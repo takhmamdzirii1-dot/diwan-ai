@@ -1,7 +1,8 @@
 import { after, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { streamText } from 'ai';
-import { PRESENTATION_OUTPUT_INSTRUCTION, validatedArtifactPartFromToolResult } from '@/lib/artifacts/chat-parts';
+import { PRESENTATION_OUTPUT_INSTRUCTION, requestedPresentationSlideCount,
+  validatedArtifactPartFromToolResult } from '@/lib/artifacts/chat-parts';
 import { agentToolSelection, artifactTaskInstruction, documentToolChoice, presentationToolChoice, resolveArtifactToolPath, selectArtifactTools } from '@/lib/artifacts/tool-registry';
 import { buildNativeArtifactTools } from '@/lib/artifacts/tool-native.server';
 import { completeMessageText, providerChatMessages } from '@/lib/chat/message-history';
@@ -473,7 +474,19 @@ export async function POST(request: Request) {
       let documentToolResults = 0;
       let successfulDocumentExecutions = 0;
       let validatedDocumentResults = 0;
+      let presentationToolCalls = 0;
+      let presentationToolResults = 0;
+      let validatedPresentationResults = 0;
+      let presentationInputValidationSuccess = false;
+      let actualSlideCount = 0;
       let emittedTextChars = 0;
+      const requestedSlideCount = requestedPresentationSlideCount(typeof latestUserText === 'string' ? latestUserText : '');
+      trace('PRESENTATION_PATH', { attachmentFound: typeof body.spreadsheetContext === 'string',
+        agentStarted: Boolean(agentStep), agentStep: agentStep ?? 'none',
+        relevantToolsExposed: nativeTools ? Object.keys(nativeTools).length : 0,
+        presentationToolRequired: Boolean(nativeTools?.create_presentation &&
+          (agentStep === 'presentation' || presentationToolChoice(taskSelection, toolPath))),
+        requestedSlideCount: requestedSlideCount ?? 0 });
       trace('DOCUMENT_PATH', { createDocumentSelected: taskSelection.names.includes('create_document'),
         toolsExposed: nativeTools ? Object.keys(nativeTools).length : 0,
         createDocumentExposed: Boolean(nativeTools?.create_document), toolPath });
@@ -496,6 +509,7 @@ export async function POST(request: Request) {
             if (chunk.textDelta.length > 0) outputStarted = true;
           }
           if (chunk.type === 'tool-call' && chunk.toolName === 'create_document') documentToolCalls++;
+          if (chunk.type === 'tool-call' && chunk.toolName === 'create_presentation') presentationToolCalls++;
           if (chunk.type === 'tool-result') {
             const valid = Boolean(validatedArtifactPartFromToolResult(chunk.toolName, chunk.result));
             if (valid) outputStarted = true;
@@ -505,6 +519,13 @@ export async function POST(request: Request) {
                 && chunk.result.status === 'ok') successfulDocumentExecutions++;
               if (valid) validatedDocumentResults++;
             }
+            if (chunk.toolName === 'create_presentation') {
+              presentationToolResults++;
+              presentationInputValidationSuccess = Boolean(chunk.result && typeof chunk.result === 'object'
+                && 'status' in chunk.result && chunk.result.status === 'ok');
+              const part = validatedArtifactPartFromToolResult(chunk.toolName, chunk.result);
+              if (part?.type === 'presentation') { validatedPresentationResults++; actualSlideCount = part.artifact.slides.length; }
+            }
           }
         },
         onFinish: async ({ finishReason, usage, toolResults }) => {
@@ -512,6 +533,10 @@ export async function POST(request: Request) {
             toolResultCount: documentToolResults, toolExecutionSuccess: successfulDocumentExecutions > 0,
             toolResultValidationSuccess: validatedDocumentResults > 0,
             artifactPartCount: validatedDocumentResults, textChars: emittedTextChars, finishReason });
+          trace('PRESENTATION_RESULT', { presentationToolCalls, presentationToolResults,
+            presentationInputValidationSuccess, presentationResultValidationSuccess: validatedPresentationResults > 0,
+            requestedSlideCount: requestedSlideCount ?? 0, actualSlideCount,
+            streamedArtifactPartCount: validatedPresentationResults, textChars: emittedTextChars, finishReason });
           trace('PROVIDER', { callStarted: true, streamReturned: true, finishReason,
             errorCategory: finishReason === 'error' ? 'provider_stream_error' : null });
           try {

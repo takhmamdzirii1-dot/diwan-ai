@@ -3,7 +3,8 @@ import test from 'node:test';
 import type { SpreadsheetArtifact } from '@/lib/artifacts/core';
 import { runArtifactTool, runReadSpreadsheetContextTool } from '@/lib/artifacts/tool-registry';
 import { executeAgentSemanticStep } from './agent-client';
-import { agentTaskFor, cancelAgentRun, createAgentRun, executeAgentRun, isCurrentAgentUpdate, type AgentRun } from './agent-runtime';
+import { agentTaskFor, cancelAgentRun, createAgentRun, executeAgentRun, isCurrentAgentUpdate,
+  isSingleSpreadsheetChartRequest, type AgentRun } from './agent-runtime';
 
 const request = 'Analyze this spreadsheet, create two useful charts, and build a 6-slide presentation.';
 const sheet: SpreadsheetArtifact = { schemaVersion: 1, id: 'book', type: 'spreadsheet', title: 'Sales', language: 'en',
@@ -37,6 +38,18 @@ test('normal Q&A and one document bypass Agent; multi-step activates with releva
   assert.equal(agentTaskFor('Write a professional report about AI adoption.'), null);
   assert.equal(agentTaskFor('Create a chart from this table.'), null);
   assert.deepEqual(agentTaskFor(request), { kind: 'spreadsheet_presentation', chartCount: 2, slideCount: 6 });
+  assert.deepEqual(agentTaskFor('Create two charts and build a 6-slide presentation from this spreadsheet.'),
+    { kind: 'spreadsheet_presentation', chartCount: 2, slideCount: 6 });
+  assert.deepEqual(agentTaskFor('Create two charts and build a 6-slide presentation.', true),
+    { kind: 'spreadsheet_presentation', chartCount: 2, slideCount: 6 });
+  assert.equal(agentTaskFor('Create two charts and build a 6-slide presentation.'), null);
+});
+
+test('one attached chart request uses the deterministic chart path, not Agent or another AI call', () => {
+  assert.equal(isSingleSpreadsheetChartRequest('Create a chart from this spreadsheet.'), true);
+  assert.equal(isSingleSpreadsheetChartRequest('What is compound interest?'), false);
+  assert.equal(isSingleSpreadsheetChartRequest('Create two charts and build a 6-slide presentation.'), false);
+  assert.equal(agentTaskFor('Create a chart from this spreadsheet.', true), null);
 });
 
 test('two semantic steps have distinct normal Chat operation IDs; deterministic tools add no AI calls', async () => {
@@ -76,6 +89,18 @@ test('missing workbook waits; resume completes without repeating finished steps'
   assert.equal(calls.length, 2);
 });
 
+test('attached workbook starts the two-chart workflow without missing-file guidance', async () => {
+  const { deps } = setup();
+  const run = createAgentRun('Create two charts and build a 6-slide presentation.', 'conversation-a', 'agent-a', true, 'attachment-a');
+  assert.ok(run);
+  assert.equal(run.attachmentId, 'attachment-a');
+  const done = await executeAgentRun(run, sheet, deps);
+  assert.equal(done.status, 'completed');
+  assert.equal(done.waitingForUser, false);
+  assert.equal(done.artifacts.filter((part) => part.type === 'chart').length, 2);
+  assert.equal(done.artifacts.find((part) => part.type === 'presentation')?.artifact.slides.length, 6);
+});
+
 test('partial charts survive later model failure and resume skips completed analysis/tools', async () => {
   const { run, calls, deps } = setup();
   let fail = true;
@@ -86,12 +111,33 @@ test('partial charts survive later model failure and resume skips completed anal
   };
   const failed = await executeAgentRun(run, sheet, deps);
   assert.equal(failed.status, 'failed');
+  assert.equal(failed.failedStep, 'presentation');
+  assert.equal(failed.terminalError, 'presentation_failed');
   assert.equal(failed.artifacts.filter((part) => part.type === 'chart').length, 2);
   assert.deepEqual(failed.completedSteps, ['reading', 'analyzing', 'charts']);
   const resumed = await executeAgentRun(failed, sheet, deps);
   assert.equal(resumed.status, 'completed');
   assert.equal(resumed.artifacts.filter((part) => part.type === 'chart').length, 2);
   assert.equal(calls.filter((call) => call.stage === 'analysis').length, 1);
+});
+
+test('one-slide result cannot satisfy an explicit six-slide request; charts remain available', async () => {
+  const { run, deps } = setup();
+  const oneSlide = runArtifactTool('create_presentation', { title: 'Results', slides: [
+    { title: 'Results', variant: 'cover', blocks: [] },
+  ] });
+  assert.equal(oneSlide.status, 'ok');
+  if (oneSlide.status !== 'ok' || oneSlide.artifact.type !== 'presentation') return;
+  const oneSlidePresentation = oneSlide.artifact;
+  const semantic = deps.semantic;
+  deps.semantic = async (...args) => args[0] === 'presentation'
+    ? { text: '', artifacts: [{ type: 'presentation', artifact: oneSlidePresentation }], toolCallCount: 1 }
+    : semantic(...args);
+  const result = await executeAgentRun(run, sheet, deps);
+  assert.equal(result.status, 'failed');
+  assert.equal(result.failedStep, 'presentation');
+  assert.equal(result.artifacts.filter((part) => part.type === 'chart').length, 2);
+  assert.equal(result.artifacts.filter((part) => part.type === 'presentation').length, 0);
 });
 
 test('semantic, tool, retry and cancellation limits are enforced', async () => {
@@ -104,7 +150,7 @@ test('semantic, tool, retry and cancellation limits are enforced', async () => {
   assert.ok(limited.toolCallCount <= 2);
   const bad = await executeAgentRun(setup().run, { ...sheet, sheets: [{ ...sheet.sheets[0], rows: [['Jan', 10]] }] }, setup().deps);
   assert.equal(bad.status, 'failed');
-  assert.equal(bad.toolCallCount, 2); // one initial attempt plus one retry
+  assert.equal(bad.toolCallCount, 2); // invalid read retries once, then stops
   const stopped = cancelAgentRun(setup().run);
   assert.equal((await executeAgentRun(stopped, sheet, setup().deps)).status, 'cancelled');
 });

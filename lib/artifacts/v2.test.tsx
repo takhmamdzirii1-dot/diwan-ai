@@ -54,6 +54,41 @@ test('charts and bounded analysis use existing sheet data without network calls'
   assert.ok(context.length < 12_500);
 });
 
+test('charting a selected data range retains the workbook header and every selected row', async () => {
+  const workbook = await importSpreadsheet(workbookFile(), 'en');
+  const sheet = workbook.sheets[0];
+  const chart = chartFromSheet(workbook, sheet, 'bar', 2, 4);
+  assert.deepEqual(chart.categories, ['Feb', 'مارس']);
+  assert.deepEqual(chart.series[0].values, [20, 30]);
+  assert.equal(chart.series[0].name, 'Sales');
+});
+
+test('automatic chart selection prefers Price over numeric supplier and category identifiers', () => {
+  const productSheet = { id: 'products', name: 'Products', columns: ['Product', 'SupplierID', 'CategoryID', 'Price'],
+    rows: [['Widget', 1001, 2, 12], ['Gadget', 1002, 3, 20], ['Tool', 1003, 2, 15]] };
+  const productBook = { schemaVersion: 1 as const, id: 'products-book', type: 'spreadsheet' as const,
+    title: 'Products', language: 'en', direction: 'ltr' as const, metadata: {}, sheets: [productSheet] };
+  const chart = chartFromSheet(productBook, productSheet, 'bar');
+  assert.deepEqual(chart.series.map((series) => series.name), ['Price']);
+  assert.deepEqual(chart.categories, ['Widget', 'Gadget', 'Tool']);
+});
+
+test('identifier-only data asks for columns instead of generating a meaningless chart', () => {
+  const sheet = { id: 'ids', name: 'IDs', columns: ['Product', 'SupplierID', 'CategoryID'],
+    rows: [['Widget', 1001, 2], ['Gadget', 1002, 3]] };
+  const workbook = { schemaVersion: 1 as const, id: 'ids-book', type: 'spreadsheet' as const,
+    title: 'IDs', language: 'en', direction: 'ltr' as const, metadata: {}, sheets: [sheet] };
+  assert.throws(() => chartFromSheet(workbook, sheet, 'bar'), /CHART_COLUMNS_REQUIRED/);
+});
+
+test('unlabeled sequential numbers are treated as an index, not a measure', () => {
+  const sheet = { id: 'sequence', name: 'Sequence', columns: ['Product', 'Number'],
+    rows: [['Widget', 1001], ['Gadget', 1002], ['Tool', 1003]] };
+  const workbook = { schemaVersion: 1 as const, id: 'sequence-book', type: 'spreadsheet' as const,
+    title: 'Sequence', language: 'en', direction: 'ltr' as const, metadata: {}, sheets: [sheet] };
+  assert.throws(() => chartFromSheet(workbook, sheet, 'bar'), /CHART_COLUMNS_REQUIRED/);
+});
+
 test('presentation preview and PPTX export use the same artifact, including chart and RTL', async () => {
   const workbook = await importSpreadsheet(workbookFile(), 'ar');
   const chart = chartFromSheet(workbook, workbook.sheets[0], 'bar');

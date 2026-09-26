@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { documentFromMarkdown } from '@/lib/artifacts/core';
-import { uploadFileKind, type ConversationAttachment } from '@/lib/chat/conversation-attachments';
+import { uploadFileKind, type ConversationAttachmentDraft } from '@/lib/chat/conversation-attachments';
 
 export default function FileAttachmentPreview({ file, locale, onCancel, onAttach }: {
-  file: File; locale: string; onCancel: () => void; onAttach: (attachment: ConversationAttachment) => void;
+  file: File; locale: string; onCancel: () => void; onAttach: (attachment: ConversationAttachmentDraft) => void;
 }) {
-  const [attachment, setAttachment] = useState<ConversationAttachment | null>(null);
+  const [attachment, setAttachment] = useState<ConversationAttachmentDraft | null>(null);
   const [preview, setPreview] = useState('');
   const [error, setError] = useState(false);
   useEffect(() => {
