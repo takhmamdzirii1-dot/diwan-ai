@@ -32,7 +32,8 @@ export type SlideBlock =
   | { kind: 'table'; rows: string[][] }
   | { kind: 'image'; src: string; alt?: string }
   | { kind: 'chart'; chartId: string };
-export type ArtifactSlide = { id: string; layout: 'title' | 'content'; title: string; subtitle?: string; blocks: SlideBlock[]; notes?: string };
+export type PresentationSlideVariant = 'cover' | 'kpi' | 'chart' | 'table' | 'insights';
+export type ArtifactSlide = { id: string; layout: 'title' | 'content'; variant?: PresentationSlideVariant; title: string; subtitle?: string; blocks: SlideBlock[]; notes?: string };
 export type PresentationArtifact = ArtifactBase & { type: 'presentation'; slides: ArtifactSlide[] };
 export type Artifact = DocumentArtifact | SpreadsheetArtifact | ChartArtifact | PresentationArtifact;
 
@@ -41,7 +42,7 @@ export type Artifact = DocumentArtifact | SpreadsheetArtifact | ChartArtifact | 
 export const PRESENTATION_MODEL_SHAPE = {
   schemaVersion: 1, id: 'presentation-id', type: 'presentation', title: 'Presentation title',
   language: 'en', direction: 'ltr', metadata: {}, slides: [{
-    id: 'slide-1', layout: 'title', title: 'Slide title', subtitle: 'Optional subtitle',
+    id: 'slide-1', layout: 'title', variant: 'cover', title: 'Slide title', subtitle: 'Optional subtitle',
     blocks: [
       { kind: 'text', text: 'Slide text' },
       { kind: 'bullets', items: ['First point', 'Second point'] },
@@ -115,6 +116,7 @@ export function parsePresentationResponse(content: string, language: string): Pr
       if (typeof slide.title !== 'string' || !slide.title.trim() || !Array.isArray(slide.blocks) || slide.blocks.length > 12
         || (slide.id != null && typeof slide.id !== 'string')
         || (slide.layout != null && slide.layout !== 'title' && slide.layout !== 'content')
+        || (slide.variant != null && !['cover', 'kpi', 'chart', 'table', 'insights'].includes(String(slide.variant)))
         || (slide.subtitle != null && typeof slide.subtitle !== 'string')) {
         throw new PresentationValidationError('presentation_schema_invalid', `slides[${index}]`);
       }
@@ -126,7 +128,7 @@ export function parsePresentationResponse(content: string, language: string): Pr
         if (block.kind === 'table' && Array.isArray(block.rows) && block.rows.length <= 10 && block.rows.every((row) => Array.isArray(row) && row.length <= 8 && row.every((cell) => typeof cell === 'string'))) return { kind: 'table', rows: block.rows.map((row: string[]) => row.map((cell) => cell.slice(0, 300))) };
         throw new PresentationValidationError('presentation_block_invalid', `slides[${index}].blocks[${blockIndex}]`);
       });
-      return { id: `slide-${index + 1}`, layout: slide.layout === 'title' ? 'title' : 'content', title: slide.title.slice(0, 160), subtitle: typeof slide.subtitle === 'string' ? slide.subtitle.slice(0, 300) : undefined, blocks };
+      return { id: `slide-${index + 1}`, layout: slide.layout === 'title' ? 'title' : 'content', variant: slide.variant as PresentationSlideVariant | undefined, title: slide.title.slice(0, 160), subtitle: typeof slide.subtitle === 'string' ? slide.subtitle.slice(0, 300) : undefined, blocks };
     });
     const title = typeof value.title === 'string' && value.title.trim() ? value.title.slice(0, 160) : slides[0].title;
     const artifact: PresentationArtifact = { schemaVersion: 1, id: crypto.randomUUID(), type: 'presentation', title, language, direction: artifactDirection(language, slides.map((slide) => slide.title).join(' ')), slides, metadata: {} };
@@ -167,6 +169,7 @@ export function isArtifact(value: unknown): value is Artifact {
     const entry = slide as ArtifactSlide;
     return !!entry && typeof entry.id === 'string' && typeof entry.title === 'string'
       && (entry.layout === 'title' || entry.layout === 'content') && Array.isArray(entry.blocks)
+      && (entry.variant == null || ['cover', 'kpi', 'chart', 'table', 'insights'].includes(entry.variant))
       && entry.blocks.every((block) => {
         if (block.kind === 'text') return typeof block.text === 'string';
         if (block.kind === 'bullets') return Array.isArray(block.items) && block.items.every((text) => typeof text === 'string');

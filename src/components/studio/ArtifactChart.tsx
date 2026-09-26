@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChartArtifact } from '@/lib/artifacts/core';
 
-export default function ArtifactChart({ artifact, onReady }: { artifact: ChartArtifact; onReady?: (exportPng: () => string) => void }) {
+export default function ArtifactChart({ artifact, onReady, presentationColors, presentationMuted, presentationBorder }: { artifact: ChartArtifact; onReady?: (exportPng: () => string) => void; presentationColors?: readonly string[]; presentationMuted?: string; presentationBorder?: string }) {
   const container = useRef<HTMLDivElement>(null);
   const [error, setError] = useState(false);
   useEffect(() => {
@@ -16,9 +16,10 @@ export default function ArtifactChart({ artifact, onReady }: { artifact: ChartAr
       const pie = artifact.chartType === 'pie' || artifact.chartType === 'donut';
       chart.setOption({
         backgroundColor: 'transparent',
-        title: { text: artifact.title, left: artifact.direction === 'rtl' ? 'right' : 'left', textStyle: { color: '#fff', fontSize: 15 } },
-        tooltip: { trigger: pie ? 'item' : 'axis' }, legend: { bottom: 0, textStyle: { color: '#aaa' } },
-        ...(pie ? {} : { xAxis: { type: 'category', data: artifact.categories }, yAxis: { type: 'value' } }),
+        color: presentationColors ? [...presentationColors] : undefined,
+        title: presentationColors ? undefined : { text: artifact.title, left: artifact.direction === 'rtl' ? 'right' : 'left', textStyle: { color: '#fff', fontSize: 15 } },
+        tooltip: { trigger: pie ? 'item' : 'axis' }, legend: { bottom: 0, textStyle: { color: presentationMuted ?? '#aaa' } },
+        ...(pie ? {} : { xAxis: { type: 'category', data: artifact.categories, axisLabel: { color: presentationMuted }, axisLine: { lineStyle: { color: presentationBorder } } }, yAxis: { type: 'value', axisLabel: { color: presentationMuted }, splitLine: { lineStyle: { color: presentationBorder } } } }),
         series: artifact.series.map((series) => pie
           ? { name: series.name, type: 'pie', radius: artifact.chartType === 'donut' ? ['38%', '65%'] : '65%', data: artifact.categories.map((name, index) => ({ name, value: series.values[index] ?? 0 })) }
           : { name: series.name, type: artifact.chartType === 'area' ? 'line' : artifact.chartType, areaStyle: artifact.chartType === 'area' ? {} : undefined, data: series.values }),
@@ -27,6 +28,6 @@ export default function ArtifactChart({ artifact, onReady }: { artifact: ChartAr
       observer = new ResizeObserver(() => chart?.resize()); observer.observe(container.current);
     }).catch(() => setError(true));
     return () => { disposed = true; observer?.disconnect(); chart?.dispose(); };
-  }, [artifact, onReady]);
+  }, [artifact, onReady, presentationColors, presentationMuted, presentationBorder]);
   return error ? <p role="alert">Chart preview is unavailable.</p> : <div ref={container} role="img" aria-label={artifact.title} className="h-72 w-full" dir={artifact.direction} />;
 }

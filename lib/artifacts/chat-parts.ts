@@ -32,7 +32,7 @@ const artifactSchema = z.discriminatedUnion('type', [
     categories: z.array(text).max(5000), series: z.array(z.object({ name: text, values: z.array(z.number().finite().nullable()).max(5000) })).min(1).max(30),
   }),
   base.extend({ type: z.literal('presentation'), slides: z.array(z.object({
-    id: z.string().min(1), layout: z.enum(['title', 'content']), title: text,
+    id: z.string().min(1), layout: z.enum(['title', 'content']), variant: z.enum(['cover', 'kpi', 'chart', 'table', 'insights']).optional(), title: text,
     subtitle: text.optional(), notes: text.optional(), blocks: z.array(slideBlock).max(30),
   })).min(1).max(12) }),
 ]);
@@ -56,7 +56,7 @@ export function presentationRequested(input: string): boolean {
 }
 
 export const PRESENTATION_OUTPUT_INSTRUCTION =
-  `When the user requests a presentation, return ONLY one JSON object matching this PresentationArtifact shape: ${JSON.stringify(PRESENTATION_MODEL_SHAPE)}. Replace the example values with the user's content. Use 1–8 slides, with only supported text, bullets, and table blocks. Do not wrap the JSON in Markdown or add explanatory text. Do not include URLs, executable content, or unsupported blocks.`;
+  `When the user requests a presentation, return ONLY one JSON object matching this PresentationArtifact shape: ${JSON.stringify(PRESENTATION_MODEL_SHAPE)}. Replace the example values with the user's content. Use 1–8 concise slides and set each slide variant to cover, kpi, table, or insights as appropriate. Summarize source data into key metrics, trends, and evidence-based takeaways; never paste raw spreadsheet rows. For a KPI slide use a two-column table of metric labels and values. For a table slide use only a small summary table. Use only supported text, bullets, and table blocks; a chart block requires an existing chartId and must not be invented. Do not wrap the JSON in Markdown or add explanatory text. Do not include URLs, executable content, or unsupported blocks.`;
 
 const presentationLike = (content: string) => /"type"\s*:\s*"presentation"|"slides"\s*:/i.test(content);
 

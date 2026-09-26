@@ -47,6 +47,8 @@ test('the real PresentationArtifact shape and deterministic formatting variation
   assert.deepEqual(extracted.shape, { fenced: false, proseBefore: true, proseAfter: true });
   assert.equal(chatPartsFromMessage(prose, 'en')[0].type, 'presentation');
   assert.equal(parsePresentationResponse(presentationJson, 'en').artifact?.slides[0].id, 'slide-1');
+  const kpi = parsePresentationResponse(JSON.stringify({ type: 'presentation', title: 'Summary', slides: [{ title: 'Key metrics', variant: 'kpi', blocks: [{ kind: 'table', rows: [['Revenue', '$1,200']] }] }] }), 'en');
+  assert.equal(kpi.artifact?.slides[0].variant, 'kpi');
 });
 
 test('presentation failures retain safe internal categories without showing JSON', () => {

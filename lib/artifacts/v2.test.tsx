@@ -8,6 +8,7 @@ import { documentFromMarkdown, isArtifact, presentationFromResponse } from './co
 import { importSpreadsheet, exportSpreadsheet } from './spreadsheet-io';
 import { chartFromSheet, presentationFromSheet, spreadsheetContext } from './spreadsheet-actions';
 import { presentationToPptx } from './pptx-export';
+import { formatPresentationCell, presentationChart, presentationTheme, presentationVariant } from './presentation-design';
 import ArtifactPresentationPreview from '@/src/components/studio/ArtifactPresentationPreview';
 
 function workbookFile(): File {
@@ -57,13 +58,49 @@ test('presentation preview and PPTX export use the same artifact, including char
   const workbook = await importSpreadsheet(workbookFile(), 'ar');
   const chart = chartFromSheet(workbook, workbook.sheets[0], 'bar');
   const presentation = presentationFromSheet(workbook, workbook.sheets[0], chart);
-  assert.ok(isArtifact(presentation)); assert.equal(presentation.slides.length, 3);
+  assert.ok(isArtifact(presentation)); assert.equal(presentation.slides.length, 5);
+  assert.deepEqual(presentation.slides.map(presentationVariant), ['cover', 'kpi', 'chart', 'table', 'insights']);
+  assert.equal(presentation.slides[3].blocks[0].kind, 'table');
+  assert.ok(!JSON.stringify(presentation.slides).includes('Jan'));
+  assert.ok(!JSON.stringify(presentation.slides).includes('Feb'));
   const html = renderToStaticMarkup(<ArtifactPresentationPreview artifact={presentation} charts={[chart]} onClose={() => undefined} />);
-  assert.match(html, /dir="rtl"/); assert.match(html, /شريحة 1 \/ 3/); assert.match(html, /تنزيل PowerPoint/);
+  assert.match(html, /dir="rtl"/); assert.match(html, /شريحة 1 \/ 5/); assert.match(html, /تنزيل PowerPoint/);
+  assert.match(html, /data-slide-variant="cover"/);
   const blob = await presentationToPptx(presentation, [chart]);
   assert.equal((await blob.slice(0, 2).text()), 'PK'); assert.ok(blob.size > 1000);
   const archive = await JSZip.loadAsync(await blob.arrayBuffer());
   assert.ok(Object.keys(archive.files).some((path) => /^ppt\/charts\/chart\d+\.xml$/.test(path)));
+  assert.equal(Object.keys(archive.files).filter((path) => /^ppt\/slides\/slide\d+\.xml$/.test(path)).length, 5);
+  const coverXml = await archive.file('ppt/slides/slide1.xml')!.async('string');
+  assert.match(coverXml, /101214/); // Executive Dark canvas shared by preview and export.
+});
+
+test('presentation theme and metrics formatting stay deterministic and compatible with old slides', () => {
+  const oldSlide = { id: 'old', layout: 'content' as const, title: 'Metrics', blocks: [{ kind: 'table' as const, rows: [['Metric', 'Value'], ['Revenue', '$1,200']] }] };
+  assert.equal(presentationVariant(oldSlide), 'table');
+  assert.equal(formatPresentationCell('$1200', 'en'), '$1,200');
+  const artifact = { schemaVersion: 1 as const, id: 'old', type: 'presentation' as const, title: 'Old', language: 'en', direction: 'ltr' as const, metadata: {}, slides: [oldSlide] };
+  assert.equal(presentationTheme(artifact).canvas, '#101214');
+  assert.equal(presentationTheme({ ...artifact, metadata: { presentationTheme: 'executive-light' } }).canvas, '#F6F6F3');
+  assert.equal(presentationTheme({ ...artifact, metadata: { presentationTheme: 'unknown' } }).canvas, '#101214');
+  const chart = { schemaVersion: 1 as const, id: 'chart', type: 'chart' as const, title: 'Trend', language: 'en', direction: 'ltr' as const, metadata: {}, chartType: 'bar' as const,
+    categories: Array.from({ length: 20 }, (_, index) => String(index)), series: [{ name: 'A', values: Array.from({ length: 20 }, (_, index) => index) }] };
+  assert.equal(presentationChart(chart).categories.length, 12);
+});
+
+test('each executive slide type renders distinct in-chat content without raw worksheet rows', () => {
+  const book = { schemaVersion: 1 as const, id: 'sheet', type: 'spreadsheet' as const, title: 'Quarterly review', language: 'en', direction: 'ltr' as const, metadata: {},
+    sheets: [{ id: 'sheet-1', name: 'Revenue', columns: ['Month', 'Sales'], rows: [['Month', 'Sales'], ['Jan', 10], ['Feb', 20], ['Mar', 30]] }] };
+  const artifact = presentationFromSheet(book, book.sheets[0]);
+  for (const slide of artifact.slides) {
+    const html = renderToStaticMarkup(<ArtifactPresentationPreview artifact={{ ...artifact, slides: [slide] }} onClose={() => undefined} inline />);
+    assert.match(html, new RegExp(`data-slide-variant="${slide.variant}"`));
+    assert.doesNotMatch(html, />Jan</);
+  }
+  const kpi = renderToStaticMarkup(<ArtifactPresentationPreview artifact={{ ...artifact, slides: [artifact.slides[1]] }} onClose={() => undefined} inline />);
+  assert.match(kpi, /Key metrics/);
+  assert.match(kpi, /Latest/);
+  assert.match(kpi, /Average/);
 });
 
 test('structured AI presentation is bounded and rejects unsupported blocks', () => {
