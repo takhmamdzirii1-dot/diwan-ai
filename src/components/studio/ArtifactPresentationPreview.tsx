@@ -17,7 +17,7 @@ function download(blob: Blob, name: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-export default function ArtifactPresentationPreview({ artifact, charts = [], onClose }: { artifact: PresentationArtifact; charts?: ChartArtifact[]; onClose: () => void }) {
+export default function ArtifactPresentationPreview({ artifact, charts = [], onClose, inline = false }: { artifact: PresentationArtifact; charts?: ChartArtifact[]; onClose: () => void; inline?: boolean }) {
   const t = copy[artifact.language.split('-')[0] as keyof typeof copy] ?? copy.en;
   const [index, setIndex] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -28,16 +28,16 @@ export default function ArtifactPresentationPreview({ artifact, charts = [], onC
     try { const { presentationToPptx } = await import('@/lib/artifacts/pptx-export'); download(await presentationToPptx(artifact, charts), artifact.title); }
     catch { setError(true); } finally { setBusy(false); }
   };
-  return <div role="dialog" aria-modal="true" aria-label={artifact.title} className="fixed inset-0 z-[110] overflow-y-auto bg-black/95 p-4 text-white sm:p-8" dir={artifact.direction}>
+  return <div role={inline ? 'region' : 'dialog'} aria-modal={inline ? undefined : true} aria-label={artifact.title} className={inline ? 'w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-3 text-white sm:p-4' : 'fixed inset-0 z-[110] overflow-y-auto bg-black/95 p-4 text-white sm:p-8'} dir={artifact.direction}>
     <div className="mx-auto max-w-6xl space-y-4">
       <header className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-neutral-950 p-3">
         <div className="me-auto min-w-0"><h2 className="truncate text-sm font-semibold">{artifact.title}</h2><p className="text-xs text-white/50">{t.presentation} · {artifact.slides.length} {t.slides}</p></div>
         <button type="button" disabled={busy} onClick={() => void exportPptx()} className="rounded-lg border border-white/20 px-3 py-2 text-xs disabled:opacity-50">{busy ? t.preparing : t.download}</button>
-        <button type="button" onClick={onClose} className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-black">{t.close}</button>
+        {!inline && <button type="button" onClick={onClose} className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-black">{t.close}</button>}
       </header>
       {error && <p role="alert" className="text-sm text-red-300">{t.error}</p>}
       <nav aria-label="Slides" className="flex gap-2 overflow-x-auto pb-1">{artifact.slides.map((item, slideIndex) => <button key={item.id} type="button" onClick={() => setIndex(slideIndex)} aria-current={index === slideIndex ? 'page' : undefined} className={`min-w-20 rounded-lg border p-2 text-start text-xs ${index === slideIndex ? 'border-white/70 bg-white/10' : 'border-white/10 text-white/60'}`}><span className="block text-white/40">{slideIndex + 1}</span><span className="line-clamp-2">{item.title}</span></button>)}</nav>
-      {slide && <article lang={artifact.language} dir={artifact.direction} className="aspect-video min-h-[320px] overflow-y-auto rounded-xl border border-white/10 bg-neutral-900 p-6 shadow-xl sm:p-12">
+      {slide && <article lang={artifact.language} dir={artifact.direction} className={inline ? 'min-h-44 max-h-96 overflow-y-auto rounded-xl border border-white/10 bg-neutral-900 p-5 sm:p-7' : 'aspect-video min-h-[320px] overflow-y-auto rounded-xl border border-white/10 bg-neutral-900 p-6 shadow-xl sm:p-12'}>
         <h3 dir="auto" className="mb-6 text-2xl font-semibold sm:text-4xl">{slide.title}</h3>
         {slide.subtitle && <p dir="auto" className="mb-6 text-lg text-white/60">{slide.subtitle}</p>}
         <div className="space-y-5">{slide.blocks.map((block, blockIndex) => {

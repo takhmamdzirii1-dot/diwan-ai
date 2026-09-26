@@ -10,10 +10,13 @@ import { detectDir } from '../../lib/direction';
 import { cn } from '@/lib/utils';
 import { useLocale, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
-import { documentFromMarkdown, presentationFromResponse } from '@/lib/artifacts/core';
+import { documentFromMarkdown } from '@/lib/artifacts/core';
+import { chatPartsFromMessage, looksLikeArtifactOutput, streamingSafeText } from '@/lib/artifacts/chat-parts';
 
 const ArtifactDocumentPreview = dynamic(() => import('./ArtifactDocumentPreview'), { ssr: false });
 const ArtifactPresentationPreview = dynamic(() => import('./ArtifactPresentationPreview'), { ssr: false });
+const ArtifactSpreadsheetPreview = dynamic(() => import('./ArtifactSpreadsheetPreview'), { ssr: false });
+const ArtifactChart = dynamic(() => import('./ArtifactChart'), { ssr: false });
 
 export interface MessageBubbleProps {
   message: Message;
@@ -77,7 +80,6 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
   const [copiedMessage, setCopiedMessage] = useState(false);
   const [documentOpen, setDocumentOpen] = useState(false);
-  const [presentationOpen, setPresentationOpen] = useState(false);
   const locale = useLocale();
   const reduceMotion = useReducedMotion();
   const t = useTranslations('studio.chat');
@@ -85,11 +87,18 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   codeBlockCounter.current = 0;
 
   const isUser = message.role === 'user';
-  const isRTL = detectDir(message.content) === 'rtl';
-  const canOpenDocument = !isUser && !isStreaming && message.content.length >= 300
+  const parts = !isUser && !isStreaming
+    ? chatPartsFromMessage(message.content, locale, (message as Message & { vantraParts?: unknown }).vantraParts)
+    : [];
+  const artifactParts = parts.filter((part) => part.type !== 'text');
+  const safeContent = isStreaming ? streamingSafeText(message.content)
+    : parts.filter((part) => part.type === 'text').map((part) => part.text).join('\n\n');
+  const isRTL = artifactParts[0] && 'artifact' in artifactParts[0]
+    ? artifactParts[0].artifact.direction === 'rtl'
+    : detectDir(isUser ? message.content : safeContent) === 'rtl';
+  const canOpenDocument = !isUser && !isStreaming && artifactParts.length === 0
+    && !looksLikeArtifactOutput(message.content) && message.content.length >= 300
     && (/^#{1,3}\s/m.test(message.content) || /\n\s*[-*]\s/.test(message.content) || message.content.length >= 900);
-  const presentation = !isUser && !isStreaming && message.content.includes('"presentation"')
-    ? presentationFromResponse(message.content, locale) : null;
 
   // Visual Attachment Rendering parser for user messages
   const attachmentRegex = /\[Attachment:\s*([^\]]+)\]/g;
@@ -127,7 +136,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
 
   // Fluid typewriter reveal while the assistant is streaming
   const smoothActive = !isUser && isStreaming && isLatest;
-  const smoothContent = useSmoothText(message.content, smoothActive);
+  const smoothContent = useSmoothText(isUser ? message.content : safeContent, smoothActive);
   const displayContent = smoothContent;
   const showStreamingCursor = !isUser && isLatest && displayContent.length > 0 && (smoothActive || displayContent.length < message.content.length);
 
@@ -138,7 +147,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   };
 
   const handleCopyMessage = () => {
-    navigator.clipboard.writeText(message.content);
+    navigator.clipboard.writeText(artifactParts.length > 0 ? artifactParts.map((part) => 'artifact' in part ? part.artifact.title : part.name).join('\n') : safeContent);
     setCopiedMessage(true);
     setTimeout(() => setCopiedMessage(false), 2000);
   };
@@ -218,7 +227,8 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
               </div>
             )}
 
-            <div className={cn(
+            {isStreaming && !displayContent && <p role="status" className="text-sm text-[var(--studio-text-muted)]">{locale === 'ar' ? 'جارٍ تحضير المعاينة…' : locale === 'fr' ? 'Préparation de l’aperçu…' : 'Preparing preview…'}</p>}
+            {displayContent && <div className={cn(
               "prose prose-invert max-w-none font-sans antialiased text-white/90 text-[15px] font-normal leading-relaxed",
               "prose-p:text-white/90 prose-p:text-[15px] prose-p:font-sans prose-p:antialiased prose-p:leading-relaxed prose-p:font-normal",
               "prose-headings:text-white/90 prose-headings:font-semibold prose-strong:text-white/90 prose-strong:font-semibold",
@@ -368,7 +378,18 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                   ▮
                 </span>
               )}
-            </div>
+            </div>}
+
+            {artifactParts.map((part, index) => {
+              if (part.type === 'document') return <ArtifactDocumentPreview key={index} artifact={part.artifact} locale={locale} onClose={() => undefined} inline />;
+              if (part.type === 'spreadsheet') return <ArtifactSpreadsheetPreview key={index} initialArtifact={part.artifact} locale={locale} onClose={() => undefined} onAnalyze={() => undefined} inline />;
+              if (part.type === 'chart') return <div key={index} className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-3"><ArtifactChart artifact={part.artifact} /></div>;
+              if (part.type === 'presentation') return <ArtifactPresentationPreview key={index} artifact={part.artifact} onClose={() => undefined} inline />;
+              if (part.type === 'image') return <img key={index} src={part.url} alt={part.name} className="max-h-[30rem] max-w-full rounded-xl border border-[var(--studio-border)] object-contain" />;
+              if (part.type === 'video') return <video key={index} src={part.url} controls preload="metadata" aria-label={part.name} className="max-h-[30rem] max-w-full rounded-xl border border-[var(--studio-border)]" />;
+              if (part.type === 'file') return <a key={index} href={part.url} download={part.name} className="inline-flex rounded-lg border border-[var(--studio-border)] px-3 py-2 text-sm text-[var(--studio-text-primary)] underline">{part.name}</a>;
+              return null;
+            })}
 
             {/* Message-Level Hover Controls */}
             {!isStreaming && (
@@ -394,14 +415,12 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                   </button>
                 )}
                 {canOpenDocument && <button type="button" onClick={() => setDocumentOpen(true)} className="ms-2 rounded-lg px-2.5 py-1.5 text-xs text-white/70 transition-colors duration-150 hover:bg-white/[0.05] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">{locale === 'ar' ? 'فتح كمستند' : locale === 'fr' ? 'Ouvrir en document' : 'Open as document'}</button>}
-                {presentation && <button type="button" onClick={() => setPresentationOpen(true)} className="ms-2 rounded-lg px-2.5 py-1.5 text-xs text-white/70 transition-colors duration-150 hover:bg-white/[0.05] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">{locale === 'ar' ? 'معاينة الشرائح' : locale === 'fr' ? 'Voir les diapositives' : 'Preview slides'}</button>}
               </div>
             )}
           </div>
         )}
       </div>
       {documentOpen && <ArtifactDocumentPreview artifact={documentFromMarkdown(message.id, message.content, locale)} locale={locale} onClose={() => setDocumentOpen(false)} />}
-      {presentationOpen && presentation && <ArtifactPresentationPreview artifact={presentation} onClose={() => setPresentationOpen(false)} />}
     </motion.div>
   );
 }

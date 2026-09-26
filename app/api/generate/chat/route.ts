@@ -1,6 +1,7 @@
 import { after, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { streamText } from 'ai';
+import { PRESENTATION_OUTPUT_INSTRUCTION, presentationRequested } from '@/lib/artifacts/chat-parts';
 
 import { DEFAULT_CHAT_MODEL } from '../../../../src/config/studio-registry';
 import { resolveRuntimeModelAccess } from '@/lib/models/plan-entitlements.server';
@@ -92,7 +93,11 @@ export async function POST(request: Request) {
     const now = new Date();
     const DATETIME_CONTEXT = `You are VANTRA, a premium AI assistant. Today's date is ${now.toLocaleDateString()} and the current time is ${now.toLocaleTimeString()}. Always answer concisely.`;
 
-    const SYSTEM_PROMPT = `${customSystem || DEFAULT_SYSTEM}\n\n${DATETIME_CONTEXT}`;
+    const latestUserText = Array.isArray(messages)
+      ? [...messages].reverse().find((entry) => entry?.role === 'user')?.content
+      : prompt;
+    const wantsPresentation = typeof latestUserText === 'string' && presentationRequested(latestUserText);
+    const SYSTEM_PROMPT = `${customSystem || DEFAULT_SYSTEM}\n\n${DATETIME_CONTEXT}${wantsPresentation ? `\n\n${PRESENTATION_OUTPUT_INSTRUCTION}` : ''}`;
 
     let messagesPayload = messages;
     if (Array.isArray(messagesPayload) && (
@@ -127,6 +132,11 @@ export async function POST(request: Request) {
           ];
        }
     }
+    // Chat-only presentation parts are persisted client-side, not provider input.
+    messagesPayload = messagesPayload.map((message) => {
+      const { vantraParts: _parts, ...providerMessage } = message;
+      return providerMessage;
+    });
 
     const requestedModel = typeof model === 'string' ? model.trim() : '';
     if (!requestedModel) {

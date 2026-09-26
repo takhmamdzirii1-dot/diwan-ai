@@ -28,6 +28,7 @@ import ActivationOffer, { type ActivationPrompt, type ActivationReason } from '.
 import type { ChatModelOption } from '@/components/ui/model-picker';
 import { trackFunnelEvent } from '@/src/lib/funnel-analytics';
 import dynamic from 'next/dynamic';
+import { chatPartsFromMessage } from '@/lib/artifacts/chat-parts';
 
 const ArtifactSpreadsheetPreview = dynamic(() => import('./ArtifactSpreadsheetPreview'), { ssr: false });
 
@@ -249,14 +250,17 @@ export default function StudioDashboard({
     const t = setTimeout(() => {
       try {
         if (messages.length > 0) {
-          localStorage.setItem(`vantra_chat_${activeSessionId}`, JSON.stringify(messages.slice(-50)));
+          localStorage.setItem(`vantra_chat_${activeSessionId}`, JSON.stringify(messages.slice(-50).map((message) =>
+            message.role === 'assistant' && !isLoading
+              ? { ...message, vantraParts: chatPartsFromMessage(message.content, locale) }
+              : message)));
         } else {
           localStorage.removeItem(`vantra_chat_${activeSessionId}`);
         }
       } catch {}
     }, 400);
     return () => clearTimeout(t);
-  }, [messages, activeSessionId]);
+  }, [messages, activeSessionId, isLoading, locale]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -687,7 +691,7 @@ export default function StudioDashboard({
                                 key={msg.id || idx}
                                 message={msg}
                                 isLatest={idx === messages.length - 1}
-                                isStreaming={isLoading}
+                                isStreaming={isLoading && idx === messages.length - 1 && msg.role === 'assistant'}
                                 onRegenerate={isLoading ? undefined : () => reload()}
                               />
                             ))}
