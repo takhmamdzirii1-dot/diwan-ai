@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Menu, ArrowDown, Plus, Zap, Swords, Database, Settings, Sparkles, LayoutGrid, MessageSquare, Image as ImageIcon, Video, PenLine, Code2, Lightbulb, BarChart3, RefreshCw, FileText } from 'lucide-react';
+import { Menu, ArrowDown, Plus, Zap, Swords, Database, Settings, Sparkles, LayoutGrid, MessageSquare, Image as ImageIcon, Video, PenLine, Code2, Lightbulb, BarChart3, FileText } from 'lucide-react';
 import { useChat } from '@ai-sdk/react';
 import useUser from '../../hooks/useUser';
 import { useModal } from '../../context/ModalContext';
@@ -11,14 +11,12 @@ import DashboardSidebar from './DashboardSidebar';
 import MessageBubble from './MessageBubble';
 import ChatCapacityHint from './ChatCapacityHint';
 import RenewalBanner from './RenewalBanner';
-import { formatCapacityWait } from '@/lib/chat/chat-usage';
 import ImageCanvas, { type ImageGenerationResult, type ImageRequestDraft } from './ImageCanvas';
 import SettingsModal from './StudioSettingsDialog';
 import PrunaMotionStudio, { type VideoGenerationResult, type VideoRequestDraft } from './PrunaMotionStudio';
 import MediaLibrary from './MediaLibrary';
 import { VantraLogo } from '../VantraLogo';
 import { cn } from '@/lib/utils';
-import { GhostButton } from './AppShell';
 import type { StudioRuntimeModelDefinition } from '@/src/config/studio-registry';
 import { isModelSelectable } from '@/src/config/studio-registry';
 import { applyModelPlanAccess } from '@/lib/models/plan-entitlements';
@@ -31,6 +29,8 @@ import dynamic from 'next/dynamic';
 import { chatPartsFromMessage } from '@/lib/artifacts/chat-parts';
 import { chatRequestMessages, serializeChatSession } from '@/lib/chat/message-history';
 import { ChatStreamFinalizer, consumeCanonicalChatStream, restoreCanonicalAssistantText } from '@/lib/chat/client-finalization';
+import { guidanceForChatError, type GuidanceAction } from '@/lib/chat/contextual-guidance';
+import ChatGuidanceCard from './ChatGuidanceCard';
 
 const ArtifactSpreadsheetPreview = dynamic(() => import('./ArtifactSpreadsheetPreview'), { ssr: false });
 
@@ -76,7 +76,7 @@ export default function StudioDashboard({
   const t = useTranslations('studio.chat');
   const locale = useLocale();
   const sidebarT = useTranslations('studio.sidebar');
-  const { user, refreshBalance, planCode, planStatus, planEndsAt } = useUser({ loadPlan: true, loadBalance: true });
+  const { user, refreshBalance, balance, balanceStatus, planCode, planStatus, planEndsAt } = useUser({ loadPlan: true, loadBalance: true });
   const { openAuthModal, openTopUpModal } = useModal();
   const { access } = useStudioAccess(Boolean(user));
   const [activationPrompt, setActivationPrompt] = useState<ActivationPrompt | null>(null);
@@ -563,6 +563,33 @@ export default function StudioDashboard({
     [append, selectedModelId, activeSessionId, sessions, activeModel, user, openAuthModal, access?.kind, showActivation]
   );
 
+  const handleChatGuidanceAction = (action: GuidanceAction) => {
+    if (action === 'add_credits') openTopUpModal();
+    else if ((action === 'get_pro' || action === 'view_plans') && activeModel) showActivation('model_locked', 'chat', {
+      id: activeModel.id, name: activeModel.displayName, requiredPlan: activeModel.requiredPlan,
+    });
+    else if (action === 'try_again') void reload();
+    else if (action === 'choose_file') {
+      const lastUser = [...messages].reverse().find((message) => message.role === 'user');
+      const attachments = (lastUser as typeof lastUser & { experimental_attachments?: Array<{ contentType?: string }> } | undefined)?.experimental_attachments ?? [];
+      const image = attachments.some((file) => file.contentType?.startsWith('image/'));
+      document.querySelector<HTMLInputElement>(image ? '[data-chat-image-input]' : '[data-chat-document-input]')?.click();
+    }
+    else if (action === 'upload_document') document.querySelector<HTMLInputElement>('[data-chat-document-input]')?.click();
+    else if (action === 'upload_image') document.querySelector<HTMLInputElement>('[data-chat-image-input]')?.click();
+    else if (action === 'upload_spreadsheet') document.querySelector<HTMLInputElement>('[data-chat-spreadsheet-input]')?.click();
+    else if (action === 'switch_model') {
+      const lastUser = [...messages].reverse().find((message) => message.role === 'user');
+      const attachments = (lastUser as typeof lastUser & { experimental_attachments?: Array<{ contentType?: string }> } | undefined)?.experimental_attachments ?? [];
+      const needsImage = attachments.some((file) => file.contentType?.startsWith('image/'));
+      const needsFile = attachments.some((file) => file.contentType && !file.contentType.startsWith('image/'));
+      const candidate = chatModels.find((model) => model.id !== selectedModelId && isModelSelectable(model)
+        && (!needsImage || 'visionInput' in model.capabilities && model.capabilities.visionInput)
+        && (!needsFile || 'fileInput' in model.capabilities && model.capabilities.fileInput));
+      if (candidate) setSelectedModelId(candidate.id);
+    }
+  };
+
   const handleStarter = useCallback((text: string) => {
     window.dispatchEvent(new CustomEvent('vantra-prefill-prompt', { detail: { prompt: text } }));
   }, []);
@@ -822,6 +849,7 @@ export default function StudioDashboard({
                                 isLatest={idx === messages.length - 1}
                                 isStreaming={chatBusy && idx === messages.length - 1 && msg.role === 'assistant'}
                                 onRegenerate={chatBusy ? undefined : () => reload()}
+                                onRequestPrompt={(prompt) => void handleSend({ message: prompt, isThinkingEnabled: false })}
                               />
                             ))}
                           </motion.div>
@@ -840,42 +868,8 @@ export default function StudioDashboard({
                         )}
 
                         {/* Error + retry */}
-                        {error && !error.message?.includes('Failed to parse stream string') && (
-                          <div className="flex justify-start" role="alert">
-                            <div className="max-w-lg rounded-2xl border border-white/15 bg-white/[0.04] px-4 py-3.5">
-                              <p className="text-[13px] text-white/80 leading-relaxed">
-                                {(() => {
-                                  try {
-                                    if (!error?.message?.includes('{')) return error?.message || t('errorFallback');
-                                    const body = JSON.parse(error.message) as {
-                                      error?: string; nextAvailableAt?: string | null;
-                                    };
-                                    // Weighted chat limits speak calmly: no codes,
-                                    // weights, or numeric allowances customer-side.
-                                    if (body.error === 'FREE_ACCESS_RESTRICTED') return t('freeAccessPendingReview');
-                                    if (body.error === 'MODEL_CAPABILITY_UNSUPPORTED') return locale === 'ar'
-                                      ? 'هذا النموذج لا يدعم هذا الملف عبر المسار الحالي. اختر نموذجًا آخر أو أزل الملف.'
-                                      : locale === 'fr' ? 'Ce modèle ne prend pas en charge ce fichier sur sa route actuelle. Choisissez un autre modèle ou retirez le fichier.'
-                                        : 'This model cannot accept that file on its current route. Choose another model or remove the file.';
-                                    if (body.error === 'CHAT_LIMIT_REACHED') {
-                                      const wait = formatCapacityWait(body.nextAvailableAt ?? null);
-                                      return wait
-                                        ? t('chatCapacityAvailableIn', { wait })
-                                        : t('chatCapacityLimit');
-                                    }
-                                    return body.error || error.message;
-                                  } catch {
-                                    return error?.message || t('errorFallback');
-                                  }
-                                })()}
-                              </p>
-                              <GhostButton onClick={() => reload()} className="mt-3">
-                                <RefreshCw className="h-3.5 w-3.5" />
-                                {t('retry')}
-                              </GhostButton>
-                            </div>
-                          </div>
-                        )}
+                        {error && !chatBusy && <div className="max-w-lg"><ChatGuidanceCard
+                          guidance={guidanceForChatError(error.message, locale)} locale={locale} onAction={handleChatGuidanceAction} /></div>}
 
                       </div>
                     </div>
@@ -940,6 +934,9 @@ export default function StudioDashboard({
                       autoFocus={isEmpty}
                       onSignInClick={user ? undefined : () => openAuthModal('signin')}
                       onModelAccessRequest={(model) => requestModelAccess('chat', model)}
+                      balance={balance}
+                      balanceStatus={balanceStatus}
+                      onAddCredits={openTopUpModal}
                       />
                     </div>
                   </>

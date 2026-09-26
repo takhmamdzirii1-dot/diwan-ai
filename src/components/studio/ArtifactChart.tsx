@@ -29,5 +29,7 @@ export default function ArtifactChart({ artifact, onReady, presentationColors, p
     }).catch(() => setError(true));
     return () => { disposed = true; observer?.disconnect(); chart?.dispose(); };
   }, [artifact, onReady, presentationColors, presentationMuted, presentationBorder]);
-  return error ? <p role="alert">Chart preview is unavailable.</p> : <div ref={container} role="img" aria-label={artifact.title} className="h-72 w-full" dir={artifact.direction} />;
+  return error ? <p role="alert">{artifact.language.startsWith('ar') ? 'معاينة الرسم البياني غير متاحة.'
+    : artifact.language.startsWith('fr') ? 'Aperçu du graphique indisponible.' : 'Chart preview is unavailable.'}</p>
+    : <div ref={container} role="img" aria-label={artifact.title} className="h-72 w-full" dir={artifact.direction} />;
 }

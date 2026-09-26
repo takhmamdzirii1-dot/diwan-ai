@@ -13,11 +13,10 @@ import dynamic from 'next/dynamic';
 import { documentFromMarkdown } from '@/lib/artifacts/core';
 import { chatPartsFromMessage, chatPartsFromToolInvocations, looksLikeArtifactOutput, streamingSafeText, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
 import { artifactToolProgress } from '@/lib/artifacts/tool-registry';
+import { readableArtifactCopy } from '@/lib/chat/contextual-guidance';
 
 const ArtifactDocumentPreview = dynamic(() => import('./ArtifactDocumentPreview'), { ssr: false });
-const ArtifactPresentationPreview = dynamic(() => import('./ArtifactPresentationPreview'), { ssr: false });
-const ArtifactSpreadsheetPreview = dynamic(() => import('./ArtifactSpreadsheetPreview'), { ssr: false });
-const ArtifactChart = dynamic(() => import('./ArtifactChart'), { ssr: false });
+const ArtifactSmartCard = dynamic(() => import('./ArtifactSmartCard'), { ssr: false });
 
 export interface MessageBubbleProps {
   message: Message;
@@ -25,6 +24,7 @@ export interface MessageBubbleProps {
   isStreaming?: boolean;
   isThinking?: boolean;
   onRegenerate?: () => void;
+  onRequestPrompt?: (prompt: string) => void;
 }
 
 function AttachmentThumbnail({ attachment }: { attachment: { name: string; url?: string | File | Blob } }) {
@@ -77,7 +77,7 @@ function AttachmentThumbnail({ attachment }: { attachment: { name: string; url?:
   );
 }
 
-export default function MessageBubble({ message, isLatest, isStreaming, isThinking, onRegenerate }: MessageBubbleProps) {
+export default function MessageBubble({ message, isLatest, isStreaming, isThinking, onRegenerate, onRequestPrompt }: MessageBubbleProps) {
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
   const [copiedMessage, setCopiedMessage] = useState(false);
   const [documentOpen, setDocumentOpen] = useState(false);
@@ -156,17 +156,13 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   };
 
   const handleCopyMessage = () => {
-    navigator.clipboard.writeText(artifactParts.length > 0 ? parts.map((part) => part.type === 'text'
-      ? part.text : 'artifact' in part ? part.artifact.title : part.name).join('') : safeContent);
+    navigator.clipboard.writeText(artifactParts.length > 0 ? parts.map(readableArtifactCopy).join('\n\n') : safeContent);
     setCopiedMessage(true);
     setTimeout(() => setCopiedMessage(false), 2000);
   };
 
   const renderArtifactPart = (part: ChatMessagePart, index: number) => {
-    if (part.type === 'document') return <ArtifactDocumentPreview key={index} artifact={part.artifact} locale={locale} onClose={() => undefined} inline />;
-    if (part.type === 'spreadsheet') return <ArtifactSpreadsheetPreview key={index} initialArtifact={part.artifact} locale={locale} onClose={() => undefined} onAnalyze={() => undefined} inline />;
-    if (part.type === 'chart') return <div key={index} className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-3"><ArtifactChart artifact={part.artifact} /></div>;
-    if (part.type === 'presentation') return <ArtifactPresentationPreview key={index} artifact={part.artifact} onClose={() => undefined} inline />;
+    if ('artifact' in part) return <ArtifactSmartCard key={index} part={part} locale={locale} onRequestPrompt={onRequestPrompt} />;
     if (part.type === 'image') return <img key={index} src={part.url} alt={part.name} className="max-h-[30rem] max-w-full rounded-xl border border-[var(--studio-border)] object-contain" />;
     if (part.type === 'video') return <video key={index} src={part.url} controls preload="metadata" aria-label={part.name} className="max-h-[30rem] max-w-full rounded-xl border border-[var(--studio-border)]" />;
     if (part.type === 'file') return <a key={index} href={part.url} download={part.name} className="inline-flex rounded-lg border border-[var(--studio-border)] px-3 py-2 text-sm text-[var(--studio-text-primary)] underline">{part.name}</a>;

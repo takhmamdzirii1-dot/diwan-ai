@@ -33,11 +33,11 @@ export default function ArtifactDocumentPreview({ artifact, locale, onClose, inl
     <div className="mx-auto max-w-4xl">
       <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-neutral-950 p-3 print:hidden">
         <h2 className="me-auto truncate text-sm font-semibold text-white">{artifact.title}</h2>
-        <button type="button" onClick={() => void navigator.clipboard.writeText(documentToText(artifact))} className="rounded-lg border border-white/15 px-3 py-2 text-xs text-white">{t.copy}</button>
+        {!inline && <><button type="button" onClick={() => void navigator.clipboard.writeText(documentToText(artifact))} className="rounded-lg border border-white/15 px-3 py-2 text-xs text-white">{t.copy}</button>
         <button type="button" onClick={() => exportText('txt')} className="rounded-lg border border-white/15 px-3 py-2 text-xs text-white">{t.txt}</button>
         <button type="button" onClick={() => exportText('md')} className="rounded-lg border border-white/15 px-3 py-2 text-xs text-white">{t.markdown}</button>
         <button type="button" onClick={() => void exportWord()} className="rounded-lg border border-white/15 px-3 py-2 text-xs text-white">{t.word}</button>
-        <button type="button" onClick={() => window.print()} className="rounded-lg border border-white/15 px-3 py-2 text-xs text-white">{t.pdf}</button>
+        <button type="button" onClick={() => window.print()} className="rounded-lg border border-white/15 px-3 py-2 text-xs text-white">{t.pdf}</button></>}
         {!inline && <button type="button" onClick={onClose} className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-black">{t.close}</button>}
       </div>
       {error && <p role="alert" className="mb-3 text-sm text-red-200 print:hidden">{t.exportError}</p>}
