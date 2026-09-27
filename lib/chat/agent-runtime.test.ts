@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { SpreadsheetArtifact } from '@/lib/artifacts/core';
-import { chartFromPlan } from '@/lib/artifacts/spreadsheet-actions';
+import { chartFromPlan, chartFromSheet, classifySpreadsheetColumns, inferAgentChartPlans } from '@/lib/artifacts/spreadsheet-actions';
 import { runArtifactTool, runReadSpreadsheetContextTool } from '@/lib/artifacts/tool-registry';
 import { executeAgentSemanticStep } from './agent-client';
 import { agentTaskFor, cancelAgentRun, createAgentRun, distinctAgentChartPlans, executeAgentRun, isCurrentAgentUpdate,
@@ -194,6 +194,83 @@ test('Products workflow creates two distinct charts and one six-slide presentati
   assert.notDeepEqual(charts[0].categories, charts[1].categories);
   assert.ok(charts.every((chart) => chart.series.every((series) => series.name === 'Price')));
   assert.equal(result.artifacts.find((part) => part.type === 'presentation')?.artifact.slides.length, 6);
+});
+
+test('Products with numeric IDs still reaches presentation through safe chart-plan fallback', async () => {
+  const products: SpreadsheetArtifact = { ...sheet, id: 'products-78', sheets: [{ id: 'products', name: 'Products',
+    columns: ['Product', 'SupplierID', 'CategoryID', 'Price'],
+    rows: Array.from({ length: 78 }, (_, index) => [
+      `Product ${index + 1}`, (index % 4) + 100, (index % 3) + 10, 10 + index,
+    ]),
+  }] };
+  const misleading: AgentAnalysis = { ...analysis, chartPlans: [
+    { purpose: 'Supplier ID by product', categoryColumn: 'Product', measureColumn: 'SupplierID',
+      operation: 'top_n', chartType: 'bar' },
+    { purpose: 'Category ID by product', categoryColumn: 'Product', measureColumn: 'CategoryID',
+      operation: 'top_n', chartType: 'line' },
+  ] };
+  assert.deepEqual(classifySpreadsheetColumns(products.sheets[0]).map((column) => column.kind),
+    ['label', 'identifier', 'identifier', 'measure']);
+  const fallback = inferAgentChartPlans(products.sheets[0]);
+  assert.equal(fallback[0].operation, 'top_n');
+  assert.ok(fallback.some((plan) => plan.categoryColumn === 'CategoryID'
+    && plan.measureColumn === 'Price' && plan.operation === 'average_by_category'));
+  assert.ok(fallback.every((plan) => !['SupplierID', 'CategoryID'].includes(plan.measureColumn ?? '')));
+  assert.equal(chartFromSheet(products, products.sheets[0], 'bar').series[0].name, 'Price');
+  const calls: string[] = [];
+  const run = createAgentRun('Create two charts and build a 6-slide presentation from this spreadsheet.',
+    'products-78', 'agent-78', true)!;
+  const result = await executeAgentRun(run, products, { signal: new AbortController().signal,
+    operationId: () => `operation-${calls.length + 1}`, onUpdate: () => {},
+    semantic: async (stage) => {
+      calls.push(stage);
+      return stage === 'analysis' ? { text: JSON.stringify(misleading), artifacts: [], toolCallCount: 0 }
+        : { text: '', artifacts: [presentationPart], toolCallCount: 1 };
+    } });
+  assert.equal(result.status, 'completed');
+  assert.deepEqual(calls, ['analysis', 'presentation']);
+  const charts = result.artifacts.filter((part) => part.type === 'chart').map((part) => part.artifact);
+  assert.equal(charts.length, 2);
+  assert.ok(charts.every((chart) => chart.series.every((series) => series.name === 'Price')));
+  assert.ok(charts.some((chart) => chart.categories.length === 10));
+  assert.ok(charts.some((chart) => chart.categories.length <= 4));
+});
+
+test('Price uses ranking or averages, while count can group IDs and sum rejects Price', () => {
+  const products: SpreadsheetArtifact = { ...sheet, sheets: [{ id: 'products', name: 'Products',
+    columns: ['Product', 'SupplierID', 'CategoryID', 'Price'],
+    rows: [['A', 1, 10, 5], ['B', 1, 10, 8], ['C', 2, 20, 12], ['D', 2, 20, 20]],
+  }] };
+  const byCategory = chartFromPlan(products, products.sheets[0], { purpose: 'Average Price by category',
+    categoryColumn: 'CategoryID', measureColumn: 'Price', operation: 'average_by_category', chartType: 'bar' });
+  assert.deepEqual(byCategory.categories, ['10', '20']);
+  assert.deepEqual(byCategory.series[0].values, [6.5, 16]);
+  const count = chartFromPlan(products, products.sheets[0], { purpose: 'Products per supplier',
+    categoryColumn: 'SupplierID', operation: 'count', chartType: 'bar' });
+  assert.deepEqual(count.series[0].values, [2, 2]);
+  assert.throws(() => chartFromPlan(products, products.sheets[0], { purpose: 'Invalid total price',
+    categoryColumn: 'CategoryID', measureColumn: 'Price', operation: 'sum_by_category', chartType: 'bar' }),
+  /CHART_COLUMNS_REQUIRED/);
+});
+
+test('one safe chart remains visible when a second view cannot be inferred', async () => {
+  const narrow: SpreadsheetArtifact = { ...sheet, sheets: [{ id: 'narrow', name: 'Narrow',
+    columns: ['Product', 'Price'], rows: Array.from({ length: 30 }, (_, index) => [`P${index}`, index + 1]),
+  }] };
+  const { run, deps } = setup();
+  let presentationCalls = 0;
+  deps.semantic = async (stage) => {
+    if (stage === 'presentation') presentationCalls++;
+    return stage === 'analysis'
+      ? { text: JSON.stringify({ ...analysis, chartPlans: [{ purpose: 'Top products', categoryColumn: 'Product',
+        measureColumn: 'Price', operation: 'top_n', chartType: 'bar' }] }), artifacts: [], toolCallCount: 0 }
+      : { text: '', artifacts: [presentationPart], toolCallCount: 1 };
+  };
+  const result = await executeAgentRun(run, narrow, deps);
+  assert.equal(result.status, 'failed');
+  assert.equal(result.failedStep, 'charts');
+  assert.equal(result.artifacts.filter((part) => part.type === 'chart').length, 1);
+  assert.equal(presentationCalls, 0);
 });
 
 test('one-slide result cannot satisfy an explicit six-slide request; charts remain available', async () => {

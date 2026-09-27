@@ -1,34 +1,108 @@
 import { artifactDirection, type ArtifactSheet, type ChartArtifact, type ChartType, type PresentationArtifact, type SpreadsheetArtifact } from './core';
 
-export type AgentChartPlan = { purpose: string; categoryColumn: string; measureColumn: string;
-  operation: 'average_by_category' | 'top_n'; chartType: 'bar' | 'line' };
+export type SpreadsheetColumnKind = 'label' | 'identifier' | 'measure' | 'date' | 'unusable';
+export type AgentChartPlan = { purpose: string; categoryColumn: string; measureColumn?: string;
+  operation: 'count' | 'average_by_category' | 'sum_by_category' | 'min_by_category' | 'max_by_category' | 'top_n';
+  chartType: 'bar' | 'line'; limit?: number };
+
+const isIdentifierColumn = (name: string) => /(?:^|[_\s-])(?:id|code|index|serial|sku|key)(?:$|[_\s-])|(?:id|code)$/i.test(name);
+const isAdditiveMeasure = (name: string) => /sales|revenue|quantity|amount|spend|results?|units?|profit|total|volume|count|impressions?|reach/i.test(name);
+const numberCell = (cell: unknown): number | null => {
+  if (typeof cell === 'number') return Number.isFinite(cell) ? cell : null;
+  if (typeof cell !== 'string' || !/^-?\d+(?:\.\d+)?$/.test(cell.trim())) return null;
+  const value = Number(cell.trim());
+  return Number.isFinite(value) ? value : null;
+};
+
+function chartSheetData(sheet: ArtifactSheet): { names: string[]; rows: ArtifactSheet['rows'] } {
+  const generic = sheet.columns.every((name, index) => name === spreadsheetColumnName(index));
+  const repeatedHeader = sheet.columns.every((name, index) => String(sheet.rows[0]?.[index] ?? '').trim() === name);
+  return { names: generic && sheet.rows[0] ? sheet.rows[0].map((cell) => String(cell ?? '').trim()) : sheet.columns,
+    rows: generic || repeatedHeader ? sheet.rows.slice(1) : sheet.rows };
+}
+
+export function classifySpreadsheetColumns(sheet: ArtifactSheet): Array<{ name: string; kind: SpreadsheetColumnKind }> {
+  const { names, rows } = chartSheetData(sheet);
+  return names.map((name, index) => {
+    const samples = rows.slice(0, 100).map((row) => row[index]).filter((cell) => cell !== null && cell !== '');
+    if (!name || !samples.length) return { name, kind: 'unusable' };
+    if (isIdentifierColumn(name)) return { name, kind: 'identifier' };
+    if (/date|time|month|year|period|quarter|week|day/i.test(name)) return { name, kind: 'date' };
+    if (/price|sales|revenue|quantity|cost|amount|spend|results?|units?|profit|total|value|count|volume|score|rate|impressions?|reach/i.test(name)
+      && samples.some((cell) => numberCell(cell) !== null)) return { name, kind: 'measure' };
+    if (/product|item|name|title|label|category|supplier|group|type|brand/i.test(name)
+      || samples.some((cell) => typeof cell === 'string' && numberCell(cell) === null)) return { name, kind: 'label' };
+    return { name, kind: 'unusable' };
+  });
+}
+
+/** Deterministic alternatives when a semantic plan names unusable columns. */
+export function inferAgentChartPlans(sheet: ArtifactSheet): AgentChartPlan[] {
+  const columns = classifySpreadsheetColumns(sheet);
+  const { rows: sheetRows } = chartSheetData(sheet);
+  const rows = sheetRows.slice(0, 501);
+  const measure = columns.find((column) => column.kind === 'measure')?.name;
+  const labels = columns.filter((column) => column.kind === 'label');
+  const label = labels.find((column) => /product|item|name|title/i.test(column.name))?.name ?? labels[0]?.name;
+  const groupable = columns.filter((column) => column.kind === 'identifier' || column.kind === 'label')
+    .filter((column) => column.name !== label || !measure)
+    .filter((column) => {
+      const index = columns.findIndex((entry) => entry.name === column.name);
+      const values = rows.map((row) => String(row[index] ?? '').trim()).filter(Boolean);
+      const distinct = new Set(values).size;
+      return distinct >= 2 && distinct < values.length * 0.9;
+    });
+  const plans: AgentChartPlan[] = [];
+  if (label && measure) plans.push({ purpose: `Top 10 ${label} by ${measure}`, categoryColumn: label,
+    measureColumn: measure, operation: 'top_n', chartType: 'bar', limit: 10 });
+  for (const group of groupable) {
+    if (measure) plans.push({ purpose: `Average ${measure} by ${group.name}`, categoryColumn: group.name,
+      measureColumn: measure, operation: 'average_by_category', chartType: 'bar', limit: 20 });
+  }
+  for (const group of groupable) plans.push({ purpose: `Count by ${group.name}`, categoryColumn: group.name,
+    operation: 'count', chartType: 'bar', limit: 20 });
+  return plans;
+}
 
 export function chartFromPlan(artifact: SpreadsheetArtifact, sheet: ArtifactSheet, plan: AgentChartPlan): ChartArtifact {
-  const categoryIndex = sheet.columns.indexOf(plan.categoryColumn);
-  const measureIndex = sheet.columns.indexOf(plan.measureColumn);
-  if (categoryIndex < 0 || measureIndex < 0 || categoryIndex === measureIndex
-    || /(?:^|[_\s-])(?:id|code|index|serial|sku|key)(?:$|[_\s-])|(?:id|code)$/i.test(plan.measureColumn))
+  const { names, rows } = chartSheetData(sheet);
+  const columns = classifySpreadsheetColumns(sheet);
+  const categoryIndex = names.indexOf(plan.categoryColumn);
+  const measureIndex = plan.measureColumn ? names.indexOf(plan.measureColumn) : -1;
+  const measureKind = columns[measureIndex]?.kind;
+  if (categoryIndex < 0 || !['label', 'identifier', 'date'].includes(columns[categoryIndex]?.kind)
+    || (plan.operation !== 'count' && (measureIndex < 0 || measureIndex === categoryIndex || measureKind !== 'measure'))
+    || (plan.operation === 'count' && plan.measureColumn)
+    || (plan.operation === 'sum_by_category' && !isAdditiveMeasure(plan.measureColumn ?? ''))
+    || (plan.operation === 'top_n' && !['label', 'date'].includes(columns[categoryIndex]?.kind)))
     throw new Error('CHART_COLUMNS_REQUIRED');
-  const groups = new Map<string, { total: number; count: number }>();
-  for (const row of sheet.rows.slice(0, 501)) {
-    const label = String(row[categoryIndex] ?? '').trim().slice(0, 160);
-    const value = row[measureIndex];
-    if (!label || typeof value !== 'number' || !Number.isFinite(value)) continue;
-    const previous = groups.get(label) ?? { total: 0, count: 0 };
-    groups.set(label, { total: previous.total + value, count: previous.count + 1 });
-  }
+  const limit = Math.min(20, Math.max(2, Number.isInteger(plan.limit) ? plan.limit! : plan.operation === 'top_n' ? 10 : 20));
+  const observations = rows.slice(0, 501).map((row) => ({ label: String(row[categoryIndex] ?? '').trim().slice(0, 160),
+    value: measureIndex >= 0 ? numberCell(row[measureIndex]) : 1 })).filter((entry) => entry.label && entry.value !== null);
+  if (observations.length < 2) throw new Error('CHART_COLUMNS_REQUIRED');
+  const groups = new Map<string, number[]>();
+  for (const { label, value } of observations) groups.set(label, [...(groups.get(label) ?? []), value!]);
   if (groups.size < 2) throw new Error('CHART_COLUMNS_REQUIRED');
-  const entries = [...groups.entries()].map(([label, value]) => ({ label,
-    value: plan.operation === 'average_by_category' ? value.total / value.count : value.total }));
-  if (plan.operation === 'top_n') entries.sort((a, b) => b.value - a.value);
-  const selected = entries.slice(0, plan.operation === 'top_n' ? 10 : 40);
+  if (plan.operation !== 'top_n' && groups.size > 20 && groups.size >= observations.length * 0.9)
+    throw new Error('CHART_COLUMNS_REQUIRED');
+  if (plan.operation === 'count' && [...groups.values()].every((values) => values.length === 1))
+    throw new Error('CHART_COLUMNS_REQUIRED');
+  const entries = plan.operation === 'top_n'
+    ? observations.map((entry) => ({ label: entry.label, value: entry.value! })).sort((a, b) => b.value - a.value)
+    : [...groups.entries()].map(([label, values]) => ({ label, value: plan.operation === 'count' ? values.length
+      : plan.operation === 'sum_by_category' ? values.reduce((sum, value) => sum + value, 0)
+        : plan.operation === 'min_by_category' ? Math.min(...values)
+          : plan.operation === 'max_by_category' ? Math.max(...values)
+            : values.reduce((sum, value) => sum + value, 0) / values.length }));
+  if (plan.operation !== 'top_n' && entries.length > limit) entries.sort((a, b) => b.value - a.value);
+  const selected = entries.slice(0, limit);
   const title = plan.purpose.trim().slice(0, 160);
   if (!title) throw new Error('CHART_COLUMNS_REQUIRED');
   return { schemaVersion: 1, id: crypto.randomUUID(), type: 'chart', title,
     chartType: plan.chartType, language: artifact.language,
     direction: artifactDirection(artifact.language, title, artifact.direction),
     categories: selected.map((entry) => entry.label),
-    series: [{ name: plan.measureColumn, values: selected.map((entry) => entry.value) }],
+    series: [{ name: plan.operation === 'count' ? 'Count' : plan.measureColumn!, values: selected.map((entry) => entry.value) }],
     source: { artifactId: artifact.id, sheetId: sheet.id, rowStart: 0, rowEnd: Math.min(sheet.rows.length, 501) }, metadata: {} };
 }
 

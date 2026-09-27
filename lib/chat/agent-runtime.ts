@@ -1,12 +1,14 @@
 import { requestedPresentationSlideCount, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
 import type { SpreadsheetArtifact } from '@/lib/artifacts/core';
 import { readSpreadsheetContextTool, runReadSpreadsheetContextTool, runArtifactTool } from '@/lib/artifacts/tool-registry';
-import { chartFromPlan, type AgentChartPlan } from '@/lib/artifacts/spreadsheet-actions';
+import { chartFromPlan, inferAgentChartPlans, type AgentChartPlan } from '@/lib/artifacts/spreadsheet-actions';
 import { z } from 'zod';
 
 const chartPlanSchema = z.object({ purpose: z.string().trim().min(3).max(160),
-  categoryColumn: z.string().min(1).max(160), measureColumn: z.string().min(1).max(160),
-  operation: z.enum(['average_by_category', 'top_n']), chartType: z.enum(['bar', 'line']) }).strict();
+  categoryColumn: z.string().min(1).max(160), measureColumn: z.string().min(1).max(160).optional(),
+  operation: z.enum(['count', 'average_by_category', 'sum_by_category', 'min_by_category',
+    'max_by_category', 'top_n']), chartType: z.enum(['bar', 'line']),
+  limit: z.number().int().min(2).max(20).optional() }).strict();
 const analysisSchema = z.object({ summary: z.string().trim().min(1).max(500),
   insights: z.array(z.string().trim().min(1).max(300)).max(5),
   chartPlans: z.array(chartPlanSchema).min(1).max(2),
@@ -28,7 +30,7 @@ export function parseAgentAnalysis(text: string): AgentAnalysis | null {
 export function distinctAgentChartPlans(plans: AgentChartPlan[]): AgentChartPlan[] {
   const seen = new Set<string>();
   return plans.filter((plan) => {
-    const key = [plan.categoryColumn, plan.measureColumn, plan.operation].map((part) => part.toLowerCase()).join(':');
+    const key = [plan.categoryColumn, plan.measureColumn ?? '', plan.operation].map((part) => part.toLowerCase()).join(':');
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -125,7 +127,7 @@ export async function executeAgentRun(run: AgentRun, spreadsheet: SpreadsheetArt
       if (state.semanticCallCount >= state.maxSemanticCalls) throw new Error('SEMANTIC_LIMIT');
       state.semanticCallCount++;
       state.requestId = deps.operationId(); update();
-      const result = await deps.semantic('analysis', `Analyze the bounded spreadsheet for the user's task. Return ONLY one JSON object with exactly these keys: summary (one concise sentence), insights (up to five concise supported findings), chartPlans (up to two), presentationOutline (short slide topics). Each chart plan has purpose, categoryColumn, measureColumn, operation (average_by_category or top_n), chartType (bar or line). Use exact column names. Plans must answer distinct questions; changing chart type alone does not make a different plan. IDs, codes and indexes are never measures. Do not include code, implementation notes, markdown, or unsupported claims.\n\nTask:\n${state.originalUserRequest}\n\nBounded data:\n${state.contextText}`, state.requestId, state.maxToolCalls - state.toolCallCount, deps.signal);
+      const result = await deps.semantic('analysis', `Analyze the bounded spreadsheet for the user's task. Return ONLY one JSON object with exactly these keys: summary (one concise sentence), insights (up to five concise supported findings), chartPlans (up to two), presentationOutline (short slide topics). Each chart plan has purpose, categoryColumn (dimension), optional measureColumn, operation (count, average_by_category, sum_by_category, min_by_category, max_by_category, or top_n), chartType (bar or line), and optional limit (2-20). Use exact column names. IDs and codes may be grouping dimensions but never numeric measures. Prefer Top 10 products by Price and average Price by category or supplier when available. Sum only additive measures, not Price or rates. Plans must answer distinct questions; changing chart type alone does not make a different plan. Do not include code, implementation notes, markdown, or unsupported claims.\n\nTask:\n${state.originalUserRequest}\n\nBounded data:\n${state.contextText}`, state.requestId, state.maxToolCalls - state.toolCallCount, deps.signal);
       checkCancelled();
       state.requestId = null;
       const analysis = parseAgentAnalysis(result.text);
@@ -137,10 +139,16 @@ export async function executeAgentRun(run: AgentRun, spreadsheet: SpreadsheetArt
     }
     if (!state.completedSteps.includes('charts')) {
       begin('charts');
-      const plans = distinctAgentChartPlans(state.analysis?.chartPlans ?? []);
-      for (let index = state.artifacts.filter((part) => part.type === 'chart').length;
-        index < Math.min(state.task.chartCount, plans.length); index++) {
-        const chart = chartFromPlan(spreadsheet, sheet, plans[index]);
+      const plans = distinctAgentChartPlans([...(state.analysis?.chartPlans ?? []), ...inferAgentChartPlans(sheet)]);
+      for (const plan of plans) {
+        if (state.artifacts.filter((part) => part.type === 'chart').length >= state.task.chartCount) break;
+        if (state.artifacts.some((part) => part.type === 'chart' && part.artifact.title === plan.purpose)) continue;
+        let chart;
+        try { chart = chartFromPlan(spreadsheet, sheet, plan); }
+        catch { continue; }
+        if (state.artifacts.some((part) => part.type === 'chart'
+          && JSON.stringify([part.artifact.categories, part.artifact.series])
+            === JSON.stringify([chart.categories, chart.series]))) continue;
         const input = { title: chart.title, chartType: chart.chartType,
           categories: chart.categories, series: chart.series, language: spreadsheet.language };
         const result = tool(() => runArtifactTool('create_chart', input));

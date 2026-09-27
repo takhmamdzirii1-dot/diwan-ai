@@ -1150,11 +1150,17 @@ export default function StudioDashboard({
                             guidance={agentRun.status === 'waiting_for_user' ? { kind: 'requirement',
                               message: locale === 'ar' ? 'أحتاج جدول البيانات أولاً.' : locale === 'fr' ? "J'ai d'abord besoin de la feuille de calcul." : 'I need the spreadsheet first.',
                               actions: ['upload_spreadsheet'] } : agentRun.terminalError === 'switch_model'
-                              ? guidanceForChatError('MODEL_CAPABILITY_UNSUPPORTED', locale) : { kind: 'recoverable_error',
+                              ? guidanceForChatError('MODEL_CAPABILITY_UNSUPPORTED', locale) : {
+                                kind: agentRun.failedStep === 'charts' && agentRun.artifacts.some((part) => part.type === 'chart')
+                                  ? 'requirement' : 'recoverable_error',
                                 message: agentRun.failedStep === 'presentation'
                                   ? locale === 'ar' ? 'تعذر إنشاء العرض التقديمي. الرسوم البيانية المكتملة لا تزال متاحة.'
                                     : locale === 'fr' ? "Je n'ai pas pu créer la présentation. Vos graphiques sont conservés."
                                       : "I couldn't build the presentation. Your completed charts are still available."
+                                  : agentRun.failedStep === 'charts' && agentRun.artifacts.some((part) => part.type === 'chart')
+                                    ? locale === 'ar' ? 'أنشأت مخططًا واحدًا. حدّد أعمدة المخطط الثاني.'
+                                      : locale === 'fr' ? 'Un graphique est prêt. Indiquez les colonnes du second graphique.'
+                                        : 'One chart is ready. Tell me which columns to use for the second chart.'
                                   : agentRun.failedStep === 'charts'
                                     ? locale === 'ar' ? 'تعذر إنشاء الرسوم البيانية. يرجى اختيار أعمدة واضحة.'
                                       : locale === 'fr' ? "Je n'ai pas pu créer les graphiques. Choisissez des colonnes claires."
@@ -1162,7 +1168,8 @@ export default function StudioDashboard({
                                     : locale === 'ar' ? 'تعذر إكمال الخطوة المتبقية.'
                                       : locale === 'fr' ? "Je n'ai pas pu terminer l'étape restante."
                                         : "I couldn't complete the remaining step.",
-                                actions: ['try_again'] }} locale={locale} onAction={handleChatGuidanceAction} /></div>}
+                                actions: agentRun.failedStep === 'charts' && agentRun.artifacts.some((part) => part.type === 'chart')
+                                  ? [] : ['try_again'] }} locale={locale} onAction={handleChatGuidanceAction} /></div>}
 
                       </div>
                     </div>
