@@ -9,7 +9,7 @@ const spreadsheet: SpreadsheetArtifact = { schemaVersion: 1, id: 'products', typ
   title: 'Products', language: 'en', direction: 'ltr', metadata: {},
   sheets: [{ id: 'sheet-1', name: 'Products', columns: ['Product', 'Price'], rows: [['A', 10]] }] };
 
-test('composer renders a pending chip before send, then only a context indicator after send or refresh', () => {
+test('composer clears sent files and keeps a tiny resource control outside the input', () => {
   const originalFetch = globalThis.fetch;
   let networkCalls = 0;
   globalThis.fetch = (async () => { networkCalls++; throw new Error('Unexpected network request'); }) as typeof fetch;
@@ -26,10 +26,13 @@ test('composer renders a pending chip before send, then only a context indicator
     const after = render(clearPendingAttachments(pending, 'chat-a')['chat-a']);
     assert.doesNotMatch(after, /data-attachment-display="pending"/);
     assert.match(after, /data-attachment-display="context"/);
-    assert.match(after, /Context · Products\.xlsx/);
+    assert.match(after, /<summary[^>]*>Files \(1\)<\/summary>/);
+    assert.doesNotMatch(after, /Context · Products\.xlsx/);
+    assert.equal(attached[0], attachmentStore['chat-a'][0]);
     const refreshed = render([]);
     assert.doesNotMatch(refreshed, /data-attachment-display="pending"/);
     assert.match(refreshed, /data-attachment-display="context"/);
+    assert.match(refreshed, /<summary[^>]*>Files \(1\)<\/summary>/);
     assert.equal(networkCalls, 0);
   } finally { globalThis.fetch = originalFetch; }
 });

@@ -28,3 +28,12 @@ test('validated artifact cards render customer actions without internal names or
     assert.doesNotMatch(html, /Retry response/);
   }
 });
+
+test('Arabic artifact content keeps the action footer in the same physical layout', () => {
+  const arabic = { ...chart, title: 'السعر 1992 USD', direction: 'rtl' as const };
+  const html = renderToStaticMarkup(<ArtifactSmartCard part={{ type: 'chart', artifact: arabic }}
+    locale="ar" timestamp="21:43" />);
+  assert.match(html, /<section class="w-full space-y-2" dir="ltr"/);
+  assert.match(html, /السعر 1992 USD/);
+  assert.match(html, /<time class="ms-auto[^"\n]*">21:43<\/time>/);
+});

@@ -190,6 +190,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   return (
     <motion.div
       data-chat-debug-latest-assistant={isLatest && !isUser ? '' : undefined}
+      dir="ltr"
       initial={reduceMotion ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.32, 0.72, 0, 1] }}
@@ -198,7 +199,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
       {/* Header meta - AI only (Claude style with RTL support) */}
       {!isUser && (
         <div
-          dir={isRTL ? 'rtl' : 'ltr'}
+          dir="ltr"
           className="flex items-center gap-2.5 w-full justify-start"
         >
           {/* Animated gradient avatar */}
@@ -218,7 +219,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
         {isUser ? (
           <div
             className="ms-auto flex w-fit max-w-[88%] self-end flex-col gap-3 rounded-2xl rounded-ee-sm border border-[var(--studio-border-subtle)] bg-[var(--studio-user-message)] px-4 py-3 text-[var(--studio-text-primary)] shadow-sm sm:max-w-[80%] sm:px-5"
-            dir={isRTL ? 'rtl' : 'ltr'}
+            dir="ltr"
           >
             {/* Visual Attachment Rendering */}
             {(userImageAttachments.length > 0 || userOtherAttachments.length > 0) && (
@@ -268,7 +269,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
           </div>
         ) : (
           <div
-            dir={isRTL ? 'rtl' : 'ltr'}
+            dir="ltr"
             className="w-full max-w-4xl min-w-0 bg-transparent shadow-none border-none pt-0.5"
           >
             {/* Thinking state indicator */}
@@ -296,7 +297,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
 
             {isStreaming && !displayContent && <p role="status" className="text-sm text-[var(--studio-text-muted)]">{locale === 'ar' ? 'جارٍ تحضير المعاينة…' : locale === 'fr' ? 'Préparation de l’aperçu…' : 'Preparing preview…'}</p>}
             {toolProgress && <p className="mt-2 text-xs text-[var(--studio-text-secondary)]" role="status">{toolProgress}</p>}
-            {renderParts.map((part, index) => part.type === 'text' ? part.text && <div key={index} data-chat-rendered-text="" className={cn(
+            {renderParts.map((part, index) => part.type === 'text' ? part.text && <div key={index} data-chat-rendered-text="" dir={isRTL ? 'rtl' : 'ltr'} className={cn(
               "prose prose-invert max-w-none font-sans antialiased text-white/90 text-[15px] font-normal leading-relaxed",
               "prose-p:text-white/90 prose-p:text-[15px] prose-p:font-sans prose-p:antialiased prose-p:leading-relaxed prose-p:font-normal",
               "prose-headings:text-white/90 prose-headings:font-semibold prose-strong:text-white/90 prose-strong:font-semibold",

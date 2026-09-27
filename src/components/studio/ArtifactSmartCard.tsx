@@ -94,7 +94,7 @@ export default function ArtifactSmartCard({ part, locale, onRequestPrompt, times
     } catch { setActionError(failed); }
   };
 
-  return <section className="w-full space-y-2" dir={part.artifact.direction} aria-label={title}>
+  return <section className="w-full space-y-2" dir="ltr" aria-label={title}>
     {part.type === 'document' && <ArtifactDocumentPreview artifact={part.artifact} locale={locale} onClose={() => undefined} inline />}
     {part.type === 'spreadsheet' && <ArtifactSpreadsheetPreview initialArtifact={part.artifact} locale={locale} onClose={() => undefined}
       onAnalyze={(prompt, artifact, context) => onRequestPrompt?.(prompt, artifact, context)} inline inlineActionsHandledExternally />}

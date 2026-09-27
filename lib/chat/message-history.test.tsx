@@ -52,6 +52,37 @@ test('sent user file card and compact message timestamps render without raw reso
   assert.doesNotMatch(html, /schemaVersion|vantraAttachmentIds/);
 });
 
+test('Arabic changes content direction without moving message chrome or timestamps', () => {
+  const render = (role: 'user' | 'assistant', content: string) => renderToStaticMarkup(
+    <IntlProvider locale="en" messages={studioMessages}>
+      <MessageBubble message={{ id: `${role}-direction`, role, content, createdAt: new Date() }} isLatest={false} />
+    </IntlProvider>);
+  const arabic = 'السعر 1992 USD للمنتج';
+  const englishAssistant = render('assistant', 'Price 1992 USD for the product');
+  const arabicAssistant = render('assistant', arabic);
+  const englishUser = render('user', 'Price 1992 USD for the product');
+  const arabicUser = render('user', arabic);
+  for (const html of [englishAssistant, arabicAssistant, englishUser, arabicUser]) {
+    assert.match(html, /dir="ltr"[^>]*class="group relative flex flex-col/);
+    assert.match(html, /<time\b/);
+  }
+  for (const html of [englishAssistant, arabicAssistant]) {
+    assert.match(html, /dir="ltr" class="flex items-center gap-2\.5 w-full justify-start"/);
+    assert.match(html, /dir="ltr" class="w-full max-w-4xl/);
+    assert.match(html, /class="mt-2 flex items-center gap-0\.5/);
+  }
+  for (const html of [englishUser, arabicUser]) {
+    assert.match(html, /class="ms-auto flex w-fit max-w-\[88%\][^"\n]*" dir="ltr"/);
+    assert.match(html, /class="self-end text-\[10px\]/);
+  }
+  assert.match(arabicAssistant, /data-chat-rendered-text="" dir="rtl"/);
+  assert.match(englishAssistant, /data-chat-rendered-text="" dir="ltr"/);
+  assert.match(arabicUser, /<p dir="rtl"/);
+  assert.match(englishUser, /<p dir="ltr"/);
+  assert.match(arabicAssistant, /السعر 1992 USD للمنتج/);
+  assert.match(arabicUser, /السعر 1992 USD للمنتج/);
+});
+
 test('successful artifacts omit generic retry while plain assistant text keeps it', () => {
   const chart = runArtifactTool('create_chart', { title: 'Sales', chartType: 'bar',
     categories: ['Jan'], series: [{ name: 'Sales', values: [12] }] });
