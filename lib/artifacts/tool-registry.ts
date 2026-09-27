@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { artifactDirection, documentFromMarkdown, isArtifact, parsePresentationResponse, type Artifact, type ChartArtifact, type DocumentArtifact, type PresentationArtifact, type SpreadsheetArtifact } from './core';
 import { spreadsheetContext } from './spreadsheet-actions';
+import { routeChatIntent } from '@/lib/chat/intent-router';
 
 const short = z.string().trim().min(1).max(160);
 const text = z.string().trim().min(1).max(2_000);
@@ -132,28 +133,29 @@ export function agentToolSelection(step: 'analysis' | 'presentation'): ArtifactT
     : { names: ['create_presentation'], skill: 'presentation' };
 }
 export function isExplicitDocumentIntent(input: string): boolean {
-  const text = input.slice(0, 8_000).replace(/[\u064B-\u065F\u0670]/g, '');
-  return /\b(?:write|draft|create|prepare|generate|compose|make|build|produce|give me)\b[\s\S]{0,120}\b(?:report|article|brief|document|resume|cv|proposal|memo|executive summary|formal letter)\b/i.test(text)
-    || /(?:écris|écrivez|rédige|rédigez|crée|créez|prépare|préparez|fais|faites|génère|générez)[\s\S]{0,120}(?:rapport|article|document|cv|curriculum vitae|proposition|mémo|note de synthèse|résumé exécutif|lettre formelle|lettre officielle)/i.test(text)
-    || /(?:اكتب|اكتبي|اكتبوا|أنشئ|انشئ|حرر|صغ|أعد|اعد)[\s\S]{0,120}(?:تقرير|مقال|مستند|وثيقة|مذكرة|مقترح|سيرة ذاتية|خطاب رسمي|رسالة رسمية|ملخص تنفيذي)/.test(text);
+  const intent = routeChatIntent(input).intent;
+  return intent === 'create_document' || intent === 'export_pdf' || intent === 'export_docx';
 }
 export function selectArtifactTools(input: string): ArtifactToolSelection {
-  const text = input.slice(0, 8_000).toLowerCase();
-  const outputRequest = /\b(?:give me|export|download|save|make|create|generate|turn|convert|write|produce)\b/i.test(text);
-  const spreadsheetFormat = /\b(?:as|to|into|in)\s+(?:an?\s+)?(?:excel|xlsx|csv)\b|\b(?:excel|xlsx|csv)\s+(?:file|spreadsheet|workbook)\b|\b(?:export|download|make|create|give me)\b[\s\S]{0,80}\b(?:xlsx|csv)\b/i.test(text);
-  const documentFormat = /\b(?:as|to|into|in)\s+(?:an?\s+)?(?:pdf|docx|word)\b|\b(?:pdf|docx|word)\s+(?:report|document|file|letter)\b|\b(?:export|download|make|create|give me)\b[\s\S]{0,80}\b(?:pdf|docx)\b/i.test(text);
-  if (outputRequest && spreadsheetFormat) return { names: ['create_spreadsheet'], skill: 'spreadsheet-analysis' };
-  if (outputRequest && documentFormat) return { names: ['create_document'], skill: 'document' };
-  if (isExplicitDocumentIntent(text)) return { names: ['create_document'], skill: 'document' };
-  if (outputRequest && /\b(?:presentation|slide deck|powerpoint|pptx)\b/i.test(text)) return { names: ['create_presentation'], skill: 'presentation' };
-  if (outputRequest && /\b(?:chart|graph|plot)\b/i.test(text)) return { names: ['create_chart'], skill: null };
-  const create = /\b(create|make|build|generate|draft|write|prepare|plot|visualize|need|want)\b|\bgive me\b|(?:أنشئ|انشئ|اكتب|حرر|صغ|اصنع|créer|créez|générer|écris|écrivez|rédige|rédigez)/i.test(text);
-  if (create && /\b(presentation|slide deck|powerpoint|pptx|diaporama|présentation)\b|عرض\s*(?:تقديمي|شرائح)/i.test(text)) return { names: ['create_presentation'], skill: 'presentation' };
-  if (create && /\b(chart|graph|plot|trend|graphique|graphe)\b|رسم\s*بياني/i.test(text)) return { names: ['create_chart'], skill: null };
-  if (create && /\b(spreadsheet|workbook|xlsx|tableur|feuille de calcul)\b|جدول\s*بيانات/i.test(text)) return { names: ['create_spreadsheet'], skill: 'spreadsheet-analysis' };
-  if (create && /\b(document|report|memo|brief|rapport|document)\b|مستند|تقرير/i.test(text)) return { names: ['create_document'], skill: 'document' };
-  if (create && /\b(table|tableau)\b|جدول/i.test(text)) return { names: ['create_table'], skill: null };
-  if (/\b(analy[sz]e|summari[sz]e|analyse|analyser)\b.*\b(spreadsheet|workbook|sheet|tableur)\b|حلل.*جدول/i.test(text)) return { names: [], skill: 'spreadsheet-analysis' };
+  const routed = routeChatIntent(input);
+  if (routed.confidence === 'high') {
+    switch (routed.intent) {
+      case 'create_chart': return { names: ['create_chart'], skill: null };
+      case 'create_document':
+      case 'export_pdf':
+      case 'export_docx': return { names: ['create_document'], skill: 'document' };
+      case 'create_presentation': return { names: ['create_presentation'], skill: 'presentation' };
+      case 'create_spreadsheet':
+      case 'export_xlsx':
+      case 'export_csv': return { names: ['create_spreadsheet'], skill: 'spreadsheet-analysis' };
+    }
+  }
+  const text = input.slice(0, 800);
+  const create = /\b(?:create|make|build|generate|fais|cree)\b|(?:أنشئ|اصنع)/iu.test(text);
+  if (create && /\b(?:table|tableau)\b|جدول/iu.test(text))
+    return { names: ['create_table'], skill: null };
+  if (/\b(?:analy[sz]e|summari[sz]e|analyse|analyser)\b.*\b(?:spreadsheet|workbook|sheet|tableur)\b|حلل.*جدول/iu.test(text))
+    return { names: [], skill: 'spreadsheet-analysis' };
   return emptySelection;
 }
 

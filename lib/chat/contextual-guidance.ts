@@ -2,6 +2,7 @@ import { chatPartsFromMessage, chatPartsFromToolInvocations, looksLikeArtifactOu
 import { isExplicitDocumentIntent } from '@/lib/artifacts/tool-registry';
 import { documentToText, type ChartArtifact, type DocumentArtifact, type PresentationArtifact, type SheetCell, type SpreadsheetArtifact } from '@/lib/artifacts/core';
 import { formatCapacityWait } from './chat-usage';
+import { routeChatIntent } from './intent-router';
 import type { ChatRequestOutcome } from './client-finalization';
 import { getConversationAttachments, getCurrentSpreadsheetAttachment, getSpreadsheetAttachments,
   type ConversationAttachmentStore } from './conversation-attachments';
@@ -103,6 +104,26 @@ export function attachmentMenuActions(hasModels: boolean, hasSpreadsheet: boolea
 export function guidanceForComposer(input: ComposerGuidanceInput): ChatGuidance | null {
   const { text, files, model, balance, balanceStatus, locale, requiresCredits } = input;
   if (model?.accessState === 'locked' || model?.requiredPlan) return planGuidance(model.requiredPlan, locale);
+  if (input.attachmentStore && input.conversationId && input.attachmentsHydrated !== false) {
+    const resources = getConversationAttachments(input.attachmentStore, input.conversationId);
+    const routed = routeChatIntent(text, resources, input.selectedAttachmentId);
+    const unstoredFileSelected = files.length > resources.filter((item) => item.kind === 'file' || item.kind === 'image').length;
+    if (routed.confidence === 'high' && routed.resourceStatus === 'ambiguous') return {
+      kind: 'requirement', message: routed.resourceKind === 'spreadsheet' ? say(locale, {
+        en: 'Choose one attached spreadsheet to continue.',
+        fr: 'Choisissez une feuille de calcul jointe pour continuer.',
+        ar: 'اختر جدول بيانات مرفقًا للمتابعة.',
+      }) : say(locale, {
+        en: 'Choose one attached file to continue.', fr: 'Choisissez un fichier joint pour continuer.',
+        ar: 'اختر ملفًا مرفقًا للمتابعة.',
+      }), actions: [],
+    };
+    if (routed.confidence === 'high' && routed.resourceStatus === 'missing' && !unstoredFileSelected) return {
+      kind: 'requirement', message: say(locale, {
+        en: 'I need the file first.', fr: "J'ai d'abord besoin du fichier.", ar: 'أحتاج إلى الملف أولًا.',
+      }), actions: [routed.resourceKind === 'spreadsheet' ? 'upload_spreadsheet' : 'upload_file'],
+    };
+  }
   const image = files.some((file) => file.type.startsWith('image/'));
   const document = files.some((file) => !file.type.startsWith('image/'));
   const spreadsheetReference = /\b(?:spreadsheet|workbook|sheet|tableur|feuille de calcul)\b|جدول\s*بيانات/i.test(text);

@@ -43,6 +43,7 @@ import { ChatRequestTracker, ChatStreamFinalizer, consumeCanonicalChatStream, ha
 import { presentationCompletion } from '@/lib/chat/presentation-completion';
 import { guidanceForChatError, shouldShowChatError, type GuidanceAction } from '@/lib/chat/contextual-guidance';
 import { selectArtifactTools } from '@/lib/artifacts/tool-registry';
+import { routeChatIntent } from '@/lib/chat/intent-router';
 import ChatGuidanceCard from './ChatGuidanceCard';
 
 const ArtifactSpreadsheetPreview = dynamic(() => import('./ArtifactSpreadsheetPreview'), { ssr: false });
@@ -740,12 +741,17 @@ export default function StudioDashboard({
       let content = data.message;
       const sendConversationId = activeSessionIdRef.current ?? 'default-session';
       const pendingAttachmentIds = pendingAttachmentIdsRef.current[sendConversationId] ?? [];
+      const sendAttachments = getConversationAttachments(attachmentsBySessionRef.current, sendConversationId);
+      const routedIntent = routeChatIntent(data.message, sendAttachments, data.attachmentId);
+      if (routedIntent.confidence === 'high' && !data.files?.length
+        && (routedIntent.resourceStatus === 'missing' || routedIntent.resourceStatus === 'ambiguous')) return;
+      const resolvedId = data.attachmentId ?? routedIntent.attachmentId ?? undefined;
       const resolvedAttachment = data.attachmentId
         ? getConversationAttachment(attachmentsBySessionRef.current, sendConversationId, data.attachmentId)
-        : resolveSpreadsheetAttachment(attachmentsBySessionRef.current, sendConversationId).attachment;
+        : resolvedId ? getConversationAttachment(attachmentsBySessionRef.current, sendConversationId, resolvedId)
+          : resolveSpreadsheetAttachment(attachmentsBySessionRef.current, sendConversationId).attachment;
       if (data.attachmentId && !resolvedAttachment) return;
       const boundSpreadsheet = resolvedAttachment?.kind === 'spreadsheet' ? resolvedAttachment : null;
-      const sendAttachments = getConversationAttachments(attachmentsBySessionRef.current, sendConversationId);
       const agentRequested = Boolean(agentTaskFor(data.message, Boolean(boundSpreadsheet)));
       if (chatDebugEnabled) console.info('[VANTRA_CHAT_DEBUG] FILE_CONTEXT', {
         conversationId: sendConversationId, attachmentFound: Boolean(boundSpreadsheet),
@@ -837,7 +843,8 @@ export default function StudioDashboard({
           body: {
             model: selectedModelId,
             operationId: crypto.randomUUID(),
-            ...attachmentRequestContext(sendAttachments, boundSpreadsheet?.artifact),
+            ...attachmentRequestContext(sendAttachments, boundSpreadsheet?.artifact,
+              resolvedAttachment?.kind === 'document' ? resolvedAttachment.artifact : undefined),
             requestedSlideCount: requestedPresentationSlideCount(data.message),
           },
         }

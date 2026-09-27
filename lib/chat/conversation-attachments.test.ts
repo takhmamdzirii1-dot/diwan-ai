@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { SpreadsheetArtifact } from '@/lib/artifacts/core';
+import type { DocumentArtifact, SpreadsheetArtifact } from '@/lib/artifacts/core';
 import { chatRequestMessages } from './message-history';
 import { attachConversationFile, AttachmentActionGate, attachedSpreadsheet, attachmentDisplayGroups,
   attachmentRequestContext, clearPendingAttachments, getConversationAttachment, getConversationAttachments,
@@ -11,6 +11,17 @@ const spreadsheet: SpreadsheetArtifact = {
   schemaVersion: 1, id: 'sheet-1', type: 'spreadsheet', title: 'sales', language: 'en', direction: 'ltr', metadata: {},
   sheets: [{ id: 'tab-1', name: 'Sheet1', columns: ['A', 'B'], rows: [['Month', 'Sales'], ['Jan', 20]] }],
 };
+
+test('selected document resource supplies the requested context among multiple documents', () => {
+  const first: DocumentArtifact = { schemaVersion: 1, id: 'doc-1', type: 'document', title: 'First',
+    language: 'en', direction: 'ltr', metadata: {}, blocks: [{ kind: 'paragraph', text: 'FIRST ONLY' }] };
+  const second: DocumentArtifact = { ...first, id: 'doc-2', title: 'Second',
+    blocks: [{ kind: 'paragraph', text: 'SECOND ONLY' }] };
+  const attachments = attachConversationFile(attachConversationFile([], { kind: 'document', name: 'first.md', artifact: first }),
+    { kind: 'document', name: 'second.md', artifact: second });
+  assert.match(attachmentRequestContext(attachments, undefined, first).documentContext ?? '', /FIRST ONLY/);
+  assert.doesNotMatch(attachmentRequestContext(attachments, undefined, first).documentContext ?? '', /SECOND ONLY/);
+});
 
 test('one file chooser routes existing supported types and rejects unsupported types', () => {
   for (const name of ['sales.xlsx', 'sales.csv']) assert.equal(uploadFileKind({ name, type: '' }), 'spreadsheet');

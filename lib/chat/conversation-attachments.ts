@@ -131,11 +131,13 @@ export function parseConversationAttachments(raw: string, conversationId = 'defa
     ? (entry as ConversationAttachment).attachmentId : crypto.randomUUID() } as ConversationAttachment));
 }
 
-export function attachmentRequestContext(attachments: ConversationAttachment[], spreadsheetOverride?: SpreadsheetArtifact) {
+export function attachmentRequestContext(attachments: ConversationAttachment[], spreadsheetOverride?: SpreadsheetArtifact,
+  documentOverride?: DocumentArtifact) {
   const spreadsheet = spreadsheetOverride ?? attachedSpreadsheet(attachments);
   const document = [...attachments].reverse().find((item): item is Extract<ConversationAttachment, { kind: 'document' }> => item.kind === 'document');
+  const selectedDocument = documentOverride ?? document?.artifact;
   return {
     spreadsheetContext: spreadsheet?.sheets[0] ? spreadsheetContext(spreadsheet, spreadsheet.sheets[0]).slice(0, 12_000) : undefined,
-    documentContext: document ? documentToText(document.artifact).slice(0, 12_000) : undefined,
+    documentContext: selectedDocument ? documentToText(selectedDocument).slice(0, 12_000) : undefined,
   };
 }

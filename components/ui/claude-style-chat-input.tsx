@@ -191,9 +191,8 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
     const conversationAttachments = getConversationAttachments(attachmentStore, conversationId);
     const { pending: pendingConversationAttachments, context: contextAttachments } =
         attachmentDisplayGroups(attachmentStore, conversationId, pendingAttachmentIds);
-    const pendingSpreadsheets = pendingConversationAttachments.filter((item) => item.kind === 'spreadsheet');
-    const effectiveAttachmentId = selectedAttachmentId
-        ?? (pendingSpreadsheets.length === 1 ? pendingSpreadsheets[0].attachmentId : undefined);
+    const effectiveAttachmentId = selectedAttachmentId && conversationAttachments.some((item) => item.attachmentId === selectedAttachmentId)
+        ? selectedAttachmentId : pendingConversationAttachments.length === 1 ? pendingConversationAttachments[0].attachmentId : undefined;
     const requestedUploadRef = useRef<'image' | 'document' | null>(null);
     const [pastedContent, setPastedContent] = useState<{ id: string; content: string }[]>([]);
     const [isDragging, setIsDragging] = useState(false);
@@ -498,7 +497,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                         {contextAttachments.map((attachment) => <div key={attachment.attachmentId} className="flex flex-wrap items-center gap-x-3 gap-y-1">
                             <span className="max-w-48 truncate text-white/75">{attachment.name}</span>
                             <span>{attachmentKindLabel(attachment.kind, locale)}</span>
-                            {attachment.kind === 'spreadsheet' && contextAttachments.filter((item) => item.kind === 'spreadsheet').length > 1 &&
+                            {contextAttachments.length > 1 &&
                                 <button type="button" aria-pressed={selectedAttachmentId === attachment.attachmentId}
                                     onClick={() => setSelectedAttachmentId(attachment.attachmentId)}
                                     className="rounded border border-white/15 px-1.5 py-0.5 text-white/70 hover:text-white">

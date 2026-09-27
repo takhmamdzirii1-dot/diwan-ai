@@ -167,6 +167,18 @@ test('no spreadsheet still asks for upload, while multiple spreadsheets ask for 
     attachmentStore: { [conversationId]: second }, conversationId, attachmentsHydrated: true }), null);
 });
 
+test('multilingual file guidance uses the canonical resource kind even beside unrelated files', () => {
+  const conversationId = 'mixed-resources';
+  const files = attachConversationFile([], { kind: 'file', name: 'notes.pdf', contentType: 'application/pdf',
+    url: 'data:application/pdf;base64,AA==' }, conversationId);
+  const baseInput = { ...draft, model: { ...draft.model, fileInput: true },
+    files: [{ type: 'application/pdf' }], attachmentStore: { [conversationId]: files },
+    conversationId, attachmentsHydrated: true };
+  assert.deepEqual(guidanceForComposer({ ...baseInput, text: 'Crée un graphique depuis ce tableur' })?.actions,
+    ['upload_spreadsheet']);
+  assert.equal(guidanceForComposer({ ...baseInput, text: 'ماهو PDF؟' }), null);
+});
+
 test('completed canonical content supersedes an intermediate consumer error', () => {
   const state = { busy: false, requestId: 'request-1', conversationId: 'conversation-1', outcome: null };
   assert.equal(shouldShowChatError(state), false);
