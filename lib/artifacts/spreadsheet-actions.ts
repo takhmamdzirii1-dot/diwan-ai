@@ -1,5 +1,37 @@
 import { artifactDirection, type ArtifactSheet, type ChartArtifact, type ChartType, type PresentationArtifact, type SpreadsheetArtifact } from './core';
 
+export type AgentChartPlan = { purpose: string; categoryColumn: string; measureColumn: string;
+  operation: 'average_by_category' | 'top_n'; chartType: 'bar' | 'line' };
+
+export function chartFromPlan(artifact: SpreadsheetArtifact, sheet: ArtifactSheet, plan: AgentChartPlan): ChartArtifact {
+  const categoryIndex = sheet.columns.indexOf(plan.categoryColumn);
+  const measureIndex = sheet.columns.indexOf(plan.measureColumn);
+  if (categoryIndex < 0 || measureIndex < 0 || categoryIndex === measureIndex
+    || /(?:^|[_\s-])(?:id|code|index|serial|sku|key)(?:$|[_\s-])|(?:id|code)$/i.test(plan.measureColumn))
+    throw new Error('CHART_COLUMNS_REQUIRED');
+  const groups = new Map<string, { total: number; count: number }>();
+  for (const row of sheet.rows.slice(0, 501)) {
+    const label = String(row[categoryIndex] ?? '').trim().slice(0, 160);
+    const value = row[measureIndex];
+    if (!label || typeof value !== 'number' || !Number.isFinite(value)) continue;
+    const previous = groups.get(label) ?? { total: 0, count: 0 };
+    groups.set(label, { total: previous.total + value, count: previous.count + 1 });
+  }
+  if (groups.size < 2) throw new Error('CHART_COLUMNS_REQUIRED');
+  const entries = [...groups.entries()].map(([label, value]) => ({ label,
+    value: plan.operation === 'average_by_category' ? value.total / value.count : value.total }));
+  if (plan.operation === 'top_n') entries.sort((a, b) => b.value - a.value);
+  const selected = entries.slice(0, plan.operation === 'top_n' ? 10 : 40);
+  const title = plan.purpose.trim().slice(0, 160);
+  if (!title) throw new Error('CHART_COLUMNS_REQUIRED');
+  return { schemaVersion: 1, id: crypto.randomUUID(), type: 'chart', title,
+    chartType: plan.chartType, language: artifact.language,
+    direction: artifactDirection(artifact.language, title, artifact.direction),
+    categories: selected.map((entry) => entry.label),
+    series: [{ name: plan.measureColumn, values: selected.map((entry) => entry.value) }],
+    source: { artifactId: artifact.id, sheetId: sheet.id, rowStart: 0, rowEnd: Math.min(sheet.rows.length, 501) }, metadata: {} };
+}
+
 export function chartFromSheet(artifact: SpreadsheetArtifact, sheet: ArtifactSheet, chartType: ChartType, rowStart = 0, rowEnd = Math.min(sheet.rows.length, 100)): ChartArtifact {
   const start = Math.max(0, rowStart);
   const rows = sheet.rows.slice(start, Math.min(sheet.rows.length, rowEnd, start + 501));

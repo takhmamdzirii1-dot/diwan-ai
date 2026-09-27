@@ -219,7 +219,7 @@ export async function POST(request: Request) {
       route: { id: route.id, providerId: route.providerId, providerModelId: route.providerModelId },
       stored: runtimeModel.routeCapabilitiesV2,
     }).resolved;
-    if (agentStep && native.tools.state !== 'supported') {
+    if (agentStep && native.tools.state !== 'supported' && native.structuredOutput.state !== 'supported') {
       return NextResponse.json({ error: 'MODEL_CAPABILITY_UNSUPPORTED' }, { status: 409 });
     }
     const toolPath = resolveArtifactToolPath(taskSelection, native);
@@ -480,7 +480,10 @@ export async function POST(request: Request) {
       let presentationInputValidationSuccess = false;
       let actualSlideCount = 0;
       let emittedTextChars = 0;
-      const requestedSlideCount = requestedPresentationSlideCount(typeof latestUserText === 'string' ? latestUserText : '');
+      const requestedSlideCount = Number.isInteger(body.requestedSlideCount)
+        && body.requestedSlideCount >= 2 && body.requestedSlideCount <= 8
+        ? body.requestedSlideCount as number
+        : requestedPresentationSlideCount(typeof latestUserText === 'string' ? latestUserText : '');
       trace('PRESENTATION_PATH', { attachmentFound: typeof body.spreadsheetContext === 'string',
         agentStarted: Boolean(agentStep), agentStep: agentStep ?? 'none',
         relevantToolsExposed: nativeTools ? Object.keys(nativeTools).length : 0,
@@ -495,8 +498,7 @@ export async function POST(request: Request) {
         model: languageModel,
         messages: messagesPayload,
         tools: nativeTools,
-        toolChoice: agentStep === 'presentation' ? { type: 'tool', toolName: 'create_presentation' }
-          : presentationToolChoice(taskSelection, toolPath) ?? documentToolChoice(taskSelection, toolPath),
+        toolChoice: presentationToolChoice(taskSelection, toolPath) ?? documentToolChoice(taskSelection, toolPath),
         maxSteps: 1,
         temperature,
         maxTokens,
@@ -601,6 +603,13 @@ export async function POST(request: Request) {
         : streamResponse;
     } catch (providerError) {
       const failure = classifyProviderFailure(providerError);
+      if (agentStep === 'presentation') trace('PRESENTATION_RESULT', {
+        presentationToolCalls: 0, presentationInputValidationSuccess: false,
+        presentationResultValidationSuccess: false, requestedSlideCount:
+          Number.isInteger(body.requestedSlideCount) ? body.requestedSlideCount : 0,
+        actualSlideCount: 0, streamedArtifactPartCount: 0,
+        presentationStepStatus: 'pre_stream_error', errorCategory: 'provider_call_error',
+      });
       trace('PROVIDER', { callStarted: providerStarted, streamReturned: providerStreamReturned, finishReason: null,
         errorCategory: request.signal.aborted ? 'aborted' : 'provider_call_error' });
       trace('SERVER_STREAM', { textChars: 0, status: request.signal.aborted ? 'aborted' : 'error', errorCategory: 'pre_stream_error' });

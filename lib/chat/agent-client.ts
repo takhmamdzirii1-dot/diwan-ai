@@ -1,16 +1,20 @@
-import type { ChatMessagePart } from '@/lib/artifacts/chat-parts';
+import { requestedPresentationSlideCount, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
 import { consumeCanonicalChatStream } from './client-finalization';
+import { presentationCompletion } from './presentation-completion';
 import type { AgentSemanticResult } from './agent-runtime';
 
 /** Each invocation enters the existing Chat route with a fresh operation ID. */
 export async function executeAgentSemanticStep(input: {
   stage: 'analysis' | 'presentation'; prompt: string; model: string;
   history: Array<{ role: string; content: string }>; operationId: string; signal: AbortSignal; toolBudget: number;
-  debug?: boolean;
+  debug?: boolean; requestedSlideCount?: number;
 }): Promise<AgentSemanticResult> {
+  const requestedSlideCount = input.stage === 'presentation'
+    ? input.requestedSlideCount ?? requestedPresentationSlideCount(input.prompt) : null;
   const response = await fetch('/api/generate/chat', { method: 'POST', credentials: 'same-origin', signal: input.signal,
     headers: { 'content-type': 'application/json', ...(input.debug ? { 'x-vantra-chat-debug-id': input.operationId } : {}) }, body: JSON.stringify({
       model: input.model, operationId: input.operationId, agentStep: input.stage, agentToolBudget: input.toolBudget,
+      requestedSlideCount,
       max_tokens: input.stage === 'presentation' ? 4096 : 2048,
       messages: [...input.history, { role: 'user', content: input.prompt }],
     }) });
@@ -30,12 +34,17 @@ export async function executeAgentSemanticStep(input: {
       if (event.toolName === 'create_presentation' && event.called) presentationToolCalls++;
       if (event.toolName === 'create_presentation' && event.resultValidated) validatedPresentationResults++;
     });
-  if (input.debug) console.info('[VANTRA_CHAT_DEBUG] CLIENT_PRESENTATION_STEP', {
+  const completion = input.stage === 'presentation'
+    ? presentationCompletion(text, artifacts, requestedSlideCount, 'en')
+    : { text, artifacts, valid: true };
+  if (input.debug) console.info(`[VANTRA_CHAT_DEBUG] ${input.stage === 'presentation' ? 'CLIENT_PRESENTATION_STEP' : 'CLIENT_ANALYSIS_STEP'}`, {
     requestId: input.operationId, agentStep: input.stage, presentationToolCalls,
-    validatedPresentationResults, clientArtifactPartCount: artifacts.length,
-    textChars: text.length, status,
+    validatedPresentationResults, clientArtifactPartCount: completion.artifacts.length,
+    textChars: completion.text.length, requestedSlideCount: requestedSlideCount ?? 0,
+    actualSlideCount: completion.artifacts.find((part) => part.type === 'presentation')?.artifact.slides.length ?? 0,
+    status,
   });
   if (status === 'aborted') throw new Error('AGENT_CANCELLED');
-  if (status !== 'completed') throw Object.assign(new Error('MODEL_FAILURE'), { toolCallCount });
-  return { text, artifacts, toolCallCount };
+  if (status !== 'completed' || !completion.valid) throw Object.assign(new Error('MODEL_FAILURE'), { toolCallCount });
+  return { text: completion.text, artifacts: completion.artifacts, toolCallCount };
 }

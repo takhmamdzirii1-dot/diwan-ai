@@ -1,7 +1,39 @@
 import { requestedPresentationSlideCount, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
 import type { SpreadsheetArtifact } from '@/lib/artifacts/core';
 import { readSpreadsheetContextTool, runReadSpreadsheetContextTool, runArtifactTool } from '@/lib/artifacts/tool-registry';
-import { chartFromSheet } from '@/lib/artifacts/spreadsheet-actions';
+import { chartFromPlan, type AgentChartPlan } from '@/lib/artifacts/spreadsheet-actions';
+import { z } from 'zod';
+
+const chartPlanSchema = z.object({ purpose: z.string().trim().min(3).max(160),
+  categoryColumn: z.string().min(1).max(160), measureColumn: z.string().min(1).max(160),
+  operation: z.enum(['average_by_category', 'top_n']), chartType: z.enum(['bar', 'line']) }).strict();
+const analysisSchema = z.object({ summary: z.string().trim().min(1).max(500),
+  insights: z.array(z.string().trim().min(1).max(300)).max(5),
+  chartPlans: z.array(chartPlanSchema).min(1).max(2),
+  presentationOutline: z.array(z.string().trim().min(1).max(120)).max(8) }).strict();
+export type AgentAnalysis = { summary: string; insights: string[]; chartPlans: AgentChartPlan[];
+  presentationOutline: string[] };
+
+export function parseAgentAnalysis(text: string): AgentAnalysis | null {
+  try {
+    const parsed = analysisSchema.safeParse(JSON.parse(text.trim()));
+    if (!parsed.success) return null;
+    const visible = [parsed.data.summary, ...parsed.data.insights, ...parsed.data.presentationOutline,
+      ...parsed.data.chartPlans.map((plan) => plan.purpose)].join(' ');
+    return /```|\b(?:import\s+\w+|def\s+\w+|function\s+\w+|as an ai|python|javascript)\b/i.test(visible)
+      ? null : parsed.data as AgentAnalysis;
+  } catch { return null; }
+}
+
+export function distinctAgentChartPlans(plans: AgentChartPlan[]): AgentChartPlan[] {
+  const seen = new Set<string>();
+  return plans.filter((plan) => {
+    const key = [plan.categoryColumn, plan.measureColumn, plan.operation].map((part) => part.toLowerCase()).join(':');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
 export type AgentStatus = 'idle' | 'running' | 'waiting_for_user' | 'completed' | 'cancelled' | 'failed';
 export type AgentStep = 'reading' | 'analyzing' | 'charts' | 'presentation';
@@ -10,7 +42,7 @@ export type AgentRun = {
   agentRunId: string; conversationId: string; attachmentId: string | null; requestId: string | null; originalUserRequest: string; status: AgentStatus;
   currentStep: AgentStep | null; completedSteps: AgentStep[]; semanticCallCount: number; toolCallCount: number;
   maxSemanticCalls: number; maxToolCalls: number; cancelled: boolean; waitingForUser: boolean;
-  artifacts: ChatMessagePart[]; analysisText: string; contextText: string;
+  artifacts: ChatMessagePart[]; analysis: AgentAnalysis | null; contextText: string;
   failedStep: AgentStep | null;
   terminalError: 'switch_model' | 'analysis_failed' | 'chart_failed' | 'presentation_failed' | 'provider_or_network_failed' | null;
   task: AgentTask;
@@ -39,7 +71,7 @@ export function createAgentRun(request: string, conversationId: string, agentRun
   const task = agentTaskFor(request, hasAttachedSpreadsheet);
   return task ? { agentRunId, conversationId, attachmentId, requestId: null, originalUserRequest: request, task, status: 'idle', currentStep: null,
     completedSteps: [], semanticCallCount: 0, toolCallCount: 0, maxSemanticCalls: 4, maxToolCalls: 8,
-    cancelled: false, waitingForUser: false, artifacts: [], analysisText: '', contextText: '', failedStep: null,
+    cancelled: false, waitingForUser: false, artifacts: [], analysis: null, contextText: '', failedStep: null,
     terminalError: null } : null;
 }
 
@@ -52,7 +84,8 @@ export function isCurrentAgentUpdate(state: AgentRun, active: Pick<AgentRun, 'ag
 }
 
 export async function executeAgentRun(run: AgentRun, spreadsheet: SpreadsheetArtifact | null, deps: {
-  semantic: (stage: 'analysis' | 'presentation', prompt: string, operationId: string, toolBudget: number, signal: AbortSignal) => Promise<AgentSemanticResult>;
+  semantic: (stage: 'analysis' | 'presentation', prompt: string, operationId: string, toolBudget: number,
+    signal: AbortSignal, options?: { requestedSlideCount: number }) => Promise<AgentSemanticResult>;
   operationId: () => string; signal: AbortSignal; onUpdate: (state: AgentRun) => void;
 }): Promise<AgentRun> {
   const state: AgentRun = { ...run, completedSteps: [...run.completedSteps], artifacts: [...run.artifacts],
@@ -92,27 +125,31 @@ export async function executeAgentRun(run: AgentRun, spreadsheet: SpreadsheetArt
       if (state.semanticCallCount >= state.maxSemanticCalls) throw new Error('SEMANTIC_LIMIT');
       state.semanticCallCount++;
       state.requestId = deps.operationId(); update();
-      const result = await deps.semantic('analysis', `Analyze the bounded spreadsheet data below for the user's task. State only supported findings.\n\n${state.originalUserRequest}\n\n${state.contextText}`, state.requestId, state.maxToolCalls - state.toolCallCount, deps.signal);
+      const result = await deps.semantic('analysis', `Analyze the bounded spreadsheet for the user's task. Return ONLY one JSON object with exactly these keys: summary (one concise sentence), insights (up to five concise supported findings), chartPlans (up to two), presentationOutline (short slide topics). Each chart plan has purpose, categoryColumn, measureColumn, operation (average_by_category or top_n), chartType (bar or line). Use exact column names. Plans must answer distinct questions; changing chart type alone does not make a different plan. IDs, codes and indexes are never measures. Do not include code, implementation notes, markdown, or unsupported claims.\n\nTask:\n${state.originalUserRequest}\n\nBounded data:\n${state.contextText}`, state.requestId, state.maxToolCalls - state.toolCallCount, deps.signal);
       checkCancelled();
       state.requestId = null;
-      if (!result.text.trim()) throw new Error('MODEL_FAILURE');
-      state.analysisText = result.text;
+      const analysis = parseAgentAnalysis(result.text);
+      if (!analysis) throw new Error('MODEL_FAILURE');
+      state.analysis = analysis;
       state.toolCallCount += result.toolCallCount;
       if (state.toolCallCount > state.maxToolCalls) throw new Error('TOOL_LIMIT');
       done('analyzing');
     }
     if (!state.completedSteps.includes('charts')) {
       begin('charts');
-      const chart = chartFromSheet(spreadsheet, sheet, 'bar', 0, Math.min(sheet.rows.length, 40));
-      for (let index = state.artifacts.filter((part) => part.type === 'chart').length; index < state.task.chartCount; index++) {
-        const selected = chart.series[index % chart.series.length];
-        const input = { title: `${sheet.name}: ${selected.name}`, chartType: index === 0 ? 'bar' : 'line',
-          categories: chart.categories, series: [selected], language: spreadsheet.language };
+      const plans = distinctAgentChartPlans(state.analysis?.chartPlans ?? []);
+      for (let index = state.artifacts.filter((part) => part.type === 'chart').length;
+        index < Math.min(state.task.chartCount, plans.length); index++) {
+        const chart = chartFromPlan(spreadsheet, sheet, plans[index]);
+        const input = { title: chart.title, chartType: chart.chartType,
+          categories: chart.categories, series: chart.series, language: spreadsheet.language };
         const result = tool(() => runArtifactTool('create_chart', input));
         if (result.status !== 'ok' || result.artifact.type !== 'chart') throw new Error('TOOL_FAILURE');
         state.artifacts.push({ type: 'chart', artifact: result.artifact });
         update();
       }
+      if (state.artifacts.filter((part) => part.type === 'chart').length < state.task.chartCount)
+        throw new Error('CHART_COLUMNS_REQUIRED');
       done('charts');
     }
     if (!state.completedSteps.includes('presentation')) {
@@ -121,8 +158,12 @@ export async function executeAgentRun(run: AgentRun, spreadsheet: SpreadsheetArt
       if (state.toolCallCount >= state.maxToolCalls) throw new Error('TOOL_LIMIT');
       state.semanticCallCount++;
       state.requestId = deps.operationId(); update();
-      const chartTitles = state.artifacts.filter((part) => part.type === 'chart').map((part) => part.artifact.title).join(', ');
-      const result = await deps.semantic('presentation', `Create a ${state.task.slideCount}-slide presentation for the user's request, using only the bounded data and findings. Summarize the existing charts in text; do not invent chart references.\n\n${state.originalUserRequest}\n\n${state.contextText}\n\nFindings:\n${state.analysisText}\n\nExisting charts: ${chartTitles}`, state.requestId, state.maxToolCalls - state.toolCallCount, deps.signal);
+      const compactCharts = state.artifacts.filter((part) => part.type === 'chart').map((part) => ({
+        title: part.artifact.title, category: part.artifact.categories.slice(0, 8),
+        measure: part.artifact.series[0]?.name, values: part.artifact.series[0]?.values.slice(0, 8),
+      }));
+      const result = await deps.semantic('presentation', `Create exactly ${state.task.slideCount} slides with create_presentation. Supply exactly that many slides in the tool input. Use only the validated findings and compact chart data. Do not include raw workbook rows or invent chart references.\n\nTask: ${state.originalUserRequest}\nSheet: ${sheet.name}; rows: ${sheet.rows.length}; columns: ${sheet.columns.join(', ')}\nAnalysis: ${JSON.stringify(state.analysis)}\nCharts: ${JSON.stringify(compactCharts)}`, state.requestId, state.maxToolCalls - state.toolCallCount, deps.signal,
+        { requestedSlideCount: state.task.slideCount });
       checkCancelled();
       state.requestId = null;
       state.toolCallCount += result.toolCallCount;

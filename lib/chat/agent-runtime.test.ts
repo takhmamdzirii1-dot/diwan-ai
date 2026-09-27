@@ -1,15 +1,24 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { SpreadsheetArtifact } from '@/lib/artifacts/core';
+import { chartFromPlan } from '@/lib/artifacts/spreadsheet-actions';
 import { runArtifactTool, runReadSpreadsheetContextTool } from '@/lib/artifacts/tool-registry';
 import { executeAgentSemanticStep } from './agent-client';
-import { agentTaskFor, cancelAgentRun, createAgentRun, executeAgentRun, isCurrentAgentUpdate,
-  isSingleSpreadsheetChartRequest, type AgentRun } from './agent-runtime';
+import { agentTaskFor, cancelAgentRun, createAgentRun, distinctAgentChartPlans, executeAgentRun, isCurrentAgentUpdate,
+  parseAgentAnalysis,
+  isSingleSpreadsheetChartRequest, type AgentAnalysis, type AgentRun } from './agent-runtime';
 
 const request = 'Analyze this spreadsheet, create two useful charts, and build a 6-slide presentation.';
 const sheet: SpreadsheetArtifact = { schemaVersion: 1, id: 'book', type: 'spreadsheet', title: 'Sales', language: 'en',
   direction: 'ltr', metadata: {}, sheets: [{ id: 's1', name: 'Results', columns: ['Month', 'Revenue', 'Units'],
     rows: [['Jan', 10, 2], ['Feb', 20, 4], ['Mar', 30, 5]] }] };
+const analysis: AgentAnalysis = { summary: 'Revenue and units vary by month.', insights: ['March has the highest revenue.'],
+  chartPlans: [
+    { purpose: 'Average revenue by month', categoryColumn: 'Month', measureColumn: 'Revenue',
+      operation: 'average_by_category', chartType: 'bar' },
+    { purpose: 'Top months by units', categoryColumn: 'Month', measureColumn: 'Units',
+      operation: 'top_n', chartType: 'bar' },
+  ], presentationOutline: ['Overview', 'Revenue', 'Units'] };
 const presentation = runArtifactTool('create_presentation', { title: 'Results', slides: [
   { title: 'Results', variant: 'cover', blocks: [] },
   ...Array.from({ length: 5 }, (_, index) => ({ title: `Finding ${index + 1}`, variant: 'insights' as const,
@@ -27,7 +36,7 @@ function setup(overrides?: Partial<AgentRun>) {
   const deps = { signal: controller.signal, operationId: () => `operation-${++ids}`, onUpdate: (_state: AgentRun) => {},
     semantic: async (stage: 'analysis' | 'presentation', _prompt: string, operationId: string, toolBudget: number) => {
       calls.push({ stage, operationId, toolBudget });
-      return stage === 'analysis' ? { text: 'Revenue increased.', artifacts: [], toolCallCount: 0 }
+      return stage === 'analysis' ? { text: JSON.stringify(analysis), artifacts: [], toolCallCount: 0 }
         : { text: '', artifacts: [presentationPart], toolCallCount: 1 };
     } };
   return { run, controller, calls, deps };
@@ -62,7 +71,9 @@ test('two semantic steps have distinct normal Chat operation IDs; deterministic 
   assert.equal(result.artifacts.filter((part) => part.type === 'chart').length, 2);
   assert.equal(result.artifacts.filter((part) => part.type === 'presentation').length, 1);
   assert.equal(result.toolCallCount, 4); // bounded read, two charts, one model-request tool result
-  assert.equal(result.analysisText, 'Revenue increased.');
+  assert.equal(result.analysis?.summary, analysis.summary);
+  assert.equal(result.artifacts[0]?.type, 'chart');
+  assert.notDeepEqual(result.artifacts[0], result.artifacts[1]);
 });
 
 test('read_spreadsheet_context is bounded and validates the workbook without AI', () => {
@@ -119,6 +130,70 @@ test('partial charts survive later model failure and resume skips completed anal
   assert.equal(resumed.status, 'completed');
   assert.equal(resumed.artifacts.filter((part) => part.type === 'chart').length, 2);
   assert.equal(calls.filter((call) => call.stage === 'analysis').length, 1);
+  assert.equal(calls.filter((call) => call.stage === 'presentation').length, 2);
+  assert.notEqual(calls.filter((call) => call.stage === 'presentation')[0].operationId,
+    calls.filter((call) => call.stage === 'presentation')[1].operationId);
+});
+
+test('analysis is validated internal JSON; Python and duplicate chart plans never render', async () => {
+  assert.deepEqual(parseAgentAnalysis(JSON.stringify(analysis))?.chartPlans.length, 2);
+  assert.equal(parseAgentAnalysis('As an AI text model, here is Python code: print(1)'), null);
+  assert.equal(parseAgentAnalysis(JSON.stringify({ ...analysis, summary: '```python' })), null);
+  assert.equal(distinctAgentChartPlans([analysis.chartPlans[0],
+    { ...analysis.chartPlans[0], chartType: 'line' }]).length, 1);
+  const { run, deps } = setup();
+  deps.semantic = async (stage) => stage === 'analysis'
+    ? { text: JSON.stringify({ ...analysis, chartPlans: [analysis.chartPlans[0],
+      { ...analysis.chartPlans[0], chartType: 'line' }] }), artifacts: [], toolCallCount: 0 }
+    : { text: '', artifacts: [presentationPart], toolCallCount: 1 };
+  const result = await executeAgentRun(run, sheet, deps);
+  assert.equal(result.status, 'failed');
+  assert.equal(result.failedStep, 'charts');
+  assert.equal(result.artifacts.filter((part) => part.type === 'chart').length, 1);
+  assert.equal(result.artifacts.filter((part) => part.type === 'presentation').length, 0);
+});
+
+test('Products workflow creates two distinct charts and one six-slide presentation in two semantic calls', async () => {
+  const products: SpreadsheetArtifact = { ...sheet, id: 'products', title: 'Products', sheets: [{
+    id: 'products-sheet', name: 'Products',
+    columns: ['ProductName', 'CategoryID', 'CategoryName', 'SupplierID', 'Price'],
+    rows: [
+      ['Basic', 1, 'Office', 11, 12], ['Standard', 1, 'Office', 12, 18],
+      ['Premium', 2, 'Hardware', 13, 65], ['Plus', 2, 'Hardware', 14, 49],
+      ['Team', 3, 'Services', 15, 29], ['Enterprise', 3, 'Services', 16, 89],
+    ],
+  }] };
+  const productAnalysis: AgentAnalysis = { summary: 'Prices differ across categories and products.',
+    insights: ['Hardware has a higher average price than Office.'],
+    chartPlans: [
+      { purpose: 'Average price by category', categoryColumn: 'CategoryName', measureColumn: 'Price',
+        operation: 'average_by_category', chartType: 'bar' },
+      { purpose: 'Highest priced products', categoryColumn: 'ProductName', measureColumn: 'Price',
+        operation: 'top_n', chartType: 'bar' },
+    ], presentationOutline: ['Overview', 'Category prices', 'Top products'] };
+  assert.throws(() => chartFromPlan(products, products.sheets[0], {
+    purpose: 'Invalid identifier measure', categoryColumn: 'CategoryName', measureColumn: 'SupplierID',
+    operation: 'average_by_category', chartType: 'bar',
+  }), /CHART_COLUMNS_REQUIRED/);
+  const run = createAgentRun('Create two charts and build a 6-slide presentation from this spreadsheet.',
+    'products-conversation', 'products-run', true, 'products-attachment')!;
+  const calls: string[] = [];
+  const result = await executeAgentRun(run, products, { signal: new AbortController().signal,
+    operationId: () => `request-${calls.length + 1}`, onUpdate: () => {},
+    semantic: async (stage, prompt) => {
+      calls.push(stage);
+      if (stage === 'analysis') return { text: JSON.stringify(productAnalysis), artifacts: [], toolCallCount: 0 };
+      assert.match(prompt, /exactly 6 slides/);
+      assert.doesNotMatch(prompt, /Basic\t1\tOffice/);
+      return { text: '', artifacts: [presentationPart], toolCallCount: 1 };
+    } });
+  assert.equal(result.status, 'completed');
+  assert.deepEqual(calls, ['analysis', 'presentation']);
+  assert.equal(result.artifacts.filter((part) => part.type === 'chart').length, 2);
+  const charts = result.artifacts.filter((part) => part.type === 'chart').map((part) => part.artifact);
+  assert.notDeepEqual(charts[0].categories, charts[1].categories);
+  assert.ok(charts.every((chart) => chart.series.every((series) => series.name === 'Price')));
+  assert.equal(result.artifacts.find((part) => part.type === 'presentation')?.artifact.slides.length, 6);
 });
 
 test('one-slide result cannot satisfy an explicit six-slide request; charts remain available', async () => {
@@ -198,8 +273,33 @@ test('client semantic step uses one existing Chat HTTP request and validates art
     assert.equal(first.text, 'Revenue increased.');
     assert.equal(second.text, '');
     assert.equal(second.artifacts[0].type, 'presentation');
+    assert.equal(second.toolCallCount, 1);
+    if (second.artifacts[0].type !== 'presentation') throw new Error('Presentation missing');
+    assert.equal(second.artifacts[0].artifact.slides.length, 6);
     assert.deepEqual(bodies.map((body) => body.operationId), ['op-1', 'op-2']);
     assert.deepEqual(bodies.map((body) => body.agentToolBudget), [8, 5]);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test('presentation structured fallback delivers an artifact without visible JSON or another request', async () => {
+  const originalFetch = globalThis.fetch;
+  let requests = 0;
+  globalThis.fetch = (async (_url, init) => {
+    requests++;
+    const body = JSON.parse(String(init?.body));
+    assert.equal(body.agentStep, 'presentation');
+    assert.equal(body.requestedSlideCount, 6);
+    return new Response(`0:${JSON.stringify(JSON.stringify(presentationPart.artifact))}\n`, { status: 200 });
+  }) as typeof fetch;
+  try {
+    const result = await executeAgentSemanticStep({ stage: 'presentation',
+      prompt: 'Create exactly 6 slides', model: 'selected', history: [],
+      operationId: 'structured-1', toolBudget: 1, signal: new AbortController().signal,
+      requestedSlideCount: 6 });
+    assert.equal(result.text, '');
+    assert.equal(result.artifacts[0]?.type, 'presentation');
+    assert.equal(result.toolCallCount, 0);
+    assert.equal(requests, 1);
   } finally { globalThis.fetch = originalFetch; }
 });
 

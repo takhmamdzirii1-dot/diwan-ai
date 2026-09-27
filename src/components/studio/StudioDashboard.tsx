@@ -33,7 +33,7 @@ import { attachConversationFile, AttachmentActionGate, attachmentRequestContext,
   type ConversationAttachment, type ConversationAttachmentDraft, type ConversationAttachmentStore } from '@/lib/chat/conversation-attachments';
 import { chatRequestMessages, serializeChatSession } from '@/lib/chat/message-history';
 import { executeAgentSemanticStep } from '@/lib/chat/agent-client';
-import { agentTaskFor, cancelAgentRun, createAgentRun, executeAgentRun, isCurrentAgentUpdate,
+import { agentTaskFor, cancelAgentRun, createAgentRun, distinctAgentChartPlans, executeAgentRun, isCurrentAgentUpdate,
   isSingleSpreadsheetChartRequest, type AgentRun } from '@/lib/chat/agent-runtime';
 import { ChatRequestTracker, ChatStreamFinalizer, consumeCanonicalChatStream, hasUsableCanonicalOutput, restoreCanonicalAssistantText,
   type ChatRequestOutcome, type ChatTerminationReason } from '@/lib/chat/client-finalization';
@@ -401,9 +401,10 @@ export default function StudioDashboard({
     const spreadsheet = bound?.kind === 'spreadsheet' ? bound.artifact : null;
     const result = await executeAgentRun(run, spreadsheet, {
       operationId: () => crypto.randomUUID(), signal: controller.signal,
-      semantic: async (stage, prompt, operationId, toolBudget, signal) => {
+      semantic: async (stage, prompt, operationId, toolBudget, signal, options) => {
         const output = await executeAgentSemanticStep({ stage, prompt, model: context.modelId,
-          history: context.history, operationId, toolBudget, signal, debug: chatDebugEnabled });
+          history: context.history, operationId, toolBudget, signal, debug: chatDebugEnabled,
+          requestedSlideCount: options?.requestedSlideCount });
         refreshBalance();
         return output;
       },
@@ -415,13 +416,21 @@ export default function StudioDashboard({
           currentStep: state.currentStep, status: state.status,
           chartArtifactCount: state.artifacts.filter((part) => part.type === 'chart').length,
           presentationArtifactCount: state.artifacts.filter((part) => part.type === 'presentation').length,
+          analysisResultValidated: Boolean(state.analysis),
+          chartPlanCount: state.analysis?.chartPlans.length ?? 0,
+          distinctChartPlanCount: distinctAgentChartPlans(state.analysis?.chartPlans ?? []).length,
+          requestedSlideCount: state.task.slideCount,
+          actualSlideCount: state.artifacts.find((part) => part.type === 'presentation')?.artifact.slides.length ?? 0,
+          presentationStepStatus: state.completedSteps.includes('presentation') ? 'completed'
+            : state.failedStep === 'presentation' ? 'failed'
+              : state.currentStep === 'presentation' ? 'running' : 'pending',
           toolCallCount: state.toolCallCount, semanticCallCount: state.semanticCallCount,
         });
         agentRunRef.current = state;
         setAgentRun(state);
-        const vantraParts: ChatMessagePart[] = [...(state.analysisText ? [{ type: 'text' as const, text: state.analysisText }] : []), ...state.artifacts];
+        const vantraParts: ChatMessagePart[] = [...state.artifacts];
         setMessages((current) => current.map((message) => message.id === context.assistantId
-          ? { ...message, content: state.analysisText, vantraParts } : message));
+          ? { ...message, content: '', vantraParts } : message));
       },
     });
     if (agentAbortRef.current === controller) agentAbortRef.current = null;
