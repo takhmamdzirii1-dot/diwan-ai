@@ -35,6 +35,7 @@ import { attachConversationFile, AttachmentActionGate, attachmentRequestContext,
   type ConversationAttachment, type ConversationAttachmentDraft, type ConversationAttachmentStore,
   type PendingAttachmentIdStore } from '@/lib/chat/conversation-attachments';
 import { canRegenerateAssistantMessage, chatRequestMessages, serializeChatSession } from '@/lib/chat/message-history';
+import { chatModelRequestBody, resolveSelectedChatModel } from '@/lib/chat/studio-model-request';
 import { executeAgentSemanticStep } from '@/lib/chat/agent-client';
 import { agentTaskFor, cancelAgentRun, createAgentRun, distinctAgentChartPlans, executeAgentRun, isCurrentAgentUpdate,
   isSingleSpreadsheetChartRequest, type AgentRun } from '@/lib/chat/agent-runtime';
@@ -132,7 +133,7 @@ export default function StudioDashboard({
   const chatModels = useMemo(() => entitledModels.filter((model) => model.modality === 'chat'), [entitledModels]);
   const imageModels = useMemo(() => entitledModels.filter((model) => model.modality === 'image'), [entitledModels]);
   const videoModels = useMemo(() => entitledModels.filter((model) => model.modality === 'video'), [entitledModels]);
-  const defaultChatModel = chatModels.find(isModelSelectable) ?? chatModels[0] ?? null;
+  const defaultChatModel = chatModels.find(isModelSelectable) ?? null;
   const [selectedModelId, setSelectedModelId] = useState(defaultChatModel?.id ?? '');
   const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null);
   const [chatExchanges, setChatExchanges] = useState(0);
@@ -203,13 +204,12 @@ export default function StudioDashboard({
     try { localStorage.setItem(`vantra_attachments_${id}`, JSON.stringify(next)); } catch { /* Keep in memory. */ }
   }, []);
 
-  const activeModel = chatModels.find((model) => model.id === selectedModelId) ?? defaultChatModel;
+  const activeModel = resolveSelectedChatModel<StudioRuntimeModelDefinition>(chatModels, selectedModelId, isModelSelectable);
+  const currentModelId = activeModel?.id ?? '';
 
   useEffect(() => {
-    if (activeModel && isModelSelectable(activeModel)) return;
-    const available = chatModels.find(isModelSelectable);
-    if (available) setSelectedModelId(available.id);
-  }, [activeModel, chatModels]);
+    if (selectedModelId !== currentModelId) setSelectedModelId(currentModelId);
+  }, [selectedModelId, currentModelId]);
 
   useEffect(() => {
     try {
@@ -419,6 +419,11 @@ export default function StudioDashboard({
     },
   });
 
+  const retryChatResponse = useCallback(() => {
+    if (!currentModelId) return;
+    void reload({ body: chatModelRequestBody(currentModelId) });
+  }, [currentModelId, reload]);
+
   const runAgentRequest = useCallback(async (run: AgentRun,
     context: { assistantId: string; history: Array<{ role: string; content: string }>; modelId: string }) => {
     const controller = new AbortController();
@@ -478,12 +483,12 @@ export default function StudioDashboard({
   useEffect(() => {
     const run = agentRunRef.current;
     const context = agentMessageRef.current;
-    if (run?.status === 'failed' && run.terminalError === 'switch_model' && context
-      && context.modelId !== selectedModelId && run.conversationId === (activeSessionId ?? 'default-session')) {
-      context.modelId = selectedModelId;
+    if (currentModelId && run?.status === 'failed' && run.terminalError === 'switch_model' && context
+      && context.modelId !== currentModelId && run.conversationId === (activeSessionId ?? 'default-session')) {
+      context.modelId = currentModelId;
       void runAgentRequest(run, context);
     }
-  }, [selectedModelId, activeSessionId, currentSpreadsheet, runAgentRequest]);
+  }, [currentModelId, activeSessionId, currentSpreadsheet, runAgentRequest]);
 
   const abortAgentRun = useCallback(() => {
     const run = agentRunRef.current;
@@ -851,7 +856,7 @@ export default function StudioDashboard({
         const userMessage = { id: crypto.randomUUID(), role: 'user' as const, createdAt: new Date(),
           vantraAttachmentIds: pendingAttachmentIds, content };
         const assistantId = crypto.randomUUID();
-        const context = { assistantId, history: chatRequestMessages([...messages, userMessage]), modelId: selectedModelId };
+        const context = { assistantId, history: chatRequestMessages([...messages, userMessage]), modelId: currentModelId };
         agentRunRef.current = run;
         agentMessageRef.current = context;
         setAgentRun(run);
@@ -870,8 +875,7 @@ export default function StudioDashboard({
         } as Message,
         {
           body: {
-            model: selectedModelId,
-            operationId: crypto.randomUUID(),
+            ...chatModelRequestBody(currentModelId),
             ...attachmentRequestContext(sendAttachments, boundSpreadsheet?.artifact,
               resolvedAttachment?.kind === 'document' ? resolvedAttachment.artifact : undefined),
             requestedSlideCount: requestedPresentationSlideCount(data.message),
@@ -879,15 +883,15 @@ export default function StudioDashboard({
         }
       );
     },
-    [append, selectedModelId, activeSessionId, sessions, activeModel, user, openAuthModal, access?.kind, showActivation,
+    [append, currentModelId, activeSessionId, sessions, activeModel, user, openAuthModal, access?.kind, showActivation,
       messages, locale, runAgentRequest, setMessages, chatDebugEnabled]
   );
 
   const handleChatGuidanceAction = (action: GuidanceAction) => {
-    if ((action === 'try_again' || action === 'try_chart_again' || action === 'try_presentation_again')
+    if (currentModelId && (action === 'try_again' || action === 'try_chart_again' || action === 'try_presentation_again')
       && agentRunRef.current?.status === 'failed' && agentMessageRef.current) {
       void runAgentRequest(agentRunRef.current,
-        { ...agentMessageRef.current, modelId: selectedModelId });
+        { ...agentMessageRef.current, modelId: currentModelId });
       return;
     }
     if (action === 'switch_model' && agentRunRef.current?.terminalError === 'switch_model') {
@@ -899,7 +903,7 @@ export default function StudioDashboard({
       id: activeModel.id, name: activeModel.displayName, requiredPlan: activeModel.requiredPlan,
     });
     else if (action === 'try_again' || action === 'try_chart_again' || action === 'try_presentation_again'
-      || action === 'try_document_again' || action === 'try_file_again') void reload();
+      || action === 'try_document_again' || action === 'try_file_again') retryChatResponse();
     else if (action === 'choose_file') {
       document.querySelector<HTMLInputElement>('[data-chat-file-input]')?.click();
     }
@@ -909,7 +913,7 @@ export default function StudioDashboard({
       const attachments = (lastUser as typeof lastUser & { experimental_attachments?: Array<{ contentType?: string }> } | undefined)?.experimental_attachments ?? [];
       const needsImage = attachments.some((file) => file.contentType?.startsWith('image/'));
       const needsFile = attachments.some((file) => file.contentType && !file.contentType.startsWith('image/'));
-      const candidate = chatModels.find((model) => model.id !== selectedModelId && isModelSelectable(model)
+      const candidate = chatModels.find((model) => model.id !== currentModelId && isModelSelectable(model)
         && (!needsImage || 'visionInput' in model.capabilities && model.capabilities.visionInput)
         && (!needsFile || 'fileInput' in model.capabilities && model.capabilities.fileInput));
       if (candidate) setSelectedModelId(candidate.id);
@@ -1188,8 +1192,8 @@ export default function StudioDashboard({
                                   ? [...messages.slice(0, idx)].reverse().find((entry) => entry.role === 'user') ?? null : null}
                                 isLatest={idx === messages.length - 1}
                                 isStreaming={(isLoading || canonicalPending) && idx === messages.length - 1 && msg.role === 'assistant'}
-                                onRegenerate={chatBusy || !canRegenerateAssistantMessage(msg,
-                                  msg.id === agentMessageRef.current?.assistantId) ? undefined : () => reload()}
+                                onRegenerate={chatBusy || !currentModelId || !canRegenerateAssistantMessage(msg,
+                                  msg.id === agentMessageRef.current?.assistantId) ? undefined : retryChatResponse}
                                 onRetryArtifact={() => {
                                   if (chatBusy || (activeSessionIdRef.current ?? 'default-session') !== conversationId) return;
                                   const failure = msg as Message & { vantraFailureKind?: string; vantraAttachmentId?: string };
@@ -1350,7 +1354,7 @@ export default function StudioDashboard({
                         visionInput: 'visionInput' in model.capabilities && model.capabilities.visionInput,
                         fileInput: 'fileInput' in model.capabilities && model.capabilities.fileInput,
                       }))}
-                      selectedModelId={selectedModelId}
+                      selectedModelId={currentModelId}
                       onSelectModel={setSelectedModelId}
                       isLoading={chatBusy}
                       onStop={() => abortChatRequest('user_stop')}
@@ -1395,7 +1399,7 @@ export default function StudioDashboard({
       <SettingsModal
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        selectedChatModelId={selectedModelId}
+        selectedChatModelId={currentModelId}
         onSelectChatModel={setSelectedModelId}
         models={entitledModels}
       />

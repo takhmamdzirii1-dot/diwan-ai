@@ -6,11 +6,11 @@ import { PRESENTATION_OUTPUT_INSTRUCTION, requestedPresentationSlideCount,
 import { agentToolSelection, artifactTaskInstruction, presentationToolChoice, requiredArtifactToolChoice, resolveArtifactToolPath, selectArtifactTools } from '@/lib/artifacts/tool-registry';
 import { buildNativeArtifactTools } from '@/lib/artifacts/tool-native.server';
 import { completeMessageText, providerChatMessages } from '@/lib/chat/message-history';
+import { requiredChatModel } from '@/lib/chat/studio-model-request';
 import { routesForChatAction } from '@/lib/chat/action-routing';
 import { routeConversationIntent } from '@/lib/chat/intent-router';
 import { isChatTraceId, traceChatDataStream } from '@/lib/chat/debug-trace';
 
-import { DEFAULT_CHAT_MODEL } from '../../../../src/config/studio-registry';
 import { resolveRuntimeModelAccess } from '@/lib/models/plan-entitlements.server';
 import { modelPlanErrorPayload } from '@/lib/models/plan-entitlements';
 import { effectiveChatWeight, isValidChatWeight } from '@/lib/chat/chat-usage';
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'REQUEST_TOO_LARGE' }, { status: 413 });
     }
 
-    const { prompt, model = DEFAULT_CHAT_MODEL?.id, messages } = body;
+    const { prompt, model, messages } = body;
     trace('SERVER_RECEIVE', { received: true, messageCount: Array.isArray(messages) ? messages.length : 0, phase: 'parsed' });
 
     // Generation controls (clamped for safety)
@@ -160,7 +160,7 @@ export async function POST(request: Request) {
     // Chat-only presentation parts are persisted client-side, not provider input.
     messagesPayload = providerChatMessages(messagesPayload);
 
-    const requestedModel = typeof model === 'string' ? model.trim() : '';
+    const requestedModel = requiredChatModel(model);
     if (!requestedModel) {
       return NextResponse.json({ error: 'A registered model is required' }, { status: 400 });
     }
