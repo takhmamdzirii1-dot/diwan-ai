@@ -73,7 +73,7 @@ test('Arabic changes content direction without moving message chrome or timestam
   }
   for (const html of [englishUser, arabicUser]) {
     assert.match(html, /class="ms-auto flex w-fit max-w-\[88%\][^"\n]*" dir="ltr"/);
-    assert.match(html, /class="self-end text-\[10px\]/);
+    assert.match(html, /class="self-end text-\[9px\] leading-none/);
   }
   assert.match(arabicAssistant, /data-chat-rendered-text="" dir="rtl"/);
   assert.match(englishAssistant, /data-chat-rendered-text="" dir="ltr"/);
@@ -81,6 +81,27 @@ test('Arabic changes content direction without moving message chrome or timestam
   assert.match(englishUser, /<p dir="ltr"/);
   assert.match(arabicAssistant, /السعر 1992 USD للمنتج/);
   assert.match(arabicUser, /السعر 1992 USD للمنتج/);
+});
+
+test('short user messages keep a compact, non-overlapping timestamp in both directions', () => {
+  const render = (content: string) => renderToStaticMarkup(<IntlProvider locale="en" messages={studioMessages}>
+    <MessageBubble message={{ id: content, role: 'user', content, createdAt: new Date() }} isLatest={false} />
+  </IntlProvider>);
+  const english = render('Hi');
+  const arabic = render('مرحبا');
+  const long = render('A longer message that wraps naturally. '.repeat(20));
+  const bubbleClass = (html: string) => /<div class="(ms-auto flex w-fit[^"\n]+)" dir="ltr"/.exec(html)?.[1] ?? '';
+  assert.equal(bubbleClass(english), bubbleClass(arabic));
+  assert.equal(bubbleClass(english), bubbleClass(long));
+  assert.match(bubbleClass(english), /\bgap-1\b/);
+  assert.match(bubbleClass(english), /\bpt-2\.5 pb-1\.5\b/);
+  assert.doesNotMatch(bubbleClass(english), /\bmin-h-|\babsolute\b/);
+  for (const html of [english, arabic, long]) {
+    assert.match(html, /<\/p><time\b[^>]*class="self-end text-\[9px\] leading-none/);
+    assert.doesNotMatch(html, /<time\b[^>]*class="[^"]*absolute/);
+  }
+  assert.match(arabic, /<p dir="rtl"/);
+  assert.match(english, /<p dir="ltr"/);
 });
 
 test('successful artifacts omit generic retry while plain assistant text keeps it', () => {

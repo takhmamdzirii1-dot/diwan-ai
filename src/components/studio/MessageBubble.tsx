@@ -218,7 +218,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
       <div className={`w-full flex ${isUser ? 'justify-end' : 'justify-start'}`}>
         {isUser ? (
           <div
-            className="ms-auto flex w-fit max-w-[88%] self-end flex-col gap-3 rounded-2xl rounded-ee-sm border border-[var(--studio-border-subtle)] bg-[var(--studio-user-message)] px-4 py-3 text-[var(--studio-text-primary)] shadow-sm sm:max-w-[80%] sm:px-5"
+            className="ms-auto flex w-fit max-w-[88%] self-end flex-col gap-1 rounded-2xl rounded-ee-sm border border-[var(--studio-border-subtle)] bg-[var(--studio-user-message)] px-4 pt-2.5 pb-1.5 text-[var(--studio-text-primary)] shadow-sm sm:max-w-[80%] sm:px-5"
             dir="ltr"
           >
             {/* Visual Attachment Rendering */}
@@ -264,7 +264,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
               </div>)}
             </div>}
             {timestamp && <time dateTime={new Date(String(message.createdAt)).toISOString()}
-              className="self-end text-[10px] tabular-nums text-white/35 transition-colors group-hover:text-white/55 group-focus-within:text-white/55 sm:text-white/25">
+              className="self-end text-[9px] leading-none tabular-nums text-white/45 transition-colors group-hover:text-white/60 group-focus-within:text-white/60 sm:text-white/35">
               {timestamp}</time>}
           </div>
         ) : (
