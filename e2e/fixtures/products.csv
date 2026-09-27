@@ -1,0 +1,13 @@
+Product,CategoryID,SupplierID,Price
+Atlas Pen,10,101,4.50
+Beacon Pen,10,102,6.25
+Cedar Notebook,20,101,12.00
+Delta Notebook,20,103,15.50
+Echo Folder,30,102,3.75
+Fjord Folder,30,103,5.25
+Grove Marker,10,101,7.00
+Harbor Marker,10,103,8.50
+Iris Planner,20,102,18.00
+Juniper Planner,20,103,22.00
+Kite Binder,30,101,9.75
+Lumen Binder,30,102,11.25

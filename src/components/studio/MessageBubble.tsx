@@ -189,6 +189,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
 
   return (
     <motion.div
+      data-testid={`chat-message-${message.role}`}
       data-chat-debug-latest-assistant={isLatest && !isUser ? '' : undefined}
       dir="ltr"
       initial={reduceMotion ? false : { opacity: 0, y: 8 }}

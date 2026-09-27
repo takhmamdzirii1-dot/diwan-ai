@@ -8,6 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "tsc --noEmit",
+    "test:e2e": "playwright test --grep @smoke",
+    "test:e2e:live": "playwright test --grep @live-ai",
     "verify:i18n": "node scripts/verify-marketing-locales.mjs"
   },
   "dependencies": {
@@ -47,6 +49,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "@types/react": "19.2.18",
