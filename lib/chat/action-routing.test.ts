@@ -3,7 +3,7 @@ import test from 'node:test';
 import { actionRoutingCases } from './action-routing.eval';
 import { routeConversationIntent, routeChatIntent } from './intent-router';
 import { deterministicContextOutput, expectedOutputType, routesForChatAction, validateRequestedChatOutput } from './action-routing';
-import { requiredArtifactToolChoice, runArtifactTool, selectArtifactTools } from '@/lib/artifacts/tool-registry';
+import { artifactTaskInstruction, requiredArtifactToolChoice, resolveArtifactToolPath, runArtifactTool, selectArtifactTools } from '@/lib/artifacts/tool-registry';
 import { chatPartsFromMessage, chatPartsFromToolInvocations, streamingSafeText } from '@/lib/artifacts/chat-parts';
 import { ChatStreamFinalizer, consumeCanonicalChatStream, hasUsableCanonicalOutput } from './client-finalization';
 import type { RouteCapabilityStore } from '@/lib/models/capability-v2';
@@ -48,6 +48,36 @@ test('verified capability metadata selects a compatible existing route before in
   const semantic = selectArtifactTools('make something I can share with my team', { semantic: true });
   assert.deepEqual(routesForChatAction(routes, stored, semantic).map((route) => route.id), ['structured', 'native', 'unsupported']);
   assert.equal(expectedOutputType(forced), 'presentation');
+});
+
+test('Arabic presentation intent selects only compatible routes and forces the verified native tool', () => {
+  const request = 'اعطيني على شكل عرض تقديمي';
+  const intent = routeChatIntent(request);
+  assert.equal(intent.intent, 'create_presentation');
+  assert.equal(intent.confidence, 'high');
+  const selection = selectArtifactTools(request, { route: intent, semantic: true });
+  assert.deepEqual(selection.names, ['create_presentation']);
+  const routes = [
+    { id: 'not-capable', providerId: 'future_adapter', providerModelId: 'model-a' },
+    { id: 'capable', providerId: 'future_adapter', providerModelId: 'model-b' },
+  ];
+  const evidence = (state: 'supported' | 'unsupported') => ({ state, source: 'vantra_catalog' as const });
+  const stored: RouteCapabilityStore = {
+    'not-capable': { providerId: 'future_adapter', providerModelId: 'model-a',
+      evidence: { tools: evidence('unsupported'), structuredOutput: evidence('unsupported') }, overrides: {} },
+    capable: { providerId: 'future_adapter', providerModelId: 'model-b',
+      evidence: { tools: evidence('supported'), structuredOutput: evidence('unsupported') }, overrides: {} },
+  };
+  assert.deepEqual(routesForChatAction(routes, stored, selection).map((route) => route.id), ['capable']);
+  const path = resolveArtifactToolPath(selection, { tools: { state: 'supported' }, structuredOutput: { state: 'unsupported' } });
+  assert.equal(path, 'native');
+  assert.deepEqual(requiredArtifactToolChoice(selection, path), { type: 'tool', toolName: 'create_presentation' });
+  assert.match(artifactTaskInstruction(selection, path), /supplied tool/);
+  const structured = resolveArtifactToolPath(selection, { tools: { state: 'unsupported' }, structuredOutput: { state: 'supported' } });
+  assert.equal(structured, 'structured');
+  assert.equal(requiredArtifactToolChoice(selection, structured), undefined);
+  assert.match(artifactTaskInstruction(selection, structured), /one JSON object/);
+  assert.equal(validateRequestedChatOutput('presentation', 'I cannot create PowerPoint files.', [], 'en').valid, false);
 });
 
 test('real TXT, Markdown, JSON, and CSV outputs validate and survive artifact-only completion', () => {

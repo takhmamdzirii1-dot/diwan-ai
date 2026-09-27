@@ -12,6 +12,7 @@ import MessageBubble from '@/src/components/studio/MessageBubble';
 import { IntlProvider } from 'use-intl';
 import studioMessages from '@/messages/studio-en.json';
 import { createAgentRun } from '@/lib/chat/agent-runtime';
+import { getDocumentActionEligibility, primaryArtifactActions } from '@/lib/chat/contextual-guidance';
 
 const base = { schemaVersion: 1, id: 'artifact-1', title: 'Quarterly report', language: 'en', direction: 'ltr', metadata: {} } as const;
 const presentationJson = JSON.stringify({ type: 'presentation', title: 'Quarterly report', slides: [
@@ -92,7 +93,7 @@ test('the Chat bubble keeps old Markdown readable and never exposes presentation
   assert.doesNotMatch(renderBubble(presentationJson), /&quot;slides&quot;|"slides"|Revenue grew\./);
 });
 
-test('artifact-only document and explicit report expose the existing document preview action', () => {
+test('artifact-only document uses its client-rendered card; prose reports keep the document action', () => {
   const document = documentFromMarkdown('report', '# AI adoption report\n\nFindings.', 'en');
   const render = (content: string, vantraParts?: unknown, request?: string) => renderToStaticMarkup(
     <IntlProvider locale="en" messages={studioMessages}>
@@ -100,7 +101,11 @@ test('artifact-only document and explicit report expose the existing document pr
         precedingUserMessage={request ? { id: 'user-report', role: 'user', content: request } : null} isLatest={false} />
     </IntlProvider>,
   );
-  assert.match(render('', [{ type: 'document', artifact: document }]), /Open as document/);
+  const part = { type: 'document' as const, artifact: document };
+  assert.equal(getDocumentActionEligibility({ assistantMessage: { content: '', vantraParts: [part] } }), 'primary');
+  assert.ok(primaryArtifactActions(part).includes('export_document'));
+  // ArtifactSmartCard is intentionally client-only. Its actions are not rendered by this SSR test.
+  assert.doesNotMatch(render('', [part]), /Open as document/);
   assert.match(render('# Report\n\nA written report.', undefined, 'Write me a report.'), /Open as document/);
   assert.doesNotMatch(render('A short answer.', undefined, 'What is a report?'), /Open as document/);
 });
