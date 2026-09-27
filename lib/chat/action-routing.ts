@@ -1,5 +1,5 @@
 import { resolveRouteCapabilities, routeAllowsAttachment, type RouteCapabilityStore, type RouteIdentity } from '@/lib/models/capability-v2';
-import type { ArtifactToolSelection } from '@/lib/artifacts/tool-registry';
+import type { ArtifactToolName, ArtifactToolSelection } from '@/lib/artifacts/tool-registry';
 import { chatPartsFromMessage, looksLikeArtifactOutput, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
 import { runArtifactTool } from '@/lib/artifacts/tool-registry';
 import type { SpreadsheetArtifact } from '@/lib/artifacts/core';
@@ -34,15 +34,27 @@ export function expectedOutputType(selection: ArtifactToolSelection): 'document'
   return 'file';
 }
 
+export function partMatchesRequestedAction(part: ChatMessagePart, name: ArtifactToolName): boolean {
+  const expected = expectedOutputType({ names: [name], skill: null });
+  if (part.type !== expected) return false;
+  if (part.type !== 'file') return true;
+  const formats: Partial<Record<ArtifactToolName, string>> = {
+    create_text_file: 'txt', create_markdown_file: 'md', create_json_file: 'json', create_csv_file: 'csv',
+  };
+  return 'format' in part && part.format === formats[name];
+}
+
 /** Prose, including a capability refusal, never counts as a completed explicit action. */
 export function validateRequestedChatOutput(expected: ReturnType<typeof expectedOutputType>,
-  text: string, parts: ChatMessagePart[], locale: string): { valid: boolean; text: string; parts: ChatMessagePart[] } {
+  text: string, parts: ChatMessagePart[], locale: string, expectedTool?: ArtifactToolName): { valid: boolean; text: string; parts: ChatMessagePart[] } {
   if (!expected) return { valid: true, text, parts };
-  const alreadyValid = parts.some((part) => part.type === expected);
+  const matches = (part: ChatMessagePart) => part.type === expected
+    && (!expectedTool || partMatchesRequestedAction(part, expectedTool));
+  const alreadyValid = parts.some(matches);
   const parsed = alreadyValid ? [] : chatPartsFromMessage(text, locale);
-  const structured = parsed.length === 1 && parsed[0].type === expected ? parsed[0] : null;
+  const structured = parsed.length === 1 && matches(parsed[0]) ? parsed[0] : null;
   const result = structured ? [...parts, structured] : parts;
-  return { valid: result.some((part) => part.type === expected),
+  return { valid: result.some(matches),
     text: structured || alreadyValid && looksLikeArtifactOutput(text) ? '' : text, parts: result };
 }
 

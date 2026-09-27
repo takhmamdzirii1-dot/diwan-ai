@@ -1,13 +1,16 @@
 import { after, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
-import { streamText } from 'ai';
+import { InvalidToolArgumentsError, streamText } from 'ai';
 import { PRESENTATION_OUTPUT_INSTRUCTION, requestedPresentationSlideCount,
   validatedArtifactPartFromToolResult } from '@/lib/artifacts/chat-parts';
-import { agentToolSelection, artifactTaskInstruction, presentationToolChoice, requiredArtifactToolChoice, resolveArtifactToolPath, selectArtifactTools } from '@/lib/artifacts/tool-registry';
+import { agentToolSelection, artifactTaskInstruction, getArtifactTool, presentationToolChoice,
+  requiredArtifactToolChoice, resolveArtifactToolPath, selectArtifactTools } from '@/lib/artifacts/tool-registry';
 import { buildNativeArtifactTools } from '@/lib/artifacts/tool-native.server';
 import { completeMessageText, providerChatMessages } from '@/lib/chat/message-history';
 import { requiredChatModel } from '@/lib/chat/studio-model-request';
 import { routesForChatAction } from '@/lib/chat/action-routing';
+import { actionFailureCode, assessChatCompletion, emptyToolLifecycle, explicitActionName,
+  validatedExpectedActionPart } from '@/lib/chat/action-completion';
 import { routeConversationIntent } from '@/lib/chat/intent-router';
 import { isChatTraceId, traceChatDataStream } from '@/lib/chat/debug-trace';
 
@@ -364,6 +367,22 @@ export async function POST(request: Request) {
     let providerStreamReturned = false;
     let completedStream = false;
     let usageSettled = false;
+    const expectedAction = explicitActionName(taskSelection);
+    const toolLifecycle = emptyToolLifecycle();
+    let toolName: string | null = null;
+    const toolLifecycleUsage = () => ({
+      expectedAction, toolPath, toolName,
+      toolCallStarted: toolLifecycle.callStarted,
+      toolNameReceived: toolLifecycle.toolNameReceived,
+      toolArgumentsCompleted: toolLifecycle.argumentsCompleted,
+      toolArgumentsValid: toolLifecycle.argumentsValid,
+      toolExecutionStarted: toolLifecycle.executionStarted,
+      toolExecutionCompleted: toolLifecycle.executionCompleted,
+      toolExecutionFailed: toolLifecycle.executionFailed,
+      toolResultEmitted: toolLifecycle.resultEmitted,
+      toolResultValidated: toolLifecycle.resultValidated,
+      toolArgumentsInvalid: toolLifecycle.argumentsInvalid,
+    });
     // Settle exactly once per terminal path; the RPC itself is idempotent,
     // so the after() safety net can call this unconditionally.
     const settleChatUsage = async (outcome: 'completed' | 'released') => {
@@ -418,6 +437,7 @@ export async function POST(request: Request) {
             provider: route.providerId,
             providerModel: route.providerModelId,
             chatWeight: weight,
+            ...toolLifecycleUsage(),
             ...(details.usage ?? {}),
           },
           attemptCount: providerStarted ? 1 : 0,
@@ -446,13 +466,16 @@ export async function POST(request: Request) {
           return;
         }
         const cancelled = request.signal.aborted;
+        const interrupted = assessChatCompletion({ expectedAction, finishReason: null,
+          outputStarted, expectedResultValid: false, lifecycle: toolLifecycle });
         await finalizeOnce({
           terminalStatus: cancelled
             ? 'user_cancelled'
             : failureStateForInterruptedStream(outputStarted),
           errorCode: cancelled ? 'USER_CANCELLED' : 'STREAM_TERMINATED_WITHOUT_FINISH',
           failureOwner: cancelled ? 'customer' : 'provider',
-          failureCategory: cancelled ? 'user_cancel' : 'stream_interrupted',
+          failureCategory: cancelled ? 'user_cancel' : interrupted.failureCategory,
+          usage: { completionStage: interrupted.stage },
         });
         // Interrupted before any terminal callback: the reservation was
         // never earned, so release it.
@@ -485,7 +508,12 @@ export async function POST(request: Request) {
       );
       providerStarted = true;
       const nativeTools = toolPath === 'native' ? buildNativeArtifactTools(taskSelection,
-        agentStep ? agentToolBudget : Number.POSITIVE_INFINITY) : undefined;
+        agentStep ? agentToolBudget : Number.POSITIVE_INFINITY, (event) => {
+          toolName = event.toolName;
+          if (event.stage === 'started') toolLifecycle.executionStarted = true;
+          if (event.stage === 'completed') toolLifecycle.executionCompleted = true;
+          if (event.stage === 'failed') toolLifecycle.executionFailed = true;
+        }) : undefined;
       let documentToolCalls = 0;
       let documentToolResults = 0;
       let successfulDocumentExecutions = 0;
@@ -496,6 +524,8 @@ export async function POST(request: Request) {
       let presentationInputValidationSuccess = false;
       let actualSlideCount = 0;
       let emittedTextChars = 0;
+      let streamedText = '';
+      const emittedResultIds = new Set<string>();
       const requestedSlideCount = Number.isInteger(body.requestedSlideCount)
         && body.requestedSlideCount >= 2 && body.requestedSlideCount <= 8
         ? body.requestedSlideCount as number
@@ -515,6 +545,7 @@ export async function POST(request: Request) {
         messages: messagesPayload,
         tools: nativeTools,
         toolChoice: requiredArtifactToolChoice(taskSelection, toolPath),
+        experimental_toolCallStreaming: Boolean(nativeTools && expectedAction),
         maxSteps: 1,
         temperature,
         maxTokens,
@@ -524,12 +555,28 @@ export async function POST(request: Request) {
         onChunk: ({ chunk }) => {
           if (chunk.type === 'text-delta') {
             emittedTextChars += chunk.textDelta.length;
+            if (streamedText.length < 100_000) streamedText += chunk.textDelta.slice(0, 100_000 - streamedText.length);
             if (chunk.textDelta.length > 0) outputStarted = true;
+          }
+          if (chunk.type === 'tool-call-streaming-start') {
+            toolLifecycle.callStarted = true;
+            toolLifecycle.toolNameReceived = true;
+            toolName = getArtifactTool(chunk.toolName) ? chunk.toolName : 'unrecognized_tool';
+          }
+          if (chunk.type === 'tool-call') {
+            toolLifecycle.callStarted = true;
+            toolLifecycle.toolNameReceived = true;
+            toolLifecycle.argumentsCompleted = true;
+            toolLifecycle.argumentsValid = true;
+            toolName = getArtifactTool(chunk.toolName) ? chunk.toolName : 'unrecognized_tool';
           }
           if (chunk.type === 'tool-call' && chunk.toolName === 'create_document') documentToolCalls++;
           if (chunk.type === 'tool-call' && chunk.toolName === 'create_presentation') presentationToolCalls++;
           if (chunk.type === 'tool-result') {
+            toolLifecycle.resultEmitted = true;
             const valid = Boolean(validatedArtifactPartFromToolResult(chunk.toolName, chunk.result));
+            if (valid) toolLifecycle.resultValidated = true;
+            if (valid && (!expectedAction || chunk.toolName === expectedAction)) emittedResultIds.add(chunk.toolCallId);
             if (valid) outputStarted = true;
             if (chunk.toolName === 'create_document') {
               documentToolResults++;
@@ -574,7 +621,20 @@ export async function POST(request: Request) {
               });
               return;
             }
-            const failed = finishReason === 'error' || !outputStarted;
+            const expectedPart = expectedAction ? validatedExpectedActionPart(expectedAction, toolPath,
+              streamedText, toolResults, emittedResultIds) : null;
+            const expectedResultValid = Boolean(expectedPart) && (expectedAction !== 'create_presentation'
+              || requestedSlideCount === null || expectedPart?.type === 'presentation'
+                && expectedPart.artifact.slides.length === requestedSlideCount);
+            const completion = assessChatCompletion({ expectedAction, finishReason, outputStarted,
+              expectedResultValid, lifecycle: toolLifecycle });
+            const failed = !completion.completed;
+            trace('TOOL_LIFECYCLE', { action: expectedAction, toolName,
+              callStarted: toolLifecycle.callStarted, argumentsCompleted: toolLifecycle.argumentsCompleted,
+              argumentsValid: toolLifecycle.argumentsValid, executionStarted: toolLifecycle.executionStarted,
+              executionCompleted: toolLifecycle.executionCompleted, executionFailed: toolLifecycle.executionFailed,
+              resultEmitted: toolLifecycle.resultEmitted, resultValidated: expectedResultValid,
+              stage: completion.stage, failureCategory: completion.failureCategory });
             if (!failed) {
               completedStream = true;
             }
@@ -587,10 +647,12 @@ export async function POST(request: Request) {
                 promptTokens: usage.promptTokens,
                 completionTokens: usage.completionTokens,
                 totalTokens: usage.totalTokens,
+                completionStage: completion.stage,
+                expectedResultValidated: expectedResultValid,
               },
-              errorCode: failed ? 'PROVIDER_STREAM_FAILED' : null,
-              failureOwner: failed ? 'provider' : null,
-              failureCategory: failed ? 'stream_failure' : null,
+              errorCode: completion.failureCategory ? actionFailureCode(completion.failureCategory) : null,
+              failureOwner: failed ? completion.failureCategory === 'tool_execution_failed' ? 'vantra' : 'provider' : null,
+              failureCategory: completion.failureCategory,
             });
             // Only successful completions earn the reservation. Provider
             // failures, cancellations, and interrupted streams release it,
@@ -610,8 +672,19 @@ export async function POST(request: Request) {
       providerStreamReturned = true;
       trace('PROVIDER', { callStarted: true, streamReturned: true, finishReason: null, errorCategory: null });
       const streamResponse = result.toDataStreamResponse({
-        headers: {
+        init: { headers: {
           'x-vantra-operation-id': operationKey,
+          ...(expectedAction && toolPath === 'native' ? { 'x-vantra-requires-tool-result': '1' } : {}),
+        } },
+        getErrorMessage: (error) => {
+          if (InvalidToolArgumentsError.isInstance(error)) {
+            toolLifecycle.callStarted = true;
+            toolLifecycle.toolNameReceived = true;
+            toolLifecycle.argumentsCompleted = true;
+            toolLifecycle.argumentsInvalid = true;
+            toolName = getArtifactTool(error.toolName) ? error.toolName : 'unrecognized_tool';
+          }
+          return '';
         },
       });
       return traceId ? traceChatDataStream(streamResponse, traceId,

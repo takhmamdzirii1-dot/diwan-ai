@@ -45,7 +45,8 @@ import { presentationCompletion } from '@/lib/chat/presentation-completion';
 import { guidanceForChatError, shouldShowChatError, type GuidanceAction } from '@/lib/chat/contextual-guidance';
 import { selectArtifactTools } from '@/lib/artifacts/tool-registry';
 import { routeConversationIntent } from '@/lib/chat/intent-router';
-import { deterministicContextOutput, expectedOutputType, validateRequestedChatOutput } from '@/lib/chat/action-routing';
+import { deterministicContextOutput, expectedOutputType, partMatchesRequestedAction,
+  validateRequestedChatOutput } from '@/lib/chat/action-routing';
 import ChatGuidanceCard from './ChatGuidanceCard';
 
 const ArtifactSpreadsheetPreview = dynamic(() => import('./ArtifactSpreadsheetPreview'), { ssr: false });
@@ -294,20 +295,24 @@ export default function StudioDashboard({
           const userTexts = body.messages?.filter((entry) => entry.role === 'user').map((entry) => entry.content) ?? [];
           const current = userTexts.at(-1) ?? '';
           const route = routeConversationIntent(current, userTexts.slice(0, -1));
-          return { requestedSlideCount, expectedType: expectedOutputType(selectArtifactTools(current, { route })) };
-        } catch { return { requestedSlideCount: null, expectedType: null }; }
+          const selection = selectArtifactTools(current, { route });
+          return { requestedSlideCount, expectedType: expectedOutputType(selection),
+            expectedTool: selection.mode !== 'semantic' && selection.names.length === 1 ? selection.names[0] : undefined };
+        } catch { return { requestedSlideCount: null, expectedType: null, expectedTool: undefined }; }
       })();
       const { requestedSlideCount } = requestAction;
+      let nativeToolResultRequired = false;
       let streamErrorReason: 'provider_error' | 'network_error' = 'network_error';
       const finalizer = new ChatStreamFinalizer(requestId, ({ text, artifacts, status }) => {
         if (activeFinalizerRef.current !== finalizer) return;
         if ((activeSessionIdRef.current ?? 'default-session') !== sessionId) return;
         const presentation = presentationCompletion(text, artifacts, requestedSlideCount, locale);
         const action = validateRequestedChatOutput(requestAction.expectedType,
-          presentation.text, presentation.artifacts, locale);
+          presentation.text, presentation.artifacts, locale, requestAction.expectedTool);
         const finalArtifacts = action.parts;
         const finalText = action.text;
-        const actionValid = action.valid;
+        const actionValid = action.valid && (!nativeToolResultRequired || !requestAction.expectedTool
+          || artifacts.some((part) => partMatchesRequestedAction(part, requestAction.expectedTool!)));
         if (presentation.valid && actionValid && hasUsableCanonicalOutput(status, finalText, finalArtifacts)) {
           recordRequestOutcome(requestId, sessionId, 'completed');
           setMessages((current) => {
@@ -354,6 +359,7 @@ export default function StudioDashboard({
           finalizer.rawDone('error');
           return response;
         }
+        nativeToolResultRequired = response.headers.get('x-vantra-requires-tool-result') === '1';
         const [sdkBody, canonicalBody] = response.body.tee();
         let documentToolCalls = 0;
         let validatedDocumentResults = 0;
