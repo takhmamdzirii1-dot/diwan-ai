@@ -139,7 +139,14 @@ export function isExplicitDocumentIntent(input: string): boolean {
 }
 export function selectArtifactTools(input: string): ArtifactToolSelection {
   const text = input.slice(0, 8_000).toLowerCase();
+  const outputRequest = /\b(?:give me|export|download|save|make|create|generate|turn|convert|write|produce)\b/i.test(text);
+  const spreadsheetFormat = /\b(?:as|to|into|in)\s+(?:an?\s+)?(?:excel|xlsx|csv)\b|\b(?:excel|xlsx|csv)\s+(?:file|spreadsheet|workbook)\b|\b(?:export|download|make|create|give me)\b[\s\S]{0,80}\b(?:xlsx|csv)\b/i.test(text);
+  const documentFormat = /\b(?:as|to|into|in)\s+(?:an?\s+)?(?:pdf|docx|word)\b|\b(?:pdf|docx|word)\s+(?:report|document|file|letter)\b|\b(?:export|download|make|create|give me)\b[\s\S]{0,80}\b(?:pdf|docx)\b/i.test(text);
+  if (outputRequest && spreadsheetFormat) return { names: ['create_spreadsheet'], skill: 'spreadsheet-analysis' };
+  if (outputRequest && documentFormat) return { names: ['create_document'], skill: 'document' };
   if (isExplicitDocumentIntent(text)) return { names: ['create_document'], skill: 'document' };
+  if (outputRequest && /\b(?:presentation|slide deck|powerpoint|pptx)\b/i.test(text)) return { names: ['create_presentation'], skill: 'presentation' };
+  if (outputRequest && /\b(?:chart|graph|plot)\b/i.test(text)) return { names: ['create_chart'], skill: null };
   const create = /\b(create|make|build|generate|draft|write|prepare|plot|visualize|need|want)\b|\bgive me\b|(?:أنشئ|انشئ|اكتب|حرر|صغ|اصنع|créer|créez|générer|écris|écrivez|rédige|rédigez)/i.test(text);
   if (create && /\b(presentation|slide deck|powerpoint|pptx|diaporama|présentation)\b|عرض\s*(?:تقديمي|شرائح)/i.test(text)) return { names: ['create_presentation'], skill: 'presentation' };
   if (create && /\b(chart|graph|plot|trend|graphique|graphe)\b|رسم\s*بياني/i.test(text)) return { names: ['create_chart'], skill: null };
@@ -162,6 +169,11 @@ export function documentToolChoice(selection: ArtifactToolSelection, path: Artif
 export function presentationToolChoice(selection: ArtifactToolSelection, path: ArtifactToolPath): { type: 'tool'; toolName: 'create_presentation' } | undefined {
   return path === 'native' && selection.names.length === 1 && selection.names[0] === 'create_presentation'
     ? { type: 'tool', toolName: 'create_presentation' } : undefined;
+}
+export function requiredArtifactToolChoice(selection: ArtifactToolSelection, path: ArtifactToolPath):
+  { type: 'tool'; toolName: ArtifactToolName } | undefined {
+  return path === 'native' && selection.names.length === 1
+    ? { type: 'tool', toolName: selection.names[0] } : undefined;
 }
 
 const skills: Record<ArtifactTaskSkill, string> = {

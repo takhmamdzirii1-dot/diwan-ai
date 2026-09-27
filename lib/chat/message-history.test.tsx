@@ -9,7 +9,69 @@ import MessageBubble from '@/src/components/studio/MessageBubble';
 import ArtifactSpreadsheetPreview from '@/src/components/studio/ArtifactSpreadsheetPreview';
 import { chatPartsFromMessage, streamingSafeText } from '@/lib/artifacts/chat-parts';
 import { runArtifactTool } from '@/lib/artifacts/tool-registry';
-import { chatRequestMessages, providerChatMessages, serializeChatSession } from './message-history';
+import { canRegenerateAssistantMessage, chatRequestMessages, formatChatTimestamp, providerChatMessages, serializeChatSession } from './message-history';
+import { attachConversationFile, sentMessageAttachments } from './conversation-attachments';
+
+test('timestamps survive session serialization with compact local day labels', () => {
+  const now = new Date('2026-09-27T22:00:00');
+  const sent = new Date('2026-09-27T21:43:00');
+  const saved = JSON.parse(serializeChatSession([{ role: 'user', content: 'Hello', createdAt: sent }], () => []));
+  assert.equal(formatChatTimestamp(saved[0].createdAt, 'en', now), '21:43');
+  assert.match(formatChatTimestamp(new Date('2026-09-26T21:43:00'), 'en', now) ?? '', /^Yesterday, 21:43$/);
+  assert.doesNotMatch(formatChatTimestamp(new Date('2026-09-20T21:43:00'), 'en', now) ?? '', /:00$/);
+});
+
+test('generic regenerate is only for plain assistant text, never artifact or Agent results', () => {
+  const text = { role: 'assistant', content: 'A complete answer.' };
+  assert.equal(canRegenerateAssistantMessage(text), true);
+  for (const type of ['chart', 'presentation', 'document', 'spreadsheet', 'file']) {
+    assert.equal(canRegenerateAssistantMessage({ ...text, vantraParts: [{ type, artifact: { id: 'x' } }] }), false);
+  }
+  assert.equal(canRegenerateAssistantMessage(text, true), false);
+  assert.equal(canRegenerateAssistantMessage({ ...text, vantraFailureKind: 'chart' }), false);
+});
+
+test('sent user file card and compact message timestamps render without raw resource data', () => {
+  const artifact = runArtifactTool('create_spreadsheet', { title: 'Products',
+    sheets: [{ name: 'Products', columns: ['Product', 'Price'], rows: [['A', 12]] }] });
+  assert.equal(artifact.status, 'ok');
+  if (artifact.status !== 'ok' || artifact.artifact.type !== 'spreadsheet') return;
+  const attached = attachConversationFile([], { kind: 'spreadsheet', name: 'Products.xlsx', artifact: artifact.artifact }, 'chat-a');
+  const sent = { id: 'user-1', role: 'user' as const, content: 'Analyze this file.',
+    createdAt: new Date(), vantraAttachmentIds: [attached[0].attachmentId] };
+  const restored = JSON.parse(serializeChatSession([sent], () => []))[0];
+  const html = renderToStaticMarkup(<IntlProvider locale="en" messages={studioMessages}>
+    <MessageBubble message={restored} isLatest={false}
+      sentAttachments={sentMessageAttachments({ 'chat-a': attached }, 'chat-a', restored.vantraAttachmentIds)} />
+  </IntlProvider>);
+  assert.match(html, /Analyze this file\./);
+  assert.match(html, /Products\.xlsx/);
+  assert.match(html, /data-sent-attachments/);
+  assert.ok(html.indexOf('Analyze this file.') < html.indexOf('Products.xlsx'));
+  assert.match(html, /<time/);
+  assert.doesNotMatch(html, /schemaVersion|vantraAttachmentIds/);
+});
+
+test('successful artifacts omit generic retry while plain assistant text keeps it', () => {
+  const chart = runArtifactTool('create_chart', { title: 'Sales', chartType: 'bar',
+    categories: ['Jan'], series: [{ name: 'Sales', values: [12] }] });
+  assert.equal(chart.status, 'ok');
+  if (chart.status !== 'ok') return;
+  const render = (message: any) => renderToStaticMarkup(<IntlProvider locale="en" messages={studioMessages}>
+    <MessageBubble message={message} isLatest onRegenerate={() => undefined} />
+  </IntlProvider>);
+  assert.doesNotMatch(render({ id: 'chart-1', role: 'assistant', content: '',
+    createdAt: new Date(), vantraParts: [{ type: 'chart', artifact: chart.artifact }] }), /Retry response/i);
+  assert.match(render({ id: 'text-1', role: 'assistant', content: 'A normal answer.',
+    createdAt: new Date() }), /Retry response/i);
+  const failedChart = renderToStaticMarkup(<IntlProvider locale="en" messages={studioMessages}>
+    <MessageBubble message={{ id: 'chart-failed', role: 'assistant', content: 'Choose clear columns.',
+      vantraFailureKind: 'chart', createdAt: new Date() } as any} isLatest onRegenerate={() => undefined}
+      onRetryArtifact={() => undefined} />
+  </IntlProvider>);
+  assert.match(failedChart, /Try chart again/);
+  assert.doesNotMatch(failedChart, /Retry response/i);
+});
 
 test('full multi-turn history survives request construction and session reload in order', () => {
   const history = [

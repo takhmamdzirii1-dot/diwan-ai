@@ -27,10 +27,11 @@ const syntheticSheet = (artifact: SpreadsheetArtifact): ArtifactSheet | null => 
   return sheet ? { ...sheet, rows: [sheet.columns, ...sheet.rows] } : null;
 };
 
-export default function ArtifactSmartCard({ part, locale, onRequestPrompt }: {
+export default function ArtifactSmartCard({ part, locale, onRequestPrompt, timestamp }: {
   part: Extract<ChatMessagePart, { artifact: unknown }>;
   locale: string;
   onRequestPrompt?: (prompt: string, artifact?: import('@/lib/artifacts/core').SpreadsheetArtifact, context?: string) => void;
+  timestamp?: string | null;
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [generatedChart, setGeneratedChart] = useState<ChartArtifact | null>(null);
@@ -79,6 +80,13 @@ export default function ArtifactSmartCard({ part, locale, onRequestPrompt }: {
       } else if (action === 'download_xlsx' && part.type === 'spreadsheet') {
         const { exportSpreadsheet } = await import('@/lib/artifacts/spreadsheet-io');
         download(await exportSpreadsheet(part.artifact), title, 'xlsx'); setNotice(downloaded);
+      } else if (action === 'download_csv' && part.type === 'spreadsheet') {
+        const sheet = part.artifact.sheets[0];
+        if (!sheet) throw new Error('NO_SHEET');
+        const csvCell = (value: unknown) => `"${String(value ?? '').replaceAll('"', '""')}"`;
+        const csv = [sheet.columns, ...sheet.rows].map((row) => row.map(csvCell).join(',')).join('\r\n');
+        download(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }), title, 'csv');
+        setNotice(downloaded);
       } else if (action === 'download_pptx' && part.type === 'presentation') {
         const { presentationToPptx } = await import('@/lib/artifacts/pptx-export');
         download(await presentationToPptx(part.artifact, []), title, 'pptx'); setNotice(downloaded);
@@ -108,6 +116,7 @@ export default function ArtifactSmartCard({ part, locale, onRequestPrompt }: {
             {artifactActionLabel(action, locale)}</button>)}
         </div>
       </details>}
+      {timestamp && <time className="ms-auto text-[10px] tabular-nums text-white/40 sm:text-white/25 sm:group-hover:text-white/55">{timestamp}</time>}
     </div>
     {notice && <span role="status" className="text-xs text-[var(--studio-text-secondary)]">{notice}</span>}
     {actionError && <p role="alert" className="text-xs text-red-300">{actionError}</p>}

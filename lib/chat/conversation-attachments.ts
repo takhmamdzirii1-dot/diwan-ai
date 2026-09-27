@@ -1,5 +1,5 @@
 import { documentToText, isArtifact, type DocumentArtifact, type SpreadsheetArtifact } from '@/lib/artifacts/core';
-import { spreadsheetContext } from '@/lib/artifacts/spreadsheet-actions';
+import { chartFromSheet, spreadsheetContext } from '@/lib/artifacts/spreadsheet-actions';
 
 export type ConversationAttachmentDraft =
   | { kind: 'spreadsheet'; name: string; artifact: SpreadsheetArtifact }
@@ -71,9 +71,33 @@ export function getCurrentSpreadsheetAttachment(store: ConversationAttachmentSto
   return getSpreadsheetAttachments(store, conversationId).at(-1) ?? null;
 }
 
+export function resolveSpreadsheetAttachment(store: ConversationAttachmentStore, conversationId: string,
+  attachmentId?: string): { attachment: Extract<ConversationAttachment, { kind: 'spreadsheet' }> | null; ambiguous: boolean } {
+  const spreadsheets = getSpreadsheetAttachments(store, conversationId);
+  if (attachmentId) return { attachment: spreadsheets.find((item) => item.attachmentId === attachmentId) ?? null,
+    ambiguous: false };
+  return { attachment: spreadsheets.length === 1 ? spreadsheets[0] : null, ambiguous: spreadsheets.length > 1 };
+}
+
 export function getConversationAttachment(store: ConversationAttachmentStore, conversationId: string,
   attachmentId: string): ConversationAttachment | null {
   return getConversationAttachments(store, conversationId).find((item) => item.attachmentId === attachmentId) ?? null;
+}
+
+/** A sent message stores IDs only; the conversation store remains the resource authority. */
+export function sentMessageAttachments(store: ConversationAttachmentStore, conversationId: string,
+  attachmentIds: unknown): ConversationAttachment[] {
+  if (!Array.isArray(attachmentIds)) return [];
+  const ids = new Set(attachmentIds.filter((id): id is string => typeof id === 'string'));
+  return getConversationAttachments(store, conversationId).filter((item) => ids.has(item.attachmentId));
+}
+
+export function chartFromSpreadsheetAttachment(attachment: ConversationAttachment | null) {
+  if (attachment?.kind !== 'spreadsheet') return null;
+  const sheet = attachment.artifact.sheets[0];
+  if (!sheet) return null;
+  try { return chartFromSheet(attachment.artifact, sheet, 'bar', 0, Math.min(sheet.rows.length, 40)); }
+  catch { return null; }
 }
 
 export class AttachmentActionGate {

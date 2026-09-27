@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Menu, ArrowDown, Plus, Zap, Swords, Database, Settings, Sparkles, LayoutGrid, MessageSquare, Image as ImageIcon, Video, PenLine, Code2, Lightbulb, BarChart3, FileText } from 'lucide-react';
-import { useChat } from '@ai-sdk/react';
+import { useChat, type Message } from '@ai-sdk/react';
 import useUser from '../../hooks/useUser';
 import { useModal } from '../../context/ModalContext';
 import { ClaudeChatInput } from '@/components/ui/claude-style-chat-input';
@@ -27,13 +27,14 @@ import type { ChatModelOption } from '@/components/ui/model-picker';
 import { trackFunnelEvent } from '@/src/lib/funnel-analytics';
 import dynamic from 'next/dynamic';
 import { chatPartsFromMessage, requestedPresentationSlideCount, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
-import { chartFromSheet } from '@/lib/artifacts/spreadsheet-actions';
-import { attachConversationFile, AttachmentActionGate, attachmentRequestContext, clearPendingAttachments,
+import { attachConversationFile, AttachmentActionGate, attachmentRequestContext, chartFromSpreadsheetAttachment, clearPendingAttachments,
   getConversationAttachment, getConversationAttachments, getCurrentSpreadsheetAttachment, markPendingAttachment,
+  resolveSpreadsheetAttachment,
+  sentMessageAttachments,
   parseConversationAttachments, removePendingAttachment, uploadFileKind,
   type ConversationAttachment, type ConversationAttachmentDraft, type ConversationAttachmentStore,
   type PendingAttachmentIdStore } from '@/lib/chat/conversation-attachments';
-import { chatRequestMessages, serializeChatSession } from '@/lib/chat/message-history';
+import { canRegenerateAssistantMessage, chatRequestMessages, serializeChatSession } from '@/lib/chat/message-history';
 import { executeAgentSemanticStep } from '@/lib/chat/agent-client';
 import { agentTaskFor, cancelAgentRun, createAgentRun, distinctAgentChartPlans, executeAgentRun, isCurrentAgentUpdate,
   isSingleSpreadsheetChartRequest, type AgentRun } from '@/lib/chat/agent-runtime';
@@ -41,6 +42,7 @@ import { ChatRequestTracker, ChatStreamFinalizer, consumeCanonicalChatStream, ha
   type ChatRequestOutcome, type ChatTerminationReason } from '@/lib/chat/client-finalization';
 import { presentationCompletion } from '@/lib/chat/presentation-completion';
 import { guidanceForChatError, shouldShowChatError, type GuidanceAction } from '@/lib/chat/contextual-guidance';
+import { selectArtifactTools } from '@/lib/artifacts/tool-registry';
 import ChatGuidanceCard from './ChatGuidanceCard';
 
 const ArtifactSpreadsheetPreview = dynamic(() => import('./ArtifactSpreadsheetPreview'), { ssr: false });
@@ -99,6 +101,7 @@ export default function StudioDashboard({
   const [attachmentsBySession, setAttachmentsBySession] = useState<ConversationAttachmentStore>({});
   const attachmentsBySessionRef = useRef<ConversationAttachmentStore>({});
   const [pendingAttachmentIdsBySession, setPendingAttachmentIdsBySession] = useState<PendingAttachmentIdStore>({});
+  const pendingAttachmentIdsRef = useRef<PendingAttachmentIdStore>({});
   const pendingAttachmentActionsRef = useRef(new AttachmentActionGate());
   const [pendingAttachmentActions, setPendingAttachmentActions] = useState<Set<string>>(new Set());
   const [agentRun, setAgentRun] = useState<AgentRun | null>(null);
@@ -173,14 +176,18 @@ export default function StudioDashboard({
     if (id !== (activeSessionIdRef.current ?? 'default-session')) return null;
     setSessions((current) => current.some((session) => session.id === id) ? current
       : [{ id, title: attachment.name, createdAt: Date.now() }, ...current].slice(0, 30));
-    const next = attachConversationFile(getConversationAttachments(attachmentsBySessionRef.current, id), attachment, id);
+    const before = getConversationAttachments(attachmentsBySessionRef.current, id);
+    const next = attachConversationFile(before, attachment, id);
     attachmentsBySessionRef.current = { ...attachmentsBySessionRef.current, [id]: next };
     setAttachmentsBySession(attachmentsBySessionRef.current);
     try { localStorage.setItem(`vantra_attachments_${id}`, JSON.stringify(next)); } catch { /* Keep in memory. */ }
     const bound = next.find((item) => item.kind === attachment.kind && ('artifact' in item && 'artifact' in attachment
       ? item.artifact.id === attachment.artifact.id
       : 'url' in item && 'url' in attachment && item.url === attachment.url)) ?? null;
-    if (bound) setPendingAttachmentIdsBySession((current) => markPendingAttachment(current, id, bound.attachmentId));
+    if (bound && next !== before) {
+      pendingAttachmentIdsRef.current = markPendingAttachment(pendingAttachmentIdsRef.current, id, bound.attachmentId);
+      setPendingAttachmentIdsBySession(pendingAttachmentIdsRef.current);
+    }
     return bound;
   }, []);
   const detachFromConversation = useCallback((attachmentId: string) => {
@@ -189,7 +196,8 @@ export default function StudioDashboard({
       .filter((item) => item.attachmentId !== attachmentId);
     attachmentsBySessionRef.current = { ...attachmentsBySessionRef.current, [id]: next };
     setAttachmentsBySession(attachmentsBySessionRef.current);
-    setPendingAttachmentIdsBySession((current) => removePendingAttachment(current, id, attachmentId));
+    pendingAttachmentIdsRef.current = removePendingAttachment(pendingAttachmentIdsRef.current, id, attachmentId);
+    setPendingAttachmentIdsBySession(pendingAttachmentIdsRef.current);
     try { localStorage.setItem(`vantra_attachments_${id}`, JSON.stringify(next)); } catch { /* Keep in memory. */ }
   }, []);
 
@@ -296,11 +304,11 @@ export default function StudioDashboard({
             ];
             if (last?.role === 'assistant') {
               canonicalFinalRef.current = { sessionId, messageId: last.id, text: presentation.text };
-              return [...current.slice(0, -1), { ...last, content: presentation.text,
+              return [...current.slice(0, -1), { ...last, createdAt: last.createdAt ?? new Date(), content: presentation.text,
                 ...(presentation.artifacts.length > 0 ? { vantraParts } : {}) }];
             }
             if (last?.role === 'user') {
-              const assistant = { id: crypto.randomUUID(), role: 'assistant' as const, content: presentation.text,
+              const assistant = { id: crypto.randomUUID(), role: 'assistant' as const, createdAt: new Date(), content: presentation.text,
                 ...(presentation.artifacts.length > 0 ? { vantraParts } : {}) };
               canonicalFinalRef.current = { sessionId, messageId: assistant.id, text: presentation.text };
               return [...current, assistant];
@@ -552,6 +560,10 @@ export default function StudioDashboard({
       delete next[sessionId];
       return next;
     });
+    const pending = { ...pendingAttachmentIdsRef.current };
+    delete pending[sessionId];
+    pendingAttachmentIdsRef.current = pending;
+    setPendingAttachmentIdsBySession(pending);
     setSessions((prev) => {
       const next = prev.filter((s) => s.id !== sessionId);
       if (sessionId === activeSessionId) {
@@ -727,9 +739,10 @@ export default function StudioDashboard({
       }
       let content = data.message;
       const sendConversationId = activeSessionIdRef.current ?? 'default-session';
+      const pendingAttachmentIds = pendingAttachmentIdsRef.current[sendConversationId] ?? [];
       const resolvedAttachment = data.attachmentId
         ? getConversationAttachment(attachmentsBySessionRef.current, sendConversationId, data.attachmentId)
-        : getCurrentSpreadsheetAttachment(attachmentsBySessionRef.current, sendConversationId);
+        : resolveSpreadsheetAttachment(attachmentsBySessionRef.current, sendConversationId).attachment;
       if (data.attachmentId && !resolvedAttachment) return;
       const boundSpreadsheet = resolvedAttachment?.kind === 'spreadsheet' ? resolvedAttachment : null;
       const sendAttachments = getConversationAttachments(attachmentsBySessionRef.current, sendConversationId);
@@ -744,7 +757,8 @@ export default function StudioDashboard({
 
       // Convert attachments for experimental_attachments
       const capabilities = activeModel.capabilities;
-      const attachments = [...sendAttachments.filter((item): item is Extract<ConversationAttachment, { kind: 'file' | 'image' }> => item.kind === 'file' || item.kind === 'image').map((item) => ({
+      const attachments = [...sendAttachments.filter((item): item is Extract<ConversationAttachment, { kind: 'file' | 'image' }> =>
+        pendingAttachmentIds.includes(item.attachmentId) && (item.kind === 'file' || item.kind === 'image')).map((item) => ({
         name: item.name, contentType: item.contentType, url: item.url,
       })), ...(data.files || []).filter((f) => f.type.startsWith('image/')
         ? ('visionInput' in capabilities && capabilities.visionInput)
@@ -778,12 +792,10 @@ export default function StudioDashboard({
       }
       sendStartRef.current = performance.now();
       pendingSendRef.current = true;
-      setPendingAttachmentIdsBySession((current) => clearPendingAttachments(current, sendConversationId));
+      pendingAttachmentIdsRef.current = clearPendingAttachments(pendingAttachmentIdsRef.current, sendConversationId);
+      setPendingAttachmentIdsBySession(pendingAttachmentIdsRef.current);
       if (boundSpreadsheet && isSingleSpreadsheetChartRequest(data.message)) {
-        const sheet = boundSpreadsheet.artifact.sheets[0];
-        let chart: ReturnType<typeof chartFromSheet> | null = null;
-        try { if (sheet) chart = chartFromSheet(boundSpreadsheet.artifact, sheet, 'bar',
-          0, Math.min(sheet.rows.length, 40)); } catch { /* Show column guidance below. */ }
+        const chart = chartFromSpreadsheetAttachment(boundSpreadsheet);
         const answer = chart ? { id: crypto.randomUUID(), role: 'assistant' as const, content: '',
           vantraParts: [{ type: 'chart' as const, artifact: chart }] }
           : { id: crypto.randomUUID(), role: 'assistant' as const,
@@ -791,7 +803,9 @@ export default function StudioDashboard({
               : locale === 'fr' ? 'Choisissez une colonne de catégorie et une mesure pour créer le graphique.'
                 : 'Choose a category and a value column to create a useful chart.' };
         setMessages((current) => [...current, { id: crypto.randomUUID(), role: 'user' as const,
-          content: data.message }, answer]);
+          createdAt: new Date(), vantraAttachmentIds: pendingAttachmentIds, content: data.message },
+          { ...answer, createdAt: new Date(), ...(chart ? {} : { vantraFailureKind: 'chart',
+            vantraAttachmentId: boundSpreadsheet.attachmentId }) }]);
         return;
       }
       if (agentRequested) {
@@ -799,22 +813,26 @@ export default function StudioDashboard({
         const run = createAgentRun(data.message, conversationId, crypto.randomUUID(), Boolean(boundSpreadsheet),
           boundSpreadsheet?.attachmentId ?? null);
         if (!run) return;
-        const userMessage = { id: crypto.randomUUID(), role: 'user' as const, content };
+        const userMessage = { id: crypto.randomUUID(), role: 'user' as const, createdAt: new Date(),
+          vantraAttachmentIds: pendingAttachmentIds, content };
         const assistantId = crypto.randomUUID();
         const context = { assistantId, history: chatRequestMessages([...messages, userMessage]), modelId: selectedModelId };
         agentRunRef.current = run;
         agentMessageRef.current = context;
         setAgentRun(run);
-        setMessages((current) => [...current, userMessage, { id: assistantId, role: 'assistant' as const, content: '' }]);
+        setMessages((current) => [...current, userMessage, { id: assistantId, role: 'assistant' as const,
+          createdAt: new Date(), content: '' }]);
         await runAgentRequest(run, context);
         return;
       }
       await append(
         {
+          id: crypto.randomUUID(),
           role: 'user',
           content,
           experimental_attachments: attachments.length > 0 ? (attachments as any) : undefined,
-        },
+          createdAt: new Date(), vantraAttachmentIds: pendingAttachmentIds,
+        } as Message,
         {
           body: {
             model: selectedModelId,
@@ -830,7 +848,8 @@ export default function StudioDashboard({
   );
 
   const handleChatGuidanceAction = (action: GuidanceAction) => {
-    if (action === 'try_again' && agentRunRef.current?.status === 'failed' && agentMessageRef.current) {
+    if ((action === 'try_again' || action === 'try_chart_again' || action === 'try_presentation_again')
+      && agentRunRef.current?.status === 'failed' && agentMessageRef.current) {
       void runAgentRequest(agentRunRef.current,
         { ...agentMessageRef.current, modelId: selectedModelId });
       return;
@@ -843,7 +862,8 @@ export default function StudioDashboard({
     else if ((action === 'get_pro' || action === 'view_plans') && activeModel) showActivation('model_locked', 'chat', {
       id: activeModel.id, name: activeModel.displayName, requiredPlan: activeModel.requiredPlan,
     });
-    else if (action === 'try_again') void reload();
+    else if (action === 'try_again' || action === 'try_chart_again' || action === 'try_presentation_again'
+      || action === 'try_document_again') void reload();
     else if (action === 'choose_file') {
       document.querySelector<HTMLInputElement>('[data-chat-file-input]')?.click();
     }
@@ -983,6 +1003,11 @@ export default function StudioDashboard({
   }
 
   const isEmpty = messages.length === 0;
+  const lastUserPrompt = [...messages].reverse().find((message) => message.role === 'user')?.content ?? '';
+  const requestedArtifact = selectArtifactTools(lastUserPrompt).names[0];
+  const artifactRetryAction: GuidanceAction = requestedArtifact === 'create_chart' ? 'try_chart_again'
+    : requestedArtifact === 'create_presentation' ? 'try_presentation_again'
+      : requestedArtifact === 'create_document' ? 'try_document_again' : 'try_again';
 
   return (
     <div className="studio-shell relative flex h-[100dvh] w-full overflow-hidden bg-[var(--studio-bg)] text-white font-sans">
@@ -1116,6 +1141,8 @@ export default function StudioDashboard({
                               <MessageBubble
                                 key={msg.id || idx}
                                 message={msg}
+                                sentAttachments={msg.role === 'user' ? sentMessageAttachments(attachmentsBySession,
+                                  conversationId, (msg as Message & { vantraAttachmentIds?: unknown }).vantraAttachmentIds) : []}
                                 agentRun={msg.role === 'assistant' && msg.id === agentMessageRef.current?.assistantId
                                   && agentRun?.conversationId === (activeSessionId ?? 'default-session') ? agentRun : null}
                                 onStopAgent={() => abortChatRequest('user_stop')}
@@ -1123,7 +1150,21 @@ export default function StudioDashboard({
                                   ? [...messages.slice(0, idx)].reverse().find((entry) => entry.role === 'user') ?? null : null}
                                 isLatest={idx === messages.length - 1}
                                 isStreaming={(isLoading || canonicalPending) && idx === messages.length - 1 && msg.role === 'assistant'}
-                                onRegenerate={chatBusy || msg.id === agentMessageRef.current?.assistantId ? undefined : () => reload()}
+                                onRegenerate={chatBusy || !canRegenerateAssistantMessage(msg,
+                                  msg.id === agentMessageRef.current?.assistantId) ? undefined : () => reload()}
+                                onRetryArtifact={() => {
+                                  if (chatBusy || (activeSessionIdRef.current ?? 'default-session') !== conversationId) return;
+                                  const failure = msg as Message & { vantraFailureKind?: string; vantraAttachmentId?: string };
+                                  if (failure.vantraFailureKind !== 'chart' || !failure.vantraAttachmentId) return;
+                                  const attachment = getConversationAttachment(attachmentsBySessionRef.current,
+                                    conversationId, failure.vantraAttachmentId);
+                                  const chart = chartFromSpreadsheetAttachment(attachment);
+                                  if (!chart) return;
+                                  setMessages((current) => (activeSessionIdRef.current ?? 'default-session') !== conversationId
+                                    ? current : current.map((entry) => entry.id === msg.id
+                                    ? { ...entry, content: '', vantraParts: [{ type: 'chart' as const, artifact: chart }],
+                                      vantraFailureKind: undefined } : entry));
+                                }}
                                 onRequestPrompt={(prompt, artifact, context) => {
                                   const attached = artifact ? attachToConversation({ kind: 'spreadsheet',
                                     name: `${artifact.title}.xlsx`, artifact }) : null;
@@ -1151,7 +1192,9 @@ export default function StudioDashboard({
                         {shouldShowChatError({ busy: chatBusy, requestId: debugRequestIdRef.current,
                           conversationId: activeSessionId ?? 'default-session', outcome: requestOutcome,
                         }) && <div className="max-w-lg"><ChatGuidanceCard
-                          guidance={guidanceForChatError(error?.message ?? 'CHAT_REQUEST_FAILED', locale)} locale={locale} onAction={handleChatGuidanceAction} /></div>}
+                          guidance={(() => { const guidance = guidanceForChatError(error?.message ?? 'CHAT_REQUEST_FAILED', locale);
+                            return guidance.actions.includes('try_again') ? { ...guidance, actions: [artifactRetryAction] } : guidance;
+                          })()} locale={locale} onAction={handleChatGuidanceAction} /></div>}
                         {agentRun?.conversationId === (activeSessionId ?? 'default-session')
                           && (agentRun.status === 'waiting_for_user' || agentRun.status === 'failed') && <div className="max-w-lg"><ChatGuidanceCard
                             guidance={agentRun.status === 'waiting_for_user' ? { kind: 'requirement',
@@ -1176,7 +1219,8 @@ export default function StudioDashboard({
                                       : locale === 'fr' ? "Je n'ai pas pu terminer l'étape restante."
                                         : "I couldn't complete the remaining step.",
                                 actions: agentRun.failedStep === 'charts' && agentRun.artifacts.some((part) => part.type === 'chart')
-                                  ? [] : ['try_again'] }} locale={locale} onAction={handleChatGuidanceAction} /></div>}
+                                  ? [] : [agentRun.failedStep === 'charts' ? 'try_chart_again'
+                                    : agentRun.failedStep === 'presentation' ? 'try_presentation_again' : 'try_again'] }} locale={locale} onAction={handleChatGuidanceAction} /></div>}
 
                       </div>
                     </div>

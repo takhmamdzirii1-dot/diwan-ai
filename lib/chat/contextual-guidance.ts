@@ -7,7 +7,7 @@ import { getConversationAttachments, getCurrentSpreadsheetAttachment, getSpreads
   type ConversationAttachmentStore } from './conversation-attachments';
 
 export type GuidanceKind = 'requirement' | 'suggestion' | 'warning' | 'confirmation' | 'success' | 'recoverable_error' | 'next_action';
-export type GuidanceAction = 'upload_file' | 'upload_image' | 'upload_document' | 'upload_spreadsheet' | 'switch_model' | 'add_credits' | 'get_pro' | 'view_plans' | 'choose_file' | 'try_again';
+export type GuidanceAction = 'upload_file' | 'upload_image' | 'upload_document' | 'upload_spreadsheet' | 'switch_model' | 'add_credits' | 'get_pro' | 'view_plans' | 'choose_file' | 'try_again' | 'try_chart_again' | 'try_presentation_again' | 'try_document_again';
 export type ChatGuidance = { kind: GuidanceKind; message: string; actions: GuidanceAction[] };
 
 export type DocumentActionEligibility = 'primary' | 'secondary' | 'hidden';
@@ -39,7 +39,7 @@ export function shouldShowChatError(input: {
   return input.outcome.reason === 'provider_error' || input.outcome.reason === 'network_error';
 }
 export type ArtifactAction = 'copy' | 'copy_table' | 'create_chart' | 'preview' | 'analyze' | 'build_presentation'
-  | 'download_xlsx' | 'download_png' | 'use_in_presentation' | 'download_pptx' | 'copy_outline' | 'export_document';
+  | 'download_xlsx' | 'download_csv' | 'download_png' | 'use_in_presentation' | 'download_pptx' | 'copy_outline' | 'export_document';
 type Locale = 'en' | 'fr' | 'ar';
 const lang = (locale: string): Locale => locale.startsWith('ar') ? 'ar' : locale.startsWith('fr') ? 'fr' : 'en';
 const say = (locale: string, words: Record<Locale, string>) => words[lang(locale)];
@@ -56,6 +56,9 @@ export function guidanceActionLabel(action: GuidanceAction, locale: string): str
     view_plans: { en: 'View plans', fr: 'Voir les offres', ar: 'عرض الخطط' },
     choose_file: { en: 'Choose another file', fr: 'Choisir un autre fichier', ar: 'اختر ملفًا آخر' },
     try_again: { en: 'Try again', fr: 'Réessayer', ar: 'حاول مجددًا' },
+    try_chart_again: { en: 'Try chart again', fr: 'Réessayer le graphique', ar: 'أعد محاولة الرسم البياني' },
+    try_presentation_again: { en: 'Try presentation again', fr: 'Réessayer la présentation', ar: 'أعد محاولة العرض التقديمي' },
+    try_document_again: { en: 'Try document again', fr: 'Réessayer le document', ar: 'أعد محاولة المستند' },
   };
   return labels[action][lang(locale)];
 }
@@ -69,6 +72,7 @@ export function artifactActionLabel(action: ArtifactAction, locale: string): str
     analyze: { en: 'Analyze', fr: 'Analyser', ar: 'تحليل' },
     build_presentation: { en: 'Build presentation', fr: 'Créer une présentation', ar: 'إنشاء عرض تقديمي' },
     download_xlsx: { en: 'Download XLSX', fr: 'Télécharger XLSX', ar: 'تنزيل XLSX' },
+    download_csv: { en: 'Download CSV', fr: 'Télécharger CSV', ar: 'تنزيل CSV' },
     download_png: { en: 'Download PNG', fr: 'Télécharger PNG', ar: 'تنزيل PNG' },
     use_in_presentation: { en: 'Use in presentation', fr: 'Utiliser dans une présentation', ar: 'استخدمه في عرض' },
     download_pptx: { en: 'Download PPTX', fr: 'Télécharger PPTX', ar: 'تنزيل PPTX' },
@@ -80,6 +84,7 @@ export function artifactActionLabel(action: ArtifactAction, locale: string): str
 
 export type ComposerGuidanceInput = {
   text: string;
+  selectedAttachmentId?: string;
   files: Array<{ type: string }>;
   attachmentStore?: ConversationAttachmentStore;
   conversationId?: string;
@@ -100,6 +105,16 @@ export function guidanceForComposer(input: ComposerGuidanceInput): ChatGuidance 
   if (model?.accessState === 'locked' || model?.requiredPlan) return planGuidance(model.requiredPlan, locale);
   const image = files.some((file) => file.type.startsWith('image/'));
   const document = files.some((file) => !file.type.startsWith('image/'));
+  const spreadsheetReference = /\b(?:spreadsheet|workbook|sheet|tableur|feuille de calcul)\b|جدول\s*بيانات/i.test(text);
+  const spreadsheetAction = /\b(?:analy[sz]e|create|make|build|chart|plot|graph|presentation|export|give me)\b/i.test(text);
+  const spreadsheetWorkflow = /\bcharts?\b[\s\S]{0,100}\b(?:presentation|slides?)\b|\banother\s+chart\b/i.test(text);
+  if ((spreadsheetReference && spreadsheetAction || spreadsheetWorkflow) && input.attachmentStore && input.conversationId
+    && input.attachmentsHydrated !== false && files.length === 0) {
+    const spreadsheets = getSpreadsheetAttachments(input.attachmentStore, input.conversationId);
+    if (spreadsheets.length > 1 && !spreadsheets.some((item) => item.attachmentId === input.selectedAttachmentId)) return { kind: 'requirement',
+      message: say(locale, { en: 'Choose one attached spreadsheet to continue.',
+        fr: 'Choisissez une feuille de calcul jointe pour continuer.', ar: 'اختر جدول بيانات مرفقًا للمتابعة.' }), actions: [] };
+  }
   if (image && !model?.visionInput) return { kind: 'requirement',
     message: say(locale, { en: "This model can't read images.", fr: 'Ce modèle ne peut pas lire les images.', ar: 'لا يستطيع هذا النموذج قراءة الصور.' }), actions: ['switch_model'] };
   if (document && !model?.fileInput) return { kind: 'requirement',
@@ -116,7 +131,7 @@ export function guidanceForComposer(input: ComposerGuidanceInput): ChatGuidance 
         || (spreadsheets.length > 0 && /\b(?:charts?|graphs?)\b/i.test(text)
           && /\b(?:presentation|slides?)\b/i.test(text));
       if (spreadsheetRequest) {
-        if (spreadsheets.length > 1) return { kind: 'requirement',
+        if (spreadsheets.length > 1 && !spreadsheets.some((item) => item.attachmentId === input.selectedAttachmentId)) return { kind: 'requirement',
           message: say(locale, { en: 'Choose one attached spreadsheet to continue.',
             fr: 'Choisissez une feuille de calcul jointe pour continuer.', ar: 'اختر جدول بيانات مرفقًا للمتابعة.' }),
           actions: [] };
@@ -205,7 +220,8 @@ export function primaryArtifactActions(part: ChatMessagePart): ArtifactAction[] 
   return [];
 }
 export function secondaryArtifactActions(part: ChatMessagePart): ArtifactAction[] {
-  if (part.type === 'spreadsheet') return ['preview', 'download_xlsx'].filter((action) => !primaryArtifactActions(part).includes(action as ArtifactAction)) as ArtifactAction[];
+  if (part.type === 'spreadsheet') return ['preview', 'download_xlsx', 'download_csv', 'copy'].filter((action) => !primaryArtifactActions(part).includes(action as ArtifactAction)) as ArtifactAction[];
+  if (part.type === 'chart') return ['copy'];
   if (part.type === 'presentation') return ['copy_outline'];
   if (part.type === 'document' && documentTable(part.artifact)) return ['export_document'];
   return [];

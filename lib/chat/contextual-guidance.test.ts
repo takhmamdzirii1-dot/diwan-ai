@@ -43,7 +43,7 @@ test('artifact actions are bounded and only structured data gets chart actions',
   assert.equal(artifactActionLabel(primaryArtifactActions({ type: 'document', artifact: { ...table, metadata: {} } })[0], 'en'), 'Copy');
   assert.equal(artifactActionLabel(primaryArtifactActions({ type: 'document', artifact: table })[0], 'en'), 'Copy table');
   assert.deepEqual(primaryArtifactActions({ type: 'spreadsheet', artifact: sheet }), ['analyze', 'create_chart', 'build_presentation']);
-  assert.deepEqual(secondaryArtifactActions({ type: 'spreadsheet', artifact: sheet }), ['preview', 'download_xlsx']);
+  assert.deepEqual(secondaryArtifactActions({ type: 'spreadsheet', artifact: sheet }), ['preview', 'download_xlsx', 'download_csv', 'copy']);
   assert.deepEqual(primaryArtifactActions({ type: 'chart', artifact: chart }), ['download_png', 'use_in_presentation']);
   assert.deepEqual(primaryArtifactActions({ type: 'presentation', artifact: presentation }), ['preview', 'download_pptx']);
   assert.deepEqual(secondaryArtifactActions({ type: 'presentation', artifact: presentation }), ['copy_outline']);
@@ -157,6 +157,11 @@ test('no spreadsheet still asks for upload, while multiple spreadsheets ask for 
   assert.equal(selected?.kind, 'requirement');
   assert.match(selected?.message ?? '', /Choose one attached spreadsheet/);
   assert.deepEqual(selected?.actions, []);
+  assert.equal(guidanceForComposer({ ...draft, text, attachmentStore: { [conversationId]: second },
+    conversationId, attachmentsHydrated: true, selectedAttachmentId: second[0].attachmentId }), null);
+  assert.match(guidanceForComposer({ ...draft,
+    text: 'Create two charts and build a 6-slide presentation.', attachmentStore: { [conversationId]: second },
+    conversationId, attachmentsHydrated: true })?.message ?? '', /Choose one attached spreadsheet/);
   assert.doesNotMatch(selected?.message ?? '', /need the file/i);
   assert.equal(guidanceForComposer({ ...draft, text: 'What is compound interest?',
     attachmentStore: { [conversationId]: second }, conversationId, attachmentsHydrated: true }), null);

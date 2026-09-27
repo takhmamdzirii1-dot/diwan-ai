@@ -2,7 +2,30 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { chatPartsFromMessage, chatPartsFromToolInvocations } from './chat-parts';
 import { buildNativeArtifactTools } from './tool-native.server';
-import { agentToolSelection, artifactTaskInstruction, artifactToolProgress, documentToolChoice, presentationToolChoice, getArtifactTool, resolveArtifactToolPath, runArtifactTool, selectArtifactTools, verifyArtifactToolResult } from './tool-registry';
+import { agentToolSelection, artifactTaskInstruction, artifactToolProgress, documentToolChoice, presentationToolChoice, requiredArtifactToolChoice, getArtifactTool, resolveArtifactToolPath, runArtifactTool, selectArtifactTools, verifyArtifactToolResult } from './tool-registry';
+
+test('explicit downloadable output formats select one structured artifact without a classifier call', () => {
+  const cases = [
+    ['Give me these statistics as Excel', 'create_spreadsheet'],
+    ['Export this as XLSX', 'create_spreadsheet'],
+    ['Make this CSV', 'create_spreadsheet'],
+    ['Make this a PDF report', 'create_document'],
+    ['Write this as Word', 'create_document'],
+    ['Give me DOCX', 'create_document'],
+    ['Make a PowerPoint', 'create_presentation'],
+    ['Turn this into a presentation', 'create_presentation'],
+    ['Make a chart', 'create_chart'],
+  ] as const;
+  for (const [prompt, name] of cases) {
+    const selection = selectArtifactTools(prompt);
+    assert.deepEqual(selection.names, [name], prompt);
+    assert.deepEqual(requiredArtifactToolChoice(selection, 'native'), { type: 'tool', toolName: name });
+    assert.equal(requiredArtifactToolChoice(selection, 'structured'), undefined);
+  }
+  assert.deepEqual(selectArtifactTools('What is compound interest?').names, []);
+  assert.deepEqual(selectArtifactTools('Make a chart about Excel adoption').names, ['create_chart']);
+  assert.deepEqual(selectArtifactTools('Make a presentation about Word processors').names, ['create_presentation']);
+});
 
 test('stable registry names resolve and invalid inputs/results fail safely', () => {
   for (const name of ['create_table', 'create_chart', 'create_document', 'create_spreadsheet', 'create_presentation']) {

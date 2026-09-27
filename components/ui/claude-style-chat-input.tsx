@@ -24,6 +24,7 @@ export interface AttachedFile {
 
 export interface ClaudeSendPayload {
     message: string;
+    attachmentId?: string;
     files: AttachedFile[];
     pastedContent: { id: string; content: string }[];
     model: string;
@@ -186,9 +187,13 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
     const [files, setFiles] = useState<AttachedFile[]>([]);
     const [guidance, setGuidance] = useState<ChatGuidance | null>(null);
     const [guidanceAttempted, setGuidanceAttempted] = useState(false);
+    const [selectedAttachmentId, setSelectedAttachmentId] = useState<string | null>(null);
     const conversationAttachments = getConversationAttachments(attachmentStore, conversationId);
     const { pending: pendingConversationAttachments, context: contextAttachments } =
         attachmentDisplayGroups(attachmentStore, conversationId, pendingAttachmentIds);
+    const pendingSpreadsheets = pendingConversationAttachments.filter((item) => item.kind === 'spreadsheet');
+    const effectiveAttachmentId = selectedAttachmentId
+        ?? (pendingSpreadsheets.length === 1 ? pendingSpreadsheets[0].attachmentId : undefined);
     const requestedUploadRef = useRef<'image' | 'document' | null>(null);
     const [pastedContent, setPastedContent] = useState<{ id: string; content: string }[]>([]);
     const [isDragging, setIsDragging] = useState(false);
@@ -269,12 +274,12 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
 
     const [multimodalMenuOpen, setMultimodalMenuOpen] = useState(false);
     const selectedModel = models.find((model) => model.id === selectedModelId) ?? models[0];
-    const guidanceInput = { text: message, files: [...files,
+    const guidanceInput = { text: message, selectedAttachmentId: effectiveAttachmentId, files: [...files,
         ...conversationAttachments.filter((item) => item.kind === 'file' || item.kind === 'image')
             .map((item) => ({ type: item.contentType }))], model: selectedModel ?? null,
         balance, balanceStatus, locale, attachmentStore, conversationId, attachmentsHydrated };
     const policyGuidance = guidanceAttempted && attachmentsHydrated ? guidanceForComposer(guidanceInput) : null;
-    useEffect(() => { setGuidanceAttempted(false); setGuidance(null); }, [conversationId]);
+    useEffect(() => { setGuidanceAttempted(false); setGuidance(null); setSelectedAttachmentId(null); }, [conversationId]);
     const supportsAttachments = models.length > 0 || Boolean(onSelectFile);
     const menuActions = attachmentMenuActions(supportsAttachments, Boolean(onSelectFile));
     const supportsMenu = menuActions.length > 0;
@@ -412,12 +417,14 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
 
         onSendMessage({
             message: textWithAttachments,
+            attachmentId: effectiveAttachmentId,
             files,
             pastedContent,
             model: selectedModelId || models[0]?.id || "",
             isThinkingEnabled
         });
         setMessage("");
+        setSelectedAttachmentId(null);
         setFiles([]);
         setPastedContent([]);
         requestedUploadRef.current = null;
@@ -481,7 +488,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                         ))}
                     </div>
                 )}
-                {contextAttachments.length > 0 && <details data-attachment-display="context" className="px-1 pb-2 text-xs text-white/50">
+                {contextAttachments.length > 0 && <details data-attachment-display="context" className="absolute bottom-full start-0 z-20 mb-2 max-w-full px-1 text-xs text-white/50">
                     <summary className="w-fit cursor-pointer rounded-md px-1 py-0.5 hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
                         {contextAttachments.length === 1
                             ? `${locale.startsWith('ar') ? 'السياق' : locale.startsWith('fr') ? 'Contexte' : 'Context'} · ${contextAttachments[0].name}`
@@ -491,6 +498,13 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                         {contextAttachments.map((attachment) => <div key={attachment.attachmentId} className="flex flex-wrap items-center gap-x-3 gap-y-1">
                             <span className="max-w-48 truncate text-white/75">{attachment.name}</span>
                             <span>{attachmentKindLabel(attachment.kind, locale)}</span>
+                            {attachment.kind === 'spreadsheet' && contextAttachments.filter((item) => item.kind === 'spreadsheet').length > 1 &&
+                                <button type="button" aria-pressed={selectedAttachmentId === attachment.attachmentId}
+                                    onClick={() => setSelectedAttachmentId(attachment.attachmentId)}
+                                    className="rounded border border-white/15 px-1.5 py-0.5 text-white/70 hover:text-white">
+                                    {selectedAttachmentId === attachment.attachmentId ? (locale.startsWith('fr') ? 'Sélectionné' : locale.startsWith('ar') ? 'محدد' : 'Selected')
+                                        : (locale.startsWith('fr') ? 'Utiliser' : locale.startsWith('ar') ? 'استخدم' : 'Use')}
+                                </button>}
                             {(attachment.kind === 'spreadsheet' ? ['analyze', 'chart', 'presentation'] : attachment.kind === 'document' || attachment.kind === 'file' ? ['summarize', 'ask', 'presentation'] : []).map((action) =>
                                 <button key={action} type="button" disabled={isLoading || pendingAttachmentActions?.has(`${attachment.conversationId}:${attachment.attachmentId}:${action}`)}
                                     onClick={() => onConversationAttachmentAction?.(action as 'analyze' | 'chart' | 'presentation' | 'summarize' | 'ask', attachment)}

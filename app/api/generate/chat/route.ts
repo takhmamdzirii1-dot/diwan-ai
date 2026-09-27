@@ -3,7 +3,7 @@ import { createClient } from '../../../../src/lib/supabase/server';
 import { streamText } from 'ai';
 import { PRESENTATION_OUTPUT_INSTRUCTION, requestedPresentationSlideCount,
   validatedArtifactPartFromToolResult } from '@/lib/artifacts/chat-parts';
-import { agentToolSelection, artifactTaskInstruction, documentToolChoice, presentationToolChoice, resolveArtifactToolPath, selectArtifactTools } from '@/lib/artifacts/tool-registry';
+import { agentToolSelection, artifactTaskInstruction, presentationToolChoice, requiredArtifactToolChoice, resolveArtifactToolPath, selectArtifactTools } from '@/lib/artifacts/tool-registry';
 import { buildNativeArtifactTools } from '@/lib/artifacts/tool-native.server';
 import { completeMessageText, providerChatMessages } from '@/lib/chat/message-history';
 import { isChatTraceId, traceChatDataStream } from '@/lib/chat/debug-trace';
@@ -498,7 +498,7 @@ export async function POST(request: Request) {
         model: languageModel,
         messages: messagesPayload,
         tools: nativeTools,
-        toolChoice: presentationToolChoice(taskSelection, toolPath) ?? documentToolChoice(taskSelection, toolPath),
+        toolChoice: requiredArtifactToolChoice(taskSelection, toolPath),
         maxSteps: 1,
         temperature,
         maxTokens,

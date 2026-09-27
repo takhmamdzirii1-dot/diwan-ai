@@ -4,8 +4,8 @@ import type { SpreadsheetArtifact } from '@/lib/artifacts/core';
 import { chatRequestMessages } from './message-history';
 import { attachConversationFile, AttachmentActionGate, attachedSpreadsheet, attachmentDisplayGroups,
   attachmentRequestContext, clearPendingAttachments, getConversationAttachment, getConversationAttachments,
-  getCurrentSpreadsheetAttachment, markPendingAttachment, parseConversationAttachments,
-  removePendingAttachment, uploadFileKind } from './conversation-attachments';
+  getCurrentSpreadsheetAttachment, chartFromSpreadsheetAttachment, markPendingAttachment, parseConversationAttachments,
+  removePendingAttachment, resolveSpreadsheetAttachment, sentMessageAttachments, uploadFileKind } from './conversation-attachments';
 
 const spreadsheet: SpreadsheetArtifact = {
   schemaVersion: 1, id: 'sheet-1', type: 'spreadsheet', title: 'sales', language: 'en', direction: 'ltr', metadata: {},
@@ -104,4 +104,48 @@ test('restored files are context, stay isolated, and detach by ID', () => {
     'chat-a', attached[0].attachmentId);
   assert.equal(getCurrentSpreadsheetAttachment(afterDetach, 'chat-a'), null);
   assert.deepEqual(attachmentDisplayGroups(afterDetach, 'chat-a', pending['chat-a']).context, []);
+});
+
+test('sent message owns attachment IDs while the same resource stays reusable after refresh', () => {
+  const attached = attachConversationFile([], { kind: 'spreadsheet', name: 'Products.xlsx', artifact: spreadsheet }, 'chat-a');
+  const id = attached[0].attachmentId;
+  const pending = markPendingAttachment({}, 'chat-a', id);
+  const sent = { role: 'user', content: 'Analyze this file.', vantraAttachmentIds: pending['chat-a'] };
+  const restored = { 'chat-a': parseConversationAttachments(JSON.stringify(attached), 'chat-a') };
+  const message = JSON.parse(JSON.stringify(sent));
+  assert.deepEqual(attachmentDisplayGroups(restored, 'chat-a', []).pending, []);
+  assert.equal(sentMessageAttachments(restored, 'chat-a', message.vantraAttachmentIds)[0].attachmentId, id);
+  assert.equal(resolveSpreadsheetAttachment(restored, 'chat-a').attachment?.attachmentId, id);
+  assert.deepEqual(sentMessageAttachments(restored, 'chat-b', message.vantraAttachmentIds), []);
+  assert.deepEqual(sentMessageAttachments({ 'chat-a': [] }, 'chat-a', message.vantraAttachmentIds), []);
+});
+
+test('one spreadsheet resolves, multiple require selection, and explicit ID selects the intended resource', () => {
+  const first = attachConversationFile([], { kind: 'spreadsheet', name: 'Products.xlsx', artifact: spreadsheet }, 'chat-a');
+  const both = attachConversationFile(first, { kind: 'spreadsheet', name: 'Other.xlsx',
+    artifact: { ...spreadsheet, id: 'other' } }, 'chat-a');
+  assert.equal(resolveSpreadsheetAttachment({ 'chat-a': first }, 'chat-a').attachment?.attachmentId, first[0].attachmentId);
+  assert.equal(resolveSpreadsheetAttachment({ 'chat-a': both }, 'chat-a').ambiguous, true);
+  assert.equal(resolveSpreadsheetAttachment({ 'chat-a': both }, 'chat-a').attachment, null);
+  assert.equal(resolveSpreadsheetAttachment({ 'chat-a': both }, 'chat-a', first[0].attachmentId).attachment?.attachmentId,
+    first[0].attachmentId);
+  assert.equal(resolveSpreadsheetAttachment({ 'chat-b': [] }, 'chat-b').attachment, null);
+});
+
+test('chart retry uses the same attached spreadsheet and yields a chart without network', () => {
+  const fixture: SpreadsheetArtifact = { ...spreadsheet, id: 'products',
+    sheets: [{ id: 'products-sheet', name: 'Products', columns: ['Product', 'Price'],
+      rows: [['A', 12], ['B', 25], ['C', 18]] }] };
+  const attached = attachConversationFile([], { kind: 'spreadsheet', name: 'Products.xlsx', artifact: fixture }, 'chat-a');
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = (() => { calls++; throw new Error('Unexpected request'); }) as typeof fetch;
+  try {
+    const resolved = getConversationAttachment({ 'chat-a': attached }, 'chat-a', attached[0].attachmentId);
+    const chart = chartFromSpreadsheetAttachment(resolved);
+    assert.equal(chart?.type, 'chart');
+    assert.equal(chartFromSpreadsheetAttachment(getConversationAttachment({ 'chat-b': [] }, 'chat-b',
+      attached[0].attachmentId)), null);
+    assert.equal(calls, 0);
+  } finally { globalThis.fetch = originalFetch; }
 });

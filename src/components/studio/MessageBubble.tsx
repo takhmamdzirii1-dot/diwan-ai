@@ -15,6 +15,8 @@ import { chatPartsFromMessage, chatPartsFromToolInvocations, streamingSafeText, 
 import { artifactToolProgress } from '@/lib/artifacts/tool-registry';
 import { getDocumentActionEligibility, readableArtifactCopy } from '@/lib/chat/contextual-guidance';
 import type { AgentRun, AgentStep } from '@/lib/chat/agent-runtime';
+import type { ConversationAttachment } from '@/lib/chat/conversation-attachments';
+import { canRegenerateAssistantMessage, formatChatTimestamp } from '@/lib/chat/message-history';
 
 const ArtifactDocumentPreview = dynamic(() => import('./ArtifactDocumentPreview'), { ssr: false });
 const ArtifactSmartCard = dynamic(() => import('./ArtifactSmartCard'), { ssr: false });
@@ -25,10 +27,12 @@ export interface MessageBubbleProps {
   isStreaming?: boolean;
   isThinking?: boolean;
   onRegenerate?: () => void;
+  onRetryArtifact?: () => void;
   onRequestPrompt?: (prompt: string, artifact?: import('@/lib/artifacts/core').SpreadsheetArtifact, context?: string) => void;
   precedingUserMessage?: Message | null;
   agentRun?: AgentRun | null;
   onStopAgent?: () => void;
+  sentAttachments?: ConversationAttachment[];
 }
 
 function AttachmentThumbnail({ attachment }: { attachment: { name: string; url?: string | File | Blob } }) {
@@ -81,17 +85,19 @@ function AttachmentThumbnail({ attachment }: { attachment: { name: string; url?:
   );
 }
 
-export default function MessageBubble({ message, isLatest, isStreaming, isThinking, onRegenerate, onRequestPrompt, precedingUserMessage, agentRun, onStopAgent }: MessageBubbleProps) {
+export default function MessageBubble({ message, isLatest, isStreaming, isThinking, onRegenerate, onRetryArtifact, onRequestPrompt, precedingUserMessage, agentRun, onStopAgent, sentAttachments = [] }: MessageBubbleProps) {
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
   const [copiedMessage, setCopiedMessage] = useState(false);
   const [documentOpen, setDocumentOpen] = useState(false);
   const locale = useLocale();
   const reduceMotion = useReducedMotion();
   const t = useTranslations('studio.chat');
+  const timestamp = formatChatTimestamp(message.createdAt, locale);
   const codeBlockCounter = useRef(0);
   codeBlockCounter.current = 0;
 
   const isUser = message.role === 'user';
+  const failureKind = (message as Message & { vantraFailureKind?: string }).vantraFailureKind;
   const toolInvocations = (message as Message & { toolInvocations?: unknown }).toolInvocations;
   const parts = !isUser && !isStreaming
     ? (() => {
@@ -132,7 +138,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   const userImageAttachments: Array<{ name: string; url?: string | File | Blob }> = [];
   const userOtherAttachments: Array<{ name: string; url?: string | File | Blob }> = [];
 
-  expAttachments.forEach(att => {
+  expAttachments.filter((att) => !sentAttachments.some((item) => item.name === att.name)).forEach(att => {
     const isImg = att.contentType?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg|avif)$/i.test(att.name || '');
     if (isImg) {
       userImageAttachments.push({ name: att.name || 'image', url: att.url });
@@ -171,8 +177,10 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
     setTimeout(() => setCopiedMessage(false), 2000);
   };
 
+  const lastArtifactIndex = renderParts.findLastIndex((part) => 'artifact' in part);
   const renderArtifactPart = (part: ChatMessagePart, index: number) => {
-    if ('artifact' in part) return <ArtifactSmartCard key={index} part={part} locale={locale} onRequestPrompt={onRequestPrompt} />;
+    if ('artifact' in part) return <ArtifactSmartCard key={index} part={part} locale={locale}
+      timestamp={index === lastArtifactIndex ? timestamp : null} onRequestPrompt={onRequestPrompt} />;
     if (part.type === 'image') return <img key={index} src={part.url} alt={part.name} className="max-h-[30rem] max-w-full rounded-xl border border-[var(--studio-border)] object-contain" />;
     if (part.type === 'video') return <video key={index} src={part.url} controls preload="metadata" aria-label={part.name} className="max-h-[30rem] max-w-full rounded-xl border border-[var(--studio-border)]" />;
     if (part.type === 'file') return <a key={index} href={part.url} download={part.name} className="inline-flex rounded-lg border border-[var(--studio-border)] px-3 py-2 text-sm text-[var(--studio-text-primary)] underline">{part.name}</a>;
@@ -242,6 +250,21 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                 {cleanContent}
               </p>
             )}
+            {sentAttachments.length > 0 && <div className="flex flex-wrap gap-2" data-sent-attachments="">
+              {sentAttachments.map((attachment) => <div key={attachment.attachmentId}
+                className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white/80">
+                <div className="flex items-center gap-2"><FileText className="size-4 shrink-0 text-white/60" />
+                  <span className="max-w-48 truncate font-medium">{attachment.name}</span></div>
+                <span className="text-[11px] text-white/45">{attachment.kind === 'spreadsheet'
+                  ? `${locale.startsWith('fr') ? 'Tableur' : locale.startsWith('ar') ? 'جدول بيانات' : 'Spreadsheet'} · ${attachment.artifact.sheets[0]?.name ?? ''} · ${attachment.artifact.sheets[0]?.rows.length ?? 0}`
+                  : attachment.kind === 'document' ? locale.startsWith('fr') ? 'Document' : locale.startsWith('ar') ? 'مستند' : 'Document'
+                    : attachment.kind === 'image' ? locale.startsWith('fr') ? 'Image' : locale.startsWith('ar') ? 'صورة' : 'Image'
+                      : locale.startsWith('fr') ? 'Fichier' : locale.startsWith('ar') ? 'ملف' : 'File'}</span>
+              </div>)}
+            </div>}
+            {timestamp && <time dateTime={new Date(String(message.createdAt)).toISOString()}
+              className="self-end text-[10px] tabular-nums text-white/35 transition-colors group-hover:text-white/55 group-focus-within:text-white/55 sm:text-white/25">
+              {timestamp}</time>}
           </div>
         ) : (
           <div
@@ -426,8 +449,8 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
             </div> : renderArtifactPart(part, index))}
 
             {/* Message-Level Hover Controls */}
-            {!isStreaming && (
-              <div className="mt-2 flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
+            {!isStreaming && artifactParts.length === 0 && (
+              <div className="mt-2 flex items-center gap-0.5 opacity-100 transition-opacity duration-150 sm:opacity-35 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                 <button
                   type="button"
                   onClick={handleCopyMessage}
@@ -437,7 +460,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                 >
                   {copiedMessage ? <Check className="h-3.5 w-3.5 text-white" /> : <Copy className="h-3.5 w-3.5" />}
                 </button>
-                {isLatest && onRegenerate && (
+                {isLatest && onRegenerate && canRegenerateAssistantMessage(message, Boolean(agentRun)) && (
                   <button
                     type="button"
                     onClick={onRegenerate}
@@ -448,9 +471,18 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                     <RefreshCw className="h-3.5 w-3.5" />
                   </button>
                 )}
+                {failureKind === 'chart' && onRetryArtifact && <button type="button"
+                  onClick={onRetryArtifact} className="rounded-lg px-2.5 py-1.5 text-xs text-white/70 hover:bg-white/[0.05] hover:text-white">
+                  {locale.startsWith('fr') ? 'Réessayer le graphique' : locale.startsWith('ar') ? 'أعد محاولة الرسم البياني' : 'Try chart again'}
+                </button>}
                 {documentEligibility !== 'hidden' && <button type="button" onClick={() => setDocumentOpen(true)} className={cn('ms-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors duration-150 hover:bg-white/[0.05] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40', documentEligibility === 'secondary' ? 'text-white/45' : 'text-white/70')}>{locale === 'ar' ? 'فتح كمستند' : locale === 'fr' ? 'Ouvrir en document' : 'Open as document'}</button>}
+                {timestamp && <time dateTime={new Date(String(message.createdAt)).toISOString()}
+                  className="ms-auto text-[10px] tabular-nums text-white/40 sm:text-white/25 sm:group-hover:text-white/55">{timestamp}</time>}
               </div>
             )}
+            {!isStreaming && artifactParts.length > 0 && lastArtifactIndex < 0 && timestamp &&
+              <time dateTime={new Date(String(message.createdAt)).toISOString()}
+                className="block text-end text-[10px] tabular-nums text-white/40">{timestamp}</time>}
           </div>
         )}
       </div>
