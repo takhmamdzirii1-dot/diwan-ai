@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { parsePresentationResponse, PRESENTATION_MODEL_SHAPE, type Artifact, type PresentationFailureCategory } from './core';
-import { getArtifactTool, runArtifactTool, verifyArtifactToolResult } from './tool-registry';
+import { getArtifactTool, isFileToolName, runArtifactTool, verifyArtifactToolResult, verifyFileToolResult } from './tool-registry';
 
 const text = z.string().max(80_000);
 const base = z.object({
@@ -47,10 +47,18 @@ export type ChatMessagePart =
   | { [K in Artifact['type']]: { type: K; artifact: Extract<Artifact, { type: K }> } }[Artifact['type']]
   | { type: 'image'; url: string; name: string; mimeType?: string }
   | { type: 'video'; url: string; name: string; mimeType?: string }
-  | { type: 'file'; url: string; name: string; mimeType?: string };
+  | { type: 'file'; url: string; name: string; mimeType?: string }
+  | { type: 'file'; name: string; mimeType: string; format: 'txt' | 'md' | 'json' | 'csv'; content: string };
 
 const mediaPart = z.object({ type: z.enum(['image', 'video', 'file']), url: safeMediaUrl,
   name: z.string().min(1).max(160), mimeType: z.string().max(100).optional() });
+const generatedFilePart = z.object({ type: z.literal('file'), name: z.string().min(1).max(160),
+  mimeType: z.string().min(1).max(100), format: z.enum(['txt', 'md', 'json', 'csv']),
+  content: z.string().min(1).max(30_000) }).strict().refine((file) => {
+    const names = { txt: 'create_text_file', md: 'create_markdown_file',
+      json: 'create_json_file', csv: 'create_csv_file' } as const;
+    return verifyFileToolResult(names[file.format], { status: 'ok', file }) !== null;
+  });
 
 export function presentationRequested(input: string): boolean {
   return /\b(presentation|slide\s*deck|powerpoint|pptx|diaporama|présentation|diapositives)\b|عرض\s*(?:تقديمي|شرائح)|شرائح/i.test(input);
@@ -83,7 +91,7 @@ function embeddedArtifact(content: string, language: string): { artifact: Artifa
     const artifact = parseChatArtifact(fence[1], language);
     if (artifact) return { artifact, start: fence.index, end: fence.index + fence[0].length };
   }
-  const start = content.search(/\{\s*"(?:type|tool)"\s*:\s*"(?:presentation|chart|document|spreadsheet|create_(?:table|chart|document|spreadsheet|presentation))"/i);
+  const start = content.search(/\{\s*"(?:type|tool)"\s*:\s*"(?:presentation|chart|document|spreadsheet|create_(?:table|chart|document|spreadsheet|presentation|text_file|markdown_file|json_file|csv_file))"/i);
   if (start < 0) return null;
   let depth = 0;
   let quoted = false;
@@ -108,9 +116,9 @@ export function parseChatArtifact(content: string, language: string): Artifact |
   if (toolSource) {
     try {
       const invocation = JSON.parse(toolSource) as { tool?: unknown; input?: unknown };
-      if (typeof invocation.tool === 'string' && getArtifactTool(invocation.tool)) {
+      if (typeof invocation.tool === 'string' && getArtifactTool(invocation.tool) && !isFileToolName(invocation.tool)) {
         const result = runArtifactTool(invocation.tool, invocation.input);
-        return result.status === 'ok' && artifactSchema.safeParse(result.artifact).success ? result.artifact : null;
+        return result.status === 'ok' && 'artifact' in result && artifactSchema.safeParse(result.artifact).success ? result.artifact : null;
       }
     } catch { /* Other existing artifact shapes still use the parser below. */ }
   }
@@ -141,7 +149,7 @@ function parseChatMedia(content: string): ChatMessagePart | null {
 
 export function looksLikeArtifactOutput(content: string): boolean {
   const source = artifactCandidate(content);
-  return source !== null && /"tool"\s*:\s*"create_(?:table|chart|document|spreadsheet|presentation)"|"type"\s*:\s*"(?:table|chart|document|spreadsheet|presentation|image|video|file)"/i.test(source);
+  return source !== null && /"tool"\s*:\s*"create_(?:table|chart|document|spreadsheet|presentation|text_file|markdown_file|json_file|csv_file)"|"type"\s*:\s*"(?:table|chart|document|spreadsheet|presentation|image|video|file)"/i.test(source);
 }
 
 export function chatPartsFromToolInvocations(invocations: unknown, language: string): ChatMessagePart[] {
@@ -158,7 +166,21 @@ export function chatPartsFromToolInvocations(invocations: unknown, language: str
   return parts;
 }
 
+function parseStructuredFile(content: string): ChatMessagePart | null {
+  const source = artifactCandidate(content);
+  if (!source) return null;
+  try {
+    const invocation = JSON.parse(source) as { tool?: unknown; input?: unknown };
+    if (typeof invocation.tool !== 'string' || !isFileToolName(invocation.tool)) return null;
+    const result = runArtifactTool(invocation.tool, invocation.input);
+    const file = verifyFileToolResult(invocation.tool, result);
+    return file && generatedFilePart.safeParse(file).success ? file : null;
+  } catch { return null; }
+}
+
 export function validatedArtifactPartFromToolResult(name: string, result: unknown): ChatMessagePart | null {
+  const file = verifyFileToolResult(name, result);
+  if (file) return generatedFilePart.safeParse(file).success ? file : null;
   const artifact = verifyArtifactToolResult(name, result);
   if (!artifact) return null;
   const valid = artifactSchema.safeParse(artifact);
@@ -178,7 +200,8 @@ export function chatPartsFromMessage(content: string, language: string, stored?:
         if (!parsed.success || parsed.data.type !== part.type) break;
         parts.push({ type: part.type, artifact: parsed.data } as ChatMessagePart);
       } else {
-        const parsed = mediaPart.safeParse(part);
+        const parsed = part.type === 'file' && 'content' in part
+          ? generatedFilePart.safeParse(part) : mediaPart.safeParse(part);
         if (!parsed.success) break;
         parts.push(parsed.data as ChatMessagePart);
       }
@@ -198,6 +221,8 @@ export function chatPartsFromMessage(content: string, language: string, stored?:
   }
   const artifact = parseChatArtifact(content, language);
   if (artifact) return [{ type: artifact.type, artifact } as ChatMessagePart];
+  const file = parseStructuredFile(content);
+  if (file) return [file];
   const media = parseChatMedia(content);
   if (media) return [media];
   if (presentationLike(content)) {
@@ -220,9 +245,9 @@ export function streamingSafeText(content: string): string {
   // fences inside prose must never truncate the answer.
   const leading = content.match(/^\s*/)?.[0].length ?? 0;
   const source = content.slice(leading);
-  const fence = /```(?:json)?\s*\{\s*"(?:type|tool)"\s*:\s*"(?:presentation|chart|document|spreadsheet|create_(?:table|chart|document|spreadsheet|presentation))"/i.exec(content);
+  const fence = /```(?:json)?\s*\{\s*"(?:type|tool)"\s*:\s*"(?:presentation|chart|document|spreadsheet|create_(?:table|chart|document|spreadsheet|presentation|text_file|markdown_file|json_file|csv_file))"/i.exec(content);
   if (fence) return content.slice(0, fence.index).trimEnd();
-  const object = /\{\s*"(?:type|tool)"\s*:\s*"(?:presentation|chart|document|spreadsheet|create_(?:table|chart|document|spreadsheet|presentation))"/i.exec(source);
+  const object = /\{\s*"(?:type|tool)"\s*:\s*"(?:presentation|chart|document|spreadsheet|create_(?:table|chart|document|spreadsheet|presentation|text_file|markdown_file|json_file|csv_file))"/i.exec(source);
   if (object) return content.slice(0, leading + object.index).trimEnd();
   return content;
 }

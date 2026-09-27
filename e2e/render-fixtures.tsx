@@ -1,4 +1,5 @@
 import React from 'react';
+import type { Message } from '@ai-sdk/react';
 import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { IntlProvider } from 'use-intl';
@@ -29,5 +30,10 @@ const sentMessage = renderToStaticMarkup(<IntlProvider locale="en" messages={mes
     isLatest={false} sentAttachments={attached} />
 </IntlProvider>);
 const sent = `<div>${sentMessage}${composer(clearPendingAttachments(pendingIds, 'qa-conversation')['qa-conversation'])}</div>`;
+const file = renderToStaticMarkup(<IntlProvider locale="en" messages={messages}>
+  <MessageBubble message={{ id: 'file', role: 'assistant', content: '', createdAt: new Date(),
+    vantraParts: [{ type: 'file', name: 'Answer.txt', format: 'txt',
+      mimeType: 'text/plain;charset=utf-8', content: 'Readable answer.' }] } as Message} isLatest={false} />
+</IntlProvider>);
 
-process.stdout.write(JSON.stringify({ bubble, pending, sent }));
+process.stdout.write(JSON.stringify({ bubble, pending, sent, file }));

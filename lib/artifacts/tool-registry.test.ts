@@ -4,11 +4,11 @@ import { chatPartsFromMessage, chatPartsFromToolInvocations } from './chat-parts
 import { buildNativeArtifactTools } from './tool-native.server';
 import { agentToolSelection, artifactTaskInstruction, artifactToolProgress, documentToolChoice, presentationToolChoice, requiredArtifactToolChoice, getArtifactTool, resolveArtifactToolPath, runArtifactTool, selectArtifactTools, verifyArtifactToolResult } from './tool-registry';
 
-test('explicit downloadable output formats select one structured artifact without a classifier call', () => {
+test('explicit downloadable output formats select one validated result without a classifier call', () => {
   const cases = [
     ['Give me these statistics as Excel', 'create_spreadsheet'],
     ['Export this as XLSX', 'create_spreadsheet'],
-    ['Make this CSV', 'create_spreadsheet'],
+    ['Make this CSV', 'create_csv_file'],
     ['Make this a PDF report', 'create_document'],
     ['Write this as Word', 'create_document'],
     ['Give me DOCX', 'create_document'],

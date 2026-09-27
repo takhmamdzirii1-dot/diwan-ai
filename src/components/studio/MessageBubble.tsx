@@ -177,13 +177,21 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
     setTimeout(() => setCopiedMessage(false), 2000);
   };
 
-  const lastArtifactIndex = renderParts.findLastIndex((part) => 'artifact' in part);
+  const lastArtifactIndex = renderParts.findLastIndex((part) => 'artifact' in part || part.type === 'file');
   const renderArtifactPart = (part: ChatMessagePart, index: number) => {
     if ('artifact' in part) return <ArtifactSmartCard key={index} part={part} locale={locale}
       timestamp={index === lastArtifactIndex ? timestamp : null} onRequestPrompt={onRequestPrompt} />;
     if (part.type === 'image') return <img key={index} src={part.url} alt={part.name} className="max-h-[30rem] max-w-full rounded-xl border border-[var(--studio-border)] object-contain" />;
     if (part.type === 'video') return <video key={index} src={part.url} controls preload="metadata" aria-label={part.name} className="max-h-[30rem] max-w-full rounded-xl border border-[var(--studio-border)]" />;
-    if (part.type === 'file') return <a key={index} href={part.url} download={part.name} className="inline-flex rounded-lg border border-[var(--studio-border)] px-3 py-2 text-sm text-[var(--studio-text-primary)] underline">{part.name}</a>;
+    if (part.type === 'file' && 'content' in part) return <div key={index} className="flex w-full items-center gap-3"><button type="button"
+      onClick={() => {
+        const url = URL.createObjectURL(new Blob([part.content], { type: part.mimeType }));
+        const link = document.createElement('a');
+        link.href = url; link.download = part.name; link.click();
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      }} className="inline-flex rounded-lg border border-[var(--studio-border)] px-3 py-2 text-sm text-[var(--studio-text-primary)] underline">
+      {part.name}</button>{index === lastArtifactIndex && timestamp && <time className="ms-auto text-[10px] text-white/40">{timestamp}</time>}</div>;
+    if (part.type === 'file') return <div key={index} className="flex w-full items-center gap-3"><a href={part.url} download={part.name} className="inline-flex rounded-lg border border-[var(--studio-border)] px-3 py-2 text-sm text-[var(--studio-text-primary)] underline">{part.name}</a>{index === lastArtifactIndex && timestamp && <time className="ms-auto text-[10px] text-white/40">{timestamp}</time>}</div>;
     return null;
   };
 

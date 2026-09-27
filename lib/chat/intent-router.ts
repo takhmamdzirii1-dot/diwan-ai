@@ -1,6 +1,6 @@
 /** Small, deterministic customer intent router. No model, network, or content search. */
 export type ChatIntent = 'create_chart' | 'create_document' | 'create_presentation' | 'create_spreadsheet'
-  | 'export_pdf' | 'export_docx' | 'export_xlsx' | 'export_csv' | 'normal_chat';
+  | 'export_pdf' | 'export_docx' | 'export_xlsx' | 'export_csv' | 'export_txt' | 'export_md' | 'export_json' | 'normal_chat';
 export type IntentResource = { attachmentId: string; kind: 'spreadsheet' | 'document' | 'file' | 'image' };
 export type ResourceStatus = 'not_referenced' | 'resolved' | 'missing' | 'ambiguous';
 export type IntentRoute = { intent: ChatIntent; confidence: 'high' | 'low'; resourceStatus: ResourceStatus;
@@ -13,9 +13,17 @@ export function normalizeIntentText(input: string): string {
     .replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' ');
 }
 
+export function isInformationalQuestion(input: string): boolean {
+  const normalized = normalizeIntentText(input);
+  return ['what', 'why', 'how', 'who', 'when', 'where', 'explain', 'define', 'describe',
+    'qu', 'explique', 'decris', 'pourquoi', 'comment', 'ما', 'ماهو', 'اشرح', 'فسر']
+    .some((prefix) => normalized === prefix || normalized.startsWith(`${prefix} `));
+}
+
 const actions = [
+  'حطها', 'ديرها', 'ديرلي', 'اعطيني',
   'make', 'mak', 'create', 'build', 'generate', 'draft', 'write', 'prepare', 'produce', 'design',
-  'turn', 'convert', 'export', 'download', 'save', 'plot', 'visualize', 'show', 'give me',
+  'turn', 'convert', 'export', 'download', 'save', 'plot', 'visualize', 'show', 'give', 'give me', 'put', 'send',
   'cree', 'creer', 'creez', 'fais', 'faites', 'genere', 'generer', 'redige', 'rediger',
   'ecris', 'ecrivez', 'donne', 'donnez', 'donne moi', 'donnez moi', 'exporte', 'transforme',
   'اعمل', 'اصنع', 'انشئ', 'اكتب', 'اكتبلي', 'حرر', 'صغ', 'جهز', 'سوي', 'عطيني', 'اعطني',
@@ -30,12 +38,15 @@ const subjects: Record<Exclude<ChatIntent, 'normal_chat' | `export_${string}`>, 
   create_presentation: ['presentation', 'presntation', 'powerpoint', 'power point', 'ppt', 'pptx',
     'slide deck', 'slides', 'diaporama', 'عرض تقديمي', 'العرض التقديمي', 'عرض شرائح',
     'بوربوينت', 'بريزنتيشن', 'شرائح'],
-  create_spreadsheet: ['spreadsheet', 'workbook', 'tableur', 'feuille de calcul', 'excel', 'exel',
+  create_spreadsheet: ['spreadsheet', 'workbook', 'sheet', 'tableur', 'feuille de calcul', 'excel', 'exel',
     'xlsx', 'csv', 'جدول بيانات', 'الجدول', 'اكسل'],
 };
 const formats = {
   export_pdf: ['pdf'], export_docx: ['docx', 'word'],
   export_xlsx: ['xlsx', 'excel', 'exel', 'اكسل'], export_csv: ['csv'],
+  export_txt: ['txt', 'text file', 'plain text', 'fichier texte', 'ملف نصي'],
+  export_md: ['markdown', 'md file', 'fichier markdown'],
+  export_json: ['json'],
 } as const;
 type Found = { index: number; fuzzy: boolean };
 
@@ -135,9 +146,34 @@ export function routeChatIntent(input: string, resources: readonly IntentResourc
     || action.fuzzy && target.found.fuzzy) return finish('normal_chat', 'low');
   if (subject?.intent === 'create_chart' || subject?.intent === 'create_presentation')
     return finish(subject.intent, 'high');
-  if (format && (!subject || subject.intent === 'create_document' &&
+  if (format && (!subject || ['export_txt', 'export_md', 'export_json', 'export_csv'].includes(format.intent)
+    || subject.intent === 'create_document' &&
     (format.intent === 'export_pdf' || format.intent === 'export_docx')
     || subject.intent === 'create_spreadsheet' &&
     (format.intent === 'export_xlsx' || format.intent === 'export_csv'))) return finish(format.intent, 'high');
   return finish(subject?.intent ?? 'normal_chat', subject ? 'high' : 'low');
+}
+
+const followUpFileActions = [
+  'generate the file', 'create the file', 'send the file', 'make the file',
+  'genere le fichier', 'cree le fichier', 'envoie le fichier',
+  'انت ولدلي الملف', 'ولدلي الملف', 'اعطيني الملف', 'ديرلي الملف',
+];
+export function isFileFollowUp(input: string): boolean {
+  const normalized = normalizeIntentText(input);
+  return followUpFileActions.some((phrase) => normalized === normalizeIntentText(phrase));
+}
+
+/** Reuse the last explicit output request from this conversation without persisting a second state store. */
+export function routeConversationIntent(input: string, priorUserMessages: readonly string[],
+  resources: readonly IntentResource[] = [], selectedAttachmentId?: string): IntentRoute {
+  const current = routeChatIntent(input, resources, selectedAttachmentId);
+  if (current.confidence === 'high' || !isFileFollowUp(input)) return current;
+  const prior = priorUserMessages.at(-1);
+  if (!prior) return current;
+  const intent = routeChatIntent(prior, resources, selectedAttachmentId);
+  if (intent.confidence === 'high' && (intent.intent.startsWith('export_')
+    || ['create_document', 'create_presentation', 'create_spreadsheet'].includes(intent.intent)))
+    return { ...current, intent: intent.intent, confidence: 'high' };
+  return current;
 }

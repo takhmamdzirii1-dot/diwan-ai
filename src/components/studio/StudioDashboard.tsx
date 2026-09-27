@@ -43,7 +43,8 @@ import { ChatRequestTracker, ChatStreamFinalizer, consumeCanonicalChatStream, ha
 import { presentationCompletion } from '@/lib/chat/presentation-completion';
 import { guidanceForChatError, shouldShowChatError, type GuidanceAction } from '@/lib/chat/contextual-guidance';
 import { selectArtifactTools } from '@/lib/artifacts/tool-registry';
-import { routeChatIntent } from '@/lib/chat/intent-router';
+import { routeConversationIntent } from '@/lib/chat/intent-router';
+import { deterministicContextOutput, expectedOutputType, validateRequestedChatOutput } from '@/lib/chat/action-routing';
 import ChatGuidanceCard from './ChatGuidanceCard';
 
 const ArtifactSpreadsheetPreview = dynamic(() => import('./ArtifactSpreadsheetPreview'), { ssr: false });
@@ -284,41 +285,53 @@ export default function StudioDashboard({
     fetch: async (input, init) => {
       const requestId = debugRequestIdRef.current ?? crypto.randomUUID();
       const sessionId = activeSessionId ?? 'default-session';
-      const requestedSlideCount = (() => {
-        try { const body = JSON.parse(String(init?.body)) as { requestedSlideCount?: unknown };
-          return typeof body.requestedSlideCount === 'number' && Number.isInteger(body.requestedSlideCount)
+      const requestAction = (() => {
+        try {
+          const body = JSON.parse(String(init?.body)) as { requestedSlideCount?: unknown;
+            messages?: Array<{ role: string; content: string }> };
+          const requestedSlideCount = typeof body.requestedSlideCount === 'number' && Number.isInteger(body.requestedSlideCount)
             && body.requestedSlideCount >= 2 && body.requestedSlideCount <= 8 ? body.requestedSlideCount : null;
-        } catch { return null; }
+          const userTexts = body.messages?.filter((entry) => entry.role === 'user').map((entry) => entry.content) ?? [];
+          const current = userTexts.at(-1) ?? '';
+          const route = routeConversationIntent(current, userTexts.slice(0, -1));
+          return { requestedSlideCount, expectedType: expectedOutputType(selectArtifactTools(current, { route })) };
+        } catch { return { requestedSlideCount: null, expectedType: null }; }
       })();
+      const { requestedSlideCount } = requestAction;
       let streamErrorReason: 'provider_error' | 'network_error' = 'network_error';
       const finalizer = new ChatStreamFinalizer(requestId, ({ text, artifacts, status }) => {
         if (activeFinalizerRef.current !== finalizer) return;
         if ((activeSessionIdRef.current ?? 'default-session') !== sessionId) return;
         const presentation = presentationCompletion(text, artifacts, requestedSlideCount, locale);
-        if (presentation.valid && hasUsableCanonicalOutput(status, presentation.text, presentation.artifacts)) {
+        const action = validateRequestedChatOutput(requestAction.expectedType,
+          presentation.text, presentation.artifacts, locale);
+        const finalArtifacts = action.parts;
+        const finalText = action.text;
+        const actionValid = action.valid;
+        if (presentation.valid && actionValid && hasUsableCanonicalOutput(status, finalText, finalArtifacts)) {
           recordRequestOutcome(requestId, sessionId, 'completed');
           setMessages((current) => {
             if ((activeSessionIdRef.current ?? 'default-session') !== sessionId) return current;
             const last = current[current.length - 1];
             const vantraParts: ChatMessagePart[] = [
-              ...(presentation.text ? [{ type: 'text' as const, text: presentation.text }] : []), ...presentation.artifacts,
+              ...(finalText ? [{ type: 'text' as const, text: finalText }] : []), ...finalArtifacts,
             ];
             if (last?.role === 'assistant') {
-              canonicalFinalRef.current = { sessionId, messageId: last.id, text: presentation.text };
-              return [...current.slice(0, -1), { ...last, createdAt: last.createdAt ?? new Date(), content: presentation.text,
-                ...(presentation.artifacts.length > 0 ? { vantraParts } : {}) }];
+              canonicalFinalRef.current = { sessionId, messageId: last.id, text: finalText };
+              return [...current.slice(0, -1), { ...last, createdAt: last.createdAt ?? new Date(), content: finalText,
+                ...(finalArtifacts.length > 0 ? { vantraParts } : {}) }];
             }
             if (last?.role === 'user') {
-              const assistant = { id: crypto.randomUUID(), role: 'assistant' as const, createdAt: new Date(), content: presentation.text,
-                ...(presentation.artifacts.length > 0 ? { vantraParts } : {}) };
-              canonicalFinalRef.current = { sessionId, messageId: assistant.id, text: presentation.text };
+              const assistant = { id: crypto.randomUUID(), role: 'assistant' as const, createdAt: new Date(), content: finalText,
+                ...(finalArtifacts.length > 0 ? { vantraParts } : {}) };
+              canonicalFinalRef.current = { sessionId, messageId: assistant.id, text: finalText };
               return [...current, assistant];
             }
             return current;
           });
         } else {
           recordRequestOutcome(requestId, sessionId, status === 'error' ? streamErrorReason : 'provider_error');
-          if (!presentation.valid) setMessages((current) => current.map((message, index) => index === current.length - 1
+          if (!presentation.valid || !actionValid) setMessages((current) => current.map((message, index) => index === current.length - 1
             && message.role === 'assistant' ? { ...message, content: '', vantraParts: [] } : message));
         }
         activeFinalizerRef.current = null;
@@ -742,7 +755,8 @@ export default function StudioDashboard({
       const sendConversationId = activeSessionIdRef.current ?? 'default-session';
       const pendingAttachmentIds = pendingAttachmentIdsRef.current[sendConversationId] ?? [];
       const sendAttachments = getConversationAttachments(attachmentsBySessionRef.current, sendConversationId);
-      const routedIntent = routeChatIntent(data.message, sendAttachments, data.attachmentId);
+      const routedIntent = routeConversationIntent(data.message,
+        messages.filter((entry) => entry.role === 'user').map((entry) => entry.content), sendAttachments, data.attachmentId);
       if (routedIntent.confidence === 'high' && !data.files?.length
         && (routedIntent.resourceStatus === 'missing' || routedIntent.resourceStatus === 'ambiguous')) return;
       const resolvedId = data.attachmentId ?? routedIntent.attachmentId ?? undefined;
@@ -800,6 +814,21 @@ export default function StudioDashboard({
       pendingSendRef.current = true;
       pendingAttachmentIdsRef.current = clearPendingAttachments(pendingAttachmentIdsRef.current, sendConversationId);
       setPendingAttachmentIdsBySession(pendingAttachmentIdsRef.current);
+      const priorAssistant = [...messages].reverse().find((entry) => entry.role === 'assistant');
+      const priorParts = priorAssistant ? chatPartsFromMessage(priorAssistant.content, locale,
+        (priorAssistant as Message & { vantraParts?: unknown }).vantraParts) : [];
+      const existingOutput = routedIntent.confidence === 'high'
+        ? deterministicContextOutput(routedIntent.intent, data.message, boundSpreadsheet?.artifact ?? null, priorParts) : null;
+      if (existingOutput) {
+        pendingSendRef.current = false;
+        setMessages((current) => [...current,
+          { id: crypto.randomUUID(), role: 'user' as const, createdAt: new Date(),
+            vantraAttachmentIds: pendingAttachmentIds, content: data.message },
+          { id: crypto.randomUUID(), role: 'assistant' as const, createdAt: new Date(), content: '',
+            vantraParts: [existingOutput] },
+        ]);
+        return;
+      }
       if (boundSpreadsheet && isSingleSpreadsheetChartRequest(data.message)) {
         const chart = chartFromSpreadsheetAttachment(boundSpreadsheet);
         const answer = chart ? { id: crypto.randomUUID(), role: 'assistant' as const, content: '',
@@ -870,7 +899,7 @@ export default function StudioDashboard({
       id: activeModel.id, name: activeModel.displayName, requiredPlan: activeModel.requiredPlan,
     });
     else if (action === 'try_again' || action === 'try_chart_again' || action === 'try_presentation_again'
-      || action === 'try_document_again') void reload();
+      || action === 'try_document_again' || action === 'try_file_again') void reload();
     else if (action === 'choose_file') {
       document.querySelector<HTMLInputElement>('[data-chat-file-input]')?.click();
     }
@@ -1011,10 +1040,12 @@ export default function StudioDashboard({
 
   const isEmpty = messages.length === 0;
   const lastUserPrompt = [...messages].reverse().find((message) => message.role === 'user')?.content ?? '';
-  const requestedArtifact = selectArtifactTools(lastUserPrompt).names[0];
+  const requestedArtifact = selectArtifactTools(lastUserPrompt, { route: routeConversationIntent(lastUserPrompt,
+    messages.filter((entry) => entry.role === 'user').slice(0, -1).map((entry) => entry.content)) }).names[0];
   const artifactRetryAction: GuidanceAction = requestedArtifact === 'create_chart' ? 'try_chart_again'
     : requestedArtifact === 'create_presentation' ? 'try_presentation_again'
-      : requestedArtifact === 'create_document' ? 'try_document_again' : 'try_again';
+      : requestedArtifact === 'create_document' ? 'try_document_again'
+        : requestedArtifact?.endsWith('_file') ? 'try_file_again' : 'try_again';
 
   return (
     <div className="studio-shell relative flex h-[100dvh] w-full overflow-hidden bg-[var(--studio-bg)] text-white font-sans">

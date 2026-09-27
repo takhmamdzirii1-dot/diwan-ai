@@ -22,7 +22,7 @@ test('explicit artifact and export requests converge across English, French, Ara
     ['Écris-moi un rapport', 'create_document', 'create_document'],
     ['اكتب لي تقرير', 'create_document', 'create_document'],
     ['make an Excel spreadsheet', 'export_xlsx', 'create_spreadsheet'],
-    ['export this as CSV', 'export_csv', 'create_spreadsheet'],
+    ['export this as CSV', 'export_csv', 'create_csv_file'],
     ['write this as Word', 'export_docx', 'create_document'],
   ] as const;
   for (const [input, intent, tool] of cases) {

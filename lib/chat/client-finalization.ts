@@ -3,7 +3,8 @@ import { getArtifactTool } from '@/lib/artifacts/tool-registry';
 
 export type CanonicalStreamStatus = 'completed' | 'aborted' | 'error';
 export function hasUsableCanonicalOutput(status: CanonicalStreamStatus, text: string, artifacts: ChatMessagePart[]): boolean {
-  return status === 'completed' && (text.trim().length > 0 || artifacts.some((part) => 'artifact' in part));
+  return status === 'completed' && (text.trim().length > 0 || artifacts.some((part) =>
+    'artifact' in part || part.type === 'file' && 'content' in part));
 }
 export type ChatTerminationReason = 'completed' | 'provider_error' | 'network_error' | 'user_stop'
   | 'navigation_abort' | 'conversation_switch_abort';
@@ -52,8 +53,9 @@ export class ChatStreamFinalizer {
   get artifactCount() { return this.artifacts.length; }
 
   appendArtifact(part: ChatMessagePart) {
-    if (!this.rawStatus && !this.invalidated && 'artifact' in part
-      && !this.artifacts.some((existing) => 'artifact' in existing && existing.artifact.id === part.artifact.id)) this.artifacts.push(part);
+    if (!this.rawStatus && !this.invalidated && ('artifact' in part || part.type === 'file' && 'content' in part)
+      && !this.artifacts.some((existing) => 'artifact' in existing && 'artifact' in part
+        && existing.artifact.id === part.artifact.id)) this.artifacts.push(part);
   }
 
   consumerDone() {

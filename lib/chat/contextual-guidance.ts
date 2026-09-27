@@ -8,7 +8,7 @@ import { getConversationAttachments, getCurrentSpreadsheetAttachment, getSpreads
   type ConversationAttachmentStore } from './conversation-attachments';
 
 export type GuidanceKind = 'requirement' | 'suggestion' | 'warning' | 'confirmation' | 'success' | 'recoverable_error' | 'next_action';
-export type GuidanceAction = 'upload_file' | 'upload_image' | 'upload_document' | 'upload_spreadsheet' | 'switch_model' | 'add_credits' | 'get_pro' | 'view_plans' | 'choose_file' | 'try_again' | 'try_chart_again' | 'try_presentation_again' | 'try_document_again';
+export type GuidanceAction = 'upload_file' | 'upload_image' | 'upload_document' | 'upload_spreadsheet' | 'switch_model' | 'add_credits' | 'get_pro' | 'view_plans' | 'choose_file' | 'try_again' | 'try_chart_again' | 'try_presentation_again' | 'try_document_again' | 'try_file_again';
 export type ChatGuidance = { kind: GuidanceKind; message: string; actions: GuidanceAction[] };
 
 export type DocumentActionEligibility = 'primary' | 'secondary' | 'hidden';
@@ -60,6 +60,7 @@ export function guidanceActionLabel(action: GuidanceAction, locale: string): str
     try_chart_again: { en: 'Try chart again', fr: 'Réessayer le graphique', ar: 'أعد محاولة الرسم البياني' },
     try_presentation_again: { en: 'Try presentation again', fr: 'Réessayer la présentation', ar: 'أعد محاولة العرض التقديمي' },
     try_document_again: { en: 'Try document again', fr: 'Réessayer le document', ar: 'أعد محاولة المستند' },
+    try_file_again: { en: 'Try file again', fr: 'Réessayer le fichier', ar: 'أعد محاولة الملف' },
   };
   return labels[action][lang(locale)];
 }
@@ -256,7 +257,7 @@ export function readableArtifactCopy(part: ChatMessagePart): string {
   if (part.type === 'chart') return [part.artifact.title, ['Category', ...part.artifact.series.map((series) => series.name)].join('\t'),
     ...part.artifact.categories.map((category, index) => [category, ...part.artifact.series.map((series) => String(series.values[index] ?? ''))].join('\t'))].join('\n');
   if (part.type === 'presentation') return presentationOutline(part.artifact);
-  return part.name;
+  return part.type === 'file' && 'content' in part ? part.content : part.name;
 }
 export function readableTableCopy(artifact: DocumentArtifact): string {
   return documentTable(artifact)?.map((row) => row.join('\t')).join('\n') ?? '';

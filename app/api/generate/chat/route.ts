@@ -6,6 +6,8 @@ import { PRESENTATION_OUTPUT_INSTRUCTION, requestedPresentationSlideCount,
 import { agentToolSelection, artifactTaskInstruction, presentationToolChoice, requiredArtifactToolChoice, resolveArtifactToolPath, selectArtifactTools } from '@/lib/artifacts/tool-registry';
 import { buildNativeArtifactTools } from '@/lib/artifacts/tool-native.server';
 import { completeMessageText, providerChatMessages } from '@/lib/chat/message-history';
+import { routesForChatAction } from '@/lib/chat/action-routing';
+import { routeConversationIntent } from '@/lib/chat/intent-router';
 import { isChatTraceId, traceChatDataStream } from '@/lib/chat/debug-trace';
 
 import { DEFAULT_CHAT_MODEL } from '../../../../src/config/studio-registry';
@@ -111,8 +113,15 @@ export async function POST(request: Request) {
     const agentStep = body.agentStep === 'analysis' || body.agentStep === 'presentation' ? body.agentStep : null;
     const agentToolBudget = Number.isInteger(body.agentToolBudget) && body.agentToolBudget >= 1 && body.agentToolBudget <= 8
       ? body.agentToolBudget : 1;
-    const taskSelection = agentStep ? agentToolSelection(agentStep)
-      : selectArtifactTools(typeof latestUserText === 'string' ? latestUserText : '');
+    const userTexts = Array.isArray(messages) ? messages.filter((entry) => entry?.role === 'user')
+      .map((entry) => completeMessageText(entry)) : [];
+    const conversationIntent = routeConversationIntent(typeof latestUserText === 'string' ? latestUserText : '',
+      userTexts.slice(0, -1));
+    let taskSelection = agentStep ? agentToolSelection(agentStep)
+      : selectArtifactTools(typeof latestUserText === 'string' ? latestUserText : '', {
+        route: conversationIntent, semantic: true,
+        spreadsheet: typeof body.spreadsheetContext === 'string', document: typeof body.documentContext === 'string',
+      });
     const SYSTEM_PROMPT = `${customSystem || DEFAULT_SYSTEM}\n\n${DATETIME_CONTEXT}`;
 
     let messagesPayload = messages;
@@ -200,9 +209,14 @@ export async function POST(request: Request) {
       throw usageError;
     }
     const routes = await resolveProviderRoutes(runtimeModel);
-    let route = routes[0];
+    const attachmentTypes = messagesPayload.flatMap((entry) => Array.isArray(entry?.experimental_attachments)
+      ? entry.experimental_attachments.map((attachment) => attachment?.contentType).filter((type): type is string => typeof type === 'string') : []);
+    const actionRoutes = routesForChatAction(routes, runtimeModel.routeCapabilitiesV2, taskSelection,
+      attachmentTypes, runtimeModel.routeCapabilitySchemaAvailable);
+    if (!actionRoutes.length) return NextResponse.json({ error: 'MODEL_CAPABILITY_UNSUPPORTED' }, { status: 409 });
+    let route = actionRoutes[0];
     let languageModel;
-    for (const candidate of routes) {
+    for (const candidate of actionRoutes) {
       try {
         languageModel = createChatLanguageModel(candidate);
         route = candidate;
@@ -222,6 +236,8 @@ export async function POST(request: Request) {
     if (agentStep && native.tools.state !== 'supported' && native.structuredOutput.state !== 'supported') {
       return NextResponse.json({ error: 'MODEL_CAPABILITY_UNSUPPORTED' }, { status: 409 });
     }
+    if (taskSelection.mode === 'semantic' && native.tools.state !== 'supported'
+      && native.structuredOutput.state !== 'supported') taskSelection = { names: [], skill: null };
     const toolPath = resolveArtifactToolPath(taskSelection, native);
     const taskInstruction = taskSelection.skill === 'presentation' && toolPath !== 'native'
       ? PRESENTATION_OUTPUT_INSTRUCTION : artifactTaskInstruction(taskSelection, toolPath);

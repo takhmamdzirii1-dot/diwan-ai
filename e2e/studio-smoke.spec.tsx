@@ -5,7 +5,7 @@ import { attachSafeBrowserErrors, productsXlsx, trackSafeBrowserErrors } from '.
 
 const fixtureMarkup = JSON.parse(execFileSync(process.execPath,
   ['--import', 'tsx', 'e2e/render-fixtures.tsx'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })) as {
-    bubble: string; pending: string; sent: string;
+    bubble: string; pending: string; sent: string; file: string;
   };
 
 test.beforeEach(async ({ page }) => trackSafeBrowserErrors(page));
@@ -59,6 +59,16 @@ test('@smoke browser accepts the tiny deterministic XLSX fixture', async ({ page
     return { name: file?.name, size: file?.size, type: file?.type };
   });
   expect(selected).toEqual({ name: 'Products.xlsx', size: workbook.buffer.byteLength, type: workbook.mimeType });
+});
+
+test('@smoke generated text file renders a download action without raw tool JSON or generic retry', async ({ page }) => {
+  await page.goto('/en', { waitUntil: 'networkidle' });
+  await page.evaluate((html) => { document.body.insertAdjacentHTML('beforeend', `<div id="e2e-fixture">${html}</div>`); }, fixtureMarkup.file);
+  const result = page.locator('#e2e-fixture');
+  await expect(result.getByRole('button', { name: 'Answer.txt' })).toBeVisible();
+  await expect(result.locator('time')).toBeVisible();
+  await expect(result).not.toContainText('schemaVersion');
+  await expect(result.getByRole('button', { name: 'Retry response' })).toHaveCount(0);
 });
 
 test('@smoke authenticated local file, chart, refresh, and conversation isolation', async ({ page, context }) => {
