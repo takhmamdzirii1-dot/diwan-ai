@@ -8,6 +8,33 @@ export type ConversationAttachmentDraft =
   | { kind: 'image'; name: string; contentType: string; url: string };
 export type ConversationAttachment = ConversationAttachmentDraft & { attachmentId: string; conversationId: string };
 export type ConversationAttachmentStore = Record<string, ConversationAttachment[]>;
+export type PendingAttachmentIdStore = Record<string, string[]>;
+
+/** Pending IDs are UI state only; parsed files stay in ConversationAttachmentStore. */
+export function markPendingAttachment(store: PendingAttachmentIdStore, conversationId: string,
+  attachmentId: string): PendingAttachmentIdStore {
+  const current = store[conversationId] ?? [];
+  return current.includes(attachmentId) ? store
+    : { ...store, [conversationId]: [...current, attachmentId] };
+}
+
+export function clearPendingAttachments(store: PendingAttachmentIdStore,
+  conversationId: string): PendingAttachmentIdStore {
+  return { ...store, [conversationId]: [] };
+}
+
+export function removePendingAttachment(store: PendingAttachmentIdStore, conversationId: string,
+  attachmentId: string): PendingAttachmentIdStore {
+  return { ...store, [conversationId]: (store[conversationId] ?? []).filter((id) => id !== attachmentId) };
+}
+
+export function attachmentDisplayGroups(store: ConversationAttachmentStore, conversationId: string,
+  pendingIds: string[]): { pending: ConversationAttachment[]; context: ConversationAttachment[] } {
+  const ids = new Set(pendingIds);
+  const attachments = getConversationAttachments(store, conversationId);
+  return { pending: attachments.filter((item) => ids.has(item.attachmentId)),
+    context: attachments.filter((item) => !ids.has(item.attachmentId)) };
+}
 
 export function uploadFileKind(file: Pick<File, 'name' | 'type'>): ConversationAttachment['kind'] | null {
   if (/\.(xlsx|csv)$/i.test(file.name)) return 'spreadsheet';

@@ -28,9 +28,11 @@ import { trackFunnelEvent } from '@/src/lib/funnel-analytics';
 import dynamic from 'next/dynamic';
 import { chatPartsFromMessage, requestedPresentationSlideCount, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
 import { chartFromSheet } from '@/lib/artifacts/spreadsheet-actions';
-import { attachConversationFile, AttachmentActionGate, attachmentRequestContext, getConversationAttachment, getConversationAttachments,
-  getCurrentSpreadsheetAttachment, parseConversationAttachments, uploadFileKind,
-  type ConversationAttachment, type ConversationAttachmentDraft, type ConversationAttachmentStore } from '@/lib/chat/conversation-attachments';
+import { attachConversationFile, AttachmentActionGate, attachmentRequestContext, clearPendingAttachments,
+  getConversationAttachment, getConversationAttachments, getCurrentSpreadsheetAttachment, markPendingAttachment,
+  parseConversationAttachments, removePendingAttachment, uploadFileKind,
+  type ConversationAttachment, type ConversationAttachmentDraft, type ConversationAttachmentStore,
+  type PendingAttachmentIdStore } from '@/lib/chat/conversation-attachments';
 import { chatRequestMessages, serializeChatSession } from '@/lib/chat/message-history';
 import { executeAgentSemanticStep } from '@/lib/chat/agent-client';
 import { agentTaskFor, cancelAgentRun, createAgentRun, distinctAgentChartPlans, executeAgentRun, isCurrentAgentUpdate,
@@ -96,6 +98,7 @@ export default function StudioDashboard({
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [attachmentsBySession, setAttachmentsBySession] = useState<ConversationAttachmentStore>({});
   const attachmentsBySessionRef = useRef<ConversationAttachmentStore>({});
+  const [pendingAttachmentIdsBySession, setPendingAttachmentIdsBySession] = useState<PendingAttachmentIdStore>({});
   const pendingAttachmentActionsRef = useRef(new AttachmentActionGate());
   const [pendingAttachmentActions, setPendingAttachmentActions] = useState<Set<string>>(new Set());
   const [agentRun, setAgentRun] = useState<AgentRun | null>(null);
@@ -174,9 +177,11 @@ export default function StudioDashboard({
     attachmentsBySessionRef.current = { ...attachmentsBySessionRef.current, [id]: next };
     setAttachmentsBySession(attachmentsBySessionRef.current);
     try { localStorage.setItem(`vantra_attachments_${id}`, JSON.stringify(next)); } catch { /* Keep in memory. */ }
-    return next.find((item) => item.kind === attachment.kind && ('artifact' in item && 'artifact' in attachment
+    const bound = next.find((item) => item.kind === attachment.kind && ('artifact' in item && 'artifact' in attachment
       ? item.artifact.id === attachment.artifact.id
       : 'url' in item && 'url' in attachment && item.url === attachment.url)) ?? null;
+    if (bound) setPendingAttachmentIdsBySession((current) => markPendingAttachment(current, id, bound.attachmentId));
+    return bound;
   }, []);
   const detachFromConversation = useCallback((attachmentId: string) => {
     const id = activeSessionIdRef.current ?? 'default-session';
@@ -184,6 +189,7 @@ export default function StudioDashboard({
       .filter((item) => item.attachmentId !== attachmentId);
     attachmentsBySessionRef.current = { ...attachmentsBySessionRef.current, [id]: next };
     setAttachmentsBySession(attachmentsBySessionRef.current);
+    setPendingAttachmentIdsBySession((current) => removePendingAttachment(current, id, attachmentId));
     try { localStorage.setItem(`vantra_attachments_${id}`, JSON.stringify(next)); } catch { /* Keep in memory. */ }
   }, []);
 
@@ -772,6 +778,7 @@ export default function StudioDashboard({
       }
       sendStartRef.current = performance.now();
       pendingSendRef.current = true;
+      setPendingAttachmentIdsBySession((current) => clearPendingAttachments(current, sendConversationId));
       if (boundSpreadsheet && isSingleSpreadsheetChartRequest(data.message)) {
         const sheet = boundSpreadsheet.artifact.sheets[0];
         let chart: ReturnType<typeof chartFromSheet> | null = null;
@@ -1211,6 +1218,7 @@ export default function StudioDashboard({
                       attachmentStore={attachmentsBySession}
                       conversationId={conversationId}
                       attachmentsHydrated={attachmentsHydrated}
+                      pendingAttachmentIds={pendingAttachmentIdsBySession[conversationId] ?? []}
                       pendingAttachmentActions={pendingAttachmentActions}
                       onRemoveConversationAttachment={detachFromConversation}
                       onConversationAttachmentAction={(action, selected) => { void (async () => {

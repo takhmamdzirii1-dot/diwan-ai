@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { ModelPicker as ModelSelector, type ChatModelOption } from "./model-picker";
 import ChatGuidanceCard from '@/src/components/studio/ChatGuidanceCard';
 import { attachmentMenuActions, guidanceActionLabel, guidanceForComposer, type ChatGuidance, type GuidanceAction } from '@/lib/chat/contextual-guidance';
-import { getConversationAttachments, uploadFileKind, type ConversationAttachment,
+import { attachmentDisplayGroups, getConversationAttachments, uploadFileKind, type ConversationAttachment,
     type ConversationAttachmentStore } from '@/lib/chat/conversation-attachments';
 export { ModelPicker as ModelSelector, type ChatModelOption } from "./model-picker";
 
@@ -36,6 +36,7 @@ export interface ClaudeChatInputProps {
     attachmentStore: ConversationAttachmentStore;
     conversationId: string;
     attachmentsHydrated: boolean;
+    pendingAttachmentIds?: string[];
     onRemoveConversationAttachment?: (attachmentId: string) => void;
     onConversationAttachmentAction?: (action: 'analyze' | 'chart' | 'presentation' | 'summarize' | 'ask', attachment: ConversationAttachment) => void;
     pendingAttachmentActions?: Set<string>;
@@ -162,6 +163,7 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
     attachmentStore,
     conversationId,
     attachmentsHydrated,
+    pendingAttachmentIds = [],
     onRemoveConversationAttachment,
     pendingAttachmentActions,
     onConversationAttachmentAction,
@@ -185,6 +187,8 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
     const [guidance, setGuidance] = useState<ChatGuidance | null>(null);
     const [guidanceAttempted, setGuidanceAttempted] = useState(false);
     const conversationAttachments = getConversationAttachments(attachmentStore, conversationId);
+    const { pending: pendingConversationAttachments, context: contextAttachments } =
+        attachmentDisplayGroups(attachmentStore, conversationId, pendingAttachmentIds);
     const requestedUploadRef = useRef<'image' | 'document' | null>(null);
     const [pastedContent, setPastedContent] = useState<{ id: string; content: string }[]>([]);
     const [isDragging, setIsDragging] = useState(false);
@@ -458,9 +462,9 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
 
                 {/* Attachments above input */}
                 {(guidance ?? policyGuidance) && <div className="px-1 pb-2"><ChatGuidanceCard guidance={(guidance ?? policyGuidance)!} locale={locale} onAction={handleGuidanceAction} /></div>}
-                {(files.length > 0 || pastedContent.length > 0 || conversationAttachments.length > 0) && (
+                {(files.length > 0 || pastedContent.length > 0 || pendingConversationAttachments.length > 0) && (
                     <div className="flex gap-3 overflow-x-auto custom-scrollbar pb-2 px-1">
-                        {conversationAttachments.map((attachment) => <div key={attachment.attachmentId} className="flex shrink-0 flex-col gap-1 rounded-lg border border-white/15 bg-white/[0.04] px-3 py-2 text-xs text-white/80"><div className="flex items-center gap-2"><span className="max-w-48 truncate">{attachment.name}</span><span className="text-white/40">{attachmentKindLabel(attachment.kind, locale)}{attachment.kind === 'spreadsheet' && ` · ${attachment.artifact.sheets[0]?.name ?? ''} · ${attachment.artifact.sheets[0]?.rows.length ?? 0} ${locale.startsWith('ar') ? 'صفوف' : locale.startsWith('fr') ? 'lignes' : 'rows'}`}</span><button type="button" aria-label={`${locale.startsWith('ar') ? 'إزالة' : locale.startsWith('fr') ? 'Retirer' : 'Remove'} ${attachment.name}`} onClick={() => onRemoveConversationAttachment?.(attachment.attachmentId)}><X className="h-3.5 w-3.5" /></button></div><div className="flex gap-2 text-[11px] text-white/60">{(attachment.kind === 'spreadsheet' ? ['analyze', 'chart', 'presentation'] : attachment.kind === 'document' || attachment.kind === 'file' ? ['summarize', 'ask', 'presentation'] : []).map((action) => <button key={action} type="button" disabled={isLoading || pendingAttachmentActions?.has(`${attachment.conversationId}:${attachment.attachmentId}:${action}`)} onClick={() => onConversationAttachmentAction?.(action as 'analyze' | 'chart' | 'presentation' | 'summarize' | 'ask', attachment)} className="hover:text-white disabled:opacity-40">{attachmentActionLabel(action, locale)}</button>)}</div></div>)}
+                        {pendingConversationAttachments.map((attachment) => <div key={attachment.attachmentId} data-attachment-display="pending" className="flex shrink-0 flex-col gap-1 rounded-lg border border-white/15 bg-white/[0.04] px-3 py-2 text-xs text-white/80"><div className="flex items-center gap-2"><span className="max-w-48 truncate">{attachment.name}</span><span className="text-white/40">{attachmentKindLabel(attachment.kind, locale)}{attachment.kind === 'spreadsheet' && ` · ${attachment.artifact.sheets[0]?.name ?? ''} · ${attachment.artifact.sheets[0]?.rows.length ?? 0} ${locale.startsWith('ar') ? 'صفوف' : locale.startsWith('fr') ? 'lignes' : 'rows'}`}</span><button type="button" aria-label={`${locale.startsWith('ar') ? 'إزالة' : locale.startsWith('fr') ? 'Retirer' : 'Remove'} ${attachment.name}`} onClick={() => onRemoveConversationAttachment?.(attachment.attachmentId)}><X className="h-3.5 w-3.5" /></button></div><div className="flex gap-2 text-[11px] text-white/60">{(attachment.kind === 'spreadsheet' ? ['analyze', 'chart', 'presentation'] : attachment.kind === 'document' || attachment.kind === 'file' ? ['summarize', 'ask', 'presentation'] : []).map((action) => <button key={action} type="button" disabled={isLoading || pendingAttachmentActions?.has(`${attachment.conversationId}:${attachment.attachmentId}:${action}`)} onClick={() => onConversationAttachmentAction?.(action as 'analyze' | 'chart' | 'presentation' | 'summarize' | 'ask', attachment)} className="hover:text-white disabled:opacity-40">{attachmentActionLabel(action, locale)}</button>)}</div></div>)}
                         {pastedContent.map(content => (
                             <PastedContentCard
                                 key={content.id}
@@ -477,6 +481,25 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({
                         ))}
                     </div>
                 )}
+                {contextAttachments.length > 0 && <details data-attachment-display="context" className="px-1 pb-2 text-xs text-white/50">
+                    <summary className="w-fit cursor-pointer rounded-md px-1 py-0.5 hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
+                        {contextAttachments.length === 1
+                            ? `${locale.startsWith('ar') ? 'السياق' : locale.startsWith('fr') ? 'Contexte' : 'Context'} · ${contextAttachments[0].name}`
+                            : `${locale.startsWith('ar') ? 'ملفات' : locale.startsWith('fr') ? 'Fichiers' : 'Files'} (${contextAttachments.length})`}
+                    </summary>
+                    <div className="mt-1 flex max-h-32 flex-col gap-2 overflow-y-auto rounded-lg border border-white/10 bg-[var(--studio-composer)] p-2">
+                        {contextAttachments.map((attachment) => <div key={attachment.attachmentId} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <span className="max-w-48 truncate text-white/75">{attachment.name}</span>
+                            <span>{attachmentKindLabel(attachment.kind, locale)}</span>
+                            {(attachment.kind === 'spreadsheet' ? ['analyze', 'chart', 'presentation'] : attachment.kind === 'document' || attachment.kind === 'file' ? ['summarize', 'ask', 'presentation'] : []).map((action) =>
+                                <button key={action} type="button" disabled={isLoading || pendingAttachmentActions?.has(`${attachment.conversationId}:${attachment.attachmentId}:${action}`)}
+                                    onClick={() => onConversationAttachmentAction?.(action as 'analyze' | 'chart' | 'presentation' | 'summarize' | 'ask', attachment)}
+                                    className="text-white/60 hover:text-white disabled:opacity-40">{attachmentActionLabel(action, locale)}</button>)}
+                            <button type="button" aria-label={`${locale.startsWith('ar') ? 'إزالة' : locale.startsWith('fr') ? 'Retirer' : 'Remove'} ${attachment.name}`}
+                                onClick={() => onRemoveConversationAttachment?.(attachment.attachmentId)} className="ms-auto text-white/50 hover:text-white"><X className="h-3.5 w-3.5" /></button>
+                        </div>)}
+                    </div>
+                </details>}
 
                 {/* Input area */}
                 <div className="relative flex-1 min-h-[44px] flex items-center" dir="auto">

@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { SpreadsheetArtifact } from '@/lib/artifacts/core';
 import { chatRequestMessages } from './message-history';
-import { attachConversationFile, AttachmentActionGate, attachedSpreadsheet, attachmentRequestContext, getConversationAttachment,
-  getConversationAttachments, getCurrentSpreadsheetAttachment, parseConversationAttachments, uploadFileKind } from './conversation-attachments';
+import { attachConversationFile, AttachmentActionGate, attachedSpreadsheet, attachmentDisplayGroups,
+  attachmentRequestContext, clearPendingAttachments, getConversationAttachment, getConversationAttachments,
+  getCurrentSpreadsheetAttachment, markPendingAttachment, parseConversationAttachments,
+  removePendingAttachment, uploadFileKind } from './conversation-attachments';
 
 const spreadsheet: SpreadsheetArtifact = {
   schemaVersion: 1, id: 'sheet-1', type: 'spreadsheet', title: 'sales', language: 'en', direction: 'ltr', metadata: {},
@@ -73,4 +75,33 @@ test('bounded spreadsheet rows travel in internal request context, not visible C
   assert.doesNotMatch(visible[0].content, /Jan|Month|Sales/);
   assert.match(internal.spreadsheetContext ?? '', /Jan/);
   assert.ok((internal.spreadsheetContext ?? '').length <= 12_000);
+});
+
+test('pending display moves to conversation context after send without changing the parsed attachment', () => {
+  const attached = attachConversationFile([], { kind: 'spreadsheet', name: 'Products.xlsx', artifact: spreadsheet }, 'chat-a');
+  const store = { 'chat-a': attached };
+  const id = attached[0].attachmentId;
+  const pending = markPendingAttachment({}, 'chat-a', id);
+  assert.deepEqual(attachmentDisplayGroups(store, 'chat-a', pending['chat-a']).pending, attached);
+  assert.deepEqual(attachmentDisplayGroups(store, 'chat-a', pending['chat-a']).context, []);
+  const afterSend = clearPendingAttachments(pending, 'chat-a');
+  assert.deepEqual(attachmentDisplayGroups(store, 'chat-a', afterSend['chat-a']).pending, []);
+  assert.equal(attachmentDisplayGroups(store, 'chat-a', afterSend['chat-a']).context[0], attached[0]);
+  assert.equal(getCurrentSpreadsheetAttachment(store, 'chat-a')?.artifact, spreadsheet);
+  assert.ok(attachmentRequestContext(getConversationAttachments(store, 'chat-a')).spreadsheetContext);
+});
+
+test('restored files are context, stay isolated, and detach by ID', () => {
+  const attached = attachConversationFile([], { kind: 'spreadsheet', name: 'Products.xlsx', artifact: spreadsheet }, 'chat-a');
+  const restored = parseConversationAttachments(JSON.stringify(attached), 'chat-a');
+  const store = { 'chat-a': restored, 'chat-b': [] };
+  assert.deepEqual(attachmentDisplayGroups(store, 'chat-a', []).pending, []);
+  assert.equal(attachmentDisplayGroups(store, 'chat-a', []).context[0].attachmentId, attached[0].attachmentId);
+  assert.deepEqual(attachmentDisplayGroups(store, 'chat-b', [attached[0].attachmentId]).pending, []);
+  const detached = restored.filter((item) => item.attachmentId !== attached[0].attachmentId);
+  const afterDetach = { ...store, 'chat-a': detached };
+  const pending = removePendingAttachment(markPendingAttachment({}, 'chat-a', attached[0].attachmentId),
+    'chat-a', attached[0].attachmentId);
+  assert.equal(getCurrentSpreadsheetAttachment(afterDetach, 'chat-a'), null);
+  assert.deepEqual(attachmentDisplayGroups(afterDetach, 'chat-a', pending['chat-a']).context, []);
 });
