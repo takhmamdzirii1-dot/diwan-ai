@@ -45,3 +45,21 @@ export function decideWebSearch(request: string): SearchDecision {
     || /^(?:quel|quelle|quels|quelles)\b[^?]{0,220}\b(?:meilleur|disponible|compar|source)\b/iu.test(text)) return { path: 'optional' };
   return { path: 'none' };
 }
+
+/** A confirmation question inherits only the immediately preceding answered fresh-web question. */
+export function decideWebSearchWithHistory(current: string,
+  previous: readonly { role: string; content: string }[]): { decision: SearchDecision; evidenceRequest: string } {
+  const decision = decideWebSearch(current);
+  if (decision.path !== 'none') return { decision, evidenceRequest: current };
+  const confirmation = /^(?:هل أنت متأكد|هل انت متأكد|تأكد|تاكد|تحقق مرة أخرى|تحقق مره اخرى|are you sure|verify that|really|es-tu sûr|es tu sur)\s*[؟?!.,]*$/iu;
+  if (!confirmation.test(current.trim())) return { decision, evidenceRequest: current };
+  const lastUser = [...previous].reverse().findIndex((message) => message.role === 'user');
+  if (lastUser < 0) return { decision, evidenceRequest: current };
+  const index = previous.length - 1 - lastUser;
+  const earlier = previous[index].content;
+  const answered = previous.slice(index + 1).some((message) => message.role === 'assistant' && message.content.trim());
+  const earlierDecision = decideWebSearch(earlier);
+  return answered && earlierDecision.path === 'required' && earlierDecision.tool.kind === 'web_search'
+    ? { decision: earlierDecision, evidenceRequest: earlier }
+    : { decision, evidenceRequest: current };
+}

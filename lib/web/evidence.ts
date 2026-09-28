@@ -29,7 +29,7 @@ function rawResultsRequested(request: string) {
     || /(?:نتائج البحث الخام|اعرض نتائج البحث|قائمة نتائج البحث)/u.test(request);
 }
 
-function likelyPrimarySource(hit: WebSearchHit, request: string) {
+export function likelyPrimarySource(hit: WebSearchHit, request: string) {
   const url = safeUrl(hit.url);
   if (!url) return false;
   const host = new URL(url).hostname.replace(/^www\./, '').toLowerCase();
@@ -39,13 +39,24 @@ function likelyPrimarySource(hit: WebSearchHit, request: string) {
     || /\.(?:gov|edu)(?:\.[a-z]{2})?$/.test(host);
 }
 
-function rankedEvidence(hits: readonly WebSearchHit[], request: string, today: string) {
+function evergreenSource(hit: WebSearchHit) {
+  const url = safeUrl(hit.url);
+  return url ? /\/(?:download|downloads|releases|versions|pricing|prices|status|availability)(?:\/|$)/iu.test(new URL(url).pathname) : false;
+}
+
+export function rankedEvidence(hits: readonly WebSearchHit[], request: string, today: string) {
   const valid = hits.filter((hit) => safeUrl(hit.url));
   const candidates = asksForToday(request) && valid.some((hit) => hit.publishedAt === today)
     ? valid.filter((hit) => hit.publishedAt === today) : valid;
   return candidates.map((hit, index) => ({ hit, index })).sort((a, b) => {
+    const verified = Number(Boolean(b.hit.verifiedPage)) - Number(Boolean(a.hit.verifiedPage));
+    if (verified) return verified;
     const primary = Number(likelyPrimarySource(b.hit, request)) - Number(likelyPrimarySource(a.hit, request));
     if (primary) return primary;
+    if (needsFreshEvidence(request)) {
+      const evergreen = Number(evergreenSource(b.hit)) - Number(evergreenSource(a.hit));
+      if (evergreen) return evergreen;
+    }
     const dated = (b.hit.publishedAt ?? '').localeCompare(a.hit.publishedAt ?? '');
     return dated || a.index - b.index;
   }).map(({ hit }) => hit).slice(0, 3);
@@ -66,7 +77,7 @@ export function searchEvidence(hits: readonly WebSearchHit[], request: string, n
   const lines = hits.flatMap((hit, index) => {
     const url = safeUrl(hit.url);
     if (!url) return [];
-    return [`${index + 1}. ${plainExcerpt(hit.title, 180)}\nURL: ${url}\nPublished: ${hit.publishedAt ?? 'unknown'}\nSource: ${new URL(url).hostname}\nExcerpt: ${plainExcerpt(hit.description, 500)}`];
+    return [`${index + 1}. ${plainExcerpt(hit.title, 180)}\nURL: ${url}\nPublished: ${hit.publishedAt ?? 'unknown'}\nSource: ${new URL(url).hostname}\n${hit.verifiedPage ? 'Verified primary page' : 'Search excerpt'}: ${plainExcerpt(hit.description, 500)}`];
   });
   const notice = todayRequested && !publishedToday
     ? `No retrieved source has a verified publication date of ${today}. Do not present older or undated results as today's news.`
@@ -75,11 +86,22 @@ export function searchEvidence(hits: readonly WebSearchHit[], request: string, n
     text: [notice, ...lines].filter(Boolean).join('\n\n').slice(0, 8_000) };
 }
 
+function labeledVersion(text: string, label: 'current' | 'lts') {
+  const version = String.raw`v?\d+\.\d+(?:\.\d+)?`;
+  return text.match(new RegExp(String.raw`\b${label}\b[^\d]{0,45}?\b(${version})\b`, 'i'))?.[1]
+    ?? text.match(new RegExp(String.raw`\b(${version})\b[^\n]{0,35}?\b${label}\b`, 'i'))?.[1]
+    ?? null;
+}
+
 /** Conservative localized fallback when the same-call model answer cannot be verified. */
 export function groundedSearchSummary(hits: readonly WebSearchHit[], request: string, now = new Date(),
   locale: ResponseLanguage = 'en') {
   const evidence = searchEvidence(hits, request, now);
   const selected = rankedEvidence(hits, request, evidence.today);
+  if (needsFreshEvidence(request) && !selected.some((hit) => hit.verifiedPage)) return locale === 'ar'
+    ? 'لم أتمكن من التحقق من المعلومة الحالية من مصدر أولي موثوق، لذلك لا أستطيع تأكيدها.'
+    : locale === 'fr' ? 'Je n’ai pas pu vérifier cette information actuelle auprès d’une source primaire fiable ; je ne peux donc pas la confirmer.'
+      : 'I could not verify the current fact from a reliable primary source, so I cannot confirm it.';
   if (!selected.length) return locale === 'ar'
     ? 'لم أجد نتائج بحث موثوقة لهذا الطلب، لذلك لا أستطيع تأكيد معلومات حديثة أو ذكر مصادر.'
     : locale === 'fr' ? 'Aucun résultat de recherche fiable n’a été trouvé pour cette demande. Je ne peux donc pas confirmer des informations récentes ni citer des sources.'
@@ -91,9 +113,18 @@ export function groundedSearchSummary(hits: readonly WebSearchHit[], request: st
   const first = selected[0];
   const firstCitation = `[${plainExcerpt(first.title, 180).replace(/[\[\]]/g, '')}](${safeUrl(first.url)})${first.publishedAt ? ` (${first.publishedAt})` : ''}`;
   const asksVersion = /\bversion\b|(?:إصدار|اصدار|نسخة)/iu.test(request);
-  const version = asksVersion ? `${first.title} ${first.description}`.match(/\b(?:v)?\d+\.\d+(?:\.\d+)?\b/i)?.[0] : null;
+  const currentVersion = asksVersion ? labeledVersion(first.description, 'current') : null;
+  const ltsVersion = asksVersion ? labeledVersion(first.description, 'lts') : null;
+  const version = asksVersion && !needsFreshEvidence(request)
+    ? `${first.title} ${first.description}`.match(/\b(?:v)?\d+\.\d+(?:\.\d+)?\b/i)?.[0] : null;
   if (!rawResultsRequested(request)) {
-    const direct = version ? locale === 'ar' ? `الإصدار الذي يذكره المصدر هو ${version}. ${firstCitation}`
+    const direct = currentVersion ? locale === 'ar' ? `الإصدار Current هو ${currentVersion}${ltsVersion ? `، وإصدار LTS هو ${ltsVersion}` : ''}. ${firstCitation}`
+      : locale === 'fr' ? `La version Current est ${currentVersion}${ltsVersion ? ` et la version LTS est ${ltsVersion}` : ''}. ${firstCitation}`
+        : `The Current release is ${currentVersion}${ltsVersion ? `, and the LTS release is ${ltsVersion}` : ''}. ${firstCitation}`
+      : ltsVersion && /\bLTS\b/iu.test(request) ? locale === 'ar' ? `إصدار LTS هو ${ltsVersion}. ${firstCitation}`
+        : locale === 'fr' ? `La version LTS est ${ltsVersion}. ${firstCitation}`
+          : `The LTS release is ${ltsVersion}. ${firstCitation}`
+      : version ? locale === 'ar' ? `الإصدار الذي يذكره المصدر هو ${version}. ${firstCitation}`
       : locale === 'fr' ? `La version indiquée par la source est ${version}. ${firstCitation}`
         : `The source identifies version ${version}. ${firstCitation}`
       : locale === 'ar' ? `لا تكفي النتائج الموثوقة لتأكيد إجابة مختصرة لهذا السؤال. المصدر الأوثق المتاح: ${firstCitation}`
@@ -125,6 +156,7 @@ export function usableSearchSynthesis(answer: string, hits: readonly WebSearchHi
   now: Date, language: ResponseLanguage) {
   const trimmed = answer.trim();
   if (!trimmed || trimmed.length > 4_000 || rawResultsRequested(request)) return false;
+  if (needsFreshEvidence(request) && !hits.some((hit) => hit.verifiedPage)) return false;
   if (!answerUsesOnlySearchSources(trimmed, hits, request, now)) return false;
   const withoutLinks = trimmed.replace(/\[[^\]]+\]\(https?:\/\/[^)]+\)/g, ' ');
   if (language === 'ar' && (withoutLinks.match(/[\u0600-\u06ff]/gu) ?? []).length < 3) return false;
@@ -139,8 +171,13 @@ export function usableSearchSynthesis(answer: string, hits: readonly WebSearchHi
   if (hits.some((hit) => likelyPrimarySource(hit, request))
     && !citations.some(([, , url]) => hits.some((hit) => safeUrl(hit.url) === safeUrl(url)
       && likelyPrimarySource(hit, request)))) return false;
-  const allowedNumbers = new Set(hits.flatMap((hit) => `${hit.title} ${hit.description} ${hit.publishedAt ?? ''}`.match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []));
+  const allowedNumbers = new Set(hits.flatMap((hit) => `${needsFreshEvidence(request) ? '' : hit.title} ${hit.description} ${hit.publishedAt ?? ''}`.match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []));
   if ((withoutLinks.match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []).some((value) => !allowedNumbers.has(value))) return false;
+  if (needsFreshEvidence(request) && /\bversion\b|(?:إصدار|اصدار|نسخة)/iu.test(request)) {
+    const current = rankedEvidence(hits, request, localDate(now))
+      .map((hit) => hit.verifiedPage ? labeledVersion(hit.description, 'current') : null).find(Boolean);
+    if (current && !withoutLinks.includes(current)) return false;
+  }
   if (hits.some((hit) => { const excerpt = plainExcerpt(hit.description, 400); return excerpt.length >= 24
     && withoutLinks.toLowerCase().includes(excerpt.toLowerCase()); })) return false;
   const claims = withoutLinks.split(/(?<=[.!?؟])\s+/u).map((sentence) => sentence.trim().toLowerCase())

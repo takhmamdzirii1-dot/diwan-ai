@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { selectArtifactTools, selectWebContextTool } from '@/lib/artifacts/tool-registry';
-import { optionalWebContext, webContextForRequest } from './context.server';
+import { optionalWebContext, searchContextForRequest, webContextForRequest } from './context.server';
 import { BraveWebSearch, orchestrateWebSearch, SearchProviderError, searchWeb, TavilyWebSearch,
   type WebSearchProvider } from './search.server';
 import { budgetWarning, type SearchHealthStore } from './search-health.server';
-import { decideWebSearch } from './selection';
+import { decideWebSearch, decideWebSearchWithHistory } from './selection';
 import { readPublicWebPage, resolvePublicWebUrl } from './url-reader.server';
 import { answerUsesOnlySearchSources, groundedSearchSummary, guardSearchDataStream, searchEvidence, usableSearchSynthesis } from './evidence';
 
@@ -53,14 +53,13 @@ test('search evidence preserves exact source URL/date and never promotes older r
   assert.match(evidence.text, /No retrieved source has a verified publication date of 2026-09-28/);
   assert.match(evidence.text, /Published: 2026-09-27/);
   const summary = groundedSearchSummary(hits, 'news today', now);
-  assert.match(summary, /\(2026-09-27\)/);
-  assert.match(summary, /https:\/\/example.org\/update/);
-  assert.doesNotMatch(summary, /Older update.*\(2026-09-28\)|Brave|Tavily|^- /m);
+  assert.match(summary, /could not verify the current fact/);
+  assert.doesNotMatch(summary, /verified as published today|Brave|Tavily|^- /m);
   assert.equal(answerUsesOnlySearchSources('Today according to [Made up](https://fake.example/)', hits, 'news today', now), false);
   const response = new Response(`0:${JSON.stringify('Today according to a made-up source.')}\ne:{"finishReason":"stop"}\n`,
     { headers: { 'X-Vercel-AI-Data-Stream': 'v1' } });
   const guarded = await guardSearchDataStream(response, hits, 'news today', now);
-  assert.match(await guarded.text(), /I found no result verified as published today/);
+  assert.match(await guarded.text(), /could not verify the current fact/);
 });
 
 test('search-answer stream uses retrieved evidence even if model prose names an unreturned source', async () => {
@@ -73,10 +72,10 @@ test('search-answer stream uses retrieved evidence even if model prose names an 
   assert.equal(answerUsesOnlySearchSources('According to an unlinked mystery source...', hits, 'latest release', now), false);
   const response = new Response(`0:${JSON.stringify(`${valid} According to an unreturned source, version 9 is out.`)}\nd:{"finishReason":"stop"}\n`);
   const guarded = await (await guardSearchDataStream(response, hits, 'latest release', now)).text();
-  assert.match(guarded, /Official notes/);
+  assert.match(guarded, /could not verify the current fact/);
   assert.doesNotMatch(guarded, /unreturned source|version 9/);
   const empty = await (await guardSearchDataStream(new Response(`0:${JSON.stringify('Made-up news')}\n`), [], 'news today', now)).text();
-  assert.match(empty, /No trustworthy search results/);
+  assert.match(empty, /could not verify the current fact/);
   assert.doesNotMatch(empty, /Made-up news/);
 });
 
@@ -84,12 +83,12 @@ test('search answers prefer a relevant primary source, cite at most three, and l
   const now = new Date('2026-09-28T12:00:00Z');
   const hits = [
     { title: 'Third-party guess', url: 'https://example.net/node', description: 'Node.js might be version 19.', publishedAt: '2026-09-27' },
-    { title: 'Node.js release notes', url: 'https://nodejs.org/en/blog/release', description: 'Node.js 26.1.0 is available.', publishedAt: '2026-09-26' },
+    { title: 'Node.js release notes', url: 'https://nodejs.org/en/blog/release', description: 'Node.js Current 26.1.0; LTS 24.4.0.', publishedAt: '2026-09-26', verifiedPage: true },
     { title: 'Another story', url: 'https://other.example/story', description: 'Some unrelated release.', publishedAt: '2026-09-25' },
     { title: 'Fourth story', url: 'https://fourth.example/story', description: 'Yet another release.', publishedAt: '2026-09-24' },
   ];
   const answer = groundedSearchSummary(hits, 'latest Node.js version now', now);
-  assert.match(answer, /version 26\.1\.0/);
+  assert.match(answer, /Current release is 26\.1\.0.*LTS release is 24\.4\.0/);
   assert.match(answer, /https:\/\/nodejs\.org/);
   assert.doesNotMatch(answer, /Node\.js might|Node\.js 26\.1\.0 is available/);
   assert.equal((answer.match(/\]\(https:\/\//g) ?? []).length, 1);
@@ -105,7 +104,7 @@ test('today answers use only verified today-dated evidence when it exists', () =
   const now = new Date('2026-09-28T12:00:00Z');
   const hits = [
     { title: 'Older story', url: 'https://example.org/old', description: 'An older fact.', publishedAt: '2026-09-27' },
-    { title: 'Today story', url: 'https://example.org/today', description: 'A confirmed update today.', publishedAt: '2026-09-28' },
+    { title: 'Today story', url: 'https://example.org/today', description: 'A confirmed update today.', publishedAt: '2026-09-28', verifiedPage: true },
   ];
   const answer = groundedSearchSummary(hits, 'OpenAI news today', now);
   assert.match(answer, /https:\/\/example\.org\/today/);
@@ -115,7 +114,7 @@ test('today answers use only verified today-dated evidence when it exists', () =
 test('same-call search synthesis answers in resolved Arabic and French without copying English snippets', async () => {
   const now = new Date('2026-09-28T12:00:00Z');
   const hits = [{ title: 'Node.js release notes', url: 'https://nodejs.org/en/blog/release',
-    description: 'Node.js 26.1.0 is available. The release includes fixes.', publishedAt: '2026-09-28' }];
+    description: 'Node.js 26.1.0 is available. The release includes fixes.', publishedAt: '2026-09-28', verifiedPage: true }];
   const citation = '[Node.js release notes](https://nodejs.org/en/blog/release)';
   const arabic = `الإصدار الأحدث الموثّق هو Node.js 26.1.0. ${citation}`;
   const french = `La version publiée est Node.js 26.1.0. ${citation}`;
@@ -136,29 +135,93 @@ test('same-call search synthesis answers in resolved Arabic and French without c
 test('explicit English override and unsupported claims fail safely without another model call', async () => {
   const now = new Date('2026-09-28T12:00:00Z');
   const hits = [{ title: 'Node.js release notes', url: 'https://nodejs.org/en/blog/release',
-    description: 'Node.js 26.1.0 is available.', publishedAt: '2026-09-28' }];
+    description: 'Node.js Current 26.1.0 is available.', publishedAt: '2026-09-28', verifiedPage: true }];
   const request = 'ما هو أحدث إصدار من Node.js؟ Answer in English.';
   const valid = 'The release note identifies version 26.1.0. [Node.js release notes](https://nodejs.org/en/blog/release)';
   assert.equal(usableSearchSynthesis(valid, hits, request, now, 'en'), true);
-  assert.equal(usableSearchSynthesis('Node.js 26.1.0 is available. [Node.js release notes](https://nodejs.org/en/blog/release)',
+  assert.equal(usableSearchSynthesis('Node.js Current 26.1.0 is available. [Node.js release notes](https://nodejs.org/en/blog/release)',
     hits, request, now, 'en'), false);
   const invented = 'The latest is version 99.0.0. [Node.js release notes](https://nodejs.org/en/blog/release)';
   assert.equal(usableSearchSynthesis(invented, hits, request, now, 'en'), false);
   const result = await (await guardSearchDataStream(new Response(`0:${JSON.stringify(invented)}\n`), hits,
     request, now, 'en')).text();
-  assert.match(result, /version 26\.1\.0/);
+  assert.match(result, /Current release is 26\.1\.0/);
   assert.doesNotMatch(result, /99\.0\.0/);
 });
 
 test('English question stays English when a retrieved source is Arabic', async () => {
   const now = new Date('2026-09-28T12:00:00Z');
   const hits = [{ title: 'إعلان رسمي', url: 'https://example.org/release',
-    description: 'صدر الإصدار 26.1.0 اليوم.', publishedAt: '2026-09-28' }];
+    description: 'صدر الإصدار 26.1.0 اليوم.', publishedAt: '2026-09-28', verifiedPage: true }];
   const answer = 'The announcement reports version 26.1.0. [إعلان رسمي](https://example.org/release)';
   assert.equal(usableSearchSynthesis(answer, hits, 'What is the latest version now?', now, 'en'), true);
   const guarded = await (await guardSearchDataStream(new Response(`0:${JSON.stringify(answer)}\n`), hits,
     'What is the latest version now?', now, 'en')).text();
   assert.match(guarded, /The announcement reports version 26\.1\.0/);
+});
+
+test('fresh facts verify a primary page and discard a conflicting secondary snippet', async () => {
+  const request = 'ما هو أحدث إصدار من Node.js الآن؟';
+  const now = new Date('2026-09-28T12:00:00Z');
+  const readUrls: string[] = [];
+  const result = await searchContextForRequest(request, request, {
+    search: async () => ({ sourceId: 'search:test', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+      { title: 'Version checker: Node.js 20.20.0', url: 'https://versions.example/node',
+        description: 'The current version is 20.20.0.' },
+      { title: 'Older official release', url: 'https://nodejs.org/en/blog/release/v20',
+        description: 'Node.js 20.20.0 release notes.', publishedAt: '2026-09-27' },
+      { title: 'Node.js downloads', url: 'https://nodejs.org/en/download',
+        description: 'Search excerpt is not verification.' },
+    ] }),
+    read: async (url) => { readUrls.push(url); return { sourceId: url, name: 'Official downloads',
+      mimeType: 'text/markdown', text: url.includes('/blog/')
+        ? 'Node.js release notes: Current 20.20.0.' : 'Node.js downloads: Current 26.1.0. LTS 24.4.0.' }; },
+  });
+  assert.deepEqual(readUrls, ['https://nodejs.org/en/download', 'https://nodejs.org/en/blog/release/v20']);
+  assert.equal(result.hits.length, 2);
+  assert.equal(result.hits[0].url, 'https://nodejs.org/en/download');
+  assert.equal(result.hits[0].verifiedPage, true);
+  assert.match(result.context, /Current 26\.1\.0/);
+  assert.doesNotMatch(result.context, /Version checker/);
+  const fallback = groundedSearchSummary(result.hits, request, now, 'ar');
+  assert.match(fallback, /26\.1\.0.*24\.4\.0/);
+  assert.doesNotMatch(fallback, /20\.20\.0/);
+  const stale = 'الإصدار الأحدث هو 20.20.0. [Older official release](https://nodejs.org/en/blog/release/v20)';
+  assert.equal(usableSearchSynthesis(stale, result.hits, request, now, 'ar'), false);
+  const guarded = await (await guardSearchDataStream(new Response(`0:${JSON.stringify(stale)}\n`),
+    result.hits, request, now, 'ar')).text();
+  assert.match(guarded, /26\.1\.0/);
+  assert.doesNotMatch(guarded, /20\.20\.0/);
+});
+
+test('fresh facts remain uncertain when primary read fails or no primary result exists', async () => {
+  const request = 'latest Node.js version now';
+  let reads = 0;
+  const result = await searchContextForRequest(request, request, {
+    search: async () => ({ sourceId: 'search:test', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+      { title: 'Old version checker', url: 'https://versions.example/node', description: 'Node.js 20.20.0' },
+      { title: 'Node.js downloads', url: 'https://nodejs.org/en/download', description: 'Node.js 26.1.0' },
+    ] }),
+    read: async () => { reads++; throw new Error('URL_UNAVAILABLE'); },
+  });
+  assert.equal(reads, 1);
+  assert.deepEqual(result.hits, []);
+  assert.match(groundedSearchSummary(result.hits, request), /could not verify the current fact/);
+  assert.doesNotMatch(result.context, /20\.20\.0|26\.1\.0/);
+});
+
+test('confirmation follow-up re-verifies only the preceding answered fresh claim', () => {
+  const fresh = 'ما هو أحدث إصدار من Node.js الآن؟';
+  const history = [{ role: 'user', content: fresh },
+    { role: 'assistant', content: 'الإصدار الأحدث 20.20.0.' }];
+  assert.deepEqual(decideWebSearchWithHistory('هل أنت متأكد؟', history), {
+    decision: { path: 'required', tool: { kind: 'web_search', query: fresh } }, evidenceRequest: fresh,
+  });
+  assert.deepEqual(decideWebSearchWithHistory('are you sure?', [
+    { role: 'user', content: 'Explain recursion' }, { role: 'assistant', content: 'It calls itself.' },
+  ]), { decision: { path: 'none' }, evidenceRequest: 'are you sure?' });
+  assert.deepEqual(decideWebSearchWithHistory('هل أنت متأكد؟', [{ role: 'user', content: fresh }]),
+    { decision: { path: 'none' }, evidenceRequest: 'هل أنت متأكد؟' });
 });
 
 test('Brave and Tavily preserve publication dates when returned, without inventing missing dates', async () => {
