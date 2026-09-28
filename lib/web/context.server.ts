@@ -18,3 +18,11 @@ export async function webContextForRequest(tool: WebContextTool, request: string
   if (!context) throw new Error('WEB_CONTENT_UNAVAILABLE');
   return context;
 }
+
+/** Optional model-invoked search must not turn a normal Chat into a hard failure. */
+export async function optionalWebContext(query: string, request: string,
+  search: (query: string) => Promise<WebResource> = searchWeb) {
+  try { return { status: 'ok' as const, context: await webContextForRequest(
+    { kind: 'web_search', query }, request, { read: readPublicWebPage, search }) }; }
+  catch { return { status: 'unavailable' as const, context: '' }; }
+}

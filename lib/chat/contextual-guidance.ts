@@ -199,7 +199,12 @@ export function guidanceForChatError(raw: string, locale: string): ChatGuidance 
     kind: 'recoverable_error', message: say(locale, {
       en: 'This connected-app action could not be completed.', fr: "Cette action de l’application connectée n’a pas pu aboutir.",
       ar: 'تعذر إكمال إجراء التطبيق المتصل.' }), actions: [] };
-  if (/URL_UNSAFE|URL_UNAVAILABLE|URL_CONTENT_UNSUPPORTED|URL_TOO_LARGE|WEB_SEARCH_UNCONFIGURED|WEB_SEARCH_INVALID_QUERY|WEB_SEARCH_RATE_LIMITED|WEB_SEARCH_UNAVAILABLE|WEB_SEARCH_EMPTY|WEB_CONTENT_UNAVAILABLE|WEB_ACTION_AMBIGUOUS/i.test(code)) return {
+  if (/WEB_SEARCH_UNCONFIGURED|WEB_SEARCH_RATE_LIMITED|WEB_SEARCH_UNAVAILABLE|WEB_SEARCH_EMPTY/i.test(code)) return {
+    kind: 'recoverable_error', message: say(locale, {
+      en: 'Live search is temporarily unavailable, so I cannot verify current information right now.',
+      fr: 'La recherche en direct est temporairement indisponible ; je ne peux pas vérifier les informations actuelles pour le moment.',
+      ar: 'البحث المباشر غير متاح مؤقتًا، لذا لا يمكنني التحقق من المعلومات الحالية الآن.' }), actions: [] };
+  if (/URL_UNSAFE|URL_UNAVAILABLE|URL_CONTENT_UNSUPPORTED|URL_TOO_LARGE|WEB_SEARCH_INVALID_QUERY|WEB_CONTENT_UNAVAILABLE|WEB_ACTION_AMBIGUOUS/i.test(code)) return {
     kind: 'recoverable_error', message: say(locale, {
       en: 'I could not safely retrieve that web content right now.',
       fr: 'Je ne peux pas récupérer ce contenu web de façon sûre pour le moment.',
