@@ -21,7 +21,7 @@ function isBlockedIpv4(address: string) {
     || (a === 198 && (b === 18 || b === 19));
 }
 
-function isBlockedIp(address: string) {
+export function isBlockedIp(address: string) {
   const normalized = address.toLowerCase().split('%')[0];
   if (isIP(normalized) === 4) return isBlockedIpv4(normalized);
   if (isIP(normalized) !== 6) return true;

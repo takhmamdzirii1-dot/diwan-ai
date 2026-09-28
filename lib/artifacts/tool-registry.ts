@@ -185,6 +185,9 @@ export function runArtifactTool(name: string, rawInput: unknown): ArtifactToolRe
 }
 
 export type ArtifactToolSelection = { names: ArtifactToolName[]; skill: ArtifactTaskSkill | null; mode?: 'semantic' };
+// External context discovery shares the deterministic Tool Registry entry point.
+// The selected action is executed server-side before the existing single model call.
+export { selectWebContextTool } from '@/lib/web/selection';
 const emptySelection: ArtifactToolSelection = { names: [], skill: null };
 export function agentToolSelection(step: 'analysis' | 'presentation'): ArtifactToolSelection {
   return step === 'analysis' ? { names: [], skill: 'spreadsheet-analysis' }

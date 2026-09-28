@@ -199,6 +199,11 @@ export function guidanceForChatError(raw: string, locale: string): ChatGuidance 
     kind: 'recoverable_error', message: say(locale, {
       en: 'This connected-app action could not be completed.', fr: "Cette action de l’application connectée n’a pas pu aboutir.",
       ar: 'تعذر إكمال إجراء التطبيق المتصل.' }), actions: [] };
+  if (/URL_UNSAFE|URL_UNAVAILABLE|URL_CONTENT_UNSUPPORTED|URL_TOO_LARGE|WEB_SEARCH_UNCONFIGURED|WEB_SEARCH_INVALID_QUERY|WEB_SEARCH_RATE_LIMITED|WEB_SEARCH_UNAVAILABLE|WEB_SEARCH_EMPTY|WEB_CONTENT_UNAVAILABLE|WEB_ACTION_AMBIGUOUS/i.test(code)) return {
+    kind: 'recoverable_error', message: say(locale, {
+      en: 'I could not safely retrieve that web content right now.',
+      fr: 'Je ne peux pas récupérer ce contenu web de façon sûre pour le moment.',
+      ar: 'تعذر جلب محتوى الويب بأمان الآن.' }), actions: [] };
   if (/INSUFFICIENT_CREDITS|NOT_ENOUGH_CREDITS|CREDITS_EXHAUSTED|CREDIT_BALANCE_TOO_LOW/i.test(code)) return { kind: 'requirement', message: say(locale, {
     en: 'This action needs more credits.', fr: 'Cette action nécessite plus de crédits.', ar: 'يتطلب هذا الإجراء رصيدًا إضافيًا.' }), actions: ['add_credits'] };
   if (/MODEL_PLAN_ACCESS_REQUIRED|MODEL_TRIAL_EXHAUSTED|MODEL_TRIAL_UNCONFIGURED/i.test(code)) return planGuidance(requiredPlan, locale);
