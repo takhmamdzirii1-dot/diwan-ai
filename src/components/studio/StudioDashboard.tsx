@@ -101,6 +101,7 @@ export default function StudioDashboard({
 
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<'general' | 'apps'>('general');
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [attachmentsBySession, setAttachmentsBySession] = useState<ConversationAttachmentStore>({});
   const attachmentsBySessionRef = useRef<ConversationAttachmentStore>({});
@@ -894,6 +895,11 @@ export default function StudioDashboard({
   );
 
   const handleChatGuidanceAction = (action: GuidanceAction) => {
+    if (action === 'open_connected_apps') {
+      setSettingsInitialTab('apps');
+      setSettingsOpen(true);
+      return;
+    }
     if (currentModelId && (action === 'try_again' || action === 'try_chart_again' || action === 'try_presentation_again')
       && agentRunRef.current?.status === 'failed' && agentMessageRef.current) {
       void runAgentRequest(agentRunRef.current,
@@ -1404,6 +1410,7 @@ export default function StudioDashboard({
 
       <SettingsModal
         open={settingsOpen}
+        initialTab={settingsInitialTab}
         onClose={() => setSettingsOpen(false)}
         selectedChatModelId={currentModelId}
         onSelectChatModel={setSelectedModelId}

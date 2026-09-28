@@ -8,7 +8,7 @@ import { getConversationAttachments, getCurrentSpreadsheetAttachment, getSpreads
   type ConversationAttachmentStore } from './conversation-attachments';
 
 export type GuidanceKind = 'requirement' | 'suggestion' | 'warning' | 'confirmation' | 'success' | 'recoverable_error' | 'next_action';
-export type GuidanceAction = 'upload_file' | 'upload_image' | 'upload_document' | 'upload_spreadsheet' | 'switch_model' | 'add_credits' | 'get_pro' | 'view_plans' | 'choose_file' | 'try_again' | 'try_chart_again' | 'try_presentation_again' | 'try_document_again' | 'try_file_again';
+export type GuidanceAction = 'upload_file' | 'upload_image' | 'upload_document' | 'upload_spreadsheet' | 'switch_model' | 'add_credits' | 'get_pro' | 'view_plans' | 'choose_file' | 'open_connected_apps' | 'try_again' | 'try_chart_again' | 'try_presentation_again' | 'try_document_again' | 'try_file_again';
 export type ChatGuidance = { kind: GuidanceKind; message: string; actions: GuidanceAction[] };
 
 export type DocumentActionEligibility = 'primary' | 'secondary' | 'hidden';
@@ -56,6 +56,7 @@ export function guidanceActionLabel(action: GuidanceAction, locale: string): str
     get_pro: { en: 'Get Pro', fr: 'Passer à Pro', ar: 'اشترك في Pro' },
     view_plans: { en: 'View plans', fr: 'Voir les offres', ar: 'عرض الخطط' },
     choose_file: { en: 'Choose another file', fr: 'Choisir un autre fichier', ar: 'اختر ملفًا آخر' },
+    open_connected_apps: { en: 'Connected apps', fr: 'Applications connectées', ar: 'التطبيقات المتصلة' },
     try_again: { en: 'Try again', fr: 'Réessayer', ar: 'حاول مجددًا' },
     try_chart_again: { en: 'Try chart again', fr: 'Réessayer le graphique', ar: 'أعد محاولة الرسم البياني' },
     try_presentation_again: { en: 'Try presentation again', fr: 'Réessayer la présentation', ar: 'أعد محاولة العرض التقديمي' },
@@ -190,6 +191,14 @@ export function guidanceForChatError(raw: string, locale: string): ChatGuidance 
     if ('requiredPlan' in parsed && typeof parsed.requiredPlan === 'string') requiredPlan = parsed.requiredPlan;
   } }
   catch { code = raw; }
+  if (/app_not_connected|authorization_expired|permission_missing/i.test(code)) return {
+    kind: 'requirement', message: say(locale, {
+      en: 'Connect this app in Settings to continue.', fr: 'Connectez cette application dans les paramètres pour continuer.',
+      ar: 'اربط هذا التطبيق من الإعدادات للمتابعة.' }), actions: ['open_connected_apps', 'try_again'] };
+  if (/provider_unavailable|provider_rate_limited|resource_not_found|action_failed|action_requires_confirmation/i.test(code)) return {
+    kind: 'recoverable_error', message: say(locale, {
+      en: 'This connected-app action could not be completed.', fr: "Cette action de l’application connectée n’a pas pu aboutir.",
+      ar: 'تعذر إكمال إجراء التطبيق المتصل.' }), actions: [] };
   if (/INSUFFICIENT_CREDITS|NOT_ENOUGH_CREDITS|CREDITS_EXHAUSTED|CREDIT_BALANCE_TOO_LOW/i.test(code)) return { kind: 'requirement', message: say(locale, {
     en: 'This action needs more credits.', fr: 'Cette action nécessite plus de crédits.', ar: 'يتطلب هذا الإجراء رصيدًا إضافيًا.' }), actions: ['add_credits'] };
   if (/MODEL_PLAN_ACCESS_REQUIRED|MODEL_TRIAL_EXHAUSTED|MODEL_TRIAL_UNCONFIGURED/i.test(code)) return planGuidance(requiredPlan, locale);

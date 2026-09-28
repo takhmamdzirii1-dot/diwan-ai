@@ -12,6 +12,7 @@ import {
   Loader2,
   Mail,
   Palette,
+  Plug,
   Settings2,
   X,
 } from 'lucide-react';
@@ -30,14 +31,16 @@ import { STUDIO_THEMES, useStudioTheme } from '../../context/StudioThemeContext'
 import { useModal } from '../../context/ModalContext';
 import type { PaymentPlan } from '@/lib/payments/types';
 import { useStudioAccess } from '@/src/hooks/useStudioAccess';
+import ConnectedAppsPanel from './ConnectedAppsPanel';
 
-type TabId = 'general' | 'models' | 'credits';
+type TabId = 'general' | 'models' | 'credits' | 'apps';
 type StartScreen = 'chat' | 'image' | 'video' | 'library';
 
-const TABS: { id: TabId; key: 'general' | 'aiPreferences' | 'planCredits'; icon: React.ElementType }[] = [
+const TABS: { id: TabId; key: 'general' | 'aiPreferences' | 'planCredits' | 'connectedApps'; icon: React.ElementType }[] = [
   { id: 'general', key: 'general', icon: Settings2 },
   { id: 'models', key: 'aiPreferences', icon: Bot },
   { id: 'credits', key: 'planCredits', icon: CreditCard },
+  { id: 'apps', key: 'connectedApps', icon: Plug },
 ];
 
 const START_SCREENS: StartScreen[] = ['chat', 'image', 'video', 'library'];
@@ -530,12 +533,14 @@ function CreditsPanel() {
 
 export default function StudioSettingsDialog({
   open,
+  initialTab = 'general',
   onClose,
   selectedChatModelId,
   onSelectChatModel,
   models,
 }: {
   open: boolean;
+  initialTab?: 'general' | 'apps';
   onClose: () => void;
   selectedChatModelId: string;
   onSelectChatModel: (id: string) => void;
@@ -544,6 +549,7 @@ export default function StudioSettingsDialog({
   const t = useTranslations('studio.settings');
   const reduceMotion = useReducedMotion();
   const [tab, setTab] = useState<TabId>('general');
+  useEffect(() => { if (open) setTab(initialTab); }, [open, initialTab]);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -639,6 +645,7 @@ export default function StudioSettingsDialog({
             {tab === 'general' && <GeneralPanel />}
             {tab === 'models' && <ModelsPanel selectedId={selectedChatModelId} onSelect={onSelectChatModel} models={models} />}
             {tab === 'credits' && <CreditsPanel />}
+            {tab === 'apps' && <ConnectedAppsPanel />}
           </div>
         </div>
       </motion.div>
