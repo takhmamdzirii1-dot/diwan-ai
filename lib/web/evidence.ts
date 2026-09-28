@@ -1,4 +1,5 @@
 import type { WebSearchHit } from './search.server';
+import { resolveResponseLanguage, type ResponseLanguage } from '@/lib/chat/response-language';
 
 export function asksForToday(request: string) {
   return /\b(?:today|today's|aujourd'hui)\b/iu.test(request) || /(?:اليوم|نهار اليوم)/u.test(request);
@@ -74,9 +75,9 @@ export function searchEvidence(hits: readonly WebSearchHit[], request: string, n
     text: [notice, ...lines].filter(Boolean).join('\n\n').slice(0, 8_000) };
 }
 
-/** A bounded extractive answer: every factual sentence comes from a returned source. */
+/** Conservative localized fallback when the same-call model answer cannot be verified. */
 export function groundedSearchSummary(hits: readonly WebSearchHit[], request: string, now = new Date(),
-  locale: 'en' | 'fr' | 'ar' = 'en') {
+  locale: ResponseLanguage = 'en') {
   const evidence = searchEvidence(hits, request, now);
   const selected = rankedEvidence(hits, request, evidence.today);
   if (!selected.length) return locale === 'ar'
@@ -84,17 +85,28 @@ export function groundedSearchSummary(hits: readonly WebSearchHit[], request: st
     : locale === 'fr' ? 'Aucun résultat de recherche fiable n’a été trouvé pour cette demande. Je ne peux donc pas confirmer des informations récentes ni citer des sources.'
       : 'No trustworthy search results were found for this request, so I cannot verify current information or cite sources.';
   const noToday = evidence.todayRequested && !evidence.publishedToday;
-  const intro = noToday ? locale === 'ar' ? `لا توجد نتيجة موثوقة بتاريخ نشر مؤكد لليوم (${evidence.today}). وفق النتائج المتاحة:`
-    : locale === 'fr' ? `Aucun résultat n’a une date de publication vérifiée pour aujourd’hui (${evidence.today}). D’après les sources disponibles :`
-      : `No retrieved result has a verified publication date for today (${evidence.today}). From the available sources:`
-    : locale === 'ar' ? 'وفق المصادر التي عُثر عليها:' : locale === 'fr' ? 'D’après les sources trouvées :' : 'According to the retrieved sources:';
+  const notice = noToday ? locale === 'ar' ? `لم أجد خبرًا موثّقًا بتاريخ اليوم (${evidence.today}).`
+    : locale === 'fr' ? `Je n’ai trouvé aucun résultat dont la publication aujourd’hui (${evidence.today}) soit vérifiée.`
+      : `I found no result verified as published today (${evidence.today}).` : '';
+  const first = selected[0];
+  const firstCitation = `[${plainExcerpt(first.title, 180).replace(/[\[\]]/g, '')}](${safeUrl(first.url)})${first.publishedAt ? ` (${first.publishedAt})` : ''}`;
+  const asksVersion = /\bversion\b|(?:إصدار|اصدار|نسخة)/iu.test(request);
+  const version = asksVersion ? `${first.title} ${first.description}`.match(/\b(?:v)?\d+\.\d+(?:\.\d+)?\b/i)?.[0] : null;
+  if (!rawResultsRequested(request)) {
+    const direct = version ? locale === 'ar' ? `الإصدار الذي يذكره المصدر هو ${version}. ${firstCitation}`
+      : locale === 'fr' ? `La version indiquée par la source est ${version}. ${firstCitation}`
+        : `The source identifies version ${version}. ${firstCitation}`
+      : locale === 'ar' ? `لا تكفي النتائج الموثوقة لتأكيد إجابة مختصرة لهذا السؤال. المصدر الأوثق المتاح: ${firstCitation}`
+        : locale === 'fr' ? `Les résultats fiables ne suffisent pas à confirmer une réponse concise. Source la plus pertinente : ${firstCitation}`
+          : `The retrieved evidence is insufficient for a confident concise answer. Most relevant source: ${firstCitation}`;
+    return [notice, direct].filter(Boolean).join(' ');
+  }
   const entries = selected.map((hit) => {
     const citation = `[${plainExcerpt(hit.title, 180).replace(/[\[\]]/g, '')}](${safeUrl(hit.url)})`;
     const date = hit.publishedAt ? ` (${hit.publishedAt})` : '';
     return `${safeClaim(hit).replace(/[.!?؟]+$/, '')}. ${citation}${date}`;
   });
-  if (rawResultsRequested(request)) return [intro, ...entries.map((entry) => `- ${entry}`)].join('\n\n');
-  return [intro, entries.join(' ')].join('\n\n');
+  return [notice, ...entries.map((entry) => `- ${entry}`)].filter(Boolean).join('\n\n');
 }
 
 /** Only exact returned source URLs may appear as citations in a model-written answer. */
@@ -108,11 +120,47 @@ export function answerUsesOnlySearchSources(answer: string, hits: readonly WebSe
   return true;
 }
 
-/** Replace explicit plain-text search answers with the bounded, retrieved-source summary. */
+/** Reject unsupported citations, copied snippets, unverified numbers, and wrong-language answers. */
+export function usableSearchSynthesis(answer: string, hits: readonly WebSearchHit[], request: string,
+  now: Date, language: ResponseLanguage) {
+  const trimmed = answer.trim();
+  if (!trimmed || trimmed.length > 4_000 || rawResultsRequested(request)) return false;
+  if (!answerUsesOnlySearchSources(trimmed, hits, request, now)) return false;
+  const withoutLinks = trimmed.replace(/\[[^\]]+\]\(https?:\/\/[^)]+\)/g, ' ');
+  if (language === 'ar' && (withoutLinks.match(/[\u0600-\u06ff]/gu) ?? []).length < 3) return false;
+  if (resolveResponseLanguage(withoutLinks, [], 'en') !== language) return false;
+  if (/^(?:according to (?:the )?(?:retrieved |available )?sources|here are (?:the )?(?:search )?results|d'après les sources|وفق المصادر)/iu.test(trimmed)) return false;
+  if (/^\s*(?:[-*]|\d+\.)\s/mu.test(trimmed)) return false;
+  const cited = [...trimmed.matchAll(/https?:\/\/[^\s)\]>"']+/g)];
+  if (cited.length > 3) return false;
+  const citations = [...trimmed.matchAll(/\[([^\]]+)\]\((https:\/\/[^)]+)\)/g)];
+  if (citations.length !== cited.length || citations.some(([, label, url]) => !hits.some((hit) =>
+    safeUrl(hit.url) === safeUrl(url) && label === plainExcerpt(hit.title, 180).replace(/[\[\]]/g, '')))) return false;
+  if (hits.some((hit) => likelyPrimarySource(hit, request))
+    && !citations.some(([, , url]) => hits.some((hit) => safeUrl(hit.url) === safeUrl(url)
+      && likelyPrimarySource(hit, request)))) return false;
+  const allowedNumbers = new Set(hits.flatMap((hit) => `${hit.title} ${hit.description} ${hit.publishedAt ?? ''}`.match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []));
+  if ((withoutLinks.match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []).some((value) => !allowedNumbers.has(value))) return false;
+  if (hits.some((hit) => { const excerpt = plainExcerpt(hit.description, 400); return excerpt.length >= 24
+    && withoutLinks.toLowerCase().includes(excerpt.toLowerCase()); })) return false;
+  const claims = withoutLinks.split(/(?<=[.!?؟])\s+/u).map((sentence) => sentence.trim().toLowerCase())
+    .filter((sentence) => sentence.length > 25);
+  if (new Set(claims).size !== claims.length) return false;
+  return true;
+}
+
+/** Keep the existing model's grounded synthesis; fail closed to a localized sourced answer. */
 export async function guardSearchDataStream(response: Response, hits: readonly WebSearchHit[], request: string,
-  now = new Date(), locale: 'en' | 'fr' | 'ar' = 'en'): Promise<Response> {
+  now = new Date(), locale: ResponseLanguage = 'en'): Promise<Response> {
   const body = await response.text();
   const lines = body.split('\n').filter(Boolean);
+  const modelAnswer = lines.flatMap((line) => {
+    if (!line.startsWith('0:')) return [];
+    try { const text = JSON.parse(line.slice(2)); return typeof text === 'string' ? [text] : []; }
+    catch { return []; }
+  }).join('');
+  if (usableSearchSynthesis(modelAnswer, hits, request, now, locale))
+    return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers });
   const replacement = `0:${JSON.stringify(groundedSearchSummary(hits, request, now, locale))}`;
   const next: string[] = []; let inserted = false;
   for (const line of lines) {
