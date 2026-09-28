@@ -6,10 +6,23 @@ import { BraveWebSearch, orchestrateWebSearch, SearchProviderError, searchWeb, T
   type WebSearchProvider } from './search.server';
 import { budgetWarning, type SearchHealthStore } from './search-health.server';
 import { decideWebSearch, decideWebSearchWithHistory } from './selection';
-import { readPublicWebPage, resolvePublicWebUrl } from './url-reader.server';
+import { pinnedAddressLookup, readPublicWebPage, resolvePublicWebUrl } from './url-reader.server';
 import { answerUsesOnlySearchSources, groundedSearchSummary, guardSearchDataStream, searchEvidence, usableSearchSynthesis } from './evidence';
 
 const publicDns = async () => [{ address: '93.184.215.14', family: 4 }];
+
+test('pinned URL Reader DNS responds in both Node lookup shapes without changing the validated IP', () => {
+  const lookup = pinnedAddressLookup('93.184.215.14', 4);
+  lookup('example.org', { all: true }, (error, address) => {
+    assert.equal(error, null);
+    assert.deepEqual(address, [{ address: '93.184.215.14', family: 4 }]);
+  });
+  lookup('example.org', { all: false }, (error, address, family) => {
+    assert.equal(error, null);
+    assert.equal(address, '93.184.215.14');
+    assert.equal(family, 4);
+  });
+});
 
 test('Tool Registry activates web only on an explicit relevant request, without replacing UAR', () => {
   assert.deepEqual(selectWebContextTool('Search the web for launch trends'),
@@ -171,7 +184,7 @@ test('fresh facts verify a primary page and discard a conflicting secondary snip
       { title: 'Older official release', url: 'https://nodejs.org/en/blog/release/v20',
         description: 'Node.js 20.20.0 release notes.', publishedAt: '2026-09-27' },
       { title: 'Node.js downloads', url: 'https://nodejs.org/en/download',
-        description: 'Search excerpt is not verification.' },
+        description: 'Old search excerpt: Current 20.20.0.' },
     ] }),
     read: async (url) => { readUrls.push(url); return { sourceId: url, name: 'Official downloads',
       mimeType: 'text/markdown', text: url.includes('/blog/')
@@ -210,6 +223,96 @@ test('fresh facts remain uncertain when primary read fails or no primary result 
   assert.doesNotMatch(result.context, /20\.20\.0|26\.1\.0/);
 });
 
+test('official search evidence survives URL Reader failure and outranks stale secondary evidence', async () => {
+  const request = 'ما هو أحدث إصدار من Node.js الآن؟';
+  const result = await searchContextForRequest(request, request, {
+    search: async () => ({ sourceId: 'search:test', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+      { title: 'Old version checker', url: 'https://versions.example/node', description: 'Current 20.20.0.' },
+      { title: 'Node.js downloads', url: 'https://nodejs.org/en/download',
+        description: 'Current 26.1.0; LTS 24.4.0.' },
+    ] }),
+    read: async () => { throw new Error('URL_CONTENT_UNSUPPORTED'); },
+  });
+  assert.deepEqual(result.diagnosticStages, ['primary_candidate_found', 'primary_url_read_failed',
+    'official_search_result_evidence_used']);
+  assert.equal(result.hits[0].evidenceLevel, 'primary_search');
+  assert.match(result.context, /Official search-result evidence.*Current 26\.1\.0/s);
+  assert.doesNotMatch(result.context, /20\.20\.0/);
+  const answer = groundedSearchSummary(result.hits, request, new Date('2026-09-28T12:00:00Z'), 'ar');
+  assert.match(answer, /26\.1\.0.*24\.4\.0/);
+  assert.match(answer, /https:\/\/nodejs\.org\/en\/download/);
+  assert.doesNotMatch(answer, /20\.20\.0/);
+});
+
+test('official search fallback is generic for current prices, not tied to a product name', async () => {
+  const request = 'What is the current Acme price now?';
+  const result = await searchContextForRequest(request, request, {
+    search: async () => ({ sourceId: 'search:test', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+      { title: 'Acme pricing', url: 'https://acme.com/pricing', description: 'Current price: $99.' },
+    ] }),
+    read: async () => { throw new Error('URL_TOO_LARGE'); },
+  });
+  assert.equal(result.hits[0].evidenceLevel, 'primary_search');
+  assert.match(groundedSearchSummary(result.hits, request), /99 \$.*https:\/\/acme\.com\/pricing/);
+});
+
+test('two independent agreeing sources give a cautious answer without primary evidence', async () => {
+  const request = 'latest Acme version now';
+  const result = await searchContextForRequest(request, request, {
+    search: async () => ({ sourceId: 'search:test', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+      { title: 'Acme release report', url: 'https://first.example/release', description: 'Acme Current 8.2.0.' },
+      { title: 'Acme version report', url: 'https://second.test/version', description: 'Acme Current 8.2.0.' },
+      { title: 'Old Acme guess', url: 'https://third.net/story', description: 'Acme Current 7.0.0.' },
+    ] }),
+    read: async () => { throw new Error('unexpected read'); },
+  });
+  assert.deepEqual(result.diagnosticStages, ['no_primary_candidate_found', 'corroborated_secondary_evidence_used']);
+  assert.equal(result.hits.length, 2);
+  const answer = groundedSearchSummary(result.hits, request);
+  assert.match(answer, /Two independent sources report|Two independent sources agree/);
+  assert.match(answer, /8\.2\.0/);
+  assert.equal((answer.match(/\]\(https:\/\//g) ?? []).length, 2);
+  assert.doesNotMatch(answer, /7\.0\.0/);
+  assert.equal(usableSearchSynthesis('Current is 8.2.0. [Acme release report](https://first.example/release)',
+    result.hits, request, new Date(), 'en'), false);
+});
+
+test('one unsupported source is insufficient and cannot be promoted to a fresh fact', async () => {
+  const request = 'latest Acme version now';
+  const result = await searchContextForRequest(request, request, {
+    search: async () => ({ sourceId: 'search:test', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+      { title: 'Acme guess', url: 'https://guesses.example/version', description: 'Current 8.2.0.' },
+    ] }),
+    read: async () => { throw new Error('unexpected read'); },
+  });
+  assert.deepEqual(result.diagnosticStages, ['no_primary_candidate_found', 'insufficient_evidence']);
+  assert.deepEqual(result.hits, []);
+  assert.match(groundedSearchSummary(result.hits, request), /could not verify/);
+});
+
+test('corroboration rejects duplicate domains and conflicting source groups', async () => {
+  const request = 'latest Acme version now';
+  for (const hits of [
+    [
+      { title: 'Acme report', url: 'https://one.example.com/a', description: 'Acme Current 8.2.0.' },
+      { title: 'Acme mirror', url: 'https://two.example.com/b', description: 'Acme Current 8.2.0.' },
+    ],
+    [
+      { title: 'Acme report A', url: 'https://first.example/a', description: 'Acme Current 8.2.0.' },
+      { title: 'Acme report B', url: 'https://second.test/b', description: 'Acme Current 8.2.0.' },
+      { title: 'Acme report C', url: 'https://third.net/c', description: 'Acme Current 9.0.0.' },
+      { title: 'Acme report D', url: 'https://fourth.org/d', description: 'Acme Current 9.0.0.' },
+    ],
+  ]) {
+    const result = await searchContextForRequest(request, request, {
+      search: async () => ({ sourceId: 'search:test', name: 'Results', mimeType: 'text/markdown', text: '', hits }),
+      read: async () => { throw new Error('unexpected read'); },
+    });
+    assert.deepEqual(result.hits, []);
+    assert.ok(result.diagnosticStages.includes('insufficient_evidence'));
+  }
+});
+
 test('confirmation follow-up re-verifies only the preceding answered fresh claim', () => {
   const fresh = 'ما هو أحدث إصدار من Node.js الآن؟';
   const history = [{ role: 'user', content: fresh },
@@ -222,6 +325,24 @@ test('confirmation follow-up re-verifies only the preceding answered fresh claim
   ]), { decision: { path: 'none' }, evidenceRequest: 'are you sure?' });
   assert.deepEqual(decideWebSearchWithHistory('هل أنت متأكد؟', [{ role: 'user', content: fresh }]),
     { decision: { path: 'none' }, evidenceRequest: 'هل أنت متأكد؟' });
+});
+
+test('Arabic confirmation follow-up re-runs the inherited query through the evidence ladder', async () => {
+  const original = 'ما هو أحدث إصدار من Node.js الآن؟';
+  const choice = decideWebSearchWithHistory('هل أنت متأكد؟', [
+    { role: 'user', content: original }, { role: 'assistant', content: 'الإصدار 20.20.0.' },
+  ]);
+  assert.equal(choice.decision.path, 'required');
+  const result = await searchContextForRequest(choice.evidenceRequest, choice.evidenceRequest, {
+    search: async (query) => { assert.equal(query, original); return { sourceId: 'search:test',
+      name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+        { title: 'Node.js downloads', url: 'https://nodejs.org/en/download',
+          description: 'Current 26.1.0; LTS 24.4.0.' },
+      ] }; },
+    read: async () => { throw new Error('URL_UNAVAILABLE'); },
+  });
+  assert.equal(result.hits[0].evidenceLevel, 'primary_search');
+  assert.match(groundedSearchSummary(result.hits, choice.evidenceRequest, new Date(), 'ar'), /26\.1\.0/);
 });
 
 test('Brave and Tavily preserve publication dates when returned, without inventing missing dates', async () => {

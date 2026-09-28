@@ -2,7 +2,8 @@ import 'server-only';
 import { searchBudget, SupabaseSearchHealthStore, type SearchFailure, type SearchHealthStore } from './search-health.server';
 
 export type WebSearchHit = { title: string; url: string; description: string;
-  publishedAt?: string | null; source?: string; provider?: string; verifiedPage?: boolean };
+  publishedAt?: string | null; source?: string; provider?: string; verifiedPage?: boolean;
+  evidenceLevel?: 'primary_page' | 'primary_search' | 'corroborated' };
 export interface WebSearchProvider {
   readonly id: string;
   search(query: string, limit: number): Promise<WebSearchHit[]>;

@@ -1,7 +1,7 @@
 import 'server-only';
 import { lookup } from 'node:dns/promises';
 import { request as httpsRequest } from 'node:https';
-import { isIP } from 'node:net';
+import { isIP, type LookupFunction } from 'node:net';
 import { isBlockedIp, validateProviderEndpoint } from '@/lib/ai/providers/endpoint-security';
 
 export type WebReadError = 'URL_UNSAFE' | 'URL_UNAVAILABLE' | 'URL_CONTENT_UNSUPPORTED' | 'URL_TOO_LARGE';
@@ -9,6 +9,12 @@ type ResolvedTarget = { url: URL; address: string; family: 4 | 6 };
 type PageResponse = { status: number; location?: string; contentType: string; body: string };
 type Resolver = (hostname: string) => Promise<Array<{ address: string; family: number }>>;
 const defaultResolver: Resolver = (hostname) => lookup(hostname, { all: true, verbatim: true });
+
+/** Node requests an address array when `all` is true; both shapes stay pinned to the validated IP. */
+export function pinnedAddressLookup(address: string, family: 4 | 6): LookupFunction {
+  return (_hostname, options, callback) => options.all
+    ? callback(null, [{ address, family }]) : callback(null, address, family);
+}
 
 export async function resolvePublicWebUrl(raw: string, resolver: Resolver = defaultResolver): Promise<ResolvedTarget> {
   let url: URL;
@@ -34,7 +40,7 @@ function requestPinnedPage(target: ResolvedTarget): Promise<PageResponse> {
       method: 'GET', timeout: 8_000, agent: false,
       headers: { Accept: 'text/html, text/plain, application/xhtml+xml', 'Accept-Encoding': 'identity',
         'User-Agent': 'VANTRA-URL-Reader/1.0' },
-      lookup: (_hostname, _options, callback) => callback(null, target.address, target.family),
+      lookup: pinnedAddressLookup(target.address, target.family),
     }, (response) => {
       const status = response.statusCode ?? 0;
       const location = typeof response.headers.location === 'string' ? response.headers.location : undefined;

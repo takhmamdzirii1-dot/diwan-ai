@@ -33,10 +33,22 @@ export function likelyPrimarySource(hit: WebSearchHit, request: string) {
   const url = safeUrl(hit.url);
   if (!url) return false;
   const host = new URL(url).hostname.replace(/^www\./, '').toLowerCase();
-  const terms = (request.toLowerCase().match(/[a-z][a-z0-9]{3,}/g) ?? [])
-    .filter((term) => !['latest', 'today', 'current', 'recent', 'search', 'news', 'about', 'version'].includes(term));
-  return terms.some((term) => host.split('.').some((part) => part.includes(term)))
-    || /\.(?:gov|edu)(?:\.[a-z]{2})?$/.test(host);
+  const ignored = new Set(['latest', 'today', 'current', 'recent', 'search', 'news', 'about', 'version',
+    'release', 'price', 'availability', 'what', 'which', 'when', 'where', 'now', 'the', 'official']);
+  const terms = (request.toLowerCase().match(/[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*/g) ?? [])
+    .map((term) => term.replace(/[._-]/g, '')).filter((term) => term.length >= 4 && !ignored.has(term));
+  const labels = host.split('.').map((part) => part.replace(/-/g, ''));
+  return terms.some((term) => labels.includes(term))
+    || (terms.length === 0 && /\.(?:gov|edu)(?:\.[a-z]{2})?$/.test(host));
+}
+
+function evidenceStrength(hit: WebSearchHit) {
+  return hit.evidenceLevel === 'primary_page' || hit.verifiedPage ? 3
+    : hit.evidenceLevel === 'primary_search' ? 2 : hit.evidenceLevel === 'corroborated' ? 1 : 0;
+}
+
+function factText(hit: WebSearchHit) {
+  return hit.evidenceLevel === 'primary_search' ? `${hit.title} ${hit.description}` : hit.description;
 }
 
 function evergreenSource(hit: WebSearchHit) {
@@ -49,8 +61,8 @@ export function rankedEvidence(hits: readonly WebSearchHit[], request: string, t
   const candidates = asksForToday(request) && valid.some((hit) => hit.publishedAt === today)
     ? valid.filter((hit) => hit.publishedAt === today) : valid;
   return candidates.map((hit, index) => ({ hit, index })).sort((a, b) => {
-    const verified = Number(Boolean(b.hit.verifiedPage)) - Number(Boolean(a.hit.verifiedPage));
-    if (verified) return verified;
+    const strength = evidenceStrength(b.hit) - evidenceStrength(a.hit);
+    if (strength) return strength;
     const primary = Number(likelyPrimarySource(b.hit, request)) - Number(likelyPrimarySource(a.hit, request));
     if (primary) return primary;
     if (needsFreshEvidence(request)) {
@@ -77,7 +89,10 @@ export function searchEvidence(hits: readonly WebSearchHit[], request: string, n
   const lines = hits.flatMap((hit, index) => {
     const url = safeUrl(hit.url);
     if (!url) return [];
-    return [`${index + 1}. ${plainExcerpt(hit.title, 180)}\nURL: ${url}\nPublished: ${hit.publishedAt ?? 'unknown'}\nSource: ${new URL(url).hostname}\n${hit.verifiedPage ? 'Verified primary page' : 'Search excerpt'}: ${plainExcerpt(hit.description, 500)}`];
+    const basis = hit.evidenceLevel === 'primary_search' ? 'Official search-result evidence'
+      : hit.evidenceLevel === 'corroborated' ? 'Corroborated independent source'
+        : hit.verifiedPage || hit.evidenceLevel === 'primary_page' ? 'Verified primary page' : 'Search excerpt';
+    return [`${index + 1}. ${plainExcerpt(hit.title, 180)}\nURL: ${url}\nPublished: ${hit.publishedAt ?? 'unknown'}\nSource: ${new URL(url).hostname}\n${basis}: ${plainExcerpt(hit.description, 500)}`];
   });
   const notice = todayRequested && !publishedToday
     ? `No retrieved source has a verified publication date of ${today}. Do not present older or undated results as today's news.`
@@ -93,15 +108,39 @@ function labeledVersion(text: string, label: 'current' | 'lts') {
     ?? null;
 }
 
+/** Only explicit claim-bearing excerpts qualify; a URL or source name alone is not a fact. */
+export function freshFactKey(text: string, request: string): string | null {
+  const content = plainExcerpt(text, 1_000);
+  if (/\bversion\b|\brelease\b|(?:إصدار|اصدار|نسخة)/iu.test(request)) {
+    const current = labeledVersion(content, 'current')
+      ?? content.match(/\b(?:latest|newest|أحدث|احدث|آخر|اخر)\b[^\d]{0,45}?\b(v?\d+\.\d+(?:\.\d+)?)\b/iu)?.[1];
+    const lts = labeledVersion(content, 'lts');
+    return current ? `version:current:${current.replace(/^v/i, '')}`
+      : lts && /\bLTS\b/iu.test(request) ? `version:lts:${lts.replace(/^v/i, '')}` : null;
+  }
+  if (/\b(?:price|prices|prix|cost)\b|(?:سعر|الأسعار|الاسعار)/iu.test(request)) {
+    const price = content.match(/(?:\b(?:USD|EUR|DZD|DA)\s*|[$€£]\s*)(\d[\d,.]*)|\b(\d[\d,.]*)\s*(USD|EUR|DZD|DA|[$€£])/iu);
+    if (!price) return null;
+    const amount = (price[1] ?? price[2]).replace(/[,.]$/u, '').replace(/,/g, '');
+    const currency = (price[3] ?? price[0].match(/USD|EUR|DZD|DA|[$€£]/iu)?.[0] ?? '').toUpperCase();
+    return `price:${amount}:${currency}`;
+  }
+  if (/\b(?:available|availability|stock|disponibilit[ée]|status)\b|(?:متاح|متوفر|توفر|الحالة)/iu.test(request)) {
+    if (/\b(?:unavailable|out of stock|not available|indisponible)\b|(?:غير متاح|غير متوفر)/iu.test(content)) return 'availability:no';
+    if (/\b(?:available|in stock|disponible)\b|(?:متاح|متوفر)/iu.test(content)) return 'availability:yes';
+  }
+  return null;
+}
+
 /** Conservative localized fallback when the same-call model answer cannot be verified. */
 export function groundedSearchSummary(hits: readonly WebSearchHit[], request: string, now = new Date(),
   locale: ResponseLanguage = 'en') {
   const evidence = searchEvidence(hits, request, now);
   const selected = rankedEvidence(hits, request, evidence.today);
-  if (needsFreshEvidence(request) && !selected.some((hit) => hit.verifiedPage)) return locale === 'ar'
-    ? 'لم أتمكن من التحقق من المعلومة الحالية من مصدر أولي موثوق، لذلك لا أستطيع تأكيدها.'
-    : locale === 'fr' ? 'Je n’ai pas pu vérifier cette information actuelle auprès d’une source primaire fiable ; je ne peux donc pas la confirmer.'
-      : 'I could not verify the current fact from a reliable primary source, so I cannot confirm it.';
+  if (needsFreshEvidence(request) && !selected.some((hit) => evidenceStrength(hit))) return locale === 'ar'
+    ? 'لم أتمكن من التحقق من المعلومة الحالية بأدلة كافية، لذلك لا أستطيع تأكيدها.'
+    : locale === 'fr' ? 'Je n’ai pas pu vérifier cette information actuelle avec des preuves suffisantes ; je ne peux donc pas la confirmer.'
+      : 'I could not verify the current fact with sufficient evidence, so I cannot confirm it.';
   if (!selected.length) return locale === 'ar'
     ? 'لم أجد نتائج بحث موثوقة لهذا الطلب، لذلك لا أستطيع تأكيد معلومات حديثة أو ذكر مصادر.'
     : locale === 'fr' ? 'Aucun résultat de recherche fiable n’a été trouvé pour cette demande. Je ne peux donc pas confirmer des informations récentes ni citer des sources.'
@@ -112,12 +151,35 @@ export function groundedSearchSummary(hits: readonly WebSearchHit[], request: st
       : `I found no result verified as published today (${evidence.today}).` : '';
   const first = selected[0];
   const firstCitation = `[${plainExcerpt(first.title, 180).replace(/[\[\]]/g, '')}](${safeUrl(first.url)})${first.publishedAt ? ` (${first.publishedAt})` : ''}`;
+  const second = selected[1];
+  const corroboration = first.evidenceLevel === 'corroborated' && second
+    ? ` [${plainExcerpt(second.title, 180).replace(/[\[\]]/g, '')}](${safeUrl(second.url)})${second.publishedAt ? ` (${second.publishedAt})` : ''}` : '';
+  const fact = freshFactKey(factText(first), request);
   const asksVersion = /\bversion\b|(?:إصدار|اصدار|نسخة)/iu.test(request);
-  const currentVersion = asksVersion ? labeledVersion(first.description, 'current') : null;
-  const ltsVersion = asksVersion ? labeledVersion(first.description, 'lts') : null;
+  const currentVersion = asksVersion ? labeledVersion(factText(first), 'current')
+    ?? (fact?.startsWith('version:current:') ? fact.slice('version:current:'.length) : null) : null;
+  const ltsVersion = asksVersion ? labeledVersion(factText(first), 'lts') : null;
   const version = asksVersion && !needsFreshEvidence(request)
     ? `${first.title} ${first.description}`.match(/\b(?:v)?\d+\.\d+(?:\.\d+)?\b/i)?.[0] : null;
   if (!rawResultsRequested(request)) {
+    const price = fact?.startsWith('price:') ? fact.split(':').slice(1).join(' ') : null;
+    const availability = fact === 'availability:yes' ? 'available' : fact === 'availability:no' ? 'unavailable' : null;
+    if (corroboration) {
+      const claim = currentVersion ? locale === 'ar' ? `إصدار Current هو ${currentVersion}`
+        : locale === 'fr' ? `la version Current est ${currentVersion}` : `Current version is ${currentVersion}`
+        : price ? locale === 'ar' ? `السعر المذكور هو ${price}` : locale === 'fr' ? `le prix indiqué est ${price}` : `the reported price is ${price}`
+          : availability ? locale === 'ar' ? `الحالة المذكورة هي ${availability === 'available' ? 'متاح' : 'غير متاح'}`
+            : locale === 'fr' ? `la disponibilité indiquée est ${availability === 'available' ? 'disponible' : 'indisponible'}`
+              : `reported availability is ${availability}` : null;
+      if (claim) return [notice, locale === 'ar' ? `يشير مصدران مستقلان إلى أن ${claim}، دون تأكيد مباشر من المصدر الرسمي. ${firstCitation}${corroboration}`
+        : locale === 'fr' ? `Deux sources indépendantes indiquent que ${claim}, sans confirmation directe de la source officielle. ${firstCitation}${corroboration}`
+          : `Two independent sources agree that ${claim}, without direct confirmation from the official source. ${firstCitation}${corroboration}`].filter(Boolean).join(' ');
+    }
+    if (price) return [notice, locale === 'ar' ? `السعر المذكور هو ${price}. ${firstCitation}`
+      : locale === 'fr' ? `Le prix indiqué est ${price}. ${firstCitation}` : `The reported price is ${price}. ${firstCitation}`].filter(Boolean).join(' ');
+    if (availability) return [notice, locale === 'ar' ? `الحالة المذكورة هي ${availability === 'available' ? 'متاح' : 'غير متاح'}. ${firstCitation}`
+      : locale === 'fr' ? `La disponibilité indiquée est ${availability === 'available' ? 'disponible' : 'indisponible'}. ${firstCitation}`
+        : `The reported availability is ${availability}. ${firstCitation}`].filter(Boolean).join(' ');
     const direct = currentVersion ? locale === 'ar' ? `الإصدار Current هو ${currentVersion}${ltsVersion ? `، وإصدار LTS هو ${ltsVersion}` : ''}. ${firstCitation}`
       : locale === 'fr' ? `La version Current est ${currentVersion}${ltsVersion ? ` et la version LTS est ${ltsVersion}` : ''}. ${firstCitation}`
         : `The Current release is ${currentVersion}${ltsVersion ? `, and the LTS release is ${ltsVersion}` : ''}. ${firstCitation}`
@@ -156,7 +218,8 @@ export function usableSearchSynthesis(answer: string, hits: readonly WebSearchHi
   now: Date, language: ResponseLanguage) {
   const trimmed = answer.trim();
   if (!trimmed || trimmed.length > 4_000 || rawResultsRequested(request)) return false;
-  if (needsFreshEvidence(request) && !hits.some((hit) => hit.verifiedPage)) return false;
+  if (needsFreshEvidence(request) && (!hits.some((hit) => evidenceStrength(hit))
+    || hits[0]?.evidenceLevel === 'corroborated')) return false;
   if (!answerUsesOnlySearchSources(trimmed, hits, request, now)) return false;
   const withoutLinks = trimmed.replace(/\[[^\]]+\]\(https?:\/\/[^)]+\)/g, ' ');
   if (language === 'ar' && (withoutLinks.match(/[\u0600-\u06ff]/gu) ?? []).length < 3) return false;
@@ -171,11 +234,11 @@ export function usableSearchSynthesis(answer: string, hits: readonly WebSearchHi
   if (hits.some((hit) => likelyPrimarySource(hit, request))
     && !citations.some(([, , url]) => hits.some((hit) => safeUrl(hit.url) === safeUrl(url)
       && likelyPrimarySource(hit, request)))) return false;
-  const allowedNumbers = new Set(hits.flatMap((hit) => `${needsFreshEvidence(request) ? '' : hit.title} ${hit.description} ${hit.publishedAt ?? ''}`.match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []));
+  const allowedNumbers = new Set(hits.flatMap((hit) => `${needsFreshEvidence(request) && hit.evidenceLevel !== 'primary_search' ? '' : hit.title} ${hit.description} ${hit.publishedAt ?? ''}`.match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []));
   if ((withoutLinks.match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []).some((value) => !allowedNumbers.has(value))) return false;
   if (needsFreshEvidence(request) && /\bversion\b|(?:إصدار|اصدار|نسخة)/iu.test(request)) {
     const current = rankedEvidence(hits, request, localDate(now))
-      .map((hit) => hit.verifiedPage ? labeledVersion(hit.description, 'current') : null).find(Boolean);
+      .map((hit) => evidenceStrength(hit) ? labeledVersion(factText(hit), 'current') : null).find(Boolean);
     if (current && !withoutLinks.includes(current)) return false;
   }
   if (hits.some((hit) => { const excerpt = plainExcerpt(hit.description, 400); return excerpt.length >= 24
