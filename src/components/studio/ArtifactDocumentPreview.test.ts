@@ -71,6 +71,40 @@ test('document actions preserve content and Word export loads only on export', (
   assert.doesNotMatch(previewSource, /^import .*docx-export/m);
 });
 
+test('document preview keeps action placement fixed and gives each content block natural direction', { skip: !executablePath }, async () => {
+  assert.match(previewSource, /data-vantra-print-document=\{inline \? undefined : ''\}[\s\S]*?dir="ltr"/);
+  assert.match(previewSource, /<article lang=\{artifact\.language\} dir="auto"/);
+  assert.match(previewSource, /<List key=\{index\} dir=\{artifact\.direction\}/);
+  assert.match(previewSource, /<table dir=\{artifact\.direction\}/);
+  const browser = await puppeteer.launch({ executablePath, headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.setContent(`<style>${css}</style><div id="shell" dir="ltr">
+      <div id="actions">Export <button>Close</button></div>
+      <article class="paper" dir="auto" lang="ar">
+        <h1 dir="auto">تقرير OpenAI 5.6</h1>
+        <p dir="auto">نتائج Node.js و GPT-5.6 و 123 <a href="https://nodejs.org/">nodejs.org</a></p>
+        <p dir="auto">English first ثم العربية</p>
+        <ul dir="rtl" style="padding-inline-start:28px"><li dir="auto">البند الأول</li><li dir="auto">البند الثاني</li></ul>
+        <table dir="rtl"><tbody><tr><td dir="auto">اسم</td><td dir="auto">OpenAI</td></tr></tbody></table>
+        <pre>const model = "GPT-5.6";</pre>
+      </article></div>`);
+    const directions = await page.evaluate(() => ({
+      shell: getComputedStyle(document.querySelector('#shell')!).direction,
+      actions: getComputedStyle(document.querySelector('#actions')!).direction,
+      arabic: getComputedStyle(document.querySelectorAll('p')[0]).direction,
+      english: getComputedStyle(document.querySelectorAll('p')[1]).direction,
+      list: getComputedStyle(document.querySelector('ul')!).direction,
+      item: getComputedStyle(document.querySelector('li')!).direction,
+      table: getComputedStyle(document.querySelector('table')!).direction,
+      latinCell: getComputedStyle(document.querySelectorAll('td')[1]).direction,
+      code: getComputedStyle(document.querySelector('pre')!).direction,
+    }));
+    assert.deepEqual(directions, { shell: 'ltr', actions: 'ltr', arabic: 'rtl', english: 'ltr',
+      list: 'rtl', item: 'rtl', table: 'rtl', latinCell: 'ltr', code: 'ltr' });
+  } finally { await browser.close(); }
+});
+
 test('printing an open document excludes Studio chrome and preserves RTL content', { skip: !executablePath }, async () => {
   const browser = await puppeteer.launch({ executablePath, headless: true });
   try {

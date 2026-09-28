@@ -23,6 +23,40 @@ function plainExcerpt(value: string, limit: number) {
     .replace(/https?:\/\/\S+/g, '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, limit);
 }
 
+function rawResultsRequested(request: string) {
+  return /\b(?:raw|unprocessed)\s+(?:search\s+)?results\b|\b(?:list|show)\s+(?:the\s+)?search\s+results\b|\br[ée]sultats?\s+bruts?\b/iu.test(request)
+    || /(?:نتائج البحث الخام|اعرض نتائج البحث|قائمة نتائج البحث)/u.test(request);
+}
+
+function likelyPrimarySource(hit: WebSearchHit, request: string) {
+  const url = safeUrl(hit.url);
+  if (!url) return false;
+  const host = new URL(url).hostname.replace(/^www\./, '').toLowerCase();
+  const terms = (request.toLowerCase().match(/[a-z][a-z0-9]{3,}/g) ?? [])
+    .filter((term) => !['latest', 'today', 'current', 'recent', 'search', 'news', 'about', 'version'].includes(term));
+  return terms.some((term) => host.split('.').some((part) => part.includes(term)))
+    || /\.(?:gov|edu)(?:\.[a-z]{2})?$/.test(host);
+}
+
+function rankedEvidence(hits: readonly WebSearchHit[], request: string, today: string) {
+  const valid = hits.filter((hit) => safeUrl(hit.url));
+  const candidates = asksForToday(request) && valid.some((hit) => hit.publishedAt === today)
+    ? valid.filter((hit) => hit.publishedAt === today) : valid;
+  return candidates.map((hit, index) => ({ hit, index })).sort((a, b) => {
+    const primary = Number(likelyPrimarySource(b.hit, request)) - Number(likelyPrimarySource(a.hit, request));
+    if (primary) return primary;
+    const dated = (b.hit.publishedAt ?? '').localeCompare(a.hit.publishedAt ?? '');
+    return dated || a.index - b.index;
+  }).map(({ hit }) => hit).slice(0, 3);
+}
+
+function safeClaim(hit: WebSearchHit) {
+  const excerpt = plainExcerpt(hit.description, 300);
+  if (!excerpt || /(?:ignore (?:all |previous )?instructions|system prompt|you are (?:an? |the )?(?:assistant|system)|(?:api[_ -]?key|secret|token)\s*[:=])/i.test(excerpt))
+    return plainExcerpt(hit.title, 180);
+  return excerpt;
+}
+
 /** Search evidence is data, never instructions; unknown publication dates stay unknown. */
 export function searchEvidence(hits: readonly WebSearchHit[], request: string, now = new Date()) {
   const today = localDate(now);
@@ -40,30 +74,27 @@ export function searchEvidence(hits: readonly WebSearchHit[], request: string, n
     text: [notice, ...lines].filter(Boolean).join('\n\n').slice(0, 8_000) };
 }
 
-/** A deterministic safe answer when the model's sourced answer cannot be trusted. */
+/** A bounded extractive answer: every factual sentence comes from a returned source. */
 export function groundedSearchSummary(hits: readonly WebSearchHit[], request: string, now = new Date(),
   locale: 'en' | 'fr' | 'ar' = 'en') {
   const evidence = searchEvidence(hits, request, now);
-  if (!hits.some((hit) => safeUrl(hit.url))) return locale === 'ar'
+  const selected = rankedEvidence(hits, request, evidence.today);
+  if (!selected.length) return locale === 'ar'
     ? 'لم أجد نتائج بحث موثوقة لهذا الطلب، لذلك لا أستطيع تأكيد معلومات حديثة أو ذكر مصادر.'
     : locale === 'fr' ? 'Aucun résultat de recherche fiable n’a été trouvé pour cette demande. Je ne peux donc pas confirmer des informations récentes ni citer des sources.'
       : 'No trustworthy search results were found for this request, so I cannot verify current information or cite sources.';
-  const intro = evidence.todayRequested && !evidence.publishedToday
-    ? locale === 'ar' ? `لم أجد مصدرًا بتاريخ نشر مؤكد لليوم (${evidence.today}). هذه أحدث النتائج المتاحة مع تواريخها الفعلية.`
-      : locale === 'fr' ? `Aucune source trouvée avec une date de publication vérifiée pour aujourd’hui (${evidence.today}). Voici les résultats disponibles avec leurs dates réelles.`
-        : evidence.notice
-    : locale === 'ar' ? 'هذه المصادر التي عُثر عليها؛ أذكر تاريخ النشر فقط حين يكون متاحًا.'
-      : locale === 'fr' ? 'Voici les sources trouvées. Les dates de publication ne sont indiquées que lorsqu’elles sont disponibles.'
-        : 'Here are the retrieved sources. Publication dates are shown only when available.';
-  const entries = hits.slice(0, 5).flatMap((hit) => {
-    const url = safeUrl(hit.url);
-    if (!url) return [];
-    const date = hit.publishedAt ? locale === 'ar' ? `نُشر ${hit.publishedAt}` : locale === 'fr'
-      ? `Publié le ${hit.publishedAt}` : `Published ${hit.publishedAt}`
-      : locale === 'ar' ? 'تاريخ النشر غير مؤكد' : locale === 'fr' ? 'Date de publication non vérifiée' : 'Publication date unverified';
-    return [`- [${plainExcerpt(hit.title, 180).replace(/[\[\]]/g, '')}](${url}) — ${date}${hit.description ? `. ${plainExcerpt(hit.description, 300)}` : ''}`];
+  const noToday = evidence.todayRequested && !evidence.publishedToday;
+  const intro = noToday ? locale === 'ar' ? `لا توجد نتيجة موثوقة بتاريخ نشر مؤكد لليوم (${evidence.today}). وفق النتائج المتاحة:`
+    : locale === 'fr' ? `Aucun résultat n’a une date de publication vérifiée pour aujourd’hui (${evidence.today}). D’après les sources disponibles :`
+      : `No retrieved result has a verified publication date for today (${evidence.today}). From the available sources:`
+    : locale === 'ar' ? 'وفق المصادر التي عُثر عليها:' : locale === 'fr' ? 'D’après les sources trouvées :' : 'According to the retrieved sources:';
+  const entries = selected.map((hit) => {
+    const citation = `[${plainExcerpt(hit.title, 180).replace(/[\[\]]/g, '')}](${safeUrl(hit.url)})`;
+    const date = hit.publishedAt ? ` (${hit.publishedAt})` : '';
+    return `${safeClaim(hit).replace(/[.!?؟]+$/, '')}. ${citation}${date}`;
   });
-  return [intro, ...entries].join('\n\n');
+  if (rawResultsRequested(request)) return [intro, ...entries.map((entry) => `- ${entry}`)].join('\n\n');
+  return [intro, entries.join(' ')].join('\n\n');
 }
 
 /** Only exact returned source URLs may appear as citations in a model-written answer. */

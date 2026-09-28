@@ -53,14 +53,14 @@ test('search evidence preserves exact source URL/date and never promotes older r
   assert.match(evidence.text, /No retrieved source has a verified publication date of 2026-09-28/);
   assert.match(evidence.text, /Published: 2026-09-27/);
   const summary = groundedSearchSummary(hits, 'news today', now);
-  assert.match(summary, /Published 2026-09-27/);
+  assert.match(summary, /\(2026-09-27\)/);
   assert.match(summary, /https:\/\/example.org\/update/);
-  assert.doesNotMatch(summary, /Published 2026-09-28|Brave|Tavily/);
+  assert.doesNotMatch(summary, /Older update.*\(2026-09-28\)|Brave|Tavily|^- /m);
   assert.equal(answerUsesOnlySearchSources('Today according to [Made up](https://fake.example/)', hits, 'news today', now), false);
   const response = new Response(`0:${JSON.stringify('Today according to a made-up source.')}\ne:{"finishReason":"stop"}\n`,
     { headers: { 'X-Vercel-AI-Data-Stream': 'v1' } });
   const guarded = await guardSearchDataStream(response, hits, 'news today', now);
-  assert.match(await guarded.text(), /No retrieved source has a verified publication date/);
+  assert.match(await guarded.text(), /No retrieved result has a verified publication date/);
 });
 
 test('search-answer stream uses retrieved evidence even if model prose names an unreturned source', async () => {
@@ -78,6 +78,34 @@ test('search-answer stream uses retrieved evidence even if model prose names an 
   const empty = await (await guardSearchDataStream(new Response(`0:${JSON.stringify('Made-up news')}\n`), [], 'news today', now)).text();
   assert.match(empty, /No trustworthy search results/);
   assert.doesNotMatch(empty, /Made-up news/);
+});
+
+test('search answers prefer a relevant primary source, cite at most three, and list only on request', () => {
+  const now = new Date('2026-09-28T12:00:00Z');
+  const hits = [
+    { title: 'Third-party guess', url: 'https://example.net/node', description: 'Node.js might be version 19.', publishedAt: '2026-09-27' },
+    { title: 'Node.js release notes', url: 'https://nodejs.org/en/blog/release', description: 'Node.js 26.1.0 is available.', publishedAt: '2026-09-26' },
+    { title: 'Another story', url: 'https://other.example/story', description: 'Some unrelated release.', publishedAt: '2026-09-25' },
+    { title: 'Fourth story', url: 'https://fourth.example/story', description: 'Yet another release.', publishedAt: '2026-09-24' },
+  ];
+  const answer = groundedSearchSummary(hits, 'latest Node.js version now', now);
+  assert.ok(answer.indexOf('Node.js 26.1.0') < answer.indexOf('Node.js might'));
+  assert.equal((answer.match(/\]\(https:\/\//g) ?? []).length, 3);
+  assert.doesNotMatch(answer, /^- /m);
+  const raw = groundedSearchSummary(hits, 'show the raw search results for Node.js', now);
+  assert.match(raw, /^- /m);
+  assert.equal((raw.match(/\]\(https:\/\//g) ?? []).length, 3);
+});
+
+test('today answers use only verified today-dated evidence when it exists', () => {
+  const now = new Date('2026-09-28T12:00:00Z');
+  const hits = [
+    { title: 'Older story', url: 'https://example.org/old', description: 'An older fact.', publishedAt: '2026-09-27' },
+    { title: 'Today story', url: 'https://example.org/today', description: 'A confirmed update today.', publishedAt: '2026-09-28' },
+  ];
+  const answer = groundedSearchSummary(hits, 'OpenAI news today', now);
+  assert.match(answer, /A confirmed update today/);
+  assert.doesNotMatch(answer, /An older fact|\/old/);
 });
 
 test('Brave and Tavily preserve publication dates when returned, without inventing missing dates', async () => {
