@@ -44,7 +44,8 @@ export function likelyPrimarySource(hit: WebSearchHit, request: string) {
 
 function evidenceStrength(hit: WebSearchHit) {
   return hit.evidenceLevel === 'primary_page' || hit.verifiedPage ? 3
-    : hit.evidenceLevel === 'primary_search' ? 2 : hit.evidenceLevel === 'corroborated' ? 1 : 0;
+    : hit.evidenceLevel === 'primary_search' || hit.evidenceLevel === 'primary_bundle' ? 2
+      : hit.evidenceLevel === 'corroborated' ? 1 : 0;
 }
 
 /** Dedupe equivalent URLs; preserve the first provider's evidence unless its excerpt is empty. */
@@ -151,6 +152,107 @@ export function freshFactKey(text: string, request: string): string | null {
   return null;
 }
 
+export type FreshEvidenceKind = 'primary_exact' | 'primary_supported_bundle'
+  | 'corroborated_exact' | 'insufficient';
+
+function independentDomain(hit: WebSearchHit) {
+  const host = new URL(hit.url).hostname.replace(/^www\./, '');
+  return host.split('.').slice(-2).join('.');
+}
+
+function currentMajor(text: string) {
+  const content = plainExcerpt(text, 500);
+  const match = content.match(/\bcurrent\b[^\n.]{0,35}?\bv?(\d{1,3})\b/iu)
+    ?? content.match(/\bv?(\d{1,3})\b[^\n.]{0,35}?\bcurrent\b/iu);
+  return match?.[1] ?? null;
+}
+
+export function supportsPrimaryPage(hit: WebSearchHit, request: string, today: string) {
+  if (freshFactKey(hit.description, request) || currentMajor(hit.description)) return true;
+  const structured = /\b(?:version|release|price|cost|availability|stock|status)\b|(?:إصدار|اصدار|نسخة|سعر|متاح|متوفر)/iu.test(request);
+  return !structured && hit.description.trim().length >= 40
+    && (!asksForToday(request) || hit.publishedAt === today);
+}
+
+/** Deterministic bundle sufficiency, separate from ranking scores. */
+export function assessFreshEvidenceBundle(hits: readonly WebSearchHit[], request: string, today: string) {
+  const candidates = dedupeSearchHits(hits);
+  const primary = candidates.filter((hit) => likelyPrimarySource(hit, request));
+  const claimText = (hit: WebSearchHit) => hit.verifiedPage ? hit.description : `${hit.title} ${hit.description}`;
+  const currentSeries = primary.filter((hit) => !freshFactKey(claimText(hit), request))
+    .map((hit) => currentMajor(claimText(hit))).find((value) => value !== null);
+  const exactPrimary = primary.filter((hit) => {
+    const key = freshFactKey(claimText(hit), request);
+    return key && (!currentSeries || !key.startsWith('version:current:')
+      || key.startsWith(`version:current:${currentSeries}.`));
+  });
+  if (exactPrimary.length) {
+    const highestStrength = Math.max(...exactPrimary.map(evidenceStrength));
+    const strongest = exactPrimary.filter((hit) => evidenceStrength(hit) === highestStrength);
+    const keys = new Set(strongest.map((hit) => freshFactKey(claimText(hit), request)));
+    const ordered = rankedEvidence(strongest, request, today);
+    // A live/evergreen official status page may supersede an older release note,
+    // but equally strong contradictory official claims remain unresolved.
+    const preferred = keys.size > 1 && ordered.length > 1
+      && evergreenSource(ordered[0]) && !evergreenSource(ordered[1])
+      && evidenceScore(ordered[0], request, today) - evidenceScore(ordered[1], request, today) >= 6
+      ? freshFactKey(claimText(ordered[0]), request) : null;
+    if (keys.size === 1 || preferred) {
+      const key = preferred ?? [...keys][0];
+      return { kind: 'primary_exact' as const, factKey: key,
+        hits: rankedEvidence(strongest.filter((hit) => freshFactKey(claimText(hit), request) === key)
+          .map((hit) => ({ ...hit, evidenceLevel: hit.verifiedPage ? 'primary_page' as const
+            : 'primary_search' as const, evidenceBundle: 'primary_exact' as const })), request, today) };
+    }
+    return { kind: 'insufficient' as const, factKey: null, hits: [] as WebSearchHit[] };
+  }
+  const structured = /\b(?:version|release|price|cost|availability|stock|status)\b|(?:إصدار|اصدار|نسخة|سعر|متاح|متوفر)/iu.test(request);
+  if (!structured) {
+    const supported = rankedEvidence(primary.filter((hit) => supportsPrimaryPage(hit, request, today)), request, today);
+    if (supported.length) return { kind: 'primary_exact' as const, factKey: null,
+      hits: supported.map((hit) => ({ ...hit, evidenceLevel: hit.verifiedPage ? 'primary_page' as const
+        : 'primary_search' as const, evidenceBundle: 'primary_exact' as const })) };
+  }
+  // A major Current status is not an exact release. It can support, but never invent,
+  // an exact value consistently reported by independent sources.
+  const major = /\bversion\b|\brelease\b|(?:إصدار|اصدار|نسخة)/iu.test(request)
+    ? currentSeries : null;
+  const recentSecondary = candidates.filter((hit) => !likelyPrimarySource(hit, request)
+    && (!hit.publishedAt || Date.parse(hit.publishedAt) >= Date.parse(today) - 180 * 86_400_000));
+  const groups = new Map<string, WebSearchHit[]>();
+  for (const hit of recentSecondary) {
+    const key = freshFactKey(`${hit.title} ${hit.description}`, request);
+    if (key) groups.set(key, [...(groups.get(key) ?? []), hit]);
+  }
+  const independent = [...groups].map(([key, group]) => {
+    const domains = new Set<string>();
+    return { key, hits: group.filter((hit) => {
+      const domain = independentDomain(hit);
+      if (domains.has(domain)) return false;
+      domains.add(domain); return true;
+    }) };
+  });
+  // Any competing current exact claim prevents a secondary-only conclusion.
+  if (independent.length !== 1 || independent[0].hits.length < 2)
+    return { kind: 'insufficient' as const, factKey: null, hits: [] as WebSearchHit[] };
+  const agreed = independent[0];
+  if (major) {
+    if (agreed.key !== `version:current:${major}` && !agreed.key.startsWith(`version:current:${major}.`))
+      return { kind: 'insufficient' as const, factKey: null, hits: [] as WebSearchHit[] };
+    const official = rankedEvidence(primary.filter((hit) =>
+      currentMajor(`${hit.title} ${hit.description}`) === major), request, today)[0];
+    if (!official) return { kind: 'insufficient' as const, factKey: null, hits: [] as WebSearchHit[] };
+    return { kind: 'primary_supported_bundle' as const, factKey: agreed.key,
+      hits: [official, ...rankedEvidence(agreed.hits, request, today).slice(0, 2)].map((hit) => ({ ...hit,
+        evidenceLevel: likelyPrimarySource(hit, request) ? hit.verifiedPage ? 'primary_page' as const
+          : 'primary_search' as const : 'primary_bundle' as const,
+        evidenceBundle: 'primary_supported_bundle' as const })) };
+  }
+  return { kind: 'corroborated_exact' as const, factKey: agreed.key,
+    hits: rankedEvidence(agreed.hits, request, today).slice(0, 3).map((hit) => ({ ...hit,
+      evidenceLevel: 'corroborated' as const, evidenceBundle: 'corroborated_exact' as const })) };
+}
+
 /** Conservative localized fallback when the same-call model answer cannot be verified. */
 export function groundedSearchSummary(hits: readonly WebSearchHit[], request: string, now = new Date(),
   locale: ResponseLanguage = 'en') {
@@ -169,6 +271,23 @@ export function groundedSearchSummary(hits: readonly WebSearchHit[], request: st
     : locale === 'fr' ? `Je n’ai trouvé aucun résultat dont la publication aujourd’hui (${evidence.today}) soit vérifiée.`
       : `I found no result verified as published today (${evidence.today}).` : '';
   const first = selected[0];
+  if (hits[0]?.evidenceBundle === 'primary_supported_bundle') {
+    const exact = hits.find((hit) => hit.evidenceLevel === 'primary_bundle');
+    const official = hits.find((hit) => likelyPrimarySource(hit, request));
+    const reported = hits.filter((hit) => hit.evidenceLevel === 'primary_bundle').slice(0, 2);
+    const fact = exact ? freshFactKey(`${exact.title} ${exact.description}`, request) : null;
+    const value = fact?.startsWith('version:current:') ? fact.slice('version:current:'.length) : null;
+    if (value && official && reported.length === 2) {
+      const cite = (hit: WebSearchHit) => `[${plainExcerpt(hit.title, 180).replace(/[\[\]]/g, '')}](${safeUrl(hit.url)})`;
+      const sources = [cite(official), ...reported.map(cite)].join(' ');
+      const direct = locale === 'ar'
+        ? `تشير الأدلة إلى أن إصدار Current هو ${value}؛ يؤكد المصدر الرسمي السلسلة الحالية، ويتفق مصدران مستقلان على الإصدار الدقيق. ${sources}`
+        : locale === 'fr'
+          ? `La version Current semble être ${value} : la source officielle confirme la série actuelle et deux sources indépendantes concordent sur la version précise. ${sources}`
+          : `The Current release appears to be ${value}: the official source confirms the current major series, and two independent sources agree on the exact release. ${sources}`;
+      return [notice, direct].filter(Boolean).join(' ');
+    }
+  }
   const firstCitation = `[${plainExcerpt(first.title, 180).replace(/[\[\]]/g, '')}](${safeUrl(first.url)})${first.publishedAt ? ` (${first.publishedAt})` : ''}`;
   const second = selected[1];
   const corroboration = first.evidenceLevel === 'corroborated' && second
@@ -237,8 +356,7 @@ export function usableSearchSynthesis(answer: string, hits: readonly WebSearchHi
   now: Date, language: ResponseLanguage) {
   const trimmed = answer.trim();
   if (!trimmed || trimmed.length > 4_000 || rawResultsRequested(request)) return false;
-  if (needsFreshEvidence(request) && (!hits.some((hit) => evidenceStrength(hit))
-    || hits[0]?.evidenceLevel === 'corroborated')) return false;
+  if (needsFreshEvidence(request) && !hits.some((hit) => evidenceStrength(hit))) return false;
   if (!answerUsesOnlySearchSources(trimmed, hits, request, now)) return false;
   const withoutLinks = trimmed.replace(/\[[^\]]+\]\(https?:\/\/[^)]+\)/g, ' ');
   if (language === 'ar' && (withoutLinks.match(/[\u0600-\u06ff]/gu) ?? []).length < 3) return false;
@@ -250,6 +368,11 @@ export function usableSearchSynthesis(answer: string, hits: readonly WebSearchHi
   const citations = [...trimmed.matchAll(/\[([^\]]+)\]\((https:\/\/[^)]+)\)/g)];
   if (citations.length !== cited.length || citations.some(([, label, url]) => !hits.some((hit) =>
     safeUrl(hit.url) === safeUrl(url) && label === plainExcerpt(hit.title, 180).replace(/[\[\]]/g, '')))) return false;
+  if (hits[0]?.evidenceBundle === 'primary_supported_bundle' && (citations.length < 3
+    || hits.filter((hit) => hit.evidenceLevel === 'primary_bundle'
+      && citations.some(([, , url]) => safeUrl(hit.url) === safeUrl(url))).length < 2)) return false;
+  if (hits[0]?.evidenceBundle === 'corroborated_exact' && (citations.length < 2
+    || !/(?:independent sources|sources indépendantes|مصدران مستقلان|مصادر مستقلة)/iu.test(trimmed))) return false;
   if (hits.some((hit) => likelyPrimarySource(hit, request))
     && !citations.some(([, , url]) => hits.some((hit) => safeUrl(hit.url) === safeUrl(url)
       && likelyPrimarySource(hit, request)))) return false;

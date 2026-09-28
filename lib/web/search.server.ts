@@ -3,7 +3,9 @@ import { searchBudget, SupabaseSearchHealthStore, type SearchFailure, type Searc
 
 export type WebSearchHit = { title: string; url: string; description: string;
   publishedAt?: string | null; source?: string; provider?: string; verifiedPage?: boolean;
-  evidenceLevel?: 'primary_page' | 'primary_search' | 'corroborated'; evidenceId?: string };
+  evidenceLevel?: 'primary_page' | 'primary_search' | 'primary_bundle' | 'corroborated';
+  evidenceBundle?: 'primary_exact' | 'primary_supported_bundle' | 'corroborated_exact';
+  evidenceId?: string };
 export interface WebSearchProvider {
   readonly id: string;
   search(query: string, limit: number): Promise<WebSearchHit[]>;

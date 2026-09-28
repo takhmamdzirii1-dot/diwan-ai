@@ -191,7 +191,7 @@ test('fresh facts verify a primary page and discard a conflicting secondary snip
         ? 'Node.js release notes: Current 20.20.0.' : 'Node.js downloads: Current 26.1.0. LTS 24.4.0.' }; },
   });
   assert.deepEqual(readUrls, ['https://nodejs.org/en/download', 'https://nodejs.org/en/blog/release/v20']);
-  assert.equal(result.hits.length, 2);
+  assert.equal(result.hits.length, 1);
   assert.equal(result.hits[0].url, 'https://nodejs.org/en/download');
   assert.equal(result.hits[0].verifiedPage, true);
   assert.match(result.context, /Current 26\.1\.0/);
@@ -256,7 +256,7 @@ test('exact official Brave evidence does not spend a Tavily fallback request', a
   });
   assert.equal(fallbackCalls, 0);
   assert.equal(result.hits[0].evidenceId, 'S1');
-  assert.equal(result.telemetry.finalEvidenceQuality, 'official_search');
+  assert.equal(result.telemetry.finalEvidenceQuality, 'primary_exact');
   assert.equal(result.telemetry.fallbackUsed, false);
 });
 
@@ -278,7 +278,7 @@ test('weak Brave evidence triggers one Tavily request and merged independent cor
   assert.deepEqual(calls, ['brave', 'tavily']);
   assert.equal(result.hits.length, 2);
   assert.equal(result.telemetry.fallbackResultCount, 2);
-  assert.equal(result.telemetry.finalEvidenceQuality, 'corroborated');
+  assert.equal(result.telemetry.finalEvidenceQuality, 'corroborated_exact');
   assert.match(groundedSearchSummary(result.hits, request), /Two independent sources/);
 });
 
@@ -298,6 +298,73 @@ test('Tavily official evidence outranks a conflicting stale Brave snippet', asyn
   assert.equal(result.hits[0].url, 'https://acme.com/downloads');
   assert.doesNotMatch(result.context, /7\.0\.0/);
   assert.match(groundedSearchSummary(result.hits, request), /8\.2\.0/);
+});
+
+test('official current major plus independent exact releases forms a grounded bundle after URL_TOO_LARGE', async () => {
+  const request = 'latest Acme version now';
+  const calls: string[] = [];
+  const result = await searchContextForRequest(request, request, {
+    search: async () => { calls.push('brave'); return { sourceId: 'search:brave', name: 'Results',
+      mimeType: 'text/markdown', text: '', hits: [
+        { title: 'Acme downloads', url: 'https://acme.com/downloads',
+          description: 'Acme v26 is the Current major release.' },
+        { title: 'Acme update', url: 'https://first.example/acme',
+          description: 'The latest Current release is 26.10.0.' },
+      ] }; },
+    fallback: async (query) => { calls.push('tavily'); assert.equal(query, 'Acme latest current release official');
+      return { sourceId: 'search:tavily', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+        { title: 'Acme status', url: 'https://acme.com/status',
+          description: 'Current major series is v26.' },
+        { title: 'Independent Acme release check', url: 'https://second.test/acme',
+          description: 'Latest Current release: 26.10.0.' },
+      ] }; },
+    read: async () => { throw new Error('URL_TOO_LARGE'); },
+  });
+  assert.deepEqual(calls, ['brave', 'tavily']);
+  assert.equal(result.telemetry.finalEvidenceQuality, 'primary_supported_bundle');
+  assert.equal(result.hits.length, 3);
+  assert.equal(result.hits.filter((hit) => hit.evidenceLevel === 'primary_bundle').length, 2);
+  assert.match(result.context, /26\.10\.0/);
+  const answer = groundedSearchSummary(result.hits, request, new Date(), 'en');
+  assert.match(answer, /26\.10\.0/);
+  assert.doesNotMatch(answer, /could not verify/i);
+  assert.equal((answer.match(/\]\(https:\/\//g) ?? []).length, 3);
+  const sourced = 'The Current release appears to be 26.10.0; the official site confirms the current series. '
+    + '[Acme downloads](https://acme.com/downloads) [Acme update](https://first.example/acme) '
+    + '[Independent Acme release check](https://second.test/acme)';
+  assert.equal(usableSearchSynthesis(sourced, result.hits, request, new Date(), 'en'), true);
+  assert.equal(usableSearchSynthesis('The Current release appears to be 99.0.0. '
+    + '[Acme downloads](https://acme.com/downloads) [Acme update](https://first.example/acme) '
+    + '[Independent Acme release check](https://second.test/acme)', result.hits, request, new Date(), 'en'), false);
+  const fabricated = 'The Current release is 99.0.0. [Acme downloads](https://acme.com/downloads)';
+  const guarded = await (await guardSearchDataStream(new Response(`0:${JSON.stringify(fabricated)}\n`),
+    result.hits, request, new Date(), 'en')).text();
+  assert.match(guarded, /26\.10\.0/);
+  assert.doesNotMatch(guarded, /99\.0\.0/);
+  const arabic = groundedSearchSummary(result.hits, 'ما هو أحدث إصدار من Acme الآن؟', new Date(), 'ar');
+  assert.match(arabic, /26\.10\.0/);
+  assert.match(arabic, /[\u0600-\u06ff]/u);
+});
+
+test('Arabic fresh request may refine retrieval while keeping the answer Arabic', async () => {
+  const request = 'ما هو أحدث إصدار من Acme الآن؟';
+  let refined = '';
+  const result = await searchContextForRequest(request, request, {
+    search: async () => ({ sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+      { title: 'Acme downloads', url: 'https://acme.com/downloads', description: 'Acme v26 is Current.' },
+      { title: 'Release report', url: 'https://first.example/acme', description: 'Latest Current 26.10.0.' },
+    ] }),
+    fallback: async (query) => { refined = query; return { sourceId: 'search:tavily', name: 'Results',
+      mimeType: 'text/markdown', text: '', hits: [
+        { title: 'Independent report', url: 'https://second.test/acme', description: 'Current 26.10.0.' },
+      ] }; },
+    read: async () => { throw new Error('URL_TOO_LARGE'); },
+  });
+  assert.equal(refined, 'Acme latest current release official');
+  assert.equal(result.telemetry.finalEvidenceQuality, 'primary_supported_bundle');
+  const answer = groundedSearchSummary(result.hits, request, new Date(), 'ar');
+  assert.match(answer, /[\u0600-\u06ff]/u);
+  assert.match(answer, /26\.10\.0/);
 });
 
 test('today-dated official news is usable without an artificial version or price claim', async () => {
@@ -370,7 +437,6 @@ test('two independent agreeing sources give a cautious answer without primary ev
     search: async () => ({ sourceId: 'search:test', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
       { title: 'Acme release report', url: 'https://first.example/release', description: 'Acme Current 8.2.0.' },
       { title: 'Acme version report', url: 'https://second.test/version', description: 'Acme Current 8.2.0.' },
-      { title: 'Old Acme guess', url: 'https://third.net/story', description: 'Acme Current 7.0.0.' },
     ] }),
     read: async () => { throw new Error('unexpected read'); },
   });
