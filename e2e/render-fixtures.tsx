@@ -15,6 +15,14 @@ const bubble = renderToStaticMarkup(<IntlProvider locale="en" messages={messages
     <MessageBubble message={{ id: 'ar', role: 'user', content: 'مرحبا 1992 USD', createdAt: new Date() }} isLatest={false} />
   </div>
 </IntlProvider>);
+const bidi = renderToStaticMarkup(<IntlProvider locale="ar" messages={messages}>
+  <div className="mx-auto w-[600px] max-w-full space-y-6 p-5">
+    <MessageBubble message={{ id: 'bidi-user', role: 'user', content: 'اشرح OpenAI و Node.js و GPT-5.6 مع 123', createdAt: new Date() }} isLatest={false} />
+    <MessageBubble message={{ id: 'bidi-assistant', role: 'assistant',
+      content: '# العربية مع OpenAI و GPT-5.6\n\nEnglish starts this paragraph ثم العربية.\n\nالعربية تبدأ هنا مع Node.js و 123 و `GPT-5.6`.\n\n- العربية مع [Node.js](https://nodejs.org/)\n\n> اقتباس مع OpenAI و 42\n\n```js\nconst model = "GPT-5.6";\n```',
+      createdAt: new Date() }} isLatest={false} />
+  </div>
+</IntlProvider>);
 
 const artifact: SpreadsheetArtifact = { schemaVersion: 1, id: 'products', type: 'spreadsheet',
   title: 'Products', language: 'en', direction: 'ltr', metadata: {},
@@ -36,4 +44,4 @@ const file = renderToStaticMarkup(<IntlProvider locale="en" messages={messages}>
       mimeType: 'text/plain;charset=utf-8', content: 'Readable answer.' }] } as Message} isLatest={false} />
 </IntlProvider>);
 
-process.stdout.write(JSON.stringify({ bubble, pending, sent, file }));
+process.stdout.write(JSON.stringify({ bubble, bidi, pending, sent, file }));

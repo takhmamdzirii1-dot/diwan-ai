@@ -32,9 +32,9 @@ const actions = [
 const subjects: Record<Exclude<ChatIntent, 'normal_chat' | `export_${string}`>, readonly string[]> = {
   create_chart: ['chart', 'charte', 'graph', 'graphe', 'graphique', 'graphqiue', 'plot', 'diagram',
     'مخطط', 'المخطط', 'شارت', 'الشارت', 'رسم', 'الرسم', 'رسم بياني'],
-  create_document: ['report', 'article', 'brief', 'document', 'resume', 'cv', 'proposal', 'memo',
-    'executive summary', 'formal letter', 'rapport', 'proposition', 'lettre', 'meme',
-    'تقرير', 'تقريرا', 'التقرير', 'مقال', 'مقالا', 'مستند', 'وثيقة', 'مذكرة', 'مقترح', 'سيرة ذاتية', 'خطاب', 'رسالة', 'طلب'],
+  create_document: ['report', 'article', 'brief', 'document', 'resume', 'cv', 'proposal',
+    'executive summary', 'rapport', 'proposition',
+    'تقرير', 'تقريرا', 'التقرير', 'مقال', 'مقالا', 'مستند', 'وثيقة', 'مقترح', 'سيرة ذاتية'],
   create_presentation: ['presentation', 'presntation', 'powerpoint', 'power point', 'ppt', 'pptx',
     'slide deck', 'slides', 'diaporama', 'عرض تقديمي', 'العرض التقديمي', 'عرض شرائح',
     'بوربوينت', 'بريزنتيشن', 'شرائح'],

@@ -6,7 +6,6 @@ import rehypeRaw from 'rehype-raw';
 import { Copy, Check, Terminal, RefreshCw, Sparkles, FileImage, FileText } from 'lucide-react';
 import type { Message } from '@ai-sdk/react';
 import { useSmoothText } from '../../hooks/useSmoothText';
-import { detectDir } from '../../lib/direction';
 import { cn } from '@/lib/utils';
 import { useLocale, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
@@ -117,9 +116,6 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   [documentOpen, documentArtifact, message.id, message.content, locale]);
   const safeContent = isStreaming ? streamingSafeText(message.content)
     : parts.filter((part) => part.type === 'text').map((part) => part.text).join('');
-  const isRTL = artifactParts[0] && 'artifact' in artifactParts[0]
-    ? artifactParts[0].artifact.direction === 'rtl'
-    : detectDir(isUser ? message.content : safeContent) === 'rtl';
   const documentEligibility = !isUser && !isStreaming
     ? getDocumentActionEligibility({ assistantMessage: message as Message & { vantraParts?: unknown }, precedingUserMessage })
     : 'hidden';
@@ -251,11 +247,8 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
             {/* Text Content */}
             {cleanContent && (
               <p
-                dir={isRTL ? 'rtl' : 'ltr'}
-                className={cn(
-                  "text-[14.5px] sm:text-[15px] text-white/90 font-normal font-sans antialiased leading-relaxed whitespace-pre-wrap break-words",
-                  isRTL ? "text-right" : "text-left"
-                )}
+                dir="auto"
+                className="text-start [unicode-bidi:plaintext] text-[14.5px] sm:text-[15px] text-white/90 font-normal font-sans antialiased leading-relaxed whitespace-pre-wrap break-words"
               >
                 {cleanContent}
               </p>
@@ -306,12 +299,12 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
 
             {isStreaming && !displayContent && <p role="status" className="text-sm text-[var(--studio-text-muted)]">{locale === 'ar' ? 'جارٍ تحضير المعاينة…' : locale === 'fr' ? 'Préparation de l’aperçu…' : 'Preparing preview…'}</p>}
             {toolProgress && <p className="mt-2 text-xs text-[var(--studio-text-secondary)]" role="status">{toolProgress}</p>}
-            {renderParts.map((part, index) => part.type === 'text' ? part.text && <div key={index} data-chat-rendered-text="" dir={isRTL ? 'rtl' : 'ltr'} className={cn(
+            {renderParts.map((part, index) => part.type === 'text' ? part.text && <div key={index} data-chat-rendered-text="" dir="ltr" className={cn(
               "prose prose-invert max-w-none font-sans antialiased text-white/90 text-[15px] font-normal leading-relaxed",
               "prose-p:text-white/90 prose-p:text-[15px] prose-p:font-sans prose-p:antialiased prose-p:leading-relaxed prose-p:font-normal",
               "prose-headings:text-white/90 prose-headings:font-semibold prose-strong:text-white/90 prose-strong:font-semibold",
               "prose-li:text-white/90 prose-li:text-[15px] prose-li:font-sans prose-code:text-white/90",
-              isRTL ? "text-right" : "text-left"
+              "text-left"
             )}>
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
@@ -319,7 +312,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                 components={{
                   pre: ({ children }) => <>{children}</>,
                   p: ({ children }) => (
-                    <p dir={isRTL ? 'rtl' : 'auto'} className={cn("text-white/90 text-[15px] font-sans antialiased leading-relaxed font-normal mb-3.5 last:mb-0", isRTL ? "text-right" : "text-left")}>
+                    <p dir="auto" className="text-start [unicode-bidi:plaintext] text-white/90 text-[15px] font-sans antialiased leading-relaxed font-normal mb-3.5 last:mb-0">
                       {children}
                     </p>
                   ),
@@ -339,47 +332,47 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                     </em>
                   ),
                   h1: ({ children }) => (
-                    <h1 dir={isRTL ? 'rtl' : 'auto'} className={cn("text-white/90 text-xl font-semibold font-sans antialiased mt-6 mb-3", isRTL ? "text-right" : "text-left")}>
+                    <h1 dir="auto" className="text-start [unicode-bidi:plaintext] text-white/90 text-xl font-semibold font-sans antialiased mt-6 mb-3">
                       {children}
                     </h1>
                   ),
                   h2: ({ children }) => (
-                    <h2 dir={isRTL ? 'rtl' : 'auto'} className={cn("text-white/90 text-lg font-semibold font-sans antialiased border-b border-white/10 pb-1.5 mt-5 mb-2.5", isRTL ? "text-right" : "text-left")}>
+                    <h2 dir="auto" className="text-start [unicode-bidi:plaintext] text-white/90 text-lg font-semibold font-sans antialiased border-b border-white/10 pb-1.5 mt-5 mb-2.5">
                       {children}
                     </h2>
                   ),
                   h3: ({ children }) => (
-                    <h3 dir={isRTL ? 'rtl' : 'auto'} className={cn("text-white/90 text-base font-semibold font-sans antialiased mt-4 mb-2", isRTL ? "text-right" : "text-left")}>
+                    <h3 dir="auto" className="text-start [unicode-bidi:plaintext] text-white/90 text-base font-semibold font-sans antialiased mt-4 mb-2">
                       {children}
                     </h3>
                   ),
                   h4: ({ children }) => (
-                    <h4 dir={isRTL ? 'rtl' : 'auto'} className={cn("text-white/90 text-sm font-semibold font-sans antialiased mt-3 mb-1.5", isRTL ? "text-right" : "text-left")}>
+                    <h4 dir="auto" className="text-start [unicode-bidi:plaintext] text-white/90 text-sm font-semibold font-sans antialiased mt-3 mb-1.5">
                       {children}
                     </h4>
                   ),
                   ul: ({ children }) => (
-                    <ul dir={isRTL ? 'rtl' : 'ltr'} className="my-3 flex flex-col gap-1.5 ps-5 list-disc text-white/90 font-sans antialiased text-[15px] leading-relaxed">
+                    <ul dir="auto" className="my-3 flex flex-col gap-1.5 ps-5 list-disc text-white/90 font-sans antialiased text-[15px] leading-relaxed">
                       {children}
                     </ul>
                   ),
                   ol: ({ children }) => (
-                    <ol dir={isRTL ? 'rtl' : 'ltr'} className="my-3 flex flex-col gap-1.5 ps-5 list-decimal text-white/90 font-sans antialiased text-[15px] leading-relaxed">
+                    <ol dir="auto" className="my-3 flex flex-col gap-1.5 ps-5 list-decimal text-white/90 font-sans antialiased text-[15px] leading-relaxed">
                       {children}
                     </ol>
                   ),
                   li: ({ children }) => (
-                    <li dir={isRTL ? 'rtl' : 'auto'} className={cn("text-white/90 text-[15px] font-sans antialiased leading-relaxed font-normal", isRTL ? "text-right" : "text-left")}>
+                    <li dir="auto" className="text-start [unicode-bidi:plaintext] text-white/90 text-[15px] font-sans antialiased leading-relaxed font-normal">
                       {children}
                     </li>
                   ),
                   blockquote: ({ children }) => (
-                    <blockquote dir={isRTL ? 'rtl' : 'auto'} className={cn("my-4 py-2 px-4 bg-white/[0.03] rounded-r-lg font-sans antialiased text-white/90", isRTL ? "text-right border-r-2 border-white/20" : "text-left border-l-2 border-white/20")}>
+                    <blockquote dir="auto" className="text-start [unicode-bidi:plaintext] my-4 py-2 px-4 bg-white/[0.03] rounded-e-lg border-s-2 border-white/20 font-sans antialiased text-white/90">
                       {children}
                     </blockquote>
                   ),
                   a: ({ href, children }) => (
-                    <a href={href} target="_blank" rel="noopener noreferrer" className="text-white/90 underline underline-offset-4 hover:text-white transition-colors font-sans antialiased">
+                    <a href={href} dir="auto" style={{ unicodeBidi: 'isolate' }} target="_blank" rel="noopener noreferrer" className="text-white/90 underline underline-offset-4 hover:text-white transition-colors font-sans antialiased">
                       {children}
                     </a>
                   ),
@@ -404,7 +397,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                     const match = /language-(\w+)/.exec(className || '');
                     const isInline = !match;
                     if (isInline) {
-                      return <code className="font-mono text-[13px] text-white/90 bg-white/10 px-1.5 py-0.5 rounded border border-white/10" {...props}>{children}</code>;
+                      return <code dir="ltr" style={{ unicodeBidi: 'isolate' }} className="font-mono text-[13px] text-white/90 bg-white/10 px-1.5 py-0.5 rounded border border-white/10" {...props}>{children}</code>;
                     }
                     const langName = match[1];
                     const codeString = String(children).replace(/\n$/, '');
@@ -435,7 +428,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                           </button>
                         </div>
                         <div className="p-4 overflow-x-auto custom-scrollbar w-full min-w-0">
-                          <pre className="!bg-transparent !p-0 !m-0 font-mono text-[13.5px] leading-[1.72] text-[#DDE3EC] min-w-max">
+                          <pre dir="ltr" className="!bg-transparent !p-0 !m-0 font-mono text-[13.5px] leading-[1.72] text-[#DDE3EC] min-w-max">
                             <code className={className} {...props}>{children}</code>
                           </pre>
                         </div>

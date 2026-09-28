@@ -5,7 +5,7 @@ import { attachSafeBrowserErrors, productsXlsx, trackSafeBrowserErrors } from '.
 
 const fixtureMarkup = JSON.parse(execFileSync(process.execPath,
   ['--import', 'tsx', 'e2e/render-fixtures.tsx'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })) as {
-    bubble: string; pending: string; sent: string; file: string;
+    bubble: string; bidi: string; pending: string; sent: string; file: string;
   };
 
 test.beforeEach(async ({ page }) => trackSafeBrowserErrors(page));
@@ -25,8 +25,10 @@ test('@smoke browser lays out English and Arabic bubbles with compact timestamps
   expect(Math.abs((enBox!.x + enBox!.width) - (arBox!.x + arBox!.width))).toBeLessThan(2);
   expect(enBox!.height).toBeLessThan(72);
   expect(arBox!.height).toBeLessThan(72);
-  await expect(english.locator('p')).toHaveAttribute('dir', 'ltr');
-  await expect(arabic.locator('p')).toHaveAttribute('dir', 'rtl');
+  await expect(english.locator('p')).toHaveAttribute('dir', 'auto');
+  await expect(arabic.locator('p')).toHaveAttribute('dir', 'auto');
+  expect(await english.locator('p').evaluate((node) => getComputedStyle(node).direction)).toBe('ltr');
+  expect(await arabic.locator('p').evaluate((node) => getComputedStyle(node).direction)).toBe('rtl');
   await expect(arabic.locator('p')).toContainText('1992 USD');
   for (const message of [english, arabic]) {
     const gap = await message.locator('time').evaluate((time) => time.getBoundingClientRect().top
@@ -34,6 +36,28 @@ test('@smoke browser lays out English and Arabic bubbles with compact timestamps
     expect(gap).toBeGreaterThanOrEqual(3);
     expect(gap).toBeLessThanOrEqual(7);
   }
+});
+
+test('@smoke mixed Arabic and English Chat blocks isolate technical tokens without moving messages', async ({ page }) => {
+  await page.goto('/en', { waitUntil: 'networkidle' });
+  await page.evaluate((html) => { document.body.insertAdjacentHTML('beforeend', `<div id="e2e-fixture">${html}</div>`); }, fixtureMarkup.bidi);
+  const user = page.getByTestId('chat-message-user');
+  const assistant = page.getByTestId('chat-message-assistant');
+  await expect(user).toHaveAttribute('dir', 'ltr');
+  await expect(assistant).toHaveAttribute('dir', 'ltr');
+  await expect(user.locator('p')).toHaveAttribute('dir', 'auto');
+  for (const selector of ['h1', 'li', 'blockquote']) await expect(assistant.locator(selector).first()).toHaveAttribute('dir', 'auto');
+  const paragraphs = assistant.locator('[data-chat-rendered-text] p');
+  expect(await paragraphs.nth(0).evaluate((node) => getComputedStyle(node).direction)).toBe('ltr');
+  expect(await paragraphs.nth(1).evaluate((node) => getComputedStyle(node).direction)).toBe('rtl');
+  await expect(assistant.locator('code').first()).toHaveAttribute('dir', 'ltr');
+  await expect(assistant.locator('pre')).toHaveAttribute('dir', 'ltr');
+  await expect(assistant.locator('a')).toHaveAttribute('dir', 'auto');
+  await expect(assistant).toContainText('Node.js');
+  await expect(assistant).toContainText('GPT-5.6');
+  const userBox = await user.locator('div.ms-auto').first().boundingBox();
+  const assistantBox = await assistant.locator('[data-chat-rendered-text]').first().boundingBox();
+  expect(userBox && assistantBox && userBox.x > assistantBox.x).toBeTruthy();
 });
 
 test('@smoke browser shows pending file once, then keeps a sent file outside the clean composer', async ({ page }) => {

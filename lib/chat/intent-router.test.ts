@@ -44,6 +44,19 @@ test('normalization and question semantics protect ordinary Chat', () => {
   assert.equal(routeChatIntent('maybe something visual').confidence, 'low');
 });
 
+test('ordinary letters and messages stay Chat text; explicit document outputs remain artifacts', () => {
+  for (const input of ['اكتبلي رسالة اعتذار قصيرة', 'اكتب رسالة لصديقي',
+    'write me an apology message', 'write a short letter', 'écris une lettre courte']) {
+    assert.equal(routeChatIntent(input).intent, 'normal_chat', input);
+    assert.deepEqual(selectArtifactTools(input).names, [], input);
+  }
+  for (const input of ['Create a document about safety', 'Write a report on sales',
+    'اكتب لي تقرير عن المبيعات', 'اكتبلي طلب بصيغة pdf', 'Write this as Word']) {
+    assert.notEqual(routeChatIntent(input).intent, 'normal_chat', input);
+    assert.deepEqual(selectArtifactTools(input).names, ['create_document'], input);
+  }
+});
+
 test('resource references resolve stable IDs, request selection, or file guidance', () => {
   const sheet: IntentResource = { attachmentId: 'sheet-1', kind: 'spreadsheet' };
   const other: IntentResource = { attachmentId: 'sheet-2', kind: 'spreadsheet' };

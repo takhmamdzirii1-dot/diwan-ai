@@ -4,6 +4,7 @@ import { boundedConnectedContent, connectedResourceAttachment } from '@/lib/conn
 import type { WebContextTool } from './selection';
 import { readPublicWebPage } from './url-reader.server';
 import { searchWeb } from './search.server';
+import { searchEvidence } from './evidence';
 
 type WebResource = Awaited<ReturnType<typeof readPublicWebPage>>;
 export async function webContextForRequest(tool: WebContextTool, request: string,
@@ -25,4 +26,12 @@ export async function optionalWebContext(query: string, request: string,
   try { return { status: 'ok' as const, context: await webContextForRequest(
     { kind: 'web_search', query }, request, { read: readPublicWebPage, search }) }; }
   catch { return { status: 'unavailable' as const, context: '' }; }
+}
+
+export async function searchContextForRequest(query: string, request: string) {
+  const resource = await searchWeb(query);
+  const evidence = searchEvidence(resource.hits, request);
+  const context = await webContextForRequest({ kind: 'web_search', query }, request,
+    { read: readPublicWebPage, search: async () => ({ ...resource, text: evidence.text }) });
+  return { context, hits: resource.hits, evidence };
 }

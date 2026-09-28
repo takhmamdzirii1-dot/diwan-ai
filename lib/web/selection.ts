@@ -14,11 +14,11 @@ export function selectWebContextTool(request: string): WebContextTool | null {
     return { kind: 'read_url', url };
   }
   const match = text.match(/^(?:(?:please|can you|could you)\s+)*(?:search (?:the )?web|search online|browse (?:the )?web|look up online)\s+(?:for\s+)?(.+)$/i)
-    ?? text.match(/^(?:(?:please|can you|could you)\s+)*search\s+for\s+(.+)$/i)
+    ?? text.match(/^(?:(?:please|can you|could you)\s+)*search\s+(?:for\s+)?(.+)$/i)
     ?? text.match(/^(?:recherche|recherchez|cherche|cherchez)\s+(?:sur (?:le )?web|en ligne)\s+(.+)$/iu)
     ?? text.match(/^(?:recherche|recherchez|cherche|cherchez)\s+(.+)$/iu)
     ?? text.match(/^(?:ابحث|بحث)\s+(?:في الويب|على الويب|في الإنترنت|على الإنترنت)\s+(?:عن\s+)?(.+)$/u)
-    ?? text.match(/^(?:ابحث|بحث)\s+عن\s+(.+)$/u);
+    ?? text.match(/^(?:ابحث|بحث)\s+(?:لي\s+)?عن\s+(.+)$/u);
   const query = match?.[1]?.trim();
   return query && query.length <= 300 && !/https?:\/\//i.test(query) ? { kind: 'web_search', query } : null;
 }
@@ -36,7 +36,7 @@ export function decideWebSearch(request: string): SearchDecision {
     || /^(?:اكتب|أعد صياغة|ترجم|احسب|أنشئ|écris|rédige|traduis|calcule)\b/iu.test(text)) return { path: 'none' };
   if (/\b(?:latest|today|right now|live|currently|this week|recent (?:news|events|releases|updates)|current (?:price|prices|availability|version|release|model|product|president|ceo)|verify (?:online|on the web))\b/i.test(text)
     || /\b(?:aujourd'hui|actuellement|dernières nouvelles|actualités|prix actuel|disponibilité actuelle|vérifie sur (?:le )?web)\b/iu.test(text)
-    || /(?:اليوم|الآن|أحدث الأخبار|آخر الأخبار|أخبار|السعر الحالي|الأسعار الحالية|تحقق من (?:الويب|الإنترنت))/u.test(text))
+    || /(?:اليوم|الآن|الان|(?:أحدث|احدث|آخر|اخر)\s+(?:إصدار|اصدار|نسخة|أخبار|اخبار|سعر|الأسعار)|السعر الحالي|الأسعار الحالية|تحقق من (?:الويب|الإنترنت))/u.test(text))
     return { path: 'required', tool: { kind: 'web_search', query: text.slice(0, 300) } };
   if (/^(?:summari[sz]e|explain)\b/i.test(text)
     || /^(?:لخص|اشرح|résume|explique)\b/iu.test(text)) return { path: 'none' };

@@ -7,6 +7,7 @@ import { BraveWebSearch, orchestrateWebSearch, SearchProviderError, searchWeb, T
 import { budgetWarning, type SearchHealthStore } from './search-health.server';
 import { decideWebSearch } from './selection';
 import { readPublicWebPage, resolvePublicWebUrl } from './url-reader.server';
+import { answerUsesOnlySearchSources, groundedSearchSummary, guardSearchDataStream, searchEvidence } from './evidence';
 
 const publicDns = async () => [{ address: '93.184.215.14', family: 4 }];
 
@@ -36,6 +37,57 @@ test('search decision keeps ordinary Chat at zero search calls and routes curren
   assert.deepEqual(decideWebSearch('اقرأ https://example.org/report'),
     { path: 'required', tool: { kind: 'read_url', url: 'https://example.org/report' } });
   assert.deepEqual(decideWebSearch('Which laptop is best for travel?'), { path: 'optional' });
+  assert.deepEqual(decideWebSearch('ما هو أحدث إصدار من Node.js الآن؟'),
+    { path: 'required', tool: { kind: 'web_search', query: 'ما هو أحدث إصدار من Node.js الآن؟' } });
+  assert.deepEqual(decideWebSearch('Explain how Node.js works'), { path: 'none' });
+  assert.deepEqual(decideWebSearch('ابحث لي عن آخر أخبار OpenAI اليوم'),
+    { path: 'required', tool: { kind: 'web_search', query: 'آخر أخبار OpenAI اليوم' } });
+});
+
+test('search evidence preserves exact source URL/date and never promotes older results to today', async () => {
+  const hits = [{ title: 'Older update', url: 'https://example.org/update', description: 'A verified excerpt.',
+    publishedAt: '2026-09-27', source: 'example.org', provider: 'brave' }];
+  const now = new Date('2026-09-28T12:00:00Z');
+  const evidence = searchEvidence(hits, 'ابحث عن آخر أخبار اليوم', now);
+  assert.equal(evidence.publishedToday, false);
+  assert.match(evidence.text, /No retrieved source has a verified publication date of 2026-09-28/);
+  assert.match(evidence.text, /Published: 2026-09-27/);
+  const summary = groundedSearchSummary(hits, 'news today', now);
+  assert.match(summary, /Published 2026-09-27/);
+  assert.match(summary, /https:\/\/example.org\/update/);
+  assert.doesNotMatch(summary, /Published 2026-09-28|Brave|Tavily/);
+  assert.equal(answerUsesOnlySearchSources('Today according to [Made up](https://fake.example/)', hits, 'news today', now), false);
+  const response = new Response(`0:${JSON.stringify('Today according to a made-up source.')}\ne:{"finishReason":"stop"}\n`,
+    { headers: { 'X-Vercel-AI-Data-Stream': 'v1' } });
+  const guarded = await guardSearchDataStream(response, hits, 'news today', now);
+  assert.match(await guarded.text(), /No retrieved source has a verified publication date/);
+});
+
+test('search-answer stream uses retrieved evidence even if model prose names an unreturned source', async () => {
+  const hits = [{ title: 'Official notes', url: 'https://example.org/release', description: 'Version 1.2.',
+    publishedAt: '2026-09-27', source: 'example.org' }];
+  const now = new Date('2026-09-28T12:00:00Z');
+  const valid = `See [Official notes](https://example.org/release) for version 1.2.`;
+  assert.equal(answerUsesOnlySearchSources(valid, hits, 'latest release', now), true);
+  assert.equal(answerUsesOnlySearchSources('See [Fake](https://fake.example/release).', hits, 'latest release', now), false);
+  assert.equal(answerUsesOnlySearchSources('According to an unlinked mystery source...', hits, 'latest release', now), false);
+  const response = new Response(`0:${JSON.stringify(`${valid} According to an unreturned source, version 9 is out.`)}\nd:{"finishReason":"stop"}\n`);
+  const guarded = await (await guardSearchDataStream(response, hits, 'latest release', now)).text();
+  assert.match(guarded, /Official notes/);
+  assert.doesNotMatch(guarded, /unreturned source|version 9/);
+  const empty = await (await guardSearchDataStream(new Response(`0:${JSON.stringify('Made-up news')}\n`), [], 'news today', now)).text();
+  assert.match(empty, /No trustworthy search results/);
+  assert.doesNotMatch(empty, /Made-up news/);
+});
+
+test('Brave and Tavily preserve publication dates when returned, without inventing missing dates', async () => {
+  const brave = new BraveWebSearch('test', async () => Response.json({ web: { results: [
+    { title: 'A', url: 'https://example.org/a', description: 'A', page_age: '2026-09-27T10:00:00Z' }] } }));
+  const tavily = new TavilyWebSearch('test', async () => Response.json({ results: [
+    { title: 'B', url: 'https://example.org/b', content: 'B', published_date: '2026-09-26' },
+    { title: 'Undated', url: 'https://example.org/c', content: 'C' }] }));
+  assert.equal((await brave.search('query', 5))[0].publishedAt, '2026-09-27');
+  assert.deepEqual((await tavily.search('query', 5)).map((item) => item.publishedAt), ['2026-09-26', null]);
 });
 
 function health() {
@@ -85,6 +137,8 @@ test('all providers unavailable is safe; optional search can continue without cl
     throw new Error('WEB_SEARCH_UNAVAILABLE');
   }), { status: 'unavailable', context: '' });
   await assert.rejects(orchestrateWebSearch('query', { providers: [] }), /WEB_SEARCH_UNCONFIGURED/);
+  await assert.rejects(orchestrateWebSearch('API_KEY=private-value', { providers: [failed], health: health().store }),
+    /WEB_SEARCH_INVALID_QUERY/);
 });
 
 test('budget warnings use only configured local request budget, never invented provider remaining quota', async () => {

@@ -1,11 +1,13 @@
 import 'server-only';
 import { searchBudget, SupabaseSearchHealthStore, type SearchFailure, type SearchHealthStore } from './search-health.server';
 
-export type WebSearchHit = { title: string; url: string; description: string };
+export type WebSearchHit = { title: string; url: string; description: string;
+  publishedAt?: string | null; source?: string; provider?: string };
 export interface WebSearchProvider {
   readonly id: string;
   search(query: string, limit: number): Promise<WebSearchHit[]>;
 }
+const unsafeQuery = /(?:sb_secret_[A-Za-z0-9_-]{8,}|gh[pousr]_[A-Za-z0-9_]{16,}|\bBearer\s+[A-Za-z0-9._-]{16,}|\b(?:API_KEY|CLIENT_SECRET|REFRESH_TOKEN)\s*[:=]\s*\S+)/i;
 
 export class SearchProviderError extends Error {
   constructor(readonly category: SearchFailure) { super(`WEB_SEARCH_${category.toUpperCase()}`); }
@@ -49,7 +51,12 @@ function normalizeHits(results: unknown, descriptionKey: 'description' | 'conten
     const title = 'title' in item && typeof item.title === 'string' ? item.title.replace(/<[^>]*>/g, '').slice(0, 180) : address.hostname;
     const description = descriptionKey in item && typeof item[descriptionKey] === 'string'
       ? item[descriptionKey].replace(/<[^>]*>/g, '').slice(0, 500) : '';
-    return [{ title, description, url: address.toString() }];
+    const dated = ['published_date', 'published_at', 'date', 'page_age'].flatMap((field) =>
+      field in item && typeof item[field] === 'string' && /^\d{4}-\d{2}-\d{2}(?:T|$)/.test(item[field])
+        ? [item[field]] : []);
+    const publishedAt = dated.length && Number.isFinite(Date.parse(dated[0]))
+      ? new Date(dated[0]).toISOString().slice(0, 10) : null;
+    return [{ title, description, url: address.toString(), publishedAt, source: address.hostname }];
   });
 }
 
@@ -131,7 +138,7 @@ export async function orchestrateWebSearch(query: string, options: {
   providers?: WebSearchProvider[]; health?: SearchHealthStore; native?: VerifiedNativeSearch | null;
   budget?: (providerId: string) => number | null; onExecution?: (metadata: SearchExecution) => void;
 } = {}): Promise<WebSearchHit[]> {
-  if (!query.trim() || query.length > 300 || query.trim().split(/\s+/).length > 50)
+  if (!query.trim() || query.length > 300 || query.trim().split(/\s+/).length > 50 || unsafeQuery.test(query))
     throw new Error('WEB_SEARCH_INVALID_QUERY');
   const providers = options.native ? [{ id: 'native', search: options.native.search }, ...(options.providers ?? configuredWebSearchProviders())]
     : options.providers ?? configuredWebSearchProviders();
@@ -171,7 +178,7 @@ export async function orchestrateWebSearch(query: string, options: {
       emit({ providerAttempted: attempted, providerUsed: provider.id,
         fallbackUsed, failureCategory: lastFailure,
         latencyMs: Date.now() - started, resultCount: hits.length, truncated });
-      return hits;
+      return hits.map((hit) => ({ ...hit, provider: provider.id }));
     } catch (cause) {
       const category = cause instanceof SearchProviderError ? cause.category : 'unavailable';
       lastFailure = category;
@@ -187,11 +194,11 @@ export async function orchestrateWebSearch(query: string, options: {
 
 export async function searchWeb(query: string, provider?: WebSearchProvider | null) {
   if (provider === null) throw new Error('WEB_SEARCH_UNCONFIGURED');
-  if (!query.trim() || query.length > 300 || query.trim().split(/\s+/).length > 50)
+  if (!query.trim() || query.length > 300 || query.trim().split(/\s+/).length > 50 || unsafeQuery.test(query))
     throw new Error('WEB_SEARCH_INVALID_QUERY');
   const hits = provider ? await provider.search(query.trim(), 5) : await orchestrateWebSearch(query);
   if (!hits.length) throw new Error('WEB_SEARCH_EMPTY');
-  const text = hits.map((hit, index) => `${index + 1}. ${hit.title}\n${hit.url}\n${hit.description}`).join('\n\n');
+  const text = hits.map((hit, index) => `${index + 1}. ${hit.title}\n${hit.url}\nPublished: ${hit.publishedAt ?? 'unknown'}\nSource: ${hit.source ?? new URL(hit.url).hostname}\n${hit.description}`).join('\n\n');
   return { sourceId: `search:${query.slice(0, 200)}`, name: 'Web search results',
-    mimeType: 'text/markdown' as const, text };
+    mimeType: 'text/markdown' as const, text, hits };
 }
