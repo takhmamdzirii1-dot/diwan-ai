@@ -7,7 +7,8 @@ import { BraveWebSearch, orchestrateWebSearch, SearchProviderError, searchWeb, T
 import { budgetWarning, type SearchHealthStore } from './search-health.server';
 import { decideWebSearch, decideWebSearchWithHistory } from './selection';
 import { pinnedAddressLookup, readPublicWebPage, resolvePublicWebUrl } from './url-reader.server';
-import { answerUsesOnlySearchSources, groundedSearchSummary, guardSearchDataStream, searchEvidence, usableSearchSynthesis } from './evidence';
+import { answerUsesOnlySearchSources, assessFreshEvidenceBundle, groundedSearchSummary, guardSearchDataStream,
+  searchEvidence, usableSearchSynthesis } from './evidence';
 
 const publicDns = async () => [{ address: '93.184.215.14', family: 4 }];
 
@@ -258,6 +259,75 @@ test('exact official Brave evidence does not spend a Tavily fallback request', a
   assert.equal(result.hits[0].evidenceId, 'S1');
   assert.equal(result.telemetry.finalEvidenceQuality, 'primary_exact');
   assert.equal(result.telemetry.fallbackUsed, false);
+});
+
+test('a read old official release note cannot outrank a newer official current index', async () => {
+  const request = 'latest Acme version now';
+  const old = { title: 'Acme 26.8.2 (Current)', url: 'https://acme.com/blog/release/v26.8.2',
+    description: 'Acme 26.8.2 (Current) was released.', publishedAt: '2026-09-09' };
+  const current = { title: 'Acme downloads', url: 'https://acme.com/download',
+    description: 'Current 26.10.0; LTS 24.21.0.', publishedAt: '2026-09-22' };
+  const result = assessFreshEvidenceBundle([
+    { ...old, verifiedPage: true, evidenceLevel: 'primary_page' }, current,
+  ], request, '2026-09-29');
+  assert.equal(result.kind, 'primary_exact');
+  assert.equal(result.factKey, 'version:current:26.10.0');
+  assert.deepEqual(result.hits.map((hit) => hit.url), [current.url]);
+  const answer = groundedSearchSummary(result.hits, request, new Date('2026-09-29T12:00:00Z'));
+  assert.match(answer, /26\.10\.0.*24\.21\.0/);
+  assert.doesNotMatch(answer, /26\.8\.2/);
+});
+
+test('a stale official release note triggers one evidence fallback, then newer official wins', async () => {
+  const request = 'latest Acme version now';
+  const today = new Date();
+  const oldDate = new Date(today.getTime() - 20 * 86_400_000).toISOString().slice(0, 10);
+  const newDate = new Date(today.getTime() - 2 * 86_400_000).toISOString().slice(0, 10);
+  let fallbackCalls = 0;
+  const result = await searchContextForRequest(request, request, {
+    search: async () => ({ sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+      { title: 'Acme 26.8.2 (Current)', url: 'https://acme.com/blog/release/v26.8.2',
+        description: 'Acme 26.8.2 (Current) was released.', publishedAt: oldDate },
+    ] }),
+    fallback: async () => { fallbackCalls++; return { sourceId: 'search:tavily', name: 'Results',
+      mimeType: 'text/markdown', text: '', hits: [
+        { title: 'Acme downloads', url: 'https://acme.com/download',
+          description: 'Current 26.10.0; LTS 24.21.0.', publishedAt: newDate },
+      ] }; },
+    read: async (url) => {
+      if (url.includes('/download')) throw new Error('URL_TOO_LARGE');
+      return { sourceId: url, name: 'Acme release', mimeType: 'text/markdown',
+        text: 'Acme 26.8.2 (Current) was released.' };
+    },
+  });
+  assert.equal(fallbackCalls, 1);
+  assert.equal(result.telemetry.evidenceQuality, 'insufficient');
+  assert.equal(result.telemetry.finalEvidenceQuality, 'primary_exact');
+  assert.deepEqual(result.hits.map((hit) => hit.url), ['https://acme.com/download']);
+  assert.match(result.context, /26\.10\.0/);
+  assert.doesNotMatch(result.context, /26\.8\.2/);
+});
+
+test('newer dated primary release beats older read release, but weak conflicts remain insufficient', () => {
+  const request = 'latest Acme version now';
+  const old = { title: 'Acme 26.8.2 (Current)', url: 'https://acme.com/blog/release/v26.8.2',
+    description: 'Current 26.8.2.', publishedAt: '2026-09-09', verifiedPage: true };
+  const newer = { title: 'Acme 26.10.0 (Current)', url: 'https://acme.com/blog/release/v26.10.0',
+    description: 'Current 26.10.0.', publishedAt: '2026-09-27' };
+  const strong = assessFreshEvidenceBundle([old, newer], request, '2026-09-29');
+  assert.equal(strong.factKey, 'version:current:26.10.0');
+  assert.deepEqual(strong.hits.map((hit) => hit.url), [newer.url]);
+  const weak = assessFreshEvidenceBundle([old, { title: 'Acme rumor', url: 'https://rumor.example/acme',
+    description: 'Current 26.10.0.' }], request, '2026-09-29');
+  assert.equal(weak.kind, 'insufficient');
+  assert.deepEqual(weak.hits, []);
+  const corroborated = assessFreshEvidenceBundle([old,
+    { title: 'Acme release report', url: 'https://first.example/acme', description: 'Current 26.10.0.' },
+    { title: 'Independent Acme report', url: 'https://second.test/acme', description: 'Current 26.10.0.' },
+  ], request, '2026-09-29');
+  assert.equal(corroborated.kind, 'corroborated_exact');
+  assert.equal(corroborated.factKey, 'version:current:26.10.0');
+  assert.doesNotMatch(JSON.stringify(corroborated.hits), /26\.8\.2/);
 });
 
 test('weak Brave evidence triggers one Tavily request and merged independent corroboration', async () => {

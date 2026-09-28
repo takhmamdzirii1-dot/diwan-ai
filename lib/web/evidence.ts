@@ -71,6 +71,48 @@ function evergreenSource(hit: WebSearchHit) {
   return url ? /\/(?:download|downloads|releases|versions|pricing|prices|status|availability)(?:\/|$)/iu.test(new URL(url).pathname) : false;
 }
 
+function latestVersionRequest(request: string) {
+  return needsFreshEvidence(request)
+    && /\b(?:version|release)\b|(?:إصدار|اصدار|نسخة)/iu.test(request);
+}
+
+/** A release note is a dated snapshot, even if its title called that release "Current". */
+function currentReleaseIndex(hit: WebSearchHit) {
+  const url = safeUrl(hit.url);
+  return url ? /\/(?:downloads?|releases|versions|status)(?:\/(?:current|latest|index))?\/?$/iu
+    .test(new URL(url).pathname) : false;
+}
+
+function publishedDay(hit: WebSearchHit) {
+  const time = hit.publishedAt ? Date.parse(hit.publishedAt) : NaN;
+  return Number.isFinite(time) ? time : null;
+}
+
+function latestPrimaryClaim(hits: WebSearchHit[], request: string, today: string) {
+  const claim = (hit: WebSearchHit) => freshFactKey(
+    hit.verifiedPage ? hit.description : `${hit.title} ${hit.description}`, request);
+  const indexes = hits.filter(currentReleaseIndex);
+  if (indexes.length) {
+    const keys = new Set(indexes.map(claim));
+    if (keys.size === 1) return { key: claim(indexes[0]), hits: indexes };
+    // Conflicting live indexes cannot be resolved by how successfully they were read.
+    return null;
+  }
+  const dated = hits.filter((hit) => publishedDay(hit) !== null)
+    .sort((a, b) => publishedDay(b)! - publishedDay(a)!);
+  if (!dated.length) return null;
+  const newestDay = publishedDay(dated[0])!;
+  const newest = dated.filter((hit) => publishedDay(hit) === newestDay);
+  if (new Set(newest.map(claim)).size !== 1) return null;
+  // A dated release page alone is not proof that nothing newer has shipped.
+  // A short recency window permits an exact release claim; older claims trigger
+  // the existing single evidence-quality fallback instead of a stale answer.
+  const todayTime = Date.parse(today);
+  if (!Number.isFinite(todayTime) || newestDay > todayTime + 86_400_000
+    || newestDay < todayTime - 7 * 86_400_000) return null;
+  return { key: claim(newest[0]), hits: newest };
+}
+
 export function rankedEvidence(hits: readonly WebSearchHit[], request: string, today: string) {
   const valid = hits.filter((hit) => safeUrl(hit.url));
   const candidates = asksForToday(request) && valid.some((hit) => hit.publishedAt === today)
@@ -187,24 +229,34 @@ export function assessFreshEvidenceBundle(hits: readonly WebSearchHit[], request
       || key.startsWith(`version:current:${currentSeries}.`));
   });
   if (exactPrimary.length) {
-    const highestStrength = Math.max(...exactPrimary.map(evidenceStrength));
-    const strongest = exactPrimary.filter((hit) => evidenceStrength(hit) === highestStrength);
-    const keys = new Set(strongest.map((hit) => freshFactKey(claimText(hit), request)));
-    const ordered = rankedEvidence(strongest, request, today);
-    // A live/evergreen official status page may supersede an older release note,
-    // but equally strong contradictory official claims remain unresolved.
-    const preferred = keys.size > 1 && ordered.length > 1
-      && evergreenSource(ordered[0]) && !evergreenSource(ordered[1])
-      && evidenceScore(ordered[0], request, today) - evidenceScore(ordered[1], request, today) >= 6
-      ? freshFactKey(claimText(ordered[0]), request) : null;
-    if (keys.size === 1 || preferred) {
-      const key = preferred ?? [...keys][0];
-      return { kind: 'primary_exact' as const, factKey: key,
-        hits: rankedEvidence(strongest.filter((hit) => freshFactKey(claimText(hit), request) === key)
-          .map((hit) => ({ ...hit, evidenceLevel: hit.verifiedPage ? 'primary_page' as const
-            : 'primary_search' as const, evidenceBundle: 'primary_exact' as const })), request, today) };
+    if (latestVersionRequest(request)) {
+      const latest = latestPrimaryClaim(exactPrimary, request, today);
+      if (latest?.key) return { kind: 'primary_exact' as const, factKey: latest.key,
+        hits: rankedEvidence(latest.hits.map((hit) => ({ ...hit,
+          evidenceLevel: hit.verifiedPage ? 'primary_page' as const : 'primary_search' as const,
+          evidenceBundle: 'primary_exact' as const })), request, today) };
+      // The dated primary claim is authentic but not sufficient for "latest".
+      // Let independent current evidence be assessed below (and otherwise fall back).
+    } else {
+      const highestStrength = Math.max(...exactPrimary.map(evidenceStrength));
+      const strongest = exactPrimary.filter((hit) => evidenceStrength(hit) === highestStrength);
+      const keys = new Set(strongest.map((hit) => freshFactKey(claimText(hit), request)));
+      const ordered = rankedEvidence(strongest, request, today);
+      // A live/evergreen official status page may supersede an older release note,
+      // but equally strong contradictory official claims remain unresolved.
+      const preferred = keys.size > 1 && ordered.length > 1
+        && evergreenSource(ordered[0]) && !evergreenSource(ordered[1])
+        && evidenceScore(ordered[0], request, today) - evidenceScore(ordered[1], request, today) >= 6
+        ? freshFactKey(claimText(ordered[0]), request) : null;
+      if (keys.size === 1 || preferred) {
+        const key = preferred ?? [...keys][0];
+        return { kind: 'primary_exact' as const, factKey: key,
+          hits: rankedEvidence(strongest.filter((hit) => freshFactKey(claimText(hit), request) === key)
+            .map((hit) => ({ ...hit, evidenceLevel: hit.verifiedPage ? 'primary_page' as const
+              : 'primary_search' as const, evidenceBundle: 'primary_exact' as const })), request, today) };
+      }
+      return { kind: 'insufficient' as const, factKey: null, hits: [] as WebSearchHit[] };
     }
-    return { kind: 'insufficient' as const, factKey: null, hits: [] as WebSearchHit[] };
   }
   const structured = /\b(?:version|release|price|cost|availability|stock|status)\b|(?:إصدار|اصدار|نسخة|سعر|متاح|متوفر)/iu.test(request);
   if (!structured) {
