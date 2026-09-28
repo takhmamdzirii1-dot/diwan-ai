@@ -3,7 +3,7 @@ import { searchBudget, SupabaseSearchHealthStore, type SearchFailure, type Searc
 
 export type WebSearchHit = { title: string; url: string; description: string;
   publishedAt?: string | null; source?: string; provider?: string; verifiedPage?: boolean;
-  evidenceLevel?: 'primary_page' | 'primary_search' | 'corroborated' };
+  evidenceLevel?: 'primary_page' | 'primary_search' | 'corroborated'; evidenceId?: string };
 export interface WebSearchProvider {
   readonly id: string;
   search(query: string, limit: number): Promise<WebSearchHit[]>;
@@ -74,7 +74,7 @@ export class BraveWebSearch implements WebSearchProvider {
     try {
       response = await this.transport(url, { method: 'GET', redirect: 'manual',
         headers: { Accept: 'application/json', 'X-Subscription-Token': this.key },
-        signal: AbortSignal.timeout(8_000), cache: 'no-store' });
+        signal: AbortSignal.timeout(3_000), cache: 'no-store' });
     } catch (cause) { throw new SearchProviderError(cause instanceof DOMException && cause.name === 'TimeoutError' ? 'timeout' : 'unavailable'); }
     const parsed = await boundedJson(response);
     const results = parsed && typeof parsed === 'object' && 'web' in parsed
@@ -94,7 +94,7 @@ export class TavilyWebSearch implements WebSearchProvider {
         headers: { Authorization: `Bearer ${this.key}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, search_depth: 'basic', max_results: Math.min(Math.max(limit, 1), 5),
           include_answer: false, include_raw_content: false, include_images: false }),
-        signal: AbortSignal.timeout(8_000), cache: 'no-store' });
+        signal: AbortSignal.timeout(3_000), cache: 'no-store' });
     } catch (cause) { throw new SearchProviderError(cause instanceof DOMException && cause.name === 'TimeoutError' ? 'timeout' : 'unavailable'); }
     const parsed = await boundedJson(response);
     const results = parsed && typeof parsed === 'object' && 'results' in parsed ? parsed.results : undefined;
@@ -193,13 +193,17 @@ export async function orchestrateWebSearch(query: string, options: {
   throw new Error('WEB_SEARCH_UNAVAILABLE');
 }
 
-export async function searchWeb(query: string, provider?: WebSearchProvider | null) {
+export async function searchWeb(query: string, provider?: WebSearchProvider | null,
+  options: { providers?: WebSearchProvider[] } = {}) {
   if (provider === null) throw new Error('WEB_SEARCH_UNCONFIGURED');
   if (!query.trim() || query.length > 300 || query.trim().split(/\s+/).length > 50 || unsafeQuery.test(query))
     throw new Error('WEB_SEARCH_INVALID_QUERY');
-  const hits = provider ? await provider.search(query.trim(), 5) : await orchestrateWebSearch(query);
+  let execution: SearchExecution | undefined;
+  const hits = provider ? await provider.search(query.trim(), 5) : await orchestrateWebSearch(query, {
+    providers: options.providers, onExecution: (result) => { execution = result; },
+  });
   if (!hits.length) throw new Error('WEB_SEARCH_EMPTY');
   const text = hits.map((hit, index) => `${index + 1}. ${hit.title}\n${hit.url}\nPublished: ${hit.publishedAt ?? 'unknown'}\nSource: ${hit.source ?? new URL(hit.url).hostname}\n${hit.description}`).join('\n\n');
   return { sourceId: `search:${query.slice(0, 200)}`, name: 'Web search results',
-    mimeType: 'text/markdown' as const, text, hits };
+    mimeType: 'text/markdown' as const, text, hits, ...(execution ? { execution } : {}) };
 }

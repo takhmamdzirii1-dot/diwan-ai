@@ -244,6 +244,114 @@ test('official search evidence survives URL Reader failure and outranks stale se
   assert.doesNotMatch(answer, /20\.20\.0/);
 });
 
+test('exact official Brave evidence does not spend a Tavily fallback request', async () => {
+  let fallbackCalls = 0;
+  const request = 'latest Acme version now';
+  const result = await searchContextForRequest(request, request, {
+    search: async () => ({ sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+      { title: 'Acme downloads', url: 'https://acme.com/downloads', description: 'Current 8.2.0.' },
+    ] }),
+    fallback: async () => { fallbackCalls++; throw new Error('should not search'); },
+    read: async () => { throw new Error('URL_TOO_LARGE'); },
+  });
+  assert.equal(fallbackCalls, 0);
+  assert.equal(result.hits[0].evidenceId, 'S1');
+  assert.equal(result.telemetry.finalEvidenceQuality, 'official_search');
+  assert.equal(result.telemetry.fallbackUsed, false);
+});
+
+test('weak Brave evidence triggers one Tavily request and merged independent corroboration', async () => {
+  const calls: string[] = [];
+  const request = 'latest Acme version now';
+  const result = await searchContextForRequest(request, request, {
+    search: async () => { calls.push('brave'); return { sourceId: 'search:brave', name: 'Results',
+      mimeType: 'text/markdown', text: '', hits: [
+        { title: 'Acme report', url: 'https://first.example/release', description: 'Acme Current 8.2.0.' },
+      ] }; },
+    fallback: async () => { calls.push('tavily'); return { sourceId: 'search:tavily', name: 'Results',
+      mimeType: 'text/markdown', text: '', hits: [
+        { title: 'Acme independent report', url: 'https://second.test/release', description: 'Acme Current 8.2.0.' },
+        { title: 'Duplicate URL', url: 'https://first.example/release', description: 'Acme Current 8.2.0.' },
+      ] }; },
+    read: async () => { throw new Error('unexpected read'); },
+  });
+  assert.deepEqual(calls, ['brave', 'tavily']);
+  assert.equal(result.hits.length, 2);
+  assert.equal(result.telemetry.fallbackResultCount, 2);
+  assert.equal(result.telemetry.finalEvidenceQuality, 'corroborated');
+  assert.match(groundedSearchSummary(result.hits, request), /Two independent sources/);
+});
+
+test('Tavily official evidence outranks a conflicting stale Brave snippet', async () => {
+  const request = 'latest Acme version now';
+  const result = await searchContextForRequest(request, request, {
+    search: async () => ({ sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+      { title: 'Old checker', url: 'https://versions.example/acme',
+        description: 'Acme Current 7.0.0.', publishedAt: '2025-01-01' },
+    ] }),
+    fallback: async () => ({ sourceId: 'search:tavily', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+      { title: 'Acme downloads', url: 'https://acme.com/downloads', description: 'Current 8.2.0.' },
+    ] }),
+    read: async () => { throw new Error('URL_TOO_LARGE'); },
+  });
+  assert.equal(result.telemetry.fallbackUsed, true);
+  assert.equal(result.hits[0].url, 'https://acme.com/downloads');
+  assert.doesNotMatch(result.context, /7\.0\.0/);
+  assert.match(groundedSearchSummary(result.hits, request), /8\.2\.0/);
+});
+
+test('today-dated official news is usable without an artificial version or price claim', async () => {
+  const request = 'latest Acme news today';
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Algiers', year: 'numeric',
+    month: '2-digit', day: '2-digit' }).format(new Date());
+  let fallbackCalls = 0;
+  const result = await searchContextForRequest(request, request, {
+    search: async () => ({ sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+      { title: 'Acme announces new release', url: 'https://acme.com/news/release', publishedAt: today,
+        description: 'Acme announced a new release today with updated features for customers.' },
+    ] }),
+    fallback: async () => { fallbackCalls++; throw new Error('not needed'); },
+    read: async () => { throw new Error('URL_TOO_LARGE'); },
+  });
+  assert.equal(fallbackCalls, 0);
+  assert.equal(result.hits[0].evidenceLevel, 'primary_search');
+  assert.equal(result.evidence.publishedToday, true);
+});
+
+test('Brave and Tavily insufficient evidence remains uncertain after exactly one fallback', async () => {
+  let fallbackCalls = 0;
+  const request = 'latest Acme version now';
+  const result = await searchContextForRequest(request, request, {
+    search: async () => ({ sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '',
+      hits: [{ title: 'Speculation', url: 'https://first.example/story', description: 'Maybe 8.2.0.' }] }),
+    fallback: async () => { fallbackCalls++; return { sourceId: 'search:tavily', name: 'Results',
+      mimeType: 'text/markdown', text: '', hits: [
+        { title: 'Another guess', url: 'https://second.test/story', description: 'No current release number.' },
+      ] }; },
+    read: async () => { throw new Error('unexpected read'); },
+  });
+  assert.equal(fallbackCalls, 1);
+  assert.equal(result.hits.length, 0);
+  assert.equal(result.telemetry.finalEvidenceQuality, 'insufficient');
+  assert.match(groundedSearchSummary(result.hits, request), /could not verify/);
+});
+
+test('fresh answer numbers must belong to a cited retrieved source, not merely another hit', () => {
+  const hits = [
+    { title: 'Acme downloads', url: 'https://acme.com/downloads', description: 'Current 8.2.0.',
+      evidenceLevel: 'primary_search' as const, evidenceId: 'S1' },
+    { title: 'Other product', url: 'https://other.example/release', description: 'Current 99.0.0.',
+      evidenceLevel: 'corroborated' as const, evidenceId: 'S2' },
+  ];
+  const request = 'latest Acme version now';
+  assert.equal(usableSearchSynthesis('Current is 8.2.0. [Acme downloads](https://acme.com/downloads)',
+    hits, request, new Date(), 'en'), true);
+  assert.equal(usableSearchSynthesis('Current is 99.0.0. [Acme downloads](https://acme.com/downloads)',
+    hits, request, new Date(), 'en'), false);
+  assert.equal(usableSearchSynthesis('Current is 99.0.0. [Other product](https://other.example/release)',
+    hits, request, new Date(), 'en'), false);
+});
+
 test('official search fallback is generic for current prices, not tied to a product name', async () => {
   const request = 'What is the current Acme price now?';
   const result = await searchContextForRequest(request, request, {

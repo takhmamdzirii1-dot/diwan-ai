@@ -3,8 +3,9 @@ import { attachConversationFile, attachmentRequestContext } from '@/lib/chat/con
 import { boundedConnectedContent, connectedResourceAttachment } from '@/lib/connected-apps/core';
 import type { WebContextTool } from './selection';
 import { readPublicWebPage } from './url-reader.server';
-import { searchWeb } from './search.server';
-import { freshFactKey, likelyPrimarySource, needsFreshEvidence, rankedEvidence, searchEvidence } from './evidence';
+import { configuredWebSearchProviders, searchWeb, type WebSearchHit } from './search.server';
+import { asksForToday, dedupeSearchHits, freshFactKey, likelyPrimarySource, needsFreshEvidence,
+  rankedEvidence, searchEvidence } from './evidence';
 
 type WebResource = Awaited<ReturnType<typeof readPublicWebPage>>;
 export async function webContextForRequest(tool: WebContextTool, request: string,
@@ -28,13 +29,21 @@ export async function optionalWebContext(query: string, request: string,
   catch { return { status: 'unavailable' as const, context: '' }; }
 }
 
-export async function searchContextForRequest(query: string, request: string,
-  operations: { search: typeof searchWeb; read: typeof readPublicWebPage }
-    = { search: searchWeb, read: readPublicWebPage }) {
-  const resource = await operations.search(query);
-  let hits = resource.hits;
+type SearchOperations = { search: typeof searchWeb; read: typeof readPublicWebPage;
+  fallback?: typeof searchWeb };
+
+function supportsFreshClaim(hit: WebSearchHit, request: string, today: string) {
+  if (freshFactKey(`${hit.title} ${hit.description}`, request)) return true;
+  // News and other non-numeric fresh claims still need a dated, substantive source.
+  const structured = /\b(?:version|release|price|cost|availability|stock|status)\b|(?:إصدار|اصدار|نسخة|سعر|متاح|متوفر)/iu.test(request);
+  return !structured && hit.description.trim().length >= 40
+    && (!asksForToday(request) || hit.publishedAt === today);
+}
+
+async function assessFreshHits(hits: WebSearchHit[], request: string, read: typeof readPublicWebPage) {
+  hits = dedupeSearchHits(hits);
   const diagnosticStages: string[] = [];
-  if (needsFreshEvidence(request)) {
+  {
     const primaryPages = [] as typeof hits;
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Algiers', year: 'numeric',
       month: '2-digit', day: '2-digit' }).format(new Date());
@@ -42,13 +51,13 @@ export async function searchContextForRequest(query: string, request: string,
     diagnosticStages.push(primary.length ? 'primary_candidate_found' : 'no_primary_candidate_found');
     for (const hit of rankedEvidence(primary, request, today).slice(0, 2)) {
       try {
-        const page = await operations.read(hit.url);
+        const page = await read(hit.url);
         if (new URL(page.sourceId).hostname !== new URL(hit.url).hostname) {
           diagnosticStages.push('primary_url_read_failed'); continue;
         }
         diagnosticStages.push('primary_url_read_succeeded');
         const excerpt = boundedConnectedContent(page, request, 2_000);
-        if (!excerpt || excerpt.length < 24 || !freshFactKey(excerpt, request)) continue;
+        if (!excerpt || excerpt.length < 24 || !supportsFreshClaim({ ...hit, description: excerpt }, request, today)) continue;
         primaryPages.push({ ...hit, description: excerpt.slice(0, 500), verifiedPage: true,
           evidenceLevel: 'primary_page' });
       } catch { diagnosticStages.push('primary_url_read_failed'); }
@@ -57,13 +66,15 @@ export async function searchContextForRequest(query: string, request: string,
     else {
       // A failed page extraction does not invalidate a claim-bearing result from its official URL.
       const officialResults = rankedEvidence(primary.filter((hit) =>
-        freshFactKey(`${hit.title} ${hit.description}`, request)), request, today);
+        supportsFreshClaim(hit, request, today)), request, today);
       if (officialResults.length) {
         hits = officialResults.map((hit) => ({ ...hit, evidenceLevel: 'primary_search' as const }));
         diagnosticStages.push('official_search_result_evidence_used');
       } else {
         const byFact = new Map<string, typeof hits>();
         for (const hit of hits.filter((candidate) => !likelyPrimarySource(candidate, request))) {
+          if (hit.publishedAt && Date.parse(hit.publishedAt) < Date.parse(today) - 180 * 86_400_000)
+            continue;
           const key = freshFactKey(`${hit.title} ${hit.description}`, request);
           if (key) byFact.set(key, [...(byFact.get(key) ?? []), hit]);
         }
@@ -85,12 +96,68 @@ export async function searchContextForRequest(query: string, request: string,
         diagnosticStages.push(hits.length ? 'corroborated_secondary_evidence_used' : 'insufficient_evidence');
       }
     }
-    // Stage names only: never log the query, URLs, page text, credentials, or user content.
-    console.info('WEB_EVIDENCE_STAGE', { stages: diagnosticStages });
   }
+  return { hits, diagnosticStages };
+}
+
+export async function searchContextForRequest(query: string, request: string,
+  operations?: SearchOperations) {
+  const active = operations ?? { search: searchWeb, read: readPublicWebPage,
+    fallback: ((fallbackQuery: string) => searchWeb(fallbackQuery, undefined, {
+      providers: configuredWebSearchProviders().filter((provider) => provider.id === 'tavily'),
+    })) as typeof searchWeb };
+  const resource = await active.search(query);
+  let candidates = dedupeSearchHits(resource.hits);
+  let hits = candidates;
+  let diagnosticStages: string[] = [];
+  const technicalFallback = resource.execution?.fallbackUsed ?? false;
+  let fallbackUsed = technicalFallback;
+  let fallbackResultCount = technicalFallback ? resource.hits.length : 0;
+  const fresh = needsFreshEvidence(request);
+  if (fresh) {
+    ({ hits, diagnosticStages } = await assessFreshHits(candidates, request, active.read));
+  } else hits = rankedEvidence(candidates.filter((hit) => hit.description.trim().length >= 24), request,
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Algiers', year: 'numeric', month: '2-digit',
+      day: '2-digit' }).format(new Date()));
+  const initialQuality = !hits.length ? 'insufficient' : hits[0].evidenceLevel === 'primary_page'
+    ? 'primary_page' : hits[0].evidenceLevel === 'primary_search' ? 'official_search'
+      : hits[0].evidenceLevel === 'corroborated' ? 'corroborated' : 'search_results';
+  // A successful Brave transport is not a successful evidence search. One Tavily attempt
+  // is allowed only if Brave evidence is insufficient and Tavily was not already used.
+  if (!hits.length && active.fallback && resource.execution?.providerUsed !== 'tavily' && !fallbackUsed) {
+    fallbackUsed = true;
+    try {
+      const fallback = await active.fallback(query);
+      fallbackResultCount = fallback.hits.length;
+      candidates = dedupeSearchHits([...candidates, ...fallback.hits]);
+      if (fresh) {
+        const second = await assessFreshHits(candidates, request, active.read);
+        hits = second.hits;
+        diagnosticStages.push(...second.diagnosticStages);
+      } else hits = rankedEvidence(candidates.filter((hit) => hit.description.trim().length >= 24), request,
+        new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Algiers', year: 'numeric', month: '2-digit',
+          day: '2-digit' }).format(new Date()));
+    } catch { diagnosticStages.push('fallback_unavailable'); }
+  }
+  hits = hits.map((hit, index) => ({ ...hit, evidenceId: `S${index + 1}` }));
+  const quality = !hits.length ? 'insufficient' : hits[0].evidenceLevel === 'primary_page'
+    ? 'primary_page' : hits[0].evidenceLevel === 'primary_search' ? 'official_search'
+      : hits[0].evidenceLevel === 'corroborated' ? 'corroborated' : 'search_results';
+  const telemetry = { searchTriggered: true,
+    primaryProvider: resource.execution?.providerAttempted[0] ?? 'brave',
+    primaryResultCount: technicalFallback ? 0 : resource.hits.length,
+    evidenceQuality: initialQuality, evidenceSufficient: hits.length > 0,
+    fallbackUsed, fallbackProvider: fallbackUsed ? 'tavily' : null, fallbackResultCount,
+    officialEvidenceUsed: quality === 'primary_page' || quality === 'official_search',
+    urlReadOutcome: diagnosticStages.includes('primary_url_read_succeeded') ? 'succeeded'
+      : diagnosticStages.includes('primary_url_read_failed') ? 'failed' : 'not_attempted',
+    finalEvidenceQuality: quality, citationsCount: null as number | null,
+    citationCandidatesCount: Math.min(hits.length, 3) };
+  // Metadata only: never log query, URLs, source text, credentials, or user content.
+  console.info('WEB_EVIDENCE_EXECUTION', telemetry);
   const evidence = searchEvidence(hits, request);
   const evidenceText = hits.length ? evidence.text : 'No sufficiently supported current fact could be verified. Do not guess a value.';
   const context = await webContextForRequest({ kind: 'web_search', query }, request,
-    { read: operations.read, search: async () => ({ ...resource, text: evidenceText }) });
-  return { context, hits, evidence, diagnosticStages };
+    { read: active.read, search: async () => ({ ...resource, text: evidenceText }) });
+  return { context, hits, evidence, diagnosticStages, telemetry };
 }

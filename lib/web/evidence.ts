@@ -47,6 +47,20 @@ function evidenceStrength(hit: WebSearchHit) {
     : hit.evidenceLevel === 'primary_search' ? 2 : hit.evidenceLevel === 'corroborated' ? 1 : 0;
 }
 
+/** Dedupe equivalent URLs; preserve the first provider's evidence unless its excerpt is empty. */
+export function dedupeSearchHits(hits: readonly WebSearchHit[]) {
+  const unique = new Map<string, WebSearchHit>();
+  for (const hit of hits) {
+    const url = safeUrl(hit.url);
+    if (!url) continue;
+    const key = new URL(url); key.hash = ''; key.search = '';
+    const existing = unique.get(key.toString());
+    if (!existing || (!existing.description.trim() && hit.description.trim()))
+      unique.set(key.toString(), hit);
+  }
+  return [...unique.values()].slice(0, 10);
+}
+
 function factText(hit: WebSearchHit) {
   return hit.evidenceLevel === 'primary_search' ? `${hit.title} ${hit.description}` : hit.description;
 }
@@ -61,17 +75,22 @@ export function rankedEvidence(hits: readonly WebSearchHit[], request: string, t
   const candidates = asksForToday(request) && valid.some((hit) => hit.publishedAt === today)
     ? valid.filter((hit) => hit.publishedAt === today) : valid;
   return candidates.map((hit, index) => ({ hit, index })).sort((a, b) => {
-    const strength = evidenceStrength(b.hit) - evidenceStrength(a.hit);
-    if (strength) return strength;
-    const primary = Number(likelyPrimarySource(b.hit, request)) - Number(likelyPrimarySource(a.hit, request));
-    if (primary) return primary;
-    if (needsFreshEvidence(request)) {
-      const evergreen = Number(evergreenSource(b.hit)) - Number(evergreenSource(a.hit));
-      if (evergreen) return evergreen;
-    }
+    const quality = evidenceScore(b.hit, request, today) - evidenceScore(a.hit, request, today);
+    if (quality) return quality;
     const dated = (b.hit.publishedAt ?? '').localeCompare(a.hit.publishedAt ?? '');
     return dated || a.index - b.index;
   }).map(({ hit }) => hit).slice(0, 3);
+}
+
+/** Relative quality only; it never converts a weak source into a verified claim. */
+export function evidenceScore(hit: WebSearchHit, request: string, today: string) {
+  let score = evidenceStrength(hit) * 30 + (likelyPrimarySource(hit, request) ? 15 : 0);
+  if (freshFactKey(`${hit.title} ${hit.description}`, request)) score += 8;
+  if (needsFreshEvidence(request) && evergreenSource(hit)) score += 6;
+  if (hit.publishedAt === today) score += 5;
+  else if (hit.publishedAt && Date.parse(hit.publishedAt) < Date.parse(today) - 180 * 86_400_000) score -= 5;
+  if (hit.description.trim().length < 24) score -= 8;
+  return score;
 }
 
 function safeClaim(hit: WebSearchHit) {
@@ -92,7 +111,7 @@ export function searchEvidence(hits: readonly WebSearchHit[], request: string, n
     const basis = hit.evidenceLevel === 'primary_search' ? 'Official search-result evidence'
       : hit.evidenceLevel === 'corroborated' ? 'Corroborated independent source'
         : hit.verifiedPage || hit.evidenceLevel === 'primary_page' ? 'Verified primary page' : 'Search excerpt';
-    return [`${index + 1}. ${plainExcerpt(hit.title, 180)}\nURL: ${url}\nPublished: ${hit.publishedAt ?? 'unknown'}\nSource: ${new URL(url).hostname}\n${basis}: ${plainExcerpt(hit.description, 500)}`];
+    return [`${hit.evidenceId ?? `S${index + 1}`}. ${plainExcerpt(hit.title, 180)}\nURL: ${url}\nPublished: ${hit.publishedAt ?? 'unknown'}\nSource: ${new URL(url).hostname}\n${basis}: ${plainExcerpt(hit.description, 500)}`];
   });
   const notice = todayRequested && !publishedToday
     ? `No retrieved source has a verified publication date of ${today}. Do not present older or undated results as today's news.`
@@ -234,7 +253,8 @@ export function usableSearchSynthesis(answer: string, hits: readonly WebSearchHi
   if (hits.some((hit) => likelyPrimarySource(hit, request))
     && !citations.some(([, , url]) => hits.some((hit) => safeUrl(hit.url) === safeUrl(url)
       && likelyPrimarySource(hit, request)))) return false;
-  const allowedNumbers = new Set(hits.flatMap((hit) => `${needsFreshEvidence(request) && hit.evidenceLevel !== 'primary_search' ? '' : hit.title} ${hit.description} ${hit.publishedAt ?? ''}`.match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []));
+  const citedHits = hits.filter((hit) => citations.some(([, , url]) => safeUrl(hit.url) === safeUrl(url)));
+  const allowedNumbers = new Set(citedHits.flatMap((hit) => `${needsFreshEvidence(request) && hit.evidenceLevel !== 'primary_search' ? '' : hit.title} ${hit.description} ${hit.publishedAt ?? ''}`.match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []));
   if ((withoutLinks.match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []).some((value) => !allowedNumbers.has(value))) return false;
   if (needsFreshEvidence(request) && /\bversion\b|(?:إصدار|اصدار|نسخة)/iu.test(request)) {
     const current = rankedEvidence(hits, request, localDate(now))
@@ -259,9 +279,15 @@ export async function guardSearchDataStream(response: Response, hits: readonly W
     try { const text = JSON.parse(line.slice(2)); return typeof text === 'string' ? [text] : []; }
     catch { return []; }
   }).join('');
-  if (usableSearchSynthesis(modelAnswer, hits, request, now, locale))
+  if (usableSearchSynthesis(modelAnswer, hits, request, now, locale)) {
+    console.info('WEB_SEARCH_ANSWER', { citationsCount: [...modelAnswer.matchAll(/\]\(https:\/\//g)].length,
+      synthesisAccepted: true });
     return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers });
-  const replacement = `0:${JSON.stringify(groundedSearchSummary(hits, request, now, locale))}`;
+  }
+  const fallbackAnswer = groundedSearchSummary(hits, request, now, locale);
+  console.info('WEB_SEARCH_ANSWER', { citationsCount: [...fallbackAnswer.matchAll(/\]\(https:\/\//g)].length,
+    synthesisAccepted: false });
+  const replacement = `0:${JSON.stringify(fallbackAnswer)}`;
   const next: string[] = []; let inserted = false;
   for (const line of lines) {
     if (line.startsWith('0:')) { if (!inserted) { next.push(replacement); inserted = true; } continue; }
