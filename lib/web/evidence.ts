@@ -823,16 +823,9 @@ export function usableSearchSynthesis(answer: string, hits: readonly WebSearchHi
   return searchSynthesisRejectionReason(answer, hits, request, now, language) === null;
 }
 
-/** Keep the existing model's grounded synthesis; fail closed to a localized sourced answer. */
-export async function guardSearchDataStream(response: Response, hits: readonly WebSearchHit[], request: string,
-  now = new Date(), locale: ResponseLanguage = 'en'): Promise<Response> {
-  const body = await response.text();
-  const lines = body.split('\n').filter(Boolean);
-  const modelAnswer = lines.flatMap((line) => {
-    if (!line.startsWith('0:')) return [];
-    try { const text = JSON.parse(line.slice(2)); return typeof text === 'string' ? [text] : []; }
-    catch { return []; }
-  }).join('');
+/** One completion contract for Jobs metadata and both search entry points. */
+export function evaluateSearchSynthesis(modelAnswer: string, hits: readonly WebSearchHit[], request: string,
+  now = new Date(), locale: ResponseLanguage = 'en') {
   const rejectionReason = searchSynthesisRejectionReason(modelAnswer, hits, request, now, locale);
   const withoutFormattingEntities = formattingSpaces(modelAnswer);
   const normalizedAnswer = rejectionReason === 'raw_results'
@@ -845,9 +838,69 @@ export async function guardSearchDataStream(response: Response, hits: readonly W
   const rendered = accepted && evidenceModeForRequest(request) !== 'structured_fact'
     ? renderNarrativeSourceCitations(selected, hits, locale) : selected;
   const answer = accepted && rendered !== null ? rendered : groundedSearchSummary(hits, request, now, locale);
-  console.info('WEB_SEARCH_ANSWER', { citationsCount: [...answer.matchAll(/\]\(https:\/\//g)].length,
-    synthesisAccepted: accepted && rendered !== null,
-    ...(normalizedAccepted ? { normalized: true } : accepted ? {} : { rejectionReason }) });
+  return { answer, synthesisAccepted: accepted && rendered !== null,
+    synthesisRejectionReason: accepted && rendered !== null ? null : rejectionReason ?? 'unsupported_url',
+    citationsCount: [...answer.matchAll(/\]\(https:\/\//g)].length, normalized: normalizedAccepted };
+}
+
+/** Resolve lazy evidence after tool execution, not before the SDK starts streaming. */
+export async function guardSearchDataStream(response: Response,
+  evidence: readonly WebSearchHit[] | (() => readonly WebSearchHit[] | null), request: string,
+  now = new Date(), locale: ResponseLanguage = 'en'): Promise<Response> {
+  if (typeof evidence === 'function' && evidence() === null && response.body) {
+    // Ordinary optional Chat stays streaming. Only the continuation after a
+    // web_search call is held for verification; artifact/tool frames are retained.
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder(); const encoder = new TextEncoder();
+    let buffering = false; let partial = ''; const held: string[] = [];
+    const body = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        const line = (value: string) => {
+          if (!buffering && value.startsWith('9:')) {
+            try { buffering = JSON.parse(value.slice(2)).toolName === 'web_search'; } catch { /* keep SDK frame */ }
+          }
+          if (buffering) held.push(value);
+          else controller.enqueue(encoder.encode(`${value}\n`));
+        };
+        try {
+          while (true) {
+            const next = await reader.read();
+            partial += next.done ? decoder.decode() : decoder.decode(next.value, { stream: true });
+            const lines = partial.split('\n'); partial = lines.pop() ?? '';
+            for (const value of lines) if (value) line(value);
+            if (next.done) break;
+          }
+          if (partial) line(partial);
+          if (buffering) {
+            const guarded = await guardSearchDataStream(new Response(`${held.join('\n')}\n`),
+              evidence() ?? [], request, now, locale);
+            controller.enqueue(encoder.encode(await guarded.text()));
+          }
+          controller.close();
+        } catch (cause) { controller.error(cause); }
+        finally { reader.releaseLock(); }
+      },
+      cancel: (reason) => reader.cancel(reason),
+    });
+    const headers = new Headers(response.headers); headers.delete('content-length');
+    return new Response(body, { status: response.status, statusText: response.statusText, headers });
+  }
+  const body = await response.text();
+  const hits = typeof evidence === 'function' ? evidence() : evidence;
+  if (hits === null) return new Response(body, { status: response.status,
+    statusText: response.statusText, headers: response.headers });
+  const lines = body.split('\n').filter(Boolean);
+  const modelAnswer = lines.flatMap((line) => {
+    if (!line.startsWith('0:')) return [];
+    try { const text = JSON.parse(line.slice(2)); return typeof text === 'string' ? [text] : []; }
+    catch { return []; }
+  }).join('');
+  const outcome = evaluateSearchSynthesis(modelAnswer, hits, request, now, locale);
+  const { answer } = outcome;
+  console.info('WEB_SEARCH_ANSWER', { citationsCount: outcome.citationsCount,
+    synthesisAccepted: outcome.synthesisAccepted,
+    ...(outcome.normalized ? { normalized: true } : {}),
+    ...(outcome.synthesisRejectionReason ? { rejectionReason: outcome.synthesisRejectionReason } : {}) });
   if (answer === modelAnswer) return new Response(body, { status: response.status,
     statusText: response.statusText, headers: response.headers });
   const replacement = `0:${JSON.stringify(answer)}`;

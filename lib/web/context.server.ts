@@ -22,14 +22,16 @@ export async function webContextForRequest(tool: WebContextTool, request: string
   return context;
 }
 
-/** Optional model-invoked search must not turn a normal Chat into a hard failure. */
+/** Compatibility wrapper; optional and required search use the same evidence resolver. */
 export async function optionalWebContext(query: string, request: string,
-  search: (query: string) => Promise<WebResource> = searchWeb,
+  search: (query: string) => ReturnType<typeof searchWeb> = searchWeb,
   onExecution?: (execution: SearchExecution) => void) {
-  try { return { status: 'ok' as const, context: await webContextForRequest(
-    { kind: 'web_search', query }, request, { read: readPublicWebPage,
+  try {
+    const result = await searchContextForRequest(query, request, { read: readPublicWebPage,
       search: search === searchWeb && onExecution
-        ? (value) => searchWeb(value, undefined, { onExecution }) : search }) }; }
+        ? (value) => searchWeb(value, undefined, { onExecution }) : search });
+    return { status: result.hits.length ? 'ok' as const : 'unavailable' as const, context: result.context };
+  }
   catch { return { status: 'unavailable' as const, context: '' }; }
 }
 

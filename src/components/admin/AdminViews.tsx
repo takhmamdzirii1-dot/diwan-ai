@@ -570,12 +570,16 @@ function AdminUserDetail({ user, onClose, onStatusChanged, onCreditChanged }: {
 }
 
 function WebSearchJobDetails({ search }: { search: AdminJobRow['webSearch'] }) {
-  if (!search || (!search.triggered && search.urlReadCount === 0)) return null;
+  if (!search || (!search.triggered && search.urlReadCount === 0 && !search.decision)) return null;
   const provider = (value: string | null) => value ? value[0].toUpperCase() + value.slice(1) : '—';
+  const recordedFlag = (value: boolean | null) => value === null ? 'Not recorded' : value ? 'Yes' : 'No';
   return <section className="mt-5 border-t border-[var(--studio-border-subtle)] pt-4">
     <h3 className="mb-2 text-[12px] font-semibold text-white">Web Search</h3>
     <div className="grid gap-x-5 sm:grid-cols-2">
       <WorkspaceField label="Triggered">{search.triggered ? 'Yes' : 'No'}</WorkspaceField>
+      <WorkspaceField label="Decision">{search.decision ? humanizeIdentifier(search.decision) : 'Not recorded'}</WorkspaceField>
+      <WorkspaceField label="Search tool exposed">{recordedFlag(search.toolExposed)}</WorkspaceField>
+      <WorkspaceField label="Search tool called">{recordedFlag(search.toolCalled)}</WorkspaceField>
       <WorkspaceField label="API requests">{search.apiRequestCount ?? 'Not recorded'}</WorkspaceField>
       {search.triggered && <><WorkspaceField label="Primary">{provider(search.primaryProvider)}</WorkspaceField>
         <WorkspaceField label="Provider used">{provider(search.providerUsed)}</WorkspaceField>
@@ -585,6 +589,9 @@ function WebSearchJobDetails({ search }: { search: AdminJobRow['webSearch'] }) {
         <WorkspaceField label="Results">{search.resultCount ?? '—'}</WorkspaceField>
         <WorkspaceField label="Latency">{search.latencyMs == null ? '—' : `${search.latencyMs} ms`}</WorkspaceField>
         <WorkspaceField label="Evidence">{search.evidenceMode ?? '—'}</WorkspaceField>
+        <WorkspaceField label="Evidence sufficient">{recordedFlag(search.evidenceSufficient)}</WorkspaceField>
+        <WorkspaceField label="Synthesis accepted">{recordedFlag(search.synthesisAccepted)}</WorkspaceField>
+        {search.synthesisRejectionReason && <WorkspaceField label="Synthesis rejection">{humanizeIdentifier(search.synthesisRejectionReason)}</WorkspaceField>}
         <WorkspaceField label="Assessment">{search.assessmentReason ?? '—'}</WorkspaceField>
         <WorkspaceField label="Selected">{search.selectedEvidenceCount == null ? '—' : `${search.selectedEvidenceCount} sources`}</WorkspaceField></>}
     </div>

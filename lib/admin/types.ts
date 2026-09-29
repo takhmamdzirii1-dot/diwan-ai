@@ -208,6 +208,8 @@ export type AdminJobRow = {
   attempts: { provider: string; state: string; error: string | null; operationId: string | null; startedAt: string; finishedAt: string | null }[];
   usageMetadata: Record<string, unknown> | null;
   webSearch: {
+    decision: string | null; toolExposed: boolean | null; toolCalled: boolean | null;
+    evidenceSufficient: boolean | null; synthesisAccepted: boolean | null; synthesisRejectionReason: string | null;
     triggered: boolean; apiRequestCount: number | null; primaryProvider: string | null;
     providerUsed: string | null; fallbackUsed: boolean; fallbackProvider: string | null;
     fallbackReason: string | null; resultCount: number | null; latencyMs: number | null;

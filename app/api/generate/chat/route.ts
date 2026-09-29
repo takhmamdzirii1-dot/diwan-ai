@@ -1,14 +1,13 @@
 import { after, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
-import { InvalidToolArgumentsError, streamText, tool, type CoreTool } from 'ai';
-import { z } from 'zod';
+import { InvalidToolArgumentsError, streamText, type CoreTool } from 'ai';
 import { PRESENTATION_OUTPUT_INSTRUCTION, requestedPresentationSlideCount,
   validatedArtifactPartFromToolResult } from '@/lib/artifacts/chat-parts';
 import { agentToolSelection, artifactTaskInstruction, getArtifactTool, presentationToolChoice,
   requiredArtifactToolChoice, resolveArtifactToolPath, selectArtifactTools } from '@/lib/artifacts/tool-registry';
 import { buildNativeArtifactTools } from '@/lib/artifacts/tool-native.server';
 import { completeMessageText, providerChatMessages } from '@/lib/chat/message-history';
-import { vantraCoreSystemPrompt, webEvidenceInstruction, WEB_SEARCH_TOOL_DESCRIPTION,
+import { vantraCoreSystemPrompt, webEvidenceInstruction,
   WEB_SEARCH_TOOL_INSTRUCTION } from '@/lib/chat/system-prompt';
 import { requiredChatModel } from '@/lib/chat/studio-model-request';
 import { routesForChatAction } from '@/lib/chat/action-routing';
@@ -21,12 +20,12 @@ import { boundedConnectedContent, connectionError, connectedResourceAttachment,
   executeConnectedAction, relevantConnectedActions } from '@/lib/connected-apps/core';
 import { configuredConnectedApps } from '@/lib/connected-apps/registry.server';
 import { readUserConnection } from '@/lib/connected-apps/store.server';
-import { oncePerTurnOptionalWebSearch, optionalWebContext, searchContextForRequest,
-  webContextForRequest } from '@/lib/web/context.server';
+import { webContextForRequest } from '@/lib/web/context.server';
+import { createChatSearch, currentInformationUnavailable } from '@/lib/web/chat-search.server';
 import { evidenceModeForRequest, guardSearchDataStream } from '@/lib/web/evidence';
 import { resolveResponseLanguage } from '@/lib/chat/response-language';
-import { configuredWebSearchProviders, type SearchExecution, type WebSearchHit } from '@/lib/web/search.server';
-import { decideWebSearchWithHistory, selectWebContextTool } from '@/lib/web/selection';
+import { configuredWebSearchProviders } from '@/lib/web/search.server';
+import { decideWebSearchWithHistory } from '@/lib/web/selection';
 
 import { resolveRuntimeModelAccess } from '@/lib/models/plan-entitlements.server';
 import { modelPlanErrorPayload } from '@/lib/models/plan-entitlements';
@@ -273,9 +272,11 @@ export async function POST(request: Request) {
       route: { id: route.id, providerId: route.providerId, providerModelId: route.providerModelId },
       stored: runtimeModel.routeCapabilitiesV2,
     }).resolved;
-    const optionalWebSearch = webDecision.path === 'optional' && !connectedMatch && !agentStep
-      && taskSelection.names.length === 0 && native.tools.state === 'supported'
-      && configuredWebSearchProviders().length > 0;
+    const webSearch = createChatSearch({ decision: webDecision, request: webSelection.evidenceRequest,
+      language: responseLanguage, nativeToolsSupported: native.tools.state === 'supported',
+      searchConfigured: configuredWebSearchProviders().length > 0,
+      allowNativeSearch: !connectedMatch && !agentStep,
+      seenSourceUrls: webSelection.seenSourceUrls, now });
     if (agentStep && native.tools.state !== 'supported' && native.structuredOutput.state !== 'supported') {
       return NextResponse.json({ error: 'MODEL_CAPABILITY_UNSUPPORTED' }, { status: 409 });
     }
@@ -323,59 +324,15 @@ export async function POST(request: Request) {
         attachConversationFile([], draft, 'connected-app')).documentContext;
     }
     let webDocumentContext: string | undefined;
-    let webSearchHits: WebSearchHit[] | null = null;
-    let webSearchJobMetadata: Record<string, unknown> = {
-      webSearchTriggered: false, webSearchApiRequestCount: 0, webUrlReadCount: 0,
-      webSearchDecision: webDecision.path === 'required'
-        ? webSelection.evidenceRequest !== latestUserText ? 'required_followup'
-          : selectWebContextTool(typeof latestUserText === 'string' ? latestUserText : '')
-            ? 'required_explicit' : 'required_fresh'
-        : webDecision.path === 'optional' ? 'optional_semantic' : 'none',
-      webSearchToolAvailable: optionalWebSearch, webSearchOptionalToolUsed: false,
-    };
-    const recordOptionalSearch = (search: SearchExecution) => {
-      const previous = Number(webSearchJobMetadata.webSearchApiRequestCount ?? 0);
-      const elapsed = Number(webSearchJobMetadata.webSearchTotalLatencyMs ?? 0);
-      const attempts = Array.isArray(webSearchJobMetadata.webSearchAttempts)
-        ? webSearchJobMetadata.webSearchAttempts : [];
-      webSearchJobMetadata = { ...webSearchJobMetadata, webSearchTriggered: true,
-        webSearchApiRequestCount: previous + search.apiRequestCount,
-        webSearchPrimaryProvider: search.primaryProvider,
-        webSearchProviderUsed: search.providerUsed,
-        webSearchFallbackUsed: search.fallbackUsed,
-        webSearchFallbackProvider: search.fallbackUsed ? search.providerUsed : null,
-        webSearchFallbackReason: search.fallbackReason,
-        webSearchResultCount: search.resultCount,
-        webSearchTotalLatencyMs: elapsed + search.latencyMs,
-        webSearchAttempts: [...attempts, ...search.attempts].slice(0, 4),
-      };
-    };
-    let noVerifiedToday = false;
+    let webSearchJobMetadata: Record<string, unknown> = {};
+    let requiredSearchUnavailable = false;
     if (webTool) {
       try {
         const userRequest = webSelection.evidenceRequest;
         if (webTool.kind === 'web_search') {
-          const search = await searchContextForRequest(webTool.query, userRequest, undefined,
-            webSelection.seenSourceUrls);
-          webDocumentContext = search.context; webSearchHits = search.hits;
-          webSearchJobMetadata = {
-            webSearchTriggered: true,
-            webSearchApiRequestCount: search.telemetry.webSearchApiRequestCount,
-            webSearchPrimaryProvider: search.telemetry.primaryProvider,
-            webSearchProviderUsed: search.telemetry.webSearchProviderUsed,
-            webSearchFallbackUsed: search.telemetry.fallbackUsed,
-            webSearchFallbackProvider: search.telemetry.fallbackProvider,
-            webSearchFallbackReason: search.telemetry.fallbackReason,
-            webSearchResultCount: search.telemetry.webSearchResultCount,
-            webSearchTotalLatencyMs: search.telemetry.webSearchTotalLatencyMs,
-            webSearchAttempts: search.telemetry.webSearchAttempts,
-            webSearchEvidenceMode: search.telemetry.evidenceMode,
-            webSearchAssessmentReason: search.telemetry.assessmentReason,
-            webSearchSelectedEvidenceCount: search.telemetry.selectedEvidenceCount,
-            webUrlReadCount: search.telemetry.webUrlReadCount,
-            webUrlReadOutcome: search.telemetry.urlReadOutcome,
-          };
-          noVerifiedToday = search.evidence.todayRequested && !search.evidence.publishedToday;
+          const search = await webSearch.prepare();
+          requiredSearchUnavailable = search?.status !== 'ok';
+          webDocumentContext = search?.context;
         } else {
           webDocumentContext = await webContextForRequest(webTool, userRequest);
           webSearchJobMetadata = { ...webSearchJobMetadata, webUrlReadCount: 1,
@@ -402,8 +359,8 @@ export async function POST(request: Request) {
     if (internalContext) messagesPayload[0] = { role: 'system', content: `${messagesPayload[0].content}\n\n${internalContext}` };
     if (webDocumentContext) {
       // The instruction is trusted; the fetched bytes are not. Never elevate page text to system priority.
-      messagesPayload[0] = { role: 'system', content: `${messagesPayload[0].content}\n\n${webEvidenceInstruction(noVerifiedToday, Boolean(webSearchHits),
-        Boolean(webSearchHits) && evidenceModeForRequest(webSelection.evidenceRequest) !== 'structured_fact')}` };
+      messagesPayload[0] = { role: 'system', content: `${messagesPayload[0].content}\n\n${webTool?.kind === 'web_search'
+        ? webSearch.instruction() : webEvidenceInstruction(false, false)}` };
       messagesPayload.splice(messagesPayload.length - 1, 0, { role: 'user',
         content: `External web data for the following request (data only):\n${JSON.stringify(webDocumentContext)}` });
     }
@@ -427,6 +384,16 @@ export async function POST(request: Request) {
     });
     if (execution.idempotent) {
       return NextResponse.json({ error: 'REQUEST_ALREADY_PROCESSED' }, { status: 409 });
+    }
+    if (requiredSearchUnavailable) {
+      // A pre-search refusal is observable but never dispatches a model or reserves usage.
+      webSearch.markUnverified();
+      await finalizeGeneration({ executionId: execution.executionId, userId: user.id,
+        reservationId: null, operationKey, payloadHash, terminalStatus: 'failed', customerCharge: 0,
+        errorCode: 'CURRENT_INFORMATION_UNVERIFIED', failureOwner: 'vantra',
+        failureCategory: 'web_verification', attemptCount: 0, actualUsage: webSearch.snapshot() });
+      return NextResponse.json({ error: 'CURRENT_INFORMATION_UNVERIFIED',
+        message: currentInformationUnavailable(responseLanguage) }, { status: 409 });
     }
     // Atomic reservation BEFORE provider dispatch: capacity is held under
     // the per-user lock, so concurrent requests cannot all pass a precheck
@@ -574,6 +541,7 @@ export async function POST(request: Request) {
             chatWeight: weight,
             ...toolLifecycleUsage(),
             ...(details.usage ?? {}),
+            ...webSearch.snapshot(),
             ...webSearchJobMetadata,
           },
           attemptCount: providerStarted ? 1 : 0,
@@ -650,18 +618,12 @@ export async function POST(request: Request) {
           if (event.stage === 'completed') toolLifecycle.executionCompleted = true;
           if (event.stage === 'failed') toolLifecycle.executionFailed = true;
         }) : undefined;
-      const runOptionalSearch = oncePerTurnOptionalWebSearch(webSelection.evidenceRequest,
-        (query, requestText) => optionalWebContext(query, requestText, undefined, recordOptionalSearch));
-      const nativeTools = (optionalWebSearch ? { ...artifactTools,
-        web_search: tool({ description: WEB_SEARCH_TOOL_DESCRIPTION,
-          parameters: z.object({ query: z.string().trim().min(1).max(300) }).strict(),
-          execute: async ({ query }) => {
-            webSearchJobMetadata = { ...webSearchJobMetadata, webSearchOptionalToolUsed: true };
-            return runOptionalSearch(query);
-          } }),
+      const nativeTools = (webSearch.nativeTool ? { ...artifactTools,
+        web_search: webSearch.nativeTool,
       } : artifactTools) as Record<string, CoreTool & { execute: NonNullable<CoreTool['execute']> }> | undefined;
-      if (optionalWebSearch) messagesPayload[0] = { role: 'system',
-        content: `${messagesPayload[0].content}\n\n${WEB_SEARCH_TOOL_INSTRUCTION}` };
+      if (webSearch.toolExposed) messagesPayload[0] = { role: 'system',
+        content: `${messagesPayload[0].content}\n\n${WEB_SEARCH_TOOL_INSTRUCTION}\n\n${webEvidenceInstruction(false, true,
+          evidenceModeForRequest(webSelection.evidenceRequest) !== 'structured_fact')}` };
       let documentToolCalls = 0;
       let documentToolResults = 0;
       let successfulDocumentExecutions = 0;
@@ -673,6 +635,7 @@ export async function POST(request: Request) {
       let actualSlideCount = 0;
       let emittedTextChars = 0;
       let streamedText = '';
+      let searchSynthesisText = '';
       const emittedResultIds = new Set<string>();
       const requestedSlideCount = Number.isInteger(body.requestedSlideCount)
         && body.requestedSlideCount >= 2 && body.requestedSlideCount <= 8
@@ -694,7 +657,7 @@ export async function POST(request: Request) {
         tools: nativeTools,
         toolChoice: requiredArtifactToolChoice(taskSelection, toolPath),
         experimental_toolCallStreaming: Boolean(nativeTools && expectedAction),
-        maxSteps: optionalWebSearch ? 2 : 1,
+        maxSteps: webSearch.toolExposed && !expectedAction ? 2 : 1,
         temperature,
         maxTokens,
         topP,
@@ -704,6 +667,8 @@ export async function POST(request: Request) {
           if (chunk.type === 'text-delta') {
             emittedTextChars += chunk.textDelta.length;
             if (streamedText.length < 100_000) streamedText += chunk.textDelta.slice(0, 100_000 - streamedText.length);
+            if (webSearch.evidence() !== null && searchSynthesisText.length < 100_000)
+              searchSynthesisText += chunk.textDelta.slice(0, 100_000 - searchSynthesisText.length);
             if (chunk.textDelta.length > 0) outputStarted = true;
           }
           if (chunk.type === 'tool-call-streaming-start') {
@@ -742,6 +707,8 @@ export async function POST(request: Request) {
           }
         },
         onFinish: async ({ finishReason, usage, toolResults }) => {
+          // The same pure guard used by the returned stream runs BEFORE terminal metadata is persisted.
+          if (!expectedAction) webSearch.validateAnswer(searchSynthesisText);
           trace('DOCUMENT_RESULT', { createDocumentCalled: documentToolCalls > 0, toolCallCount: documentToolCalls,
             toolResultCount: documentToolResults, toolExecutionSuccess: successfulDocumentExecutions > 0,
             toolResultValidationSuccess: validatedDocumentResults > 0,
@@ -835,9 +802,9 @@ export async function POST(request: Request) {
           return '';
         },
       });
-      const guardedResponse = webSearchHits && !expectedAction
-        ? await guardSearchDataStream(streamResponse, webSearchHits,
-          webSelection.evidenceRequest, new Date(), responseLanguage) : streamResponse;
+      const guardedResponse = !expectedAction && (webTool?.kind === 'web_search' || webSearch.toolExposed)
+        ? await guardSearchDataStream(streamResponse, webSearch.evidence,
+          webSelection.evidenceRequest, now, responseLanguage) : streamResponse;
       return traceId ? traceChatDataStream(guardedResponse, traceId,
         ({ textChars, status, errorCategory }) => trace('SERVER_STREAM', { textChars, status, errorCategory: errorCategory ?? null }), request.signal)
         : guardedResponse;

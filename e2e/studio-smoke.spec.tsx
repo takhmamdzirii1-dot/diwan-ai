@@ -5,7 +5,7 @@ import { attachSafeBrowserErrors, productsXlsx, trackSafeBrowserErrors } from '.
 
 const fixtureMarkup = JSON.parse(execFileSync(process.execPath,
   ['--import', 'tsx', 'e2e/render-fixtures.tsx'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })) as {
-    bubble: string; bidi: string; pending: string; sent: string; file: string;
+    bubble: string; bidi: string; pending: string; sent: string; file: string; search: string;
   };
 
 test.beforeEach(async ({ page }) => trackSafeBrowserErrors(page));
@@ -93,6 +93,17 @@ test('@smoke generated text file renders a download action without raw tool JSON
   await expect(result.locator('time')).toBeVisible();
   await expect(result).not.toContainText('schemaVersion');
   await expect(result.getByRole('button', { name: 'Retry response' })).toHaveCount(0);
+});
+
+test('@smoke grounded Arabic search renders direct text and server-owned links without source tokens', async ({ page }) => {
+  await page.goto('/en', { waitUntil: 'networkidle' });
+  await page.evaluate((html) => { document.body.insertAdjacentHTML('beforeend', `<div id="e2e-fixture">${html}</div>`); }, fixtureMarkup.search);
+  const result = page.locator('#e2e-fixture');
+  await expect(result).toContainText('تضم النماذج الحالية');
+  await expect(result.locator('a')).toHaveAttribute('href', 'https://openai.com/models');
+  await expect(result).not.toContainText('[[source:');
+  await expect(result).not.toContainText('&#x20;');
+  await expect(result.locator('[data-chat-rendered-text] p').first()).toHaveAttribute('dir', 'auto');
 });
 
 test('@smoke authenticated local file, chart, refresh, and conversation isolation', async ({ page, context }) => {

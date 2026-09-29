@@ -7,6 +7,7 @@ import MessageBubble from '@/src/components/studio/MessageBubble';
 import { ClaudeChatInput } from '@/components/ui/claude-style-chat-input';
 import { attachConversationFile, clearPendingAttachments, markPendingAttachment } from '@/lib/chat/conversation-attachments';
 import type { SpreadsheetArtifact } from '@/lib/artifacts/core';
+import { evaluateSearchSynthesis } from '@/lib/web/evidence';
 
 const messages = JSON.parse(readFileSync(new URL('../messages/studio-en.json', import.meta.url), 'utf8'));
 const bubble = renderToStaticMarkup(<IntlProvider locale="en" messages={messages}>
@@ -44,4 +45,16 @@ const file = renderToStaticMarkup(<IntlProvider locale="en" messages={messages}>
       mimeType: 'text/plain;charset=utf-8', content: 'Readable answer.' }] } as Message} isLatest={false} />
 </IntlProvider>);
 
-process.stdout.write(JSON.stringify({ bubble, bidi, pending, sent, file }));
+const searchAnswer = evaluateSearchSynthesis(
+  'تضم النماذج الحالية خيارات للاستدلال والاستخدام العام بحسب المهمة. [[source:S1]]',
+  [{ title: 'OpenAI models', url: 'https://openai.com/models',
+    description: 'The current lineup includes reasoning and general-purpose model families for different tasks.',
+    evidenceLevel: 'primary_search', evidenceBundle: 'general_search_evidence', evidenceId: 'S1' }],
+  'اخر نماذج open ai', new Date('2026-09-29T12:00:00Z'), 'ar');
+if (!searchAnswer.synthesisAccepted) throw new Error('Search fixture must pass the shared synthesis guard');
+const search = renderToStaticMarkup(<IntlProvider locale="ar" messages={messages}>
+  <MessageBubble message={{ id: 'grounded-search', role: 'assistant', content: searchAnswer.answer,
+    createdAt: new Date() }} isLatest={false} />
+</IntlProvider>);
+
+process.stdout.write(JSON.stringify({ bubble, bidi, pending, sent, file, search }));

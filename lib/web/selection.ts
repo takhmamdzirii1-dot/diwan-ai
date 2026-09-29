@@ -5,7 +5,7 @@ export type SearchDecision = { path: 'none' | 'optional' } | { path: 'required';
 const sensitiveInput = /(?:sb_secret_[A-Za-z0-9_-]{8,}|gh[pousr]_[A-Za-z0-9_]{16,}|\bBearer\s+[A-Za-z0-9._-]{16,}|\b(?:API_KEY|CLIENT_SECRET|REFRESH_TOKEN)\s*[:=]\s*\S+)/i;
 const noWeb = /\b(?:do not|don't|without|never)\s+(?:(?:use|do)\s+)?(?:web|internet|online|search|browse|look up|read|open|visit)\b|(?:بدون|بلا)\s+(?:بحث|البحث|انترنت|إنترنت|الإنترنت|نت)|(?:لا|ما)\s+(?:تبحث|تبحثش|تستخدم)\s+(?:في\s+)?(?:النت|الإنترنت|الانترنت)|\bsans\s+(?:recherche|internet|web)|\bne\s+(?:cherche|recherche|navigue)\s+pas\b/iu;
 const freshness = /\b(?:latest|current|currently|recent|now|today|yesterday|this week|last week|past week|last 7 days|newest|live|aujourd'hui|hier|cette semaine|semaine dernière|actuel|actuelle|récent|récente|dernier|dernière|derniers|dernières|maintenant)\b|(?:آخر|اخر|أحدث|احدث|حالي|الحالي|الآن|الان|اليوم|أمس|امس|هذا الأسبوع|هذا الاسبوع|الأسبوع الماضي|الاسبوع الماضي|آخر أسبوع|اخر اسبوع|آخر 7 أيام|اخر 7 ايام)/iu;
-const dynamicSubject = /\b(?:news|developments|updates|price|prices|availability|stock|stocks|market|weather|forecast|score|scores|results|schedule|version|release|released|president|ceo|office holder|law|policy|rules|status|product launch|model launch|actualités|nouvelles|prix|disponibilité|météo|résultats|version|sortie|président|actualité)\b|(?:أخبار|اخبار|مستجدات|تطورات|سعر|الأسعار|الاسعار|متوفر|متاح|إصدار|اصدار|نسخة|نتيجة|نتائج|طقس|بورصة|أسهم|اسهم|رئيس|قانون|قوانين|حالة)/iu;
+const dynamicSubject = /\b(?:news|developments|updates|prices?|availability|stocks?|market|weather|forecast|scores?|results?|schedule|versions?|releases?|released|drivers?|models?|providers?|information|president|ceo|office holder|law|policy|rules|status|product launch|model launch|actualités|nouvelles|prix|disponibilité|météo|résultats|sorties?|modèles?|pilotes?|président|actualité)\b|(?:أخبار|اخبار|مستجدات|تطورات|نماذج|نموذج|تعريفات|مزود|معلومات|سعر|الأسعار|الاسعار|متوفر|متاح|إصدار|اصدار|نسخة|نتيجة|نتائج|طقس|بورصة|أسهم|اسهم|رئيس|قانون|قوانين|حالة)/iu;
 const inherentlyCurrent = /\b(?:news|headlines|actualités|actualité|weather|forecast|météo|stock price|market price|sports score)\b|(?:أخبار|اخبار|مستجدات|تطورات|طقس|بورصة)/iu;
 const temporalOnly = /^(?:(?:آخر|اخر|هذا)\s+(?:الأسبوع|الاسبوع|أسبوع|اسبوع)|(?:آخر|اخر)\s+7\s+(?:أيام|ايام)|(?:last|past|this)\s+week|last\s+7\s+days|cette\s+semaine|la\s+semaine\s+dernière)\s*[؟?!.,]*$/iu;
 const confirmation = /^(?:هل أنت متأكد|هل انت متأكد|تأكد|تاكد|تحقق مرة أخرى|تحقق مره اخرى|are you sure|verify that|really|es-tu sûr|es tu sur)\s*[؟?!.,]*$/iu;
@@ -45,7 +45,8 @@ export function decideWebSearch(request: string): SearchDecision {
   if (/https?:\/\//i.test(text)) return { path: 'none' };
   if (confirmation.test(text) || /^(?:hi|hello|hey|bonjour|salut|مرحبا|سلام)\s*[!.,؟]*$/iu.test(text))
     return { path: 'none' };
-  if (transformation.test(text) && !/\b(?:research|search|browse|online|web)\b|(?:ابحث|بحث|تحقق من الإنترنت)/iu.test(text))
+  const freshSubject = freshness.test(text) && !temporalOnly.test(text) && dynamicSubject.test(text);
+  if (transformation.test(text) && !freshSubject && !/\b(?:research|search|browse|online|web)\b|(?:ابحث|بحث|تحقق من الإنترنت)/iu.test(text))
     return { path: 'none' };
   if ((freshness.test(text) && !temporalOnly.test(text)
     && (dynamicSubject.test(text) || /\b(?:what|who|which|when|where|how|is|are|did|happened)\b|(?:ما|من|ماذا|هل|كيف|متى|وش)/iu.test(text)))

@@ -29,3 +29,17 @@ test('Chat Jobs expose only bounded Web Search operational metadata', () => {
   assert.equal(parsed?.attempts.length, 2);
   assert.doesNotMatch(JSON.stringify(parsed), /private user prompt|secret|example\.test/);
 });
+
+test('Jobs distinguish completed inference from rejected search synthesis and retain legacy unknowns', () => {
+  const parsed = webSearchUsageForJob({ webSearchTriggered: true, webSearchDecision: 'required',
+    webSearchToolExposed: true, webSearchToolCalled: false, webSearchEvidenceSufficient: true,
+    synthesisAccepted: false, synthesisRejectionReason: 'unsupported_url' });
+  assert.equal(parsed?.decision, 'required');
+  assert.equal(parsed?.toolCalled, false);
+  assert.equal(parsed?.evidenceSufficient, true);
+  assert.equal(parsed?.synthesisAccepted, false);
+  assert.equal(parsed?.synthesisRejectionReason, 'unsupported_url');
+  const legacy = webSearchUsageForJob({ webSearchTriggered: true });
+  assert.equal(legacy?.synthesisAccepted, null);
+  assert.equal(legacy?.toolExposed, null);
+});
