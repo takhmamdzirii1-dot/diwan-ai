@@ -3,7 +3,7 @@ import { attachConversationFile, attachmentRequestContext } from '@/lib/chat/con
 import { boundedConnectedContent, connectedResourceAttachment } from '@/lib/connected-apps/core';
 import type { WebContextTool } from './selection';
 import { readPublicWebPage } from './url-reader.server';
-import { configuredWebSearchProviders, searchWeb, type WebSearchHit } from './search.server';
+import { searchWeb, type SearchExecution, type WebSearchHit } from './search.server';
 import { assessFreshEvidenceBundle, assessNarrativeEvidenceBundle, dedupeSearchHits, evidenceModeForRequest,
   freshFactKey, likelyPrimarySource, needsFreshEvidence, rankedEvidence, relevantWebHit,
   searchEvidence, supportsPrimaryPage, type EvidenceMode } from './evidence';
@@ -24,12 +24,17 @@ export async function webContextForRequest(tool: WebContextTool, request: string
 
 /** Optional model-invoked search must not turn a normal Chat into a hard failure. */
 export async function optionalWebContext(query: string, request: string,
-  search: (query: string) => Promise<WebResource> = searchWeb) {
+  search: (query: string) => Promise<WebResource> = searchWeb,
+  onExecution?: (execution: SearchExecution) => void) {
   try { return { status: 'ok' as const, context: await webContextForRequest(
-    { kind: 'web_search', query }, request, { read: readPublicWebPage, search }) }; }
+    { kind: 'web_search', query }, request, { read: readPublicWebPage,
+      search: search === searchWeb && onExecution
+        ? (value) => searchWeb(value, undefined, { onExecution }) : search }) }; }
   catch { return { status: 'unavailable' as const, context: '' }; }
 }
 
+// The injected fallback sentinel is intentionally never invoked: technical
+// fallback belongs exclusively to searchWeb's provider orchestrator.
 type SearchOperations = { search: typeof searchWeb; read: typeof readPublicWebPage;
   fallback?: typeof searchWeb };
 
@@ -89,28 +94,24 @@ async function assessFreshHits(hits: WebSearchHit[], request: string, read: type
 
 export async function searchContextForRequest(query: string, request: string,
   operations?: SearchOperations) {
-  const active = operations ?? { search: searchWeb, read: readPublicWebPage,
-    fallback: ((fallbackQuery: string) => searchWeb(fallbackQuery, undefined, {
-      providers: configuredWebSearchProviders().filter((provider) => provider.id === 'tavily'),
-    })) as typeof searchWeb };
+  const active = operations ?? { search: searchWeb, read: readPublicWebPage };
   const fresh = needsFreshEvidence(request);
   const retrievalQuery = fresh ? refinedRetrievalQuery(query) : query;
   const resource = await active.search(retrievalQuery);
   const readCache = new Map<string, ReturnType<typeof readPublicWebPage>>();
+  let urlReadCount = 0;
   const readOnce: typeof readPublicWebPage = (url, options) => {
-    if (options) return active.read(url, options);
+    if (options) { urlReadCount++; return active.read(url, options); }
     let result = readCache.get(url);
-    if (!result) { result = active.read(url); readCache.set(url, result); }
+    if (!result) { urlReadCount++; result = active.read(url); readCache.set(url, result); }
     return result;
   };
-  let candidates = dedupeSearchHits(resource.hits);
+  const candidates = dedupeSearchHits(resource.hits);
   let hits = candidates;
   let diagnosticStages: string[] = [];
   let assessmentKind: string | null = null;
   let assessmentReason: string | null = null;
   const technicalFallback = resource.execution?.fallbackUsed ?? false;
-  let fallbackUsed = technicalFallback;
-  let fallbackResultCount = technicalFallback ? resource.hits.length : 0;
   const evidenceMode: EvidenceMode = fresh ? evidenceModeForRequest(request) : 'general_web';
   if (fresh) {
     ({ hits, kind: assessmentKind, reason: assessmentReason, diagnosticStages } = await assessFreshHits(
@@ -124,26 +125,6 @@ export async function searchContextForRequest(query: string, request: string,
   const initialQuality = assessmentKind ?? (!hits.length ? 'insufficient' : hits[0].evidenceLevel === 'primary_page'
     ? 'primary_page' : hits[0].evidenceLevel === 'primary_search' ? 'official_search'
       : hits[0].evidenceLevel === 'corroborated' ? 'corroborated' : 'search_results');
-  // A successful Brave transport is not a successful evidence search. One Tavily attempt
-  // is allowed only if Brave evidence is insufficient and Tavily was not already used.
-  if (!hits.length && active.fallback && resource.execution?.providerUsed !== 'tavily' && !fallbackUsed) {
-    fallbackUsed = true;
-    try {
-      const fallback = await active.fallback(retrievalQuery);
-      fallbackResultCount = fallback.hits.length;
-      candidates = dedupeSearchHits([...candidates, ...fallback.hits]);
-      if (fresh) {
-        const second = await assessFreshHits(candidates, request, readOnce, evidenceMode);
-        hits = second.hits; assessmentKind = second.kind; assessmentReason = second.reason;
-        diagnosticStages.push(...second.diagnosticStages);
-      } else {
-        const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Algiers', year: 'numeric',
-          month: '2-digit', day: '2-digit' }).format(new Date());
-        const second = assessNarrativeEvidenceBundle(candidates, request, today, 'general_web');
-        hits = second.hits; assessmentKind = second.kind; assessmentReason = second.reason;
-      }
-    } catch { diagnosticStages.push('fallback_unavailable'); }
-  }
   hits = hits.map((hit, index) => ({ ...hit, evidenceId: `S${index + 1}` }));
   const quality = assessmentKind ?? (!hits.length ? 'insufficient' : hits[0].evidenceLevel === 'primary_page'
     ? 'primary_page' : hits[0].evidenceLevel === 'primary_search' ? 'official_search'
@@ -153,18 +134,26 @@ export async function searchContextForRequest(query: string, request: string,
   const relevantCandidateCount = candidates.filter((hit) => relevantWebHit(hit, request)).length;
   const independentDomainCount = new Set(candidates.map((hit) => new URL(hit.url).hostname.replace(/^www\./, '')
     .split('.').slice(-2).join('.'))).size;
-  const reason = quality === 'insufficient' && evidenceMode === 'structured_fact'
+  const reason = assessmentReason ?? (quality === 'insufficient' && evidenceMode === 'structured_fact'
     ? exactFactGroupCount > 1 ? 'unresolved_exact_conflict'
       : relevantCandidateCount ? 'insufficient_source_diversity' : 'no_relevant_sources'
-    : assessmentReason ?? quality;
+    : quality);
   const telemetry = { searchTriggered: true, evidenceMode, assessmentReason: reason,
     primaryCandidateCount: candidates.filter((hit) => likelyPrimarySource(hit, request)).length,
     exactFactGroupCount, relevantCandidateCount, independentDomainCount,
     selectedEvidenceCount: hits.length,
-    primaryProvider: resource.execution?.providerAttempted[0] ?? 'brave',
+    primaryProvider: resource.execution?.primaryProvider ?? 'brave',
     primaryResultCount: technicalFallback ? 0 : resource.hits.length,
     evidenceQuality: initialQuality, evidenceSufficient: hits.length > 0,
-    fallbackUsed, fallbackProvider: fallbackUsed ? 'tavily' : null, fallbackResultCount,
+    fallbackUsed: technicalFallback, fallbackProvider: technicalFallback ? resource.execution?.providerUsed ?? null : null,
+    fallbackReason: resource.execution?.fallbackReason ?? null,
+    fallbackResultCount: technicalFallback ? resource.hits.length : 0,
+    webSearchApiRequestCount: resource.execution?.apiRequestCount ?? null,
+    webSearchAttempts: resource.execution?.attempts ?? [],
+    webSearchProviderUsed: resource.execution?.providerUsed ?? null,
+    webSearchResultCount: resource.hits.length,
+    webSearchTotalLatencyMs: resource.execution?.latencyMs ?? null,
+    webUrlReadCount: urlReadCount,
     officialEvidenceUsed: hits.some((hit) => likelyPrimarySource(hit, request)),
     urlReadOutcome: diagnosticStages.includes('primary_url_read_succeeded') ? 'succeeded'
       : diagnosticStages.includes('primary_url_read_failed') ? 'failed' : 'not_attempted',

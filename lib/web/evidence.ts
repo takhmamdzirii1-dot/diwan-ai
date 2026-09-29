@@ -30,6 +30,17 @@ function safeUrl(url: string) {
   try { const parsed = new URL(url); return parsed.protocol === 'https:' ? parsed.toString() : null; }
   catch { return null; }
 }
+/** Identity only: keep article paths exact while ignoring harmless URL decoration. */
+export function canonicalSearchUrl(url: string) {
+  const safe = safeUrl(url);
+  if (!safe) return null;
+  const parsed = new URL(safe);
+  if (parsed.username || parsed.password) return null;
+  parsed.hostname = parsed.hostname.replace(/^www\./i, '');
+  parsed.hash = ''; parsed.search = '';
+  if (parsed.pathname !== '/') parsed.pathname = parsed.pathname.replace(/\/+$/, '');
+  return parsed.toString();
+}
 function plainExcerpt(value: string, limit: number) {
   return value.replace(/\[[^\]]+\]\(https?:\/\/[^)]+\)/g, (match) => match.slice(1, match.indexOf(']')))
     .replace(/https?:\/\/\S+/g, '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, limit);
@@ -63,12 +74,11 @@ function evidenceStrength(hit: WebSearchHit) {
 export function dedupeSearchHits(hits: readonly WebSearchHit[]) {
   const unique = new Map<string, WebSearchHit>();
   for (const hit of hits) {
-    const url = safeUrl(hit.url);
-    if (!url) continue;
-    const key = new URL(url); key.hash = ''; key.search = '';
-    const existing = unique.get(key.toString());
+    const key = canonicalSearchUrl(hit.url);
+    if (!key) continue;
+    const existing = unique.get(key);
     if (!existing || (!existing.description.trim() && hit.description.trim()))
-      unique.set(key.toString(), hit);
+      unique.set(key, hit);
   }
   // At most eight results from each of the two existing providers.
   return [...unique.values()].slice(0, 16);
@@ -132,8 +142,8 @@ function latestPrimaryClaim(hits: WebSearchHit[], request: string, today: string
   const newest = dated.filter((hit) => publishedDay(hit) === newestDay);
   if (new Set(newest.map(claim)).size !== 1) return null;
   // A dated release page alone is not proof that nothing newer has shipped.
-  // A short recency window permits an exact release claim; older claims trigger
-  // the existing single evidence-quality fallback instead of a stale answer.
+  // A short recency window permits an exact release claim; older claims remain
+  // unresolved without spending another provider request for evidence quality.
   const todayTime = Date.parse(today);
   if (!Number.isFinite(todayTime) || newestDay > todayTime + 86_400_000
     || newestDay < todayTime - 7 * 86_400_000) return null;
@@ -383,16 +393,33 @@ export function assessFreshEvidenceBundle(hits: readonly WebSearchHit[], request
       domains.add(domain); return true;
     }) };
   });
-  const supported = independent.filter((group) => group.hits.length >= 2);
+  // An official Current series is an eligibility boundary, not just a final
+  // ranking hint. A corroborated future/other-series claim cannot veto it.
+  const supported = independent.filter((group) => group.hits.length >= 2
+    && (!major || group.key === `version:current:${major}`
+      || group.key.startsWith(`version:current:${major}.`)));
   if (!supported.length)
     return { kind: 'insufficient' as const, factKey: null, hits: [] as WebSearchHit[] };
+  const sameMajorSemver = (key: string) => {
+    const match = key.match(/^version:current:(\d+)\.(\d+)\.(\d+)$/);
+    return match && match[1] === major ? match.slice(1).map(Number) : null;
+  };
+  const undatedSemverTie = Boolean(latestVersionRequest(request) && major && supported.length > 1
+    && supported.every((group) => sameMajorSemver(group.key)
+      && group.hits.every((hit) => !hit.publishedAt)));
   const latestDate = (group: typeof supported[number]) => Math.max(...group.hits
     .map((hit) => hit.publishedAt ? Date.parse(hit.publishedAt) : NaN).filter(Number.isFinite));
-  const ordered = [...supported].sort((a, b) => latestDate(b) - latestDate(a));
+  const ordered = [...supported].sort((a, b) => {
+    if (undatedSemverTie) {
+      const left = sameMajorSemver(a.key)!; const right = sameMajorSemver(b.key)!;
+      return right[0] - left[0] || right[1] - left[1] || right[2] - left[2];
+    }
+    return latestDate(b) - latestDate(a);
+  });
   // Release history naturally contains several once-current values. A newer,
   // dated, independently corroborated group can supersede historical groups;
   // near-contemporaneous claims remain unresolved rather than using version size.
-  if (ordered.length > 1 && (!Number.isFinite(latestDate(ordered[0]))
+  if (ordered.length > 1 && !undatedSemverTie && (!Number.isFinite(latestDate(ordered[0]))
     || latestDate(ordered[0]) < Date.parse(today) - 30 * 86_400_000
     || ordered.slice(1).some((group) => !Number.isFinite(latestDate(group))
       ? false : latestDate(group) >= latestDate(ordered[0]) - 2 * 86_400_000)))
@@ -403,7 +430,9 @@ export function assessFreshEvidenceBundle(hits: readonly WebSearchHit[], request
     .filter(Number.isFinite));
   // A lone undated or older snippet cannot veto a newer independent bundle;
   // an equally recent competing value remains materially unresolved.
-  if (independent.some((group) => group.key !== agreed.key && group.hits.some((hit) => {
+  if (!undatedSemverTie && independent.some((group) => group.key !== agreed.key
+    && (!major || group.key === `version:current:${major}`
+      || group.key.startsWith(`version:current:${major}.`)) && group.hits.some((hit) => {
     const date = hit.publishedAt ? Date.parse(hit.publishedAt) : NaN;
     return !Number.isFinite(agreedLatest) || (Number.isFinite(date)
       && date >= agreedLatest - 2 * 86_400_000);
@@ -416,7 +445,8 @@ export function assessFreshEvidenceBundle(hits: readonly WebSearchHit[], request
       currentMajor(`${hit.title} ${hit.description}`) === major), request, today)[0];
     if (!official) return { kind: 'insufficient' as const, factKey: null, hits: [] as WebSearchHit[] };
     return { kind: 'primary_supported_bundle' as const, factKey: agreed.key,
-      reason: independent.length > 1 ? 'historical_claims_superseded' as const
+      reason: undatedSemverTie ? 'latest_supported_semver' as const
+        : independent.length > 1 ? 'historical_claims_superseded' as const
         : 'latest_supported_bundle' as const,
       hits: [official, ...rankedEvidence(agreed.hits, request, today).slice(0, 2)].map((hit) => ({ ...hit,
         evidenceLevel: likelyPrimarySource(hit, request) ? hit.verifiedPage ? 'primary_page' as const
@@ -530,8 +560,9 @@ export function answerUsesOnlySearchSources(answer: string, hits: readonly WebSe
   now = new Date()) {
   const evidence = searchEvidence(hits, request, now);
   if (evidence.todayRequested && !evidence.publishedToday) return false;
-  const allowed = new Set(hits.map((hit) => safeUrl(hit.url)).filter(Boolean));
-  const cited = [...answer.matchAll(/https?:\/\/[^\s)\]>"']+/g)].map((match) => safeUrl(match[0].replace(/[.,;!?]+$/, '')));
+  const allowed = new Set(hits.map((hit) => canonicalSearchUrl(hit.url)).filter(Boolean));
+  const cited = [...answer.matchAll(/https?:\/\/[^\s)\]>"']+/g)]
+    .map((match) => canonicalSearchUrl(match[0].replace(/[.,;!?]+$/, '')));
   if (!cited.length || cited.some((url) => !url || !allowed.has(url))) return false;
   return true;
 }
@@ -553,19 +584,20 @@ export function searchSynthesisRejectionReason(answer: string, hits: readonly We
   if (cited.length > 3) return 'too_many_citations';
   const citations = [...trimmed.matchAll(/\[([^\]]+)\]\((https:\/\/[^)]+)\)/g)];
   if (citations.length !== cited.length || citations.some(([, label, url]) => !hits.some((hit) =>
-    safeUrl(hit.url) === safeUrl(url) && (mode !== 'structured_fact'
+    canonicalSearchUrl(hit.url) === canonicalSearchUrl(url) && (mode !== 'structured_fact'
       || label === plainExcerpt(hit.title, 180).replace(/[\[\]]/g, ''))))) return 'unsupported_url';
   if (mode === 'structured_fact' && hits[0]?.evidenceBundle === 'primary_supported_bundle' && (citations.length < 3
     || hits.filter((hit) => hit.evidenceLevel === 'primary_bundle'
-      && citations.some(([, , url]) => safeUrl(hit.url) === safeUrl(url))).length < 2)) return 'insufficient_citations';
+      && citations.some(([, , url]) => canonicalSearchUrl(hit.url) === canonicalSearchUrl(url))).length < 2)) return 'insufficient_citations';
   if (mode === 'structured_fact' && hits[0]?.evidenceBundle === 'corroborated_exact' && (citations.length < 2
     || !/(?:independent sources|sources indépendantes|مصدران مستقلان|مصادر مستقلة)/iu.test(trimmed))) return 'insufficient_citations';
   if (mode === 'fresh_news' && !hits.some((hit) => likelyPrimarySource(hit, request))
-    && new Set(citations.map(([, , url]) => safeUrl(url))).size < 2) return 'insufficient_citations';
+    && new Set(citations.map(([, , url]) => canonicalSearchUrl(url))).size < 2) return 'insufficient_citations';
   if (mode === 'structured_fact' && hits.some((hit) => likelyPrimarySource(hit, request))
-    && !citations.some(([, , url]) => hits.some((hit) => safeUrl(hit.url) === safeUrl(url)
+    && !citations.some(([, , url]) => hits.some((hit) => canonicalSearchUrl(hit.url) === canonicalSearchUrl(url)
       && likelyPrimarySource(hit, request)))) return 'insufficient_citations';
-  const citedHits = hits.filter((hit) => citations.some(([, , url]) => safeUrl(hit.url) === safeUrl(url)));
+  const citedHits = hits.filter((hit) => citations.some(([, , url]) =>
+    canonicalSearchUrl(hit.url) === canonicalSearchUrl(url)));
   const allowedNumbers = new Set(citedHits.flatMap((hit) => `${mode === 'structured_fact' && needsFreshEvidence(request)
     && hit.evidenceLevel !== 'primary_search' ? '' : hit.title} ${hit.description} ${hit.publishedAt ?? ''}`
     .match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []));

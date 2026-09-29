@@ -3,11 +3,11 @@ import test from 'node:test';
 import { selectArtifactTools, selectWebContextTool } from '@/lib/artifacts/tool-registry';
 import { optionalWebContext, searchContextForRequest, webContextForRequest } from './context.server';
 import { BraveWebSearch, orchestrateWebSearch, SearchProviderError, searchWeb, TavilyWebSearch,
-  type WebSearchProvider } from './search.server';
+  type SearchExecution, type WebSearchProvider } from './search.server';
 import { budgetWarning, type SearchHealthStore } from './search-health.server';
 import { decideWebSearch, decideWebSearchWithHistory } from './selection';
 import { pinnedAddressLookup, readPublicWebPage, resolvePublicWebUrl } from './url-reader.server';
-import { answerUsesOnlySearchSources, assessFreshEvidenceBundle, evidenceScore, groundedSearchSummary, guardSearchDataStream,
+import { answerUsesOnlySearchSources, assessFreshEvidenceBundle, canonicalSearchUrl, evidenceScore, groundedSearchSummary, guardSearchDataStream,
   searchEvidence, searchSynthesisRejectionReason, usableSearchSynthesis } from './evidence';
 
 const publicDns = async () => [{ address: '93.184.215.14', family: 4 }];
@@ -328,7 +328,7 @@ test('a read old official release note cannot outrank a newer official current i
   assert.doesNotMatch(answer, /26\.8\.2/);
 });
 
-test('a stale official release note triggers one evidence fallback, then newer official wins', async () => {
+test('a stale official release note stays uncertain without an evidence-quality provider fallback', async () => {
   const request = 'latest Acme version now';
   const today = new Date();
   const oldDate = new Date(today.getTime() - 20 * 86_400_000).toISOString().slice(0, 10);
@@ -350,12 +350,11 @@ test('a stale official release note triggers one evidence fallback, then newer o
         text: 'Acme 26.8.2 (Current) was released.' };
     },
   });
-  assert.equal(fallbackCalls, 1);
+  assert.equal(fallbackCalls, 0);
   assert.equal(result.telemetry.evidenceQuality, 'insufficient');
-  assert.equal(result.telemetry.finalEvidenceQuality, 'primary_exact');
-  assert.deepEqual(result.hits.map((hit) => hit.url), ['https://acme.com/download']);
-  assert.match(result.context, /26\.10\.0/);
-  assert.doesNotMatch(result.context, /26\.8\.2/);
+  assert.equal(result.telemetry.finalEvidenceQuality, 'insufficient');
+  assert.deepEqual(result.hits, []);
+  assert.equal(result.telemetry.fallbackUsed, false);
 });
 
 test('newer dated primary release beats older read release, but weak conflicts remain insufficient', () => {
@@ -380,7 +379,7 @@ test('newer dated primary release beats older read release, but weak conflicts r
   assert.doesNotMatch(JSON.stringify(corroborated.hits), /26\.8\.2/);
 });
 
-test('weak Brave evidence triggers one Tavily request and merged independent corroboration', async () => {
+test('weak Brave evidence does not trigger Tavily', async () => {
   const calls: string[] = [];
   const request = 'latest Acme version now';
   const result = await searchContextForRequest(request, request, {
@@ -395,14 +394,13 @@ test('weak Brave evidence triggers one Tavily request and merged independent cor
       ] }; },
     read: async () => { throw new Error('unexpected read'); },
   });
-  assert.deepEqual(calls, ['brave', 'tavily']);
-  assert.equal(result.hits.length, 2);
-  assert.equal(result.telemetry.fallbackResultCount, 2);
-  assert.equal(result.telemetry.finalEvidenceQuality, 'corroborated_exact');
-  assert.match(groundedSearchSummary(result.hits, request), /Two independent sources/);
+  assert.deepEqual(calls, ['brave']);
+  assert.equal(result.hits.length, 0);
+  assert.equal(result.telemetry.fallbackUsed, false);
+  assert.equal(result.telemetry.finalEvidenceQuality, 'insufficient');
 });
 
-test('Tavily official evidence outranks a conflicting stale Brave snippet', async () => {
+test('a stale Brave snippet cannot trigger a separate Tavily evidence search', async () => {
   const request = 'latest Acme version now';
   const result = await searchContextForRequest(request, request, {
     search: async () => ({ sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
@@ -414,10 +412,9 @@ test('Tavily official evidence outranks a conflicting stale Brave snippet', asyn
     ] }),
     read: async () => { throw new Error('URL_TOO_LARGE'); },
   });
-  assert.equal(result.telemetry.fallbackUsed, true);
-  assert.equal(result.hits[0].url, 'https://acme.com/downloads');
-  assert.doesNotMatch(result.context, /7\.0\.0/);
-  assert.match(groundedSearchSummary(result.hits, request), /8\.2\.0/);
+  assert.equal(result.telemetry.fallbackUsed, false);
+  assert.deepEqual(result.hits, []);
+  assert.doesNotMatch(result.context, /8\.2\.0/);
 });
 
 test('official current major plus independent exact releases forms a grounded bundle after URL_TOO_LARGE', async () => {
@@ -430,6 +427,8 @@ test('official current major plus independent exact releases forms a grounded bu
           description: 'Acme v26 is the Current major release.' },
         { title: 'Acme update', url: 'https://first.example/acme',
           description: 'The latest Current release is 26.10.0.' },
+        { title: 'Independent Acme release check', url: 'https://second.test/acme',
+          description: 'Latest Current release: 26.10.0.' },
       ] }; },
     fallback: async (query) => { calls.push('tavily'); assert.equal(query, 'Acme latest current release official');
       return { sourceId: 'search:tavily', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
@@ -440,7 +439,7 @@ test('official current major plus independent exact releases forms a grounded bu
       ] }; },
     read: async () => { throw new Error('URL_TOO_LARGE'); },
   });
-  assert.deepEqual(calls, ['brave', 'tavily']);
+  assert.deepEqual(calls, ['brave']);
   assert.equal(result.telemetry.finalEvidenceQuality, 'primary_supported_bundle');
   assert.equal(result.hits.length, 3);
   assert.equal(result.hits.filter((hit) => hit.evidenceLevel === 'primary_bundle').length, 2);
@@ -474,6 +473,7 @@ test('Arabic fresh request may refine retrieval while keeping the answer Arabic'
     search: async (query) => { primary = query; return { sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
       { title: 'Acme downloads', url: 'https://acme.com/downloads', description: 'Acme v26 is Current.' },
       { title: 'Release report', url: 'https://first.example/acme', description: 'Latest Current 26.10.0.' },
+      { title: 'Independent report', url: 'https://second.test/acme', description: 'Current 26.10.0.' },
     ] }; },
     fallback: async (query) => { refined = query; return { sourceId: 'search:tavily', name: 'Results',
       mimeType: 'text/markdown', text: '', hits: [
@@ -482,7 +482,7 @@ test('Arabic fresh request may refine retrieval while keeping the answer Arabic'
     read: async () => { throw new Error('URL_TOO_LARGE'); },
   });
   assert.equal(primary, 'Acme latest current release official');
-  assert.equal(refined, 'Acme latest current release official');
+  assert.equal(refined, '');
   assert.equal(result.telemetry.finalEvidenceQuality, 'primary_supported_bundle');
   const answer = groundedSearchSummary(result.hits, request, new Date(), 'ar');
   assert.match(answer, /[\u0600-\u06ff]/u);
@@ -642,7 +642,7 @@ test('narrative news does not promote contradictory exact version claims', async
   assert.equal(result.hits.length, 0);
 });
 
-test('weak news evidence uses at most one Tavily evidence fallback', async () => {
+test('weak news evidence does not trigger Tavily', async () => {
   const request = 'latest Acme news';
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Algiers', year: 'numeric',
     month: '2-digit', day: '2-digit' }).format(new Date());
@@ -660,13 +660,13 @@ test('weak news evidence uses at most one Tavily evidence fallback', async () =>
       ] }; },
     read: async () => { throw new Error('not selected'); },
   });
-  assert.deepEqual(calls, ['brave', 'tavily']);
+  assert.deepEqual(calls, ['brave']);
   assert.equal(result.telemetry.evidenceQuality, 'insufficient');
-  assert.equal(result.telemetry.assessmentReason, 'independent_news_sources');
-  assert.equal(result.hits.length, 2);
+  assert.equal(result.telemetry.assessmentReason, 'insufficient_source_diversity');
+  assert.equal(result.hits.length, 0);
 });
 
-test('eight weak Brave hits do not discard later Tavily evidence before assessment', async () => {
+test('eight weak Brave hits remain insufficient without a second provider search', async () => {
   const request = 'latest Acme news';
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Algiers', year: 'numeric',
     month: '2-digit', day: '2-digit' }).format(new Date());
@@ -682,9 +682,9 @@ test('eight weak Brave hits do not discard later Tavily evidence before assessme
     ] }),
     read: async () => { throw new Error('not selected'); },
   });
-  assert.equal(result.hits.length, 2);
-  assert.equal(result.telemetry.fallbackUsed, true);
-  assert.equal(result.telemetry.relevantCandidateCount, 2);
+  assert.equal(result.hits.length, 0);
+  assert.equal(result.telemetry.fallbackUsed, false);
+  assert.equal(result.telemetry.relevantCandidateCount, 0);
 });
 
 test('explicit general web search passes relevant independent evidence to synthesis', async () => {
@@ -773,6 +773,43 @@ test('equally current official indexes conflict, while a newer live index supers
   assert.deepEqual(preferred.hits.map((hit) => hit.url), [current.url]);
 });
 
+test('undated same-major semver needs an official Current series and independent support', () => {
+  const request = 'latest Acme version now';
+  const official = { title: 'Acme versions', url: 'https://acme.com/versions',
+    description: 'Acme Current major is 26; LTS major is 24.' };
+  const claims = [
+    ...['first.example', 'second.test'].map((domain) => ({ title: 'Acme release',
+      url: `https://${domain}/release/26-8`, description: 'Acme Current version is 26.8.2.' })),
+    ...['third.example', 'fourth.test'].map((domain) => ({ title: 'Acme update',
+      url: `https://${domain}/release/26-10`, description: 'Acme Current version is 26.10.0.' })),
+    ...['fifth.example', 'sixth.test'].map((domain) => ({ title: 'Acme future rumor',
+      url: `https://${domain}/release/27`, description: 'Acme Current version is 27.0.0.' })),
+    { title: 'Acme LTS', url: 'https://lts.example/release', description: 'Acme LTS version is 24.21.0.' },
+  ];
+  const resolved = assessFreshEvidenceBundle([official, ...claims], request, '2026-09-29');
+  assert.equal(resolved.factKey, 'version:current:26.10.0');
+  assert.equal(resolved.reason, 'latest_supported_semver');
+  assert.doesNotMatch(JSON.stringify(resolved.hits), /27\.0\.0|24\.21\.0|26\.8\.2/);
+  const unanchored = assessFreshEvidenceBundle(claims, request, '2026-09-29');
+  assert.equal(unanchored.kind, 'insufficient');
+  const price = assessFreshEvidenceBundle([official, ...claims], 'current Acme price now', '2026-09-29');
+  assert.notEqual(price.reason, 'latest_supported_semver');
+});
+
+test('canonical citation identity accepts decoration but never substitutes path or subdomain', () => {
+  const source = { title: 'Official update', url: 'https://www.example.com/article?utm_source=x#latest',
+    description: 'Acme opened a new office.' };
+  assert.equal(canonicalSearchUrl(source.url), 'https://example.com/article');
+  assert.equal(answerUsesOnlySearchSources('Acme opened a new office. [Update](https://example.com/article)',
+    [source], 'search Acme office'), true);
+  assert.equal(answerUsesOnlySearchSources('Acme opened a new office. [Update](https://example.com/other)',
+    [source], 'search Acme office'), false);
+  assert.equal(answerUsesOnlySearchSources('Acme opened a new office. [Update](https://news.example.com/article)',
+    [source], 'search Acme office'), false);
+  assert.equal(answerUsesOnlySearchSources('Acme opened a new office. [Update](https://invented.test/article)',
+    [source], 'search Acme office'), false);
+});
+
 test('fresh news accepts paraphrased citation labels and bullets, but rejects invented evidence', async () => {
   const request = 'ما آخر أخبار شركة Acme؟';
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Algiers', year: 'numeric',
@@ -802,7 +839,7 @@ test('fresh news accepts paraphrased citation labels and bullets, but rejects in
     structured, 'latest Acme version now', new Date(), 'en'), 'unsupported_number');
 });
 
-test('Brave and Tavily insufficient evidence remains uncertain after exactly one fallback', async () => {
+test('insufficient Brave evidence remains uncertain without Tavily', async () => {
   let fallbackCalls = 0;
   const request = 'latest Acme version now';
   const result = await searchContextForRequest(request, request, {
@@ -814,7 +851,7 @@ test('Brave and Tavily insufficient evidence remains uncertain after exactly one
       ] }; },
     read: async () => { throw new Error('unexpected read'); },
   });
-  assert.equal(fallbackCalls, 1);
+  assert.equal(fallbackCalls, 0);
   assert.equal(result.hits.length, 0);
   assert.equal(result.telemetry.finalEvidenceQuality, 'insufficient');
   assert.match(groundedSearchSummary(result.hits, request), /could not verify/);
@@ -983,6 +1020,50 @@ test('ordered chain uses one request on success and one sequential fallback on e
   await orchestrateWebSearch('current release', { providers: [success, { id: 'tavily', async search() {
     called.push('tavily'); return []; } }], health: state.store });
   assert.deepEqual(called, ['brave']);
+});
+
+test('operational metadata counts outbound searches, not skipped provider slots or URL reads', async () => {
+  const hit = { title: 'Acme current', url: 'https://acme.com/download/current',
+    description: 'Acme Current 26.10.0.' };
+  const run = async (failure: 'timeout' | 'rate_limited' | 'quota_exhausted' | null,
+    skipPrimary = false) => {
+    let braveCalls = 0; let tavilyCalls = 0; let execution: SearchExecution | undefined;
+    const brave: WebSearchProvider = { id: 'brave', async search() {
+      braveCalls++;
+      if (failure) throw new SearchProviderError(failure);
+      return [hit];
+    } };
+    const tavily: WebSearchProvider = { id: 'tavily', async search() { tavilyCalls++; return [hit]; } };
+    const state = health();
+    if (skipPrimary) state.blocked.set('brave', Date.now() + 60_000);
+    const hits = await orchestrateWebSearch('Acme latest version now', {
+      providers: [brave, tavily], health: state.store, onExecution: (value) => { execution = value; },
+    });
+    assert.equal(hits.length, 1);
+    assert.ok(execution);
+    assert.equal(execution.apiRequestCount, braveCalls + tavilyCalls);
+    return { braveCalls, tavilyCalls, execution };
+  };
+  const success = await run(null);
+  assert.deepEqual([success.braveCalls, success.tavilyCalls, success.execution.apiRequestCount], [1, 0, 1]);
+  assert.equal(success.execution.providerUsed, 'brave');
+  assert.equal(success.execution.fallbackUsed, false);
+  for (const category of ['timeout', 'rate_limited', 'quota_exhausted'] as const) {
+    const fallback = await run(category);
+    assert.deepEqual([fallback.braveCalls, fallback.tavilyCalls, fallback.execution.apiRequestCount], [1, 1, 2]);
+    assert.equal(fallback.execution.providerUsed, 'tavily');
+    assert.equal(fallback.execution.fallbackReason, category);
+  }
+  const skipped = await run('rate_limited', true);
+  assert.deepEqual([skipped.braveCalls, skipped.tavilyCalls, skipped.execution.apiRequestCount], [0, 1, 1]);
+  assert.equal(skipped.execution.attempts[0].outboundRequestIssued, false);
+  const context = await searchContextForRequest('latest Acme version now', 'latest Acme version now', {
+    search: async () => ({ sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown',
+      text: '', hits: [hit], execution: success.execution }),
+    read: async () => { throw new Error('URL_TOO_LARGE'); },
+  });
+  assert.equal(context.telemetry.webSearchApiRequestCount, 1);
+  assert.equal(context.telemetry.webUrlReadCount, 1);
 });
 
 test('all providers unavailable is safe; optional search can continue without claiming live verification', async () => {

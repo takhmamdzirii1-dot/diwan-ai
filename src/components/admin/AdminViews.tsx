@@ -569,6 +569,30 @@ function AdminUserDetail({ user, onClose, onStatusChanged, onCreditChanged }: {
   </dialog>;
 }
 
+function WebSearchJobDetails({ search }: { search: AdminJobRow['webSearch'] }) {
+  if (!search || (!search.triggered && search.urlReadCount === 0)) return null;
+  const provider = (value: string | null) => value ? value[0].toUpperCase() + value.slice(1) : '—';
+  return <section className="mt-5 border-t border-[var(--studio-border-subtle)] pt-4">
+    <h3 className="mb-2 text-[12px] font-semibold text-white">Web Search</h3>
+    <div className="grid gap-x-5 sm:grid-cols-2">
+      <WorkspaceField label="Triggered">{search.triggered ? 'Yes' : 'No'}</WorkspaceField>
+      <WorkspaceField label="API requests">{search.apiRequestCount ?? 'Not recorded'}</WorkspaceField>
+      {search.triggered && <><WorkspaceField label="Primary">{provider(search.primaryProvider)}</WorkspaceField>
+        <WorkspaceField label="Provider used">{provider(search.providerUsed)}</WorkspaceField>
+        <WorkspaceField label="Fallback">{search.fallbackUsed ? 'Yes' : 'No'}</WorkspaceField>
+        {search.fallbackUsed && <><WorkspaceField label="Fallback provider">{provider(search.fallbackProvider)}</WorkspaceField>
+          <WorkspaceField label="Reason">{search.fallbackReason ? humanizeIdentifier(search.fallbackReason) : '—'}</WorkspaceField></>}
+        <WorkspaceField label="Results">{search.resultCount ?? '—'}</WorkspaceField>
+        <WorkspaceField label="Latency">{search.latencyMs == null ? '—' : `${search.latencyMs} ms`}</WorkspaceField>
+        <WorkspaceField label="Evidence">{search.evidenceMode ?? '—'}</WorkspaceField>
+        <WorkspaceField label="Assessment">{search.assessmentReason ?? '—'}</WorkspaceField>
+        <WorkspaceField label="Selected">{search.selectedEvidenceCount == null ? '—' : `${search.selectedEvidenceCount} sources`}</WorkspaceField></>}
+    </div>
+    {search.attempts.length > 0 && <details className="mt-2 border-t border-[var(--studio-border-subtle)] pt-2 text-[11px]"><summary className="cursor-pointer text-[var(--studio-text-secondary)]">Provider attempts</summary><div className="mt-2 space-y-1">{search.attempts.map((attempt, index) => <p key={`${attempt.provider}:${index}`} className="text-[var(--studio-text-secondary)]">{provider(attempt.provider)} · {attempt.outboundRequestIssued ? 'API request' : 'Skipped'} · {humanizeIdentifier(attempt.status)}{attempt.failureCategory ? ` · ${humanizeIdentifier(attempt.failureCategory)}` : ''} · {attempt.resultCount} results · {attempt.latencyMs} ms</p>)}</div></details>}
+    {search.urlReadCount > 0 && <div className="mt-3 border-t border-[var(--studio-border-subtle)] pt-2"><h4 className="text-[11px] font-semibold text-white">URL Reader</h4><WorkspaceField label="Reads">{search.urlReadCount}</WorkspaceField><WorkspaceField label="Outcome">{search.urlReadOutcome ? humanizeIdentifier(search.urlReadOutcome) : '—'}</WorkspaceField></div>}
+  </section>;
+}
+
 export function JobsView({ result, filters }: { result: AdminDataResult<AdminJobsData>; filters: { q?: string; status?: string; modality?: string; provider?: string; model?: string; range?: string; cursor?: string; seen?: string } }) {
   const router = useRouter();
   const [search, setSearch] = useState(filters.q ?? '');
@@ -609,6 +633,7 @@ export function JobsView({ result, filters }: { result: AdminDataResult<AdminJob
       {tab === 'Routing' && <div><WorkspaceField label="VANTRA Model">{selected.vantraModelName ?? 'Not recorded separately'}</WorkspaceField><WorkspaceField label="Backend Model">{selected.modelId}</WorkspaceField><WorkspaceField label="Provider">{selected.provider ?? '—'}</WorkspaceField><WorkspaceField label="Provider model">{selected.providerModelId ?? '—'}</WorkspaceField><WorkspaceField label="Provider status">{selected.providerStatus ?? '—'}</WorkspaceField><WorkspaceField label="Execution status">{humanizeIdentifier(selected.status)}</WorkspaceField><WorkspaceField label="Attempts">{selected.attempts.length}</WorkspaceField><TechnicalDetails><TechnicalId label="Provider operation ID" value={selected.providerOperationId ?? '—'} /></TechnicalDetails>{selected.attempts.length > 0 && <section className="mt-5"><h3 className={label}>Provider attempts</h3>{selected.attempts.map((attempt, index) => <div key={`${attempt.startedAt}:${index}`} className="border-b border-[var(--studio-border-subtle)] py-2 text-[12px]"><span className="font-medium">{attempt.provider}</span> · {humanizeIdentifier(attempt.state)} · <DateValue value={attempt.startedAt} />{attempt.error && <p className="text-red-100">{attempt.error}</p>}{attempt.operationId && <p className="text-[var(--studio-text-muted)]">Operation: {attempt.operationId}</p>}</div>)}</section>}</div>}
       {tab === 'Usage & Cost' && <div><WorkspaceField label="Customer charged?">{selected.creditsCharged == null ? 'Unknown' : Number(selected.creditsCharged) > 0 ? 'Yes' : 'No'}</WorkspaceField><WorkspaceField label="Provider cost known?">{selected.providerCost ? 'Yes' : 'No'}</WorkspaceField><WorkspaceField label="Funding source">{selected.fundingSource ? humanizeIdentifier(selected.fundingSource) : '—'}</WorkspaceField><WorkspaceField label="Credits reserved">{selected.creditsReserved ?? '—'}</WorkspaceField><WorkspaceField label="Credits released">{selected.creditsReleased ?? '—'}</WorkspaceField><WorkspaceField label="Credits charged">{usage(selected)}</WorkspaceField><WorkspaceField label="Failure owner">{selected.failureOwner ? humanizeIdentifier(selected.failureOwner) : '—'}</WorkspaceField><WorkspaceField label="Failure category">{selected.failureCategory ? humanizeIdentifier(selected.failureCategory) : '—'}</WorkspaceField><WorkspaceField label="VANTRA Cost"><OperatorCost value={selected.providerCost} /></WorkspaceField><WorkspaceField label="Reservation state">{selected.reservationState ? humanizeIdentifier(selected.reservationState) : '—'}</WorkspaceField>{selected.reconciliationFlags.length > 0 && <section className="mt-4 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3"><h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-100">Reconciliation signals</h3><div className="mt-2 flex flex-wrap gap-1.5">{selected.reconciliationFlags.map((flag) => <Badge key={flag}>{humanizeIdentifier(flag)}</Badge>)}</div></section>}<TechnicalDetails>{selected.providerCost && <p>Stored cost: {selected.providerCost.minor} minor units {selected.providerCost.currency}</p>}{selected.usageMetadata ? <pre className="whitespace-pre-wrap break-all text-[11px]">{JSON.stringify(selected.usageMetadata, null, 2)}</pre> : <p>No additional usage metadata recorded.</p>}</TechnicalDetails></div>}
       {tab === 'Timeline' && <div className="space-y-4"><div className="border-s border-white/20 ps-4"><p className="font-medium">Created</p><DateValue value={selected.createdAt} /></div>{selected.attempts.map((attempt, index) => <div key={`${attempt.startedAt}:${index}`} className="border-s border-white/20 ps-4"><p className="font-medium">{attempt.provider} · {humanizeIdentifier(attempt.state)}</p><DateValue value={attempt.startedAt} /></div>)}{selected.completedAt && <div className="border-s border-white/20 ps-4"><p className="font-medium">{humanizeIdentifier(selected.status)}</p><DateValue value={selected.completedAt} /></div>}<TechnicalDetails><TechnicalId label="Job ID" value={selected.id} /><TechnicalId label="User ID" value={selected.userId} />{selected.usageMetadata && <pre className="mt-2 whitespace-pre-wrap break-all text-[11px]">{JSON.stringify(selected.usageMetadata, null, 2)}</pre>}</TechnicalDetails></div>}
+      {tab === 'Usage & Cost' && <WebSearchJobDetails search={selected.webSearch} />}
     </WorkspaceDrawer>}</>;
 }
 

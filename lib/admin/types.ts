@@ -207,6 +207,15 @@ export type AdminJobRow = {
   creditsReleased: string | null;
   attempts: { provider: string; state: string; error: string | null; operationId: string | null; startedAt: string; finishedAt: string | null }[];
   usageMetadata: Record<string, unknown> | null;
+  webSearch: {
+    triggered: boolean; apiRequestCount: number | null; primaryProvider: string | null;
+    providerUsed: string | null; fallbackUsed: boolean; fallbackProvider: string | null;
+    fallbackReason: string | null; resultCount: number | null; latencyMs: number | null;
+    evidenceMode: string | null; assessmentReason: string | null; selectedEvidenceCount: number | null;
+    urlReadCount: number; urlReadOutcome: string | null;
+    attempts: { provider: string; outboundRequestIssued: boolean; status: string;
+      failureCategory: string | null; resultCount: number; latencyMs: number }[];
+  } | null;
 };
 
 export type AdminJobsData = {

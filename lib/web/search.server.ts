@@ -117,9 +117,13 @@ export function configuredWebSearchProviders(): WebSearchProvider[] {
   return providers;
 }
 
+export type SearchAttempt = { provider: string; outboundRequestIssued: boolean;
+  status: 'success' | 'failed' | 'skipped'; failureCategory: SearchFailure | null;
+  resultCount: number; latencyMs: number };
 export type SearchExecution = { providerAttempted: string[]; providerUsed: string | null;
-  fallbackUsed: boolean; failureCategory: SearchFailure | null; latencyMs: number;
-  resultCount: number; truncated: boolean };
+  primaryProvider: string | null; fallbackUsed: boolean; fallbackReason: SearchFailure | null;
+  failureCategory: SearchFailure | null; latencyMs: number; apiRequestCount: number;
+  attempts: SearchAttempt[]; resultCount: number; truncated: boolean };
 
 // Temporary per-instance protection before the additive telemetry migration is installed.
 // A configured hard budget never uses this fallback because it cannot enforce a global limit.
@@ -152,9 +156,18 @@ export async function orchestrateWebSearch(query: string, options: {
     try { await health.record(id, result); }
     catch { if (!options.health) await localHealth.record(id, result); }
   };
-  const attempted: string[] = []; let lastFailure: SearchFailure | null = null;
+  const attempted: string[] = []; const attempts: SearchAttempt[] = [];
+  let lastFailure: SearchFailure | null = null;
   let fallbackUsed = false;
   const started = Date.now();
+  const primaryProvider = providers[0]?.id ?? null;
+  const execution = (providerUsed: string | null, resultCount: number, truncated: boolean): SearchExecution => ({
+    providerAttempted: [...attempted], providerUsed, primaryProvider, fallbackUsed,
+    fallbackReason: fallbackUsed ? attempts[0]?.failureCategory ?? lastFailure : null,
+    failureCategory: lastFailure, latencyMs: Date.now() - started,
+    apiRequestCount: attempts.filter((attempt) => attempt.outboundRequestIssued).length,
+    attempts: [...attempts], resultCount, truncated,
+  });
   const emit = (metadata: SearchExecution) => {
     options.onExecution?.(metadata);
     // No query, source text, result URL, user ID, or credential in operational logs.
@@ -166,11 +179,18 @@ export async function orchestrateWebSearch(query: string, options: {
     let claim: 'ok' | 'cooldown' | 'budget';
     try { claim = await health.claim(provider.id, budget); }
     catch {
-      if (options.health || budget !== null) { lastFailure = 'unavailable'; continue; }
+      if (options.health || budget !== null) {
+        lastFailure = 'unavailable'; attempts.push({ provider: provider.id, outboundRequestIssued: false,
+          status: 'skipped', failureCategory: lastFailure, resultCount: 0, latencyMs: 0 }); continue;
+      }
       health = localHealth;
       claim = await health.claim(provider.id, null);
     }
-    if (claim !== 'ok') { lastFailure = claim === 'budget' ? 'quota_exhausted' : 'rate_limited'; continue; }
+    if (claim !== 'ok') {
+      lastFailure = claim === 'budget' ? 'quota_exhausted' : 'rate_limited';
+      attempts.push({ provider: provider.id, outboundRequestIssued: false,
+        status: 'skipped', failureCategory: lastFailure, resultCount: 0, latencyMs: 0 }); continue;
+    }
     attempted.push(provider.id);
     const providerStarted = Date.now();
     try {
@@ -179,31 +199,32 @@ export async function orchestrateWebSearch(query: string, options: {
       const truncated = hits.length >= 8;
       await record(provider.id, { success: true, latencyMs: Date.now() - providerStarted,
         resultCount: hits.length, truncated, cooldownSeconds: 0 });
-      emit({ providerAttempted: attempted, providerUsed: provider.id,
-        fallbackUsed, failureCategory: lastFailure,
-        latencyMs: Date.now() - started, resultCount: hits.length, truncated });
+      attempts.push({ provider: provider.id, outboundRequestIssued: true, status: 'success',
+        failureCategory: null, resultCount: hits.length, latencyMs: Date.now() - providerStarted });
+      emit(execution(provider.id, hits.length, truncated));
       return hits.map((hit) => ({ ...hit, provider: provider.id }));
     } catch (cause) {
       const category = cause instanceof SearchProviderError ? cause.category : 'unavailable';
       lastFailure = category;
+      attempts.push({ provider: provider.id, outboundRequestIssued: true, status: 'failed',
+        failureCategory: category, resultCount: 0, latencyMs: Date.now() - providerStarted });
       await record(provider.id, { success: false, category, latencyMs: Date.now() - providerStarted,
         resultCount: 0, truncated: false, cooldownSeconds: category === 'quota_exhausted' ? 3600
           : category === 'rate_limited' ? 120 : category === 'unavailable' || category === 'timeout' ? 60 : 30 });
     }
   }
-  emit({ providerAttempted: attempted, providerUsed: null, fallbackUsed,
-    failureCategory: lastFailure, latencyMs: Date.now() - started, resultCount: 0, truncated: false });
+  emit(execution(null, 0, false));
   throw new Error('WEB_SEARCH_UNAVAILABLE');
 }
 
 export async function searchWeb(query: string, provider?: WebSearchProvider | null,
-  options: { providers?: WebSearchProvider[] } = {}) {
+  options: { providers?: WebSearchProvider[]; onExecution?: (metadata: SearchExecution) => void } = {}) {
   if (provider === null) throw new Error('WEB_SEARCH_UNCONFIGURED');
   if (!query.trim() || query.length > 300 || query.trim().split(/\s+/).length > 50 || unsafeQuery.test(query))
     throw new Error('WEB_SEARCH_INVALID_QUERY');
   let execution: SearchExecution | undefined;
   const hits = provider ? await provider.search(query.trim(), 8) : await orchestrateWebSearch(query, {
-    providers: options.providers, onExecution: (result) => { execution = result; },
+    providers: options.providers, onExecution: (result) => { execution = result; options.onExecution?.(result); },
   });
   if (!hits.length) throw new Error('WEB_SEARCH_EMPTY');
   const text = hits.map((hit, index) => `${index + 1}. ${hit.title}\n${hit.url}\nPublished: ${hit.publishedAt ?? 'unknown'}\nSource: ${hit.source ?? new URL(hit.url).hostname}\n${hit.description}`).join('\n\n');

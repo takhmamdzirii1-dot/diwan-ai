@@ -30,6 +30,7 @@ import { isMissingCustomerPricing } from './model-economics';
 import { deriveProviderTelemetry } from './provider-telemetry';
 import { classifyProviderRuntimeHealth, providerAvailabilityReason } from './provider-availability';
 import { reconciliationFlags } from './reconciliation-flags';
+import { webSearchUsageForJob } from './web-search-usage';
 import { CATALOG_MODELS, findCatalogModel, modelBrand, modelIconUrl } from '@/src/config/model-catalog';
 import { emptyModelCapabilities, normalizeModelSurfaceVisibility } from '@/lib/models/capabilities';
 import { isRetiredModelReference, isRetiredProviderId } from '@/lib/models/retired-providers';
@@ -787,6 +788,7 @@ export async function getAdminJobs(filters: {
         attempts: providerAttempts.map((attempt) => ({ provider: attempt.provider, state: attempt.state, error: attempt.error_message,
           operationId: attempt.provider_operation_id ?? null, startedAt: attempt.started_at, finishedAt: attempt.finished_at })),
         usageMetadata: row.execution_metadata && typeof row.execution_metadata === 'object' ? row.execution_metadata : null,
+        webSearch: webSearchUsageForJob(executionMetadata),
       };
     });
     const generationRows: AdminJobRow[] = (generations.data ?? []).map((row: any) => {
@@ -804,7 +806,7 @@ export async function getAdminJobs(filters: {
         reservationState: null, providerStatus: null, providerOperationId: null, fundingSource: null,
         failureOwner: null, failureCategory: null, creditsReserved: null, creditsReleased: null, attempts: [],
         reconciliationFlags: [],
-        usageMetadata: null,
+        usageMetadata: null, webSearch: null,
       };
     });
     const combined = [...executionRows, ...generationRows].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
