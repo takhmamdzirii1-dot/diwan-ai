@@ -736,17 +736,18 @@ export function searchSynthesisRejectionReason(answer: string, hits: readonly We
   if (mode === 'structured_fact' && /^\s*(?:[-*]|\d+\.)\s/mu.test(trimmed)) return 'raw_results';
   const cited = mode === 'structured_fact' ? [...trimmed.matchAll(/https?:\/\/[^\s)\]>"']+/g)]
     : [...trimmed.matchAll(/\[\[source:S[1-9]\d*\]\]/g)];
-  const citationLimit = mode === 'structured_fact' ? 3 : Math.min(hits.length, mode === 'fresh_news'
-    ? requestedNewsCount(request) : 5, 8);
-  if (cited.length > citationLimit) return 'too_many_citations';
+  const citationLimit = mode === 'structured_fact' ? 3 : Math.min(hits.length, 5, 8);
+  if (mode !== 'fresh_news' && cited.length > citationLimit) return 'too_many_citations';
   const citations: [string, string, string][] = mode === 'structured_fact'
     ? [...trimmed.matchAll(/\[([^\]]+)\]\((https:\/\/[^)]+)\)/g)].map((match) =>
       [match[0], match[1], match[2]])
     : narrativeSourceMatches(trimmed, hits)!.map(({ id, url }) => [`[[source:${id}]]`, id, url]);
   if (mode === 'fresh_news') {
-    const items = [...trimmed.matchAll(/^\s*(?:[-*]|\d{1,2}[.)])\s+/gmu)].length;
-    if (items > citationLimit) return 'too_many_items';
-    if (items > citations.length) return 'insufficient_citations';
+    if (new Set(citations.map(([, id]) => id)).size > Math.min(hits.length, 8)) return 'too_many_citations';
+    const items = [...trimmed.matchAll(/^[ \t]*(?:[-*]|\d{1,2}[.)])[ \t]+/gmu)];
+    if (items.length > requestedNewsCount(request)) return 'too_many_items';
+    if (items.some((item, index) => !/\[\[source:S[1-9]\d*\]\]/.test(trimmed.slice(
+      item.index! + item[0].length, items[index + 1]?.index ?? trimmed.length)))) return 'insufficient_citations';
   }
   if (citations.length !== cited.length || citations.some(([, label, url]) => !hits.some((hit) =>
     canonicalSearchUrl(hit.url) === canonicalSearchUrl(url) && (mode !== 'structured_fact'

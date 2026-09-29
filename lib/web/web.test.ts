@@ -716,9 +716,10 @@ test('cross-language Africa news retains bounded distinct candidates for one sel
   assert.equal(ten.telemetry.requestedItemCount, 10);
   assert.equal(ten.hits.length, 7);
   assert.equal(ten.telemetry.citationCandidatesCount, 7);
-  const unsupportedTen = Array.from({ length: 10 }, (_, index) =>
+  const unsupportedEleven = Array.from({ length: 11 }, (_, index) =>
     `- خبر عن أفريقيا. [[source:${ten.hits[index % ten.hits.length].evidenceId}]]`).join('\n');
-  assert.notEqual(searchSynthesisRejectionReason(unsupportedTen, ten.hits, tenRequest, new Date(), 'ar'), null);
+  assert.equal(searchSynthesisRejectionReason(unsupportedEleven, ten.hits, tenRequest, new Date(), 'ar'),
+    'too_many_items');
   const structured = Array.from({ length: 4 }, (_, index) => ({
     title: `Acme release ${index}`, url: `https://acme.example/release-${index}`,
     description: 'Acme Current 26.10.0.', evidenceLevel: 'primary_search' as const,
@@ -772,6 +773,39 @@ test('narrative source IDs render exact server URLs in Arabic, English, and Fren
     hits, 'find regional reports', now, 'en');
   const output = JSON.parse((await guarded.text()).split('\n')[0].slice(2)) as string;
   assert.doesNotMatch(output, /&#x20;|\[\[source:/);
+});
+
+test('fresh-news item count is independent of valid corroborating source-token occurrences', async () => {
+  const now = new Date('2026-09-29T12:00:00Z');
+  const request = 'latest 5 Africa news now';
+  const hits = Array.from({ length: 7 }, (_, index) => ({ evidenceId: `S${index + 1}`,
+    title: `Africa report from source ${index + 1}`,
+    url: `https://source${index + 1}.example/news`,
+    description: 'A separate publisher reports a confirmed regional development.',
+    publishedAt: '2026-09-29', evidenceLevel: 'corroborated' as const }));
+  const answer = [
+    '1. A regional trade agreement was announced. [[source:S1]] [[source:S2]] [[source:S3]] [[source:S1]]',
+    '2. Health agencies issued a new report. [[source:S4]]',
+    '3. Energy officials published an update. [[source:S5]]',
+    '4. Transport ministers reached an agreement. [[source:S6]]',
+    '5. Researchers released a regional study. [[source:S7]]',
+  ].join('\n');
+  assert.equal(searchSynthesisRejectionReason(answer, hits, request, now, 'en'), null);
+  const guarded = await guardSearchDataStream(new Response(`0:${JSON.stringify(answer)}\n`),
+    hits, request, now, 'en');
+  const rendered = JSON.parse((await guarded.text()).split('\n')[0].slice(2)) as string;
+  assert.equal((rendered.match(/\]\(https:\/\//g) ?? []).length, 8);
+  assert.doesNotMatch(rendered, /\[\[source:/);
+  assert.equal(searchSynthesisRejectionReason(`${answer}\n6. Another report appeared. [[source:S1]]`,
+    hits, request, now, 'en'), 'too_many_items');
+  assert.equal(searchSynthesisRejectionReason(answer.replace('3. Energy officials published an update. [[source:S5]]',
+    '3. Energy officials published an update.'), hits, request, now, 'en'), 'insufficient_citations');
+  assert.equal(searchSynthesisRejectionReason(answer.replace('[[source:S7]]', '[[source:S99]]'),
+    hits, request, now, 'en'), 'unsupported_url');
+  assert.equal(searchSynthesisRejectionReason(answer.replace('[[source:S7]]',
+    '[Source](https://source7.example/news)'), hits, request, now, 'en'), 'unsupported_url');
+  assert.equal(searchSynthesisRejectionReason(answer, hits, 'find Africa reports', now, 'en'),
+    'too_many_citations');
 });
 
 test('news count and timeframe caps never imply unsupported stories or dates', async () => {
