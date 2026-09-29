@@ -8,7 +8,7 @@ import { budgetWarning, type SearchHealthStore } from './search-health.server';
 import { decideWebSearch, decideWebSearchWithHistory } from './selection';
 import { pinnedAddressLookup, readPublicWebPage, resolvePublicWebUrl } from './url-reader.server';
 import { answerUsesOnlySearchSources, assessFreshEvidenceBundle, evidenceScore, groundedSearchSummary, guardSearchDataStream,
-  searchEvidence, usableSearchSynthesis } from './evidence';
+  searchEvidence, searchSynthesisRejectionReason, usableSearchSynthesis } from './evidence';
 
 const publicDns = async () => [{ address: '93.184.215.14', family: 4 }];
 
@@ -730,6 +730,76 @@ test('current-major primary plus newer agreeing exact sources ignores one undate
       description: 'Current Node.js release is 26.11.0.' },
   ], request, '2026-09-29');
   assert.equal(conflicting.kind, 'insufficient');
+});
+
+test('latest current claim supersedes multiple independently supported historical release groups', () => {
+  const request = 'latest Node.js version now';
+  const hits = [
+    { title: 'Node.js downloads', url: 'https://nodejs.org/en/download/current',
+      description: 'Node.js v26 is the Current major release; LTS is v24.' },
+    ...[['26.6.0', '2026-08-01'], ['26.8.2', '2026-09-09'], ['26.10.0', '2026-09-27']]
+      .flatMap(([version, publishedAt], index) => [
+        { title: `Current release ${version}`, url: `https://first${index}.example/release`, publishedAt,
+          description: `Node.js Current release is ${version}.` },
+        { title: `Current update ${version}`, url: `https://second${index}.test/release`, publishedAt,
+          description: `Latest Current Node.js release is ${version}.` },
+      ]),
+    { title: 'Node.js LTS', url: 'https://lts.example/release', publishedAt: '2026-09-27',
+      description: 'Node.js LTS is 24.21.0.' },
+  ];
+  const result = assessFreshEvidenceBundle(hits, request, '2026-09-29');
+  assert.equal(result.kind, 'primary_supported_bundle');
+  assert.equal(result.factKey, 'version:current:26.10.0');
+  assert.equal(result.reason, 'historical_claims_superseded');
+  assert.doesNotMatch(JSON.stringify(result.hits), /26\.8\.2|26\.6\.0/);
+});
+
+test('equally current official indexes conflict, while a newer live index supersedes old corroboration', () => {
+  const request = 'latest Acme version now';
+  const current = { title: 'Acme downloads', url: 'https://acme.com/download/current',
+    description: 'Acme Current 26.10.0.' };
+  const conflicting = assessFreshEvidenceBundle([current,
+    { title: 'Acme status', url: 'https://acme.com/status', description: 'Acme Current 26.11.0.' },
+  ], request, '2026-09-29');
+  assert.equal(conflicting.kind, 'insufficient');
+  assert.equal(conflicting.reason, 'materially_unresolved_conflict');
+  const preferred = assessFreshEvidenceBundle([current,
+    { title: 'Old release report', url: 'https://first.example/release', publishedAt: '2026-09-09',
+      description: 'Acme Current 26.8.2.' },
+    { title: 'Old independent report', url: 'https://second.test/release', publishedAt: '2026-09-09',
+      description: 'Acme Current 26.8.2.' },
+  ], request, '2026-09-29');
+  assert.equal(preferred.factKey, 'version:current:26.10.0');
+  assert.deepEqual(preferred.hits.map((hit) => hit.url), [current.url]);
+});
+
+test('fresh news accepts paraphrased citation labels and bullets, but rejects invented evidence', async () => {
+  const request = 'ما آخر أخبار شركة Acme؟';
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Algiers', year: 'numeric',
+    month: '2-digit', day: '2-digit' }).format(new Date());
+  const result = await searchContextForRequest(request, request, {
+    search: async () => ({ sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+      { title: 'Acme office opens', url: 'https://first.example/news', publishedAt: today,
+        description: 'Acme opened a new office this week.' },
+      { title: 'Acme expands its service', url: 'https://second.test/news', publishedAt: today,
+        description: 'Acme expanded service to another city this week.' },
+    ] }),
+    read: async () => { throw new Error('not needed'); },
+  });
+  const answer = '- افتتحت Acme مكتبًا جديدًا. [خبر المكتب](https://first.example/news)\n'
+    + '- وسّعت Acme خدمتها إلى مدينة أخرى. [خبر التوسع](https://second.test/news)';
+  assert.equal(searchSynthesisRejectionReason(answer, result.hits, request, new Date(), 'ar'), null);
+  assert.equal(usableSearchSynthesis(answer, result.hits, request, new Date(), 'ar'), true);
+  assert.equal(searchSynthesisRejectionReason(answer.replace('https://second.test/news', 'https://invented.test/news'),
+    result.hits, request, new Date(), 'ar'), 'unsupported_url');
+  assert.equal(searchSynthesisRejectionReason(answer.replace('مدينة أخرى', '42 مدينة'), result.hits, request,
+    new Date(), 'ar'), 'unsupported_number');
+  assert.equal(searchSynthesisRejectionReason(answer.replace('افتتحت', 'افتتحت عام 2025'), result.hits,
+    request, new Date(), 'ar'), 'unsupported_number');
+  const structured = [{ title: 'Acme downloads', url: 'https://acme.com/download/current',
+    description: 'Current 8.2.0.', evidenceLevel: 'primary_search' as const }];
+  assert.equal(searchSynthesisRejectionReason('Current 99.0.0. [Acme downloads](https://acme.com/download/current)',
+    structured, 'latest Acme version now', new Date(), 'en'), 'unsupported_number');
 });
 
 test('Brave and Tavily insufficient evidence remains uncertain after exactly one fallback', async () => {

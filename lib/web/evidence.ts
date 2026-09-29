@@ -294,8 +294,10 @@ export function assessNarrativeEvidenceBundle(hits: readonly WebSearchHit[], req
 
 function currentMajor(text: string) {
   const content = plainExcerpt(text, 500);
-  const match = content.match(/\bcurrent\b[^\n.]{0,35}?\bv?(\d{1,3})\b/iu)
-    ?? content.match(/\bv?(\d{1,3})\b[^\n.]{0,35}?\bcurrent\b/iu);
+  // Current and LTS often share one excerpt. Never carry a major across the
+  // opposing label, and prefer the series stated immediately before Current.
+  const match = content.match(/\bv?(\d{1,3})\b(?:(?!\bLTS\b)[^\n.]){0,35}?\bcurrent\b/iu)
+    ?? content.match(/\bcurrent\b(?:(?!\bLTS\b)[^\n.]){0,35}?\bv?(\d{1,3})\b/iu);
   return match?.[1] ?? null;
 }
 
@@ -320,8 +322,15 @@ export function assessFreshEvidenceBundle(hits: readonly WebSearchHit[], request
   });
   if (exactPrimary.length) {
     if (latestVersionRequest(request)) {
+      const liveIndexClaims = new Set(exactPrimary.filter(currentReleaseIndex)
+        .map((hit) => freshFactKey(claimText(hit), request)));
+      if (liveIndexClaims.size > 1)
+        return { kind: 'insufficient' as const, factKey: null, hits: [] as WebSearchHit[],
+          reason: 'materially_unresolved_conflict' as const };
       const latest = latestPrimaryClaim(exactPrimary, request, today);
       if (latest?.key) return { kind: 'primary_exact' as const, factKey: latest.key,
+        reason: latest.hits.some(currentReleaseIndex) ? 'latest_primary_index' as const
+          : 'latest_primary_dated' as const,
         hits: rankedEvidence(latest.hits.map((hit) => ({ ...hit,
           evidenceLevel: hit.verifiedPage ? 'primary_page' as const : 'primary_search' as const,
           evidenceBundle: 'primary_exact' as const })), request, today) };
@@ -375,17 +384,31 @@ export function assessFreshEvidenceBundle(hits: readonly WebSearchHit[], request
     }) };
   });
   const supported = independent.filter((group) => group.hits.length >= 2);
-  if (supported.length !== 1)
+  if (!supported.length)
     return { kind: 'insufficient' as const, factKey: null, hits: [] as WebSearchHit[] };
-  const agreed = supported[0];
+  const latestDate = (group: typeof supported[number]) => Math.max(...group.hits
+    .map((hit) => hit.publishedAt ? Date.parse(hit.publishedAt) : NaN).filter(Number.isFinite));
+  const ordered = [...supported].sort((a, b) => latestDate(b) - latestDate(a));
+  // Release history naturally contains several once-current values. A newer,
+  // dated, independently corroborated group can supersede historical groups;
+  // near-contemporaneous claims remain unresolved rather than using version size.
+  if (ordered.length > 1 && (!Number.isFinite(latestDate(ordered[0]))
+    || latestDate(ordered[0]) < Date.parse(today) - 30 * 86_400_000
+    || ordered.slice(1).some((group) => !Number.isFinite(latestDate(group))
+      ? false : latestDate(group) >= latestDate(ordered[0]) - 2 * 86_400_000)))
+    return { kind: 'insufficient' as const, factKey: null, hits: [] as WebSearchHit[],
+      reason: 'materially_unresolved_conflict' as const };
+  const agreed = ordered[0];
   const agreedLatest = Math.max(...agreed.hits.map((hit) => hit.publishedAt ? Date.parse(hit.publishedAt) : NaN)
     .filter(Number.isFinite));
   // A lone undated or older snippet cannot veto a newer independent bundle;
   // an equally recent competing value remains materially unresolved.
   if (independent.some((group) => group.key !== agreed.key && group.hits.some((hit) => {
     const date = hit.publishedAt ? Date.parse(hit.publishedAt) : NaN;
-    return !Number.isFinite(agreedLatest) || (Number.isFinite(date) && date >= agreedLatest);
-  }))) return { kind: 'insufficient' as const, factKey: null, hits: [] as WebSearchHit[] };
+    return !Number.isFinite(agreedLatest) || (Number.isFinite(date)
+      && date >= agreedLatest - 2 * 86_400_000);
+  }))) return { kind: 'insufficient' as const, factKey: null, hits: [] as WebSearchHit[],
+    reason: 'materially_unresolved_conflict' as const };
   if (major) {
     if (agreed.key !== `version:current:${major}` && !agreed.key.startsWith(`version:current:${major}.`))
       return { kind: 'insufficient' as const, factKey: null, hits: [] as WebSearchHit[] };
@@ -393,12 +416,16 @@ export function assessFreshEvidenceBundle(hits: readonly WebSearchHit[], request
       currentMajor(`${hit.title} ${hit.description}`) === major), request, today)[0];
     if (!official) return { kind: 'insufficient' as const, factKey: null, hits: [] as WebSearchHit[] };
     return { kind: 'primary_supported_bundle' as const, factKey: agreed.key,
+      reason: independent.length > 1 ? 'historical_claims_superseded' as const
+        : 'latest_supported_bundle' as const,
       hits: [official, ...rankedEvidence(agreed.hits, request, today).slice(0, 2)].map((hit) => ({ ...hit,
         evidenceLevel: likelyPrimarySource(hit, request) ? hit.verifiedPage ? 'primary_page' as const
           : 'primary_search' as const : 'primary_bundle' as const,
         evidenceBundle: 'primary_supported_bundle' as const })) };
   }
   return { kind: 'corroborated_exact' as const, factKey: agreed.key,
+    reason: independent.length > 1 ? 'historical_claims_superseded' as const
+      : 'latest_exact_selected' as const,
     hits: rankedEvidence(agreed.hits, request, today).slice(0, 3).map((hit) => ({ ...hit,
       evidenceLevel: 'corroborated' as const, evidenceBundle: 'corroborated_exact' as const })) };
 }
@@ -509,49 +536,58 @@ export function answerUsesOnlySearchSources(answer: string, hits: readonly WebSe
   return true;
 }
 
-/** Reject unsupported citations, copied snippets, unverified numbers, and wrong-language answers. */
-export function usableSearchSynthesis(answer: string, hits: readonly WebSearchHit[], request: string,
+/** Content-free rejection reason for the existing same-call synthesis guard. */
+export function searchSynthesisRejectionReason(answer: string, hits: readonly WebSearchHit[], request: string,
   now: Date, language: ResponseLanguage) {
   const mode = evidenceModeForRequest(request);
   const trimmed = answer.trim();
-  if (!trimmed || trimmed.length > 4_000 || rawResultsRequested(request)) return false;
-  if (needsFreshEvidence(request) && !hits.some((hit) => evidenceStrength(hit))) return false;
-  if (!answerUsesOnlySearchSources(trimmed, hits, request, now)) return false;
+  if (!trimmed || trimmed.length > 4_000 || rawResultsRequested(request)) return 'invalid_answer';
+  if (needsFreshEvidence(request) && !hits.some((hit) => evidenceStrength(hit))) return 'insufficient_evidence';
+  if (!answerUsesOnlySearchSources(trimmed, hits, request, now)) return 'unsupported_url';
   const withoutLinks = trimmed.replace(/\[[^\]]+\]\(https?:\/\/[^)]+\)/g, ' ');
-  if (language === 'ar' && (withoutLinks.match(/[\u0600-\u06ff]/gu) ?? []).length < 3) return false;
-  if (resolveResponseLanguage(withoutLinks, [], 'en') !== language) return false;
-  if (/^(?:according to (?:the )?(?:retrieved |available )?sources|here are (?:the )?(?:search )?results|d'après les sources|وفق المصادر)/iu.test(trimmed)) return false;
-  if (/^\s*(?:[-*]|\d+\.)\s/mu.test(trimmed)) return false;
+  if (language === 'ar' && (withoutLinks.match(/[\u0600-\u06ff]/gu) ?? []).length < 3) return 'wrong_language';
+  if (resolveResponseLanguage(withoutLinks, [], 'en') !== language) return 'wrong_language';
+  if (/^(?:according to (?:the )?(?:retrieved |available )?sources|here are (?:the )?(?:search )?results|d'après les sources|وفق المصادر)/iu.test(trimmed)) return 'raw_results';
+  if (mode === 'structured_fact' && /^\s*(?:[-*]|\d+\.)\s/mu.test(trimmed)) return 'raw_results';
   const cited = [...trimmed.matchAll(/https?:\/\/[^\s)\]>"']+/g)];
-  if (cited.length > 3) return false;
+  if (cited.length > 3) return 'too_many_citations';
   const citations = [...trimmed.matchAll(/\[([^\]]+)\]\((https:\/\/[^)]+)\)/g)];
   if (citations.length !== cited.length || citations.some(([, label, url]) => !hits.some((hit) =>
-    safeUrl(hit.url) === safeUrl(url) && label === plainExcerpt(hit.title, 180).replace(/[\[\]]/g, '')))) return false;
-  if (hits[0]?.evidenceBundle === 'primary_supported_bundle' && (citations.length < 3
+    safeUrl(hit.url) === safeUrl(url) && (mode !== 'structured_fact'
+      || label === plainExcerpt(hit.title, 180).replace(/[\[\]]/g, ''))))) return 'unsupported_url';
+  if (mode === 'structured_fact' && hits[0]?.evidenceBundle === 'primary_supported_bundle' && (citations.length < 3
     || hits.filter((hit) => hit.evidenceLevel === 'primary_bundle'
-      && citations.some(([, , url]) => safeUrl(hit.url) === safeUrl(url))).length < 2)) return false;
-  if (hits[0]?.evidenceBundle === 'corroborated_exact' && (citations.length < 2
-    || !/(?:independent sources|sources indépendantes|مصدران مستقلان|مصادر مستقلة)/iu.test(trimmed))) return false;
+      && citations.some(([, , url]) => safeUrl(hit.url) === safeUrl(url))).length < 2)) return 'insufficient_citations';
+  if (mode === 'structured_fact' && hits[0]?.evidenceBundle === 'corroborated_exact' && (citations.length < 2
+    || !/(?:independent sources|sources indépendantes|مصدران مستقلان|مصادر مستقلة)/iu.test(trimmed))) return 'insufficient_citations';
   if (mode === 'fresh_news' && !hits.some((hit) => likelyPrimarySource(hit, request))
-    && citations.length < 2) return false;
+    && new Set(citations.map(([, , url]) => safeUrl(url))).size < 2) return 'insufficient_citations';
   if (mode === 'structured_fact' && hits.some((hit) => likelyPrimarySource(hit, request))
     && !citations.some(([, , url]) => hits.some((hit) => safeUrl(hit.url) === safeUrl(url)
-      && likelyPrimarySource(hit, request)))) return false;
+      && likelyPrimarySource(hit, request)))) return 'insufficient_citations';
   const citedHits = hits.filter((hit) => citations.some(([, , url]) => safeUrl(hit.url) === safeUrl(url)));
-  const allowedNumbers = new Set(citedHits.flatMap((hit) => `${needsFreshEvidence(request) && hit.evidenceLevel !== 'primary_search' ? '' : hit.title} ${hit.description} ${hit.publishedAt ?? ''}`.match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []));
-  if ((withoutLinks.match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []).some((value) => !allowedNumbers.has(value))) return false;
+  const allowedNumbers = new Set(citedHits.flatMap((hit) => `${mode === 'structured_fact' && needsFreshEvidence(request)
+    && hit.evidenceLevel !== 'primary_search' ? '' : hit.title} ${hit.description} ${hit.publishedAt ?? ''}`
+    .match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []));
+  if ((withoutLinks.match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []).some((value) => !allowedNumbers.has(value))) return 'unsupported_number';
   if (mode === 'structured_fact' && needsFreshEvidence(request)
     && /\bversion\b|(?:إصدار|اصدار|نسخة)/iu.test(request)) {
     const current = rankedEvidence(hits, request, localDate(now))
       .map((hit) => evidenceStrength(hit) ? labeledVersion(factText(hit), 'current') : null).find(Boolean);
-    if (current && !withoutLinks.includes(current)) return false;
+    if (current && !withoutLinks.includes(current)) return 'structured_claim_mismatch';
   }
   if (hits.some((hit) => { const excerpt = plainExcerpt(hit.description, 400); return excerpt.length >= 24
-    && withoutLinks.toLowerCase().includes(excerpt.toLowerCase()); })) return false;
+    && withoutLinks.toLowerCase().includes(excerpt.toLowerCase()); })) return 'copied_excerpt';
   const claims = withoutLinks.split(/(?<=[.!?؟])\s+/u).map((sentence) => sentence.trim().toLowerCase())
     .filter((sentence) => sentence.length > 25);
-  if (new Set(claims).size !== claims.length) return false;
-  return true;
+  if (new Set(claims).size !== claims.length) return 'duplicate_claim';
+  return null;
+}
+
+/** Reject unsupported citations, copied snippets, unverified numbers, and wrong-language answers. */
+export function usableSearchSynthesis(answer: string, hits: readonly WebSearchHit[], request: string,
+  now: Date, language: ResponseLanguage) {
+  return searchSynthesisRejectionReason(answer, hits, request, now, language) === null;
 }
 
 /** Keep the existing model's grounded synthesis; fail closed to a localized sourced answer. */
@@ -564,14 +600,15 @@ export async function guardSearchDataStream(response: Response, hits: readonly W
     try { const text = JSON.parse(line.slice(2)); return typeof text === 'string' ? [text] : []; }
     catch { return []; }
   }).join('');
-  if (usableSearchSynthesis(modelAnswer, hits, request, now, locale)) {
+  const rejectionReason = searchSynthesisRejectionReason(modelAnswer, hits, request, now, locale);
+  if (rejectionReason === null) {
     console.info('WEB_SEARCH_ANSWER', { citationsCount: [...modelAnswer.matchAll(/\]\(https:\/\//g)].length,
       synthesisAccepted: true });
     return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers });
   }
   const fallbackAnswer = groundedSearchSummary(hits, request, now, locale);
   console.info('WEB_SEARCH_ANSWER', { citationsCount: [...fallbackAnswer.matchAll(/\]\(https:\/\//g)].length,
-    synthesisAccepted: false });
+    synthesisAccepted: false, rejectionReason });
   const replacement = `0:${JSON.stringify(fallbackAnswer)}`;
   const next: string[] = []; let inserted = false;
   for (const line of lines) {
