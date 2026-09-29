@@ -180,8 +180,9 @@ export function searchEvidence(hits: readonly WebSearchHit[], request: string, n
 
 function labeledVersion(text: string, label: 'current' | 'lts') {
   const version = String.raw`v?\d+\.\d+(?:\.\d+)?`;
-  return text.match(new RegExp(String.raw`\b${label}\b[^\d]{0,45}?\b(${version})\b`, 'i'))?.[1]
-    ?? text.match(new RegExp(String.raw`\b(${version})\b[^\n]{0,35}?\b${label}\b`, 'i'))?.[1]
+  const between = String.raw`(?:(?!\b(?:current|lts)\b)[^\d\n])`;
+  return text.match(new RegExp(String.raw`\b${label}\b${between}{0,45}?\b(${version})\b`, 'i'))?.[1]
+    ?? text.match(new RegExp(String.raw`\b(${version})\b(?:(?!\b(?:current|lts)\b)[^\n]){0,35}?\b${label}\b`, 'i'))?.[1]
     ?? null;
 }
 

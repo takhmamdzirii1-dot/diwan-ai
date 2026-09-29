@@ -40,7 +40,7 @@ function refinedRetrievalQuery(request: string) {
         ? 'current official availability' : null;
   if (!intent) return request;
   const ignored = new Set(['latest', 'current', 'version', 'release', 'official', 'price', 'cost',
-    'availability', 'stock', 'status', 'what', 'which', 'now', 'today', 'the']);
+    'availability', 'stock', 'status', 'what', 'which', 'now', 'today', 'the', 'is']);
   const entities = (request.match(/[A-Za-z][A-Za-z0-9.+-]*/g) ?? [])
     .filter((word) => !ignored.has(word.toLowerCase()));
   return entities.length === 1 ? `${entities[0]} ${intent}` : request;
@@ -87,7 +87,9 @@ export async function searchContextForRequest(query: string, request: string,
     fallback: ((fallbackQuery: string) => searchWeb(fallbackQuery, undefined, {
       providers: configuredWebSearchProviders().filter((provider) => provider.id === 'tavily'),
     })) as typeof searchWeb };
-  const resource = await active.search(query);
+  const fresh = needsFreshEvidence(request);
+  const retrievalQuery = fresh ? refinedRetrievalQuery(query) : query;
+  const resource = await active.search(retrievalQuery);
   const readCache = new Map<string, ReturnType<typeof readPublicWebPage>>();
   const readOnce: typeof readPublicWebPage = (url, options) => {
     if (options) return active.read(url, options);
@@ -102,7 +104,6 @@ export async function searchContextForRequest(query: string, request: string,
   const technicalFallback = resource.execution?.fallbackUsed ?? false;
   let fallbackUsed = technicalFallback;
   let fallbackResultCount = technicalFallback ? resource.hits.length : 0;
-  const fresh = needsFreshEvidence(request);
   if (fresh) {
     ({ hits, kind: assessmentKind, diagnosticStages } = await assessFreshHits(candidates, request, readOnce));
   } else hits = rankedEvidence(candidates.filter((hit) => hit.description.trim().length >= 24), request,
@@ -116,7 +117,7 @@ export async function searchContextForRequest(query: string, request: string,
   if (!hits.length && active.fallback && resource.execution?.providerUsed !== 'tavily' && !fallbackUsed) {
     fallbackUsed = true;
     try {
-      const fallback = await active.fallback(refinedRetrievalQuery(query));
+      const fallback = await active.fallback(retrievalQuery);
       fallbackResultCount = fallback.hits.length;
       candidates = dedupeSearchHits([...candidates, ...fallback.hits]);
       if (fresh) {

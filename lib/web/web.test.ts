@@ -468,23 +468,78 @@ test('official current major plus independent exact releases forms a grounded bu
 
 test('Arabic fresh request may refine retrieval while keeping the answer Arabic', async () => {
   const request = 'ما هو أحدث إصدار من Acme الآن؟';
+  let primary = '';
   let refined = '';
   const result = await searchContextForRequest(request, request, {
-    search: async () => ({ sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+    search: async (query) => { primary = query; return { sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
       { title: 'Acme downloads', url: 'https://acme.com/downloads', description: 'Acme v26 is Current.' },
       { title: 'Release report', url: 'https://first.example/acme', description: 'Latest Current 26.10.0.' },
-    ] }),
+    ] }; },
     fallback: async (query) => { refined = query; return { sourceId: 'search:tavily', name: 'Results',
       mimeType: 'text/markdown', text: '', hits: [
         { title: 'Independent report', url: 'https://second.test/acme', description: 'Current 26.10.0.' },
       ] }; },
     read: async () => { throw new Error('URL_TOO_LARGE'); },
   });
+  assert.equal(primary, 'Acme latest current release official');
   assert.equal(refined, 'Acme latest current release official');
   assert.equal(result.telemetry.finalEvidenceQuality, 'primary_supported_bundle');
   const answer = groundedSearchSummary(result.hits, request, new Date(), 'ar');
   assert.match(answer, /[\u0600-\u06ff]/u);
   assert.match(answer, /26\.10\.0/);
+});
+
+test('Arabic and English current-version questions use one normalized primary retrieval query', async () => {
+  for (const request of ['ما هو أحدث إصدار من Node.js الآن؟', 'What is the latest Node.js version now?']) {
+    const calls: string[] = [];
+    const result = await searchContextForRequest(request, request, {
+      search: async (query) => { calls.push(query); return { sourceId: 'search:brave', name: 'Results',
+        mimeType: 'text/markdown', text: '', hits: [
+          { title: 'Node.js downloads', url: 'https://nodejs.org/en/download/current',
+            description: 'Get Node.js v26.10.0 Current; LTS 24.21.0.' },
+        ] }; },
+      fallback: async (query) => { calls.push(`fallback:${query}`); throw new Error('not needed'); },
+      read: async () => { throw new Error('URL_TOO_LARGE'); },
+    });
+    assert.deepEqual(calls, ['Node.js latest current release official']);
+    assert.equal(result.telemetry.finalEvidenceQuality, 'primary_exact');
+    assert.equal(result.telemetry.fallbackUsed, false);
+    assert.match(result.context, /26\.10\.0/);
+    const language = request.startsWith('ما') ? 'ar' : 'en';
+    const answer = groundedSearchSummary(result.hits, request, new Date(), language);
+    assert.match(answer, /26\.10\.0/);
+    if (language === 'ar') assert.match(answer, /[\u0600-\u06ff]/u);
+  }
+});
+
+test('timeless or uncertain multi-entity requests keep their original retrieval query', async () => {
+  for (const [query, request] of [
+    ['اشرح Node.js', 'اشرح Node.js'],
+    ['Compare Node.js and Deno latest versions now', 'Compare Node.js and Deno latest versions now'],
+  ]) {
+    let searched = '';
+    await searchContextForRequest(query, request, {
+      search: async (value) => { searched = value; return { sourceId: 'search:brave', name: 'Results',
+        mimeType: 'text/markdown', text: '', hits: [] }; },
+      read: async () => { throw new Error('unexpected read'); },
+    });
+    assert.equal(searched, query);
+  }
+});
+
+test('fresh price and availability requests reuse deterministic intent for primary retrieval', async () => {
+  for (const [request, expected] of [
+    ['What is the current Acme price now?', 'Acme current official price'],
+    ['What is the current Acme availability?', 'Acme current official availability'],
+  ]) {
+    let searched = '';
+    await searchContextForRequest(request, request, {
+      search: async (query) => { searched = query; return { sourceId: 'search:brave', name: 'Results',
+        mimeType: 'text/markdown', text: '', hits: [] }; },
+      read: async () => { throw new Error('unexpected read'); },
+    });
+    assert.equal(searched, expected);
+  }
 });
 
 test('today-dated official news is usable without an artificial version or price claim', async () => {
@@ -628,7 +683,7 @@ test('Arabic confirmation follow-up re-runs the inherited query through the evid
   ]);
   assert.equal(choice.decision.path, 'required');
   const result = await searchContextForRequest(choice.evidenceRequest, choice.evidenceRequest, {
-    search: async (query) => { assert.equal(query, original); return { sourceId: 'search:test',
+    search: async (query) => { assert.equal(query, 'Node.js latest current release official'); return { sourceId: 'search:test',
       name: 'Results', mimeType: 'text/markdown', text: '', hits: [
         { title: 'Node.js downloads', url: 'https://nodejs.org/en/download',
           description: 'Current 26.1.0; LTS 24.4.0.' },
