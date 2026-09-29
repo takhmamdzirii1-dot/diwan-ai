@@ -182,10 +182,12 @@ export function evidenceScore(hit: WebSearchHit, request: string, today: string)
 
 function safeClaim(hit: WebSearchHit) {
   const excerpt = plainExcerpt(hit.description, 300);
-  if (!excerpt || /(?:ignore (?:all |previous )?instructions|system prompt|you are (?:an? |the )?(?:assistant|system)|(?:api[_ -]?key|secret|token)\s*[:=])/i.test(excerpt))
+  if (!excerpt || sourceInstructionMarker.test(excerpt))
     return plainExcerpt(hit.title, 180);
   return excerpt;
 }
+
+const sourceInstructionMarker = /(?:ignore (?:all |previous )?instructions|system prompt|you are (?:an? |the )?(?:assistant|system)|(?:api[_ -]?key|secret|token)\s*[:=])/i;
 
 /** Search evidence is data, never instructions; unknown publication dates stay unknown. */
 export function searchEvidence(hits: readonly WebSearchHit[], request: string, now = new Date()) {
@@ -266,48 +268,67 @@ export function relevantWebHit(hit: WebSearchHit, request: string) {
   return terms.some((term) => content.includes(term));
 }
 
+/** A requested list size is presentation guidance, never permission to invent items. */
+export function requestedNewsCount(request: string) {
+  const match = request.match(/(?:^|[^\d])([1-9]\d?)(?:\s+\S+){0,2}\s+(?:news|headlines|actualit[ée]s|nouvelles|أخبار|اخبار)(?=\s|\b|$)/iu);
+  return match ? Number(match[1]) : 3;
+}
+
+function narrativeDateRange(request: string, today: string) {
+  const end = Date.parse(today);
+  const day = 86_400_000;
+  const weekday = (new Date(end).getUTCDay() + 6) % 7;
+  if (/\b(?:last week|la semaine dernière)\b|(?:الأسبوع الماضي|الاسبوع الماضي)/iu.test(request))
+    return { start: end - (weekday + 7) * day, end: end - (weekday + 1) * day, strict: true };
+  if (/\b(?:this week|cette semaine)\b|(?:هذا الأسبوع|هذا الاسبوع)/iu.test(request))
+    return { start: end - weekday * day, end, strict: true };
+  if (/\b(?:past week|last 7 days)\b|(?:آخر|اخر)\s*(?:الأسبوع|الاسبوع|أسبوع|اسبوع|7\s*(?:أيام|ايام))/iu.test(request))
+    return { start: end - 6 * day, end, strict: true };
+  return { start: end - 30 * day, end: end + day, strict: false };
+}
+
 export function assessNarrativeEvidenceBundle(hits: readonly WebSearchHit[], request: string,
   today: string, mode: 'fresh_news' | 'general_web') {
   const valid = dedupeSearchHits(hits).filter((hit) => hit.title.trim().length >= 8
-    && hit.description.trim().length >= 24 && relevantWebHit(hit, request));
-  const todayTime = Date.parse(today);
+    && hit.description.trim().length >= 24 && !sourceInstructionMarker.test(`${hit.title} ${hit.description}`));
+  const window = narrativeDateRange(request, today);
   const relevant = mode === 'fresh_news' ? valid.filter((hit) => {
     if (asksForToday(request)) return hit.publishedAt === today;
     const date = hit.publishedAt ? Date.parse(hit.publishedAt) : NaN;
-    return !Number.isFinite(date) || (date <= todayTime + 86_400_000
-      && date >= todayTime - 30 * 86_400_000);
-  }) : valid;
+    return Number.isFinite(date) ? date >= window.start && date <= window.end : !window.strict;
+  }) : valid.filter((hit) => !hit.publishedAt || (Number.isFinite(Date.parse(hit.publishedAt))
+    && Date.parse(hit.publishedAt) <= Date.parse(today) + 86_400_000));
   const domains = new Set(relevant.map(independentDomain));
   const primary = relevant.filter((hit) => likelyPrimarySource(hit, request));
   const dated = relevant.some((hit) => hit.publishedAt && Number.isFinite(Date.parse(hit.publishedAt)));
-  const explicitFacts = new Set(relevant.map((hit) => freshFactKey(`${hit.title} ${hit.description}`, request))
-    .filter(Boolean));
-  if (mode === 'fresh_news' && explicitFacts.size > 1) return { kind: 'insufficient' as const, factKey: null,
-    reason: 'unresolved_exact_conflict' as const, hits: [] as WebSearchHit[] };
   const sufficient = mode === 'fresh_news'
     ? (primary.length > 0 && (dated || primary.some((hit) => hit.verifiedPage)))
       || domains.size >= 2
     : primary.length > 0 || domains.size >= 2;
   if (!sufficient) return { kind: 'insufficient' as const, factKey: null,
     reason: relevant.length ? 'insufficient_source_diversity' as const : 'no_relevant_sources' as const,
-    hits: [] as WebSearchHit[] };
+    safeCandidateCount: relevant.length, hits: [] as WebSearchHit[] };
   const kind = mode === 'fresh_news' ? 'independent_news_sources' as const : 'general_search_evidence' as const;
   const ranked = [...relevant].sort((a, b) => {
     const freshnessDifference = (b.publishedAt ?? '').localeCompare(a.publishedAt ?? '');
     const primaryDifference = Number(likelyPrimarySource(b, request)) - Number(likelyPrimarySource(a, request));
+    const lexicalHint = Number(relevantWebHit(b, request)) - Number(relevantWebHit(a, request));
     return (mode === 'fresh_news' ? freshnessDifference || primaryDifference : primaryDifference || freshnessDifference)
-      || evidenceScore(b, request, today) - evidenceScore(a, request, today);
+      || lexicalHint || evidenceScore(b, request, today) - evidenceScore(a, request, today);
   });
   const chosen: WebSearchHit[] = []; const used = new Set<string>();
+  // Give the same answer call room to choose semantically relevant stories;
+  // requested count limits the final answer, not the bounded candidate pool.
+  const limit = mode === 'fresh_news' ? 8 : 5;
   for (const hit of ranked) {
     const domain = independentDomain(hit);
     if (used.has(domain)) continue;
     chosen.push({ ...hit, evidenceLevel: likelyPrimarySource(hit, request) ? 'primary_search' : 'corroborated',
       evidenceBundle: kind });
     used.add(domain);
-    if (chosen.length === 3) break;
+    if (chosen.length === limit) break;
   }
-  return { kind, factKey: null, reason: kind, hits: chosen };
+  return { kind, factKey: null, reason: kind, safeCandidateCount: relevant.length, hits: chosen };
 }
 
 function currentMajor(text: string) {
@@ -690,8 +711,15 @@ export function searchSynthesisRejectionReason(answer: string, hits: readonly We
   if (/^(?:according to (?:the )?(?:retrieved |available )?sources|here are (?:the )?(?:search )?results|d'après les sources|وفق المصادر)/iu.test(trimmed)) return 'raw_results';
   if (mode === 'structured_fact' && /^\s*(?:[-*]|\d+\.)\s/mu.test(trimmed)) return 'raw_results';
   const cited = [...trimmed.matchAll(/https?:\/\/[^\s)\]>"']+/g)];
-  if (cited.length > 3) return 'too_many_citations';
+  const citationLimit = mode === 'structured_fact' ? 3 : Math.min(hits.length, mode === 'fresh_news'
+    ? requestedNewsCount(request) : 5, 8);
+  if (cited.length > citationLimit) return 'too_many_citations';
   const citations = [...trimmed.matchAll(/\[([^\]]+)\]\((https:\/\/[^)]+)\)/g)];
+  if (mode === 'fresh_news') {
+    const items = [...trimmed.matchAll(/^\s*(?:[-*]|\d{1,2}[.)])\s+/gmu)].length;
+    if (items > citationLimit) return 'too_many_items';
+    if (items > citations.length) return 'insufficient_citations';
+  }
   if (citations.length !== cited.length || citations.some(([, label, url]) => !hits.some((hit) =>
     canonicalSearchUrl(hit.url) === canonicalSearchUrl(url) && (mode !== 'structured_fact'
       || label === plainExcerpt(hit.title, 180).replace(/[\[\]]/g, ''))))) return 'unsupported_url';
@@ -710,7 +738,10 @@ export function searchSynthesisRejectionReason(answer: string, hits: readonly We
   const allowedNumbers = new Set(citedHits.flatMap((hit) => `${mode === 'structured_fact' && needsFreshEvidence(request)
     && hit.evidenceLevel !== 'primary_search' ? '' : hit.title} ${hit.description} ${hit.publishedAt ?? ''}`
     .match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []));
-  if ((withoutLinks.match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []).some((value) => !allowedNumbers.has(value))) return 'unsupported_number';
+  const factualText = mode === 'structured_fact' ? withoutLinks
+    : withoutLinks.replace(/^\s*\d{1,2}[.)]\s+/gmu, '');
+  if ((factualText.match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []).some((value) => !allowedNumbers.has(value)))
+    return 'unsupported_number';
   if (mode === 'structured_fact' && needsFreshEvidence(request)
     && /\bversion\b|(?:إصدار|اصدار|نسخة)/iu.test(request)) {
     const current = rankedEvidence(hits, request, localDate(now))

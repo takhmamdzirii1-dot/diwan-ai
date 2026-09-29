@@ -6,7 +6,7 @@ import { readPublicWebPage } from './url-reader.server';
 import { searchWeb, type SearchExecution, type WebSearchHit } from './search.server';
 import { assessFreshEvidenceBundle, assessNarrativeEvidenceBundle, dedupeSearchHits, evidenceModeForRequest,
   freshFactKey, likelyPrimarySource, needsFreshEvidence, primaryEvidenceDiagnostics, rankedEvidence, relevantWebHit,
-  searchEvidence, supportsPrimaryPage, type EvidenceMode } from './evidence';
+  requestedNewsCount, searchEvidence, supportsPrimaryPage, type EvidenceMode } from './evidence';
 
 type WebResource = Awaited<ReturnType<typeof readPublicWebPage>>;
 export async function webContextForRequest(tool: WebContextTool, request: string,
@@ -101,6 +101,7 @@ async function assessFreshHits(hits: WebSearchHit[], request: string, read: type
         : assessment.kind === 'independent_news_sources' ? 'independent_news_sources_used'
         : 'insufficient_evidence');
   return { hits: assessment.hits, kind: assessment.kind,
+    safeNarrativeCandidateCount: 'safeCandidateCount' in assessment ? assessment.safeCandidateCount : null,
     primaryDiagnostics: primaryEvidenceDiagnostics([...pages, ...hits], request),
     reason: 'reason' in assessment ? assessment.reason : assessment.kind, diagnosticStages };
 }
@@ -124,11 +125,12 @@ export async function searchContextForRequest(query: string, request: string,
   let diagnosticStages: string[] = [];
   let assessmentKind: string | null = null;
   let assessmentReason: string | null = null;
+  let safeNarrativeCandidateCount: number | null = null;
   let primaryDiagnostics = primaryEvidenceDiagnostics(candidates, request);
   const technicalFallback = resource.execution?.fallbackUsed ?? false;
   const evidenceMode: EvidenceMode = fresh ? evidenceModeForRequest(request) : 'general_web';
   if (fresh) {
-    ({ hits, kind: assessmentKind, reason: assessmentReason, diagnosticStages,
+    ({ hits, kind: assessmentKind, reason: assessmentReason, diagnosticStages, safeNarrativeCandidateCount,
       primaryDiagnostics } = await assessFreshHits(
       candidates, request, readOnce, evidenceMode));
   } else {
@@ -136,6 +138,7 @@ export async function searchContextForRequest(query: string, request: string,
       month: '2-digit', day: '2-digit' }).format(new Date());
     const assessment = assessNarrativeEvidenceBundle(candidates, request, today, 'general_web');
     hits = assessment.hits; assessmentKind = assessment.kind; assessmentReason = assessment.reason;
+    safeNarrativeCandidateCount = assessment.safeCandidateCount;
   }
   const initialQuality = assessmentKind ?? (!hits.length ? 'insufficient' : hits[0].evidenceLevel === 'primary_page'
     ? 'primary_page' : hits[0].evidenceLevel === 'primary_search' ? 'official_search'
@@ -155,6 +158,8 @@ export async function searchContextForRequest(query: string, request: string,
     : quality);
   const telemetry = { searchTriggered: true, evidenceMode, assessmentReason: reason,
     ...primaryDiagnostics, selectionReason: reason,
+    candidateCount: candidates.length, safeNarrativeCandidateCount,
+    requestedItemCount: evidenceMode === 'fresh_news' ? requestedNewsCount(request) : null,
     primaryCandidateCount: candidates.filter((hit) => likelyPrimarySource(hit, request)).length,
     exactFactGroupCount, relevantCandidateCount, independentDomainCount,
     selectedEvidenceCount: hits.length,
@@ -174,7 +179,8 @@ export async function searchContextForRequest(query: string, request: string,
     urlReadOutcome: diagnosticStages.includes('primary_url_read_succeeded') ? 'succeeded'
       : diagnosticStages.includes('primary_url_read_failed') ? 'failed' : 'not_attempted',
     finalEvidenceQuality: quality, citationsCount: null as number | null,
-    citationCandidatesCount: Math.min(hits.length, 3) };
+    citationCandidatesCount: Math.min(hits.length, evidenceMode === 'structured_fact' ? 3
+      : evidenceMode === 'fresh_news' ? requestedNewsCount(request) : 5) };
   // Metadata only: never log query, URLs, source text, credentials, or user content.
   console.info('WEB_EVIDENCE_EXECUTION', telemetry);
   const evidence = searchEvidence(hits, request);
