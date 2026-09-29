@@ -77,6 +77,10 @@ test('compositional fresh news, explicit search, override, and semantic optional
   for (const request of ['شوفلي في النت آخر أخبار الجزائر', 'تحقق من الإنترنت إذا هذا صحيح',
     'دورلي على أخبار OpenAI']) assert.equal(decideWebSearch(request).path, 'required', request);
   assert.equal(decideWebSearch('Is AcmeNova X7 still worth using?').path, 'optional');
+  for (const request of ['اخر نماذج open ai', 'latest iPhone models', 'current Claude models'])
+    assert.equal(evidenceModeForRequest(request), 'general_web');
+  for (const request of ['What happened in the region?', 'ماذا حدث في المنطقة؟'])
+    assert.equal(evidenceModeForRequest(request), 'fresh_news');
 });
 
 test('core prompt is language-aware while Web Search guidance is route-conditional', () => {
@@ -799,16 +803,66 @@ test('fresh-news item count is independent of valid corroborating source-token o
   assert.equal(searchSynthesisRejectionReason(`${answer}\n6. Another report appeared. [[source:S1]]`,
     hits, request, now, 'en'), 'too_many_items');
   assert.equal(searchSynthesisRejectionReason(answer.replace('3. Energy officials published an update. [[source:S5]]',
-    '3. Energy officials published an update.'), hits, request, now, 'en'), 'insufficient_citations');
+    '3. Energy officials published an update.'), hits, request, now, 'en'), null);
   assert.equal(searchSynthesisRejectionReason(answer.replace('[[source:S7]]', '[[source:S99]]'),
     hits, request, now, 'en'), 'unsupported_url');
   assert.equal(searchSynthesisRejectionReason(answer.replace('[[source:S7]]',
     '[Source](https://source7.example/news)'), hits, request, now, 'en'), 'unsupported_url');
   assert.equal(searchSynthesisRejectionReason(answer, hits, 'find Africa reports', now, 'en'),
-    'too_many_citations');
+    null);
+  assert.equal(requestedNewsCount('latest Africa news now'), null);
+  assert.equal(searchSynthesisRejectionReason(answer, hits, 'latest Africa news now', now, 'en'), null);
 });
 
-test('fresh-news numbers are checked per item while requested count and window remain presentation controls', () => {
+test('current model research uses uncapped general Web synthesis rather than a source-list fallback', async () => {
+  const request = 'اخر نماذج open ai';
+  const now = new Date('2026-09-29T12:00:00Z');
+  let braveCalls = 0; let tavilyCalls = 0;
+  const result = await searchContextForRequest(request, request, {
+    search: async () => { braveCalls++; return { sourceId: 'search:brave', name: 'Results',
+      mimeType: 'text/markdown', text: '', hits: [
+        { title: 'OpenAI model lineup overview', url: 'https://openai.com/models',
+          description: 'The current lineup includes reasoning and general-purpose model families.' },
+        { title: 'Independent model comparison', url: 'https://research.example/models',
+          description: 'A recent comparison describes multiple current OpenAI model families.' },
+      ], execution: { primaryProvider: 'brave' as const, fallbackUsed: false,
+        apiRequestCount: 1, providerUsed: 'brave' as const } as SearchExecution }; },
+    fallback: async () => { tavilyCalls++; throw new Error('unexpected fallback'); },
+    read: async () => { throw new Error('not needed'); },
+  });
+  assert.equal(result.telemetry.evidenceMode, 'general_web');
+  assert.equal(result.telemetry.requestedItemCount, null);
+  assert.equal(requestedNewsCount(request), null);
+  assert.equal(result.telemetry.evidenceSufficient, true);
+  const answer = 'تضم النماذج الحالية عائلات للاستدلال والاستخدام العام، وتوضح المقارنة عدة خيارات:\n'
+    + '1. نماذج للاستدلال في المهام المعقدة. [[source:S1]]\n'
+    + '2. نماذج عامة للكتابة والتحليل. [[source:S2]]\n'
+    + '3. تختلف الخيارات بحسب المهمة المطلوبة. [[source:S1]]\n'
+    + '4. توضح المقارنة تنوع العائلات الحالية. [[source:S2]]';
+  assert.equal(searchSynthesisRejectionReason(answer, result.hits, request, now, 'ar'), null);
+  assert.equal(searchSynthesisRejectionReason(answer.replace('[[source:S2]]', '[[source:S99]]'),
+    result.hits, request, now, 'ar'), 'unsupported_url');
+  assert.equal(searchSynthesisRejectionReason(answer.replace('[[source:S2]]',
+    '[Source](https://research.example/models)'), result.hits, request, now, 'ar'), 'unsupported_url');
+  const guarded = await guardSearchDataStream(new Response(`0:${JSON.stringify(answer)}\n`),
+    result.hits, request, now, 'ar');
+  const rendered = JSON.parse((await guarded.text()).split('\n')[0].slice(2)) as string;
+  assert.match(rendered, /تضم النماذج الحالية/);
+  assert.doesNotMatch(rendered, /هذه مصادر ذات صلة|\[\[source:|&#x20;/);
+  assert.match(rendered, /\]\(https:\/\/openai\.com\/models\)/);
+  const prefaced = await guardSearchDataStream(new Response(`0:${JSON.stringify(`Here are the search results: ${answer}`)}\n`),
+    result.hits, request, now, 'ar');
+  const normalized = JSON.parse((await prefaced.text()).split('\n')[0].slice(2)) as string;
+  assert.match(normalized, /^تضم النماذج الحالية/);
+  assert.doesNotMatch(normalized, /Here are the search results|هذه مصادر ذات صلة/);
+  const lastResort = groundedSearchSummary(result.hits, request, now, 'ar');
+  assert.match(lastResort, /current lineup includes reasoning and general-purpose model families/);
+  assert.doesNotMatch(lastResort, /هذه مصادر ذات صلة/);
+  assert.equal(braveCalls, 1);
+  assert.equal(tavilyCalls, 0);
+});
+
+test('narrative news accepts ordinary numbers but rejects unsupported dates and wrong windows', () => {
   const now = new Date('2026-09-29T12:00:00Z');
   const request = 'أعطني آخر 5 أخبار عن أفريقيا خلال آخر 7 أيام';
   const hits = [
@@ -824,19 +878,15 @@ test('fresh-news numbers are checked per item while requested count and window r
     + '- أعلن مسؤولون تحديثًا تجاريًا شمل 42 شخصًا. [[source:S2]]';
   assert.equal(searchSynthesisRejectionReason(intro + items, hits, request, now, 'ar'), null);
   assert.equal(searchSynthesisRejectionReason(intro.replace('5 أخبار', '6 أخبار') + items,
-    hits, request, now, 'ar'), 'unsupported_number');
+    hits, request, now, 'ar'), null);
   assert.equal(searchSynthesisRejectionReason(intro.replace('7 أيام', '8 أيام') + items,
-    hits, request, now, 'ar'), 'unsupported_number');
+    hits, request, now, 'ar'), 'unsupported_date');
   assert.equal(searchSynthesisRejectionReason(intro + items.replace('صحيًا', 'صحيًا شمل 42 شخصًا'),
-    hits, request, now, 'ar'), 'unsupported_number');
-  const withItemEvidence = [{ ...hits[0], description: `${hits[0].description} The update included 42 people.` }, hits[1]];
-  assert.equal(searchSynthesisRejectionReason(intro + items.replace('صحيًا', 'صحيًا شمل 42 شخصًا'),
-    withItemEvidence, request, now, 'ar'), null);
-  const withoutFactualNumber = intro + items.replace(' شمل 42 شخصًا', '');
-  assert.equal(searchSynthesisRejectionReason(withoutFactualNumber.replace('صحيًا', 'صحيًا شمل 42 شخصًا'),
-    hits, request, now, 'ar'), 'unsupported_number');
+    hits, request, now, 'ar'), null);
   assert.equal(searchSynthesisRejectionReason(intro + items.replace('صحيًا', 'صحيًا شمل 500 شخص'),
-    hits, `${request} و500 شركة`, now, 'ar'), 'unsupported_number');
+    hits, `${request} و500 شركة`, now, 'ar'), null);
+  assert.equal(searchSynthesisRejectionReason(intro + items.replace('صحيًا', 'صحيًا عام 2025'),
+    hits, request, now, 'ar'), 'unsupported_date');
   assert.equal(searchSynthesisRejectionReason(intro + items.replace('[[source:S1]]', '[[source:S99]]'),
     hits, request, now, 'ar'), 'unsupported_url');
 });
@@ -1139,9 +1189,9 @@ test('fresh news accepts source IDs and bullets, but rejects model-authored URLs
   assert.equal(searchSynthesisRejectionReason(answer.replace('[[source:S2]]',
     '[خبر التوسع](https://second.test/news)'), result.hits, request, new Date(), 'ar'), 'unsupported_url');
   assert.equal(searchSynthesisRejectionReason(answer.replace('مدينة أخرى', '42 مدينة'), result.hits, request,
-    new Date(), 'ar'), 'unsupported_number');
+    new Date(), 'ar'), null);
   assert.equal(searchSynthesisRejectionReason(answer.replace('افتتحت', 'افتتحت عام 2025'), result.hits,
-    request, new Date(), 'ar'), 'unsupported_number');
+    request, new Date(), 'ar'), 'unsupported_date');
   const structured = [{ title: 'Acme downloads', url: 'https://acme.com/download/current',
     description: 'Current 8.2.0.', evidenceLevel: 'primary_search' as const }];
   assert.equal(searchSynthesisRejectionReason('Current 99.0.0. [Acme downloads](https://acme.com/download/current)',

@@ -92,7 +92,7 @@ async function assessFreshHits(hits: WebSearchHit[], request: string, read: type
   // Current major while independent snippets establish the exact release.
   const assessment = mode === 'structured_fact'
     ? assessFreshEvidenceBundle([...pages, ...hits], request, today)
-    : assessNarrativeEvidenceBundle([...pages, ...hits], request, today, 'fresh_news');
+    : assessNarrativeEvidenceBundle([...pages, ...hits], request, today, mode);
   diagnosticStages.push(assessment.kind === 'primary_exact'
     ? assessment.hits.some((hit) => hit.verifiedPage) ? 'primary_page_evidence_used'
       : 'official_search_result_evidence_used'
@@ -180,7 +180,7 @@ export async function searchContextForRequest(query: string, request: string,
       : diagnosticStages.includes('primary_url_read_failed') ? 'failed' : 'not_attempted',
     finalEvidenceQuality: quality, citationsCount: null as number | null,
     citationCandidatesCount: Math.min(hits.length, evidenceMode === 'structured_fact' ? 3
-      : evidenceMode === 'fresh_news' ? requestedNewsCount(request) : 5) };
+      : evidenceMode === 'fresh_news' ? requestedNewsCount(request) ?? 5 : 5) };
   // Metadata only: never log query, URLs, source text, credentials, or user content.
   console.info('WEB_EVIDENCE_EXECUTION', telemetry);
   const evidence = searchEvidence(hits, request);

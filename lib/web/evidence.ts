@@ -6,19 +6,19 @@ export function asksForToday(request: string) {
 }
 
 export function needsFreshEvidence(request: string) {
-  return /\b(?:latest|current|today|now|recent|live|news|currently|aujourd'hui|actuel|récent|actualités|maintenant)\b/iu.test(request)
-    || /(?:أحدث|احدث|آخر|اخر|الآن|الان|اليوم|أخبار|اخبار|الحالي)/u.test(request);
+  return /\b(?:latest|current|today|now|recent|live|news|currently|what happened|aujourd'hui|actuel|récent|actualités|maintenant)\b/iu.test(request)
+    || /(?:أحدث|احدث|آخر|اخر|الآن|الان|اليوم|أخبار|اخبار|الحالي|ماذا حدث)/u.test(request);
 }
 
 export type EvidenceMode = 'structured_fact' | 'fresh_news' | 'general_web';
 
 export function evidenceModeForRequest(request: string): EvidenceMode {
   if (!needsFreshEvidence(request)) return 'general_web';
-  if (/\b(?:news|headlines|developments|announcements|actualit[ée]s|nouvelles)\b|(?:أخبار|اخبار|مستجدات|تطورات)/iu.test(request))
+  if (/\b(?:news|headlines|developments|what happened|latest events|recent events|actualit[ée]s|nouvelles)\b|(?:أخبار|اخبار|مستجدات|تطورات|ماذا حدث)/iu.test(request))
     return 'fresh_news';
   if (/\b(?:version|release|price|prices|cost|availability|stock|status|prix|disponibilit[ée])\b|(?:إصدار|اصدار|نسخة|سعر|الأسعار|الاسعار|متاح|متوفر|الحالة)/iu.test(request))
     return 'structured_fact';
-  return 'fresh_news';
+  return 'general_web';
 }
 
 function localDate(now: Date) {
@@ -270,10 +270,10 @@ export function relevantWebHit(hit: WebSearchHit, request: string) {
   return terms.some((term) => content.includes(term));
 }
 
-/** A requested list size is presentation guidance, never permission to invent items. */
+/** An explicit news-list size is a hard cap; absent one, presentation remains flexible. */
 export function requestedNewsCount(request: string) {
   const match = requestedNewsCountMatch(request);
-  return match ? Number(match[1]) : 3;
+  return match ? Number(match[1]) : null;
 }
 
 function requestedNewsCountMatch(request: string) {
@@ -615,12 +615,14 @@ export function groundedSearchSummary(hits: readonly WebSearchHit[], request: st
       : `I found no result verified as published today (${evidence.today}).` : '';
   const first = selected[0];
   if (evidenceModeForRequest(request) !== 'structured_fact' && !rawResultsRequested(request)) {
-    const citations = selected.slice(0, 3).map((hit) =>
-      `[${plainExcerpt(hit.title, 180).replace(/[\[\]]/g, '')}](${safeUrl(hit.url)})${hit.publishedAt ? ` (${hit.publishedAt})` : ''}`);
-    const cautious = locale === 'ar' ? `هذه مصادر ذات صلة بالسؤال؛ لا أستطيع تأكيد تفاصيل إضافية من مقتطفاتها وحدها: ${citations.join(' ')}`
-      : locale === 'fr' ? `Voici des sources pertinentes ; leurs extraits seuls ne permettent pas de confirmer davantage de détails : ${citations.join(' ')}`
-        : `These sources are relevant, but their excerpts alone do not confirm further details: ${citations.join(' ')}`;
-    return [notice, cautious].filter(Boolean).join(' ');
+    const summaries = selected.slice(0, 3).map((hit) => {
+      const citation = `[${plainExcerpt(hit.title, 180).replace(/[\[\]]/g, '')}](${safeUrl(hit.url)})`;
+      return `- ${safeClaim(hit).replace(/[.!?؟]+$/, '')}. ${citation}${hit.publishedAt ? ` (${hit.publishedAt})` : ''}`;
+    });
+    const caution = locale === 'ar' ? 'تعذّرت صياغة إجابة موحّدة موثوقة؛ هذه المعلومات تؤكدها مقتطفات المصادر:'
+      : locale === 'fr' ? 'Une synthèse fiable n’a pas pu être établie ; voici les faits présents dans les extraits des sources :'
+        : 'A reliable synthesis was not possible; these facts are present in the source excerpts:';
+    return [notice, caution, ...summaries].filter(Boolean).join('\n');
   }
   if (hits[0]?.evidenceBundle === 'primary_supported_bundle') {
     const exact = hits.find((hit) => hit.evidenceLevel === 'primary_bundle');
@@ -723,38 +725,20 @@ function renderNarrativeSourceCitations(answer: string, hits: readonly WebSearch
     `[${label}](${sources.get(id)})`);
 }
 
-const answerNumbers = /\b\d+(?:[.\-]\d+)*\b/g;
-const newsItemMarker = /^[ \t]*(?:[-*]|\d{1,2}[.)])[ \t]+/gmu;
-
-function freshNewsNumbersSupported(answer: string, hits: readonly WebSearchHit[], request: string) {
-  const sourceHits = new Map(hits.map((hit, index) => [hit.evidenceId ?? `S${index + 1}`, hit]));
-  const numbersFor = (sources: readonly WebSearchHit[]) => new Set(sources.flatMap((hit) =>
-    `${hit.title} ${hit.description} ${hit.publishedAt ?? ''}`.match(answerNumbers) ?? []));
-  const explicitCount = requestedNewsCountMatch(request)?.[1];
-  const requestedWindow = request.match(/(?:آخر|اخر)\s+([1-9]\d?)\s+(?:أيام|ايام)|\b(?:last|past)\s+([1-9]\d?)\s+days\b|\b([1-9]\d?)\s+derniers?\s+jours\b/iu);
-  const windowDays = requestedWindow?.slice(1).find(Boolean);
-  const stripControls = (text: string, isIntro: boolean) => {
-    let result = text.replace(/\[\[source:S[1-9]\d*\]\]/g, ' ');
-    if (windowDays) result = result.replace(/(?:آخر|اخر)\s+([1-9]\d?)\s+(?:أيام|ايام)|\b(?:last|past)\s+([1-9]\d?)\s+days\b|\b([1-9]\d?)\s+derniers?\s+jours\b/giu,
-      (phrase, ...groups: string[]) => groups.slice(0, 3).includes(windowDays) ? ' ' : phrase);
-    if (isIntro && explicitCount) result = result.replace(/([1-9]\d?)(?:\s+\S+){0,2}\s+(?:news|headlines|actualit[ée]s|nouvelles|أخبار|اخبار)(?=\s|\b|$)/giu,
-      (phrase, count: string) => count === explicitCount ? phrase.replace(count, ' ') : phrase);
-    return result;
-  };
-  const supported = (text: string, sources: readonly WebSearchHit[], isIntro: boolean) => {
-    const allowed = numbersFor(sources);
-    return (stripControls(text, isIntro).match(answerNumbers) ?? []).every((value) => allowed.has(value));
-  };
-  const items = [...answer.matchAll(newsItemMarker)];
-  const allCited = [...answer.matchAll(/\[\[source:(S[1-9]\d*)\]\]/g)]
-    .map(([, id]) => sourceHits.get(id)).filter((hit): hit is WebSearchHit => Boolean(hit));
-  if (!items.length) return supported(answer, allCited, true);
-  if (!supported(answer.slice(0, items[0].index), allCited, true)) return false;
-  return items.every((item, index) => {
-    const body = answer.slice(item.index! + item[0].length, items[index + 1]?.index ?? answer.length);
-    const cited = [...body.matchAll(/\[\[source:(S[1-9]\d*)\]\]/g)]
-      .map(([, id]) => sourceHits.get(id)).filter((hit): hit is WebSearchHit => Boolean(hit));
-    return supported(body, cited, false);
+/** Dates remain source-bound even though ordinary narrative numbers are not exact-match claims. */
+function narrativeDateViolation(answer: string, citedHits: readonly WebSearchHit[], request: string,
+  now: Date, mode: 'fresh_news' | 'general_web') {
+  const evidence = citedHits.map((hit) => `${hit.title} ${hit.description} ${hit.publishedAt ?? ''}`).join(' ');
+  const dates: string[] = answer.match(/\b(?:19|20)\d{2}(?:-\d{2}-\d{2})?\b/g) ?? [];
+  if (dates.some((date) => !evidence.includes(date))) return true;
+  const days = (text: string) => text.match(/(?:آخر|اخر)\s+([1-9]\d?)\s+(?:أيام|ايام)|\b(?:last|past)\s+([1-9]\d?)\s+days\b|\b([1-9]\d?)\s+derniers?\s+jours\b/iu)?.slice(1).find(Boolean);
+  const requestedDays = days(request); const answeredDays = days(answer);
+  if (requestedDays && answeredDays && requestedDays !== answeredDays) return true;
+  if (mode !== 'fresh_news' || !narrativeDateRange(request, localDate(now)).strict) return false;
+  const window = narrativeDateRange(request, localDate(now));
+  return dates.filter((date) => date.includes('-')).some((date) => {
+    const time = Date.parse(date);
+    return !Number.isFinite(time) || time < window.start || time > window.end;
   });
 }
 
@@ -775,18 +759,15 @@ export function searchSynthesisRejectionReason(answer: string, hits: readonly We
   if (mode === 'structured_fact' && /^\s*(?:[-*]|\d+\.)\s/mu.test(trimmed)) return 'raw_results';
   const cited = mode === 'structured_fact' ? [...trimmed.matchAll(/https?:\/\/[^\s)\]>"']+/g)]
     : [...trimmed.matchAll(/\[\[source:S[1-9]\d*\]\]/g)];
-  const citationLimit = mode === 'structured_fact' ? 3 : Math.min(hits.length, 5, 8);
-  if (mode !== 'fresh_news' && cited.length > citationLimit) return 'too_many_citations';
+  if (mode === 'structured_fact' && cited.length > 3) return 'too_many_citations';
   const citations: [string, string, string][] = mode === 'structured_fact'
     ? [...trimmed.matchAll(/\[([^\]]+)\]\((https:\/\/[^)]+)\)/g)].map((match) =>
       [match[0], match[1], match[2]])
     : narrativeSourceMatches(trimmed, hits)!.map(({ id, url }) => [`[[source:${id}]]`, id, url]);
   if (mode === 'fresh_news') {
-    if (new Set(citations.map(([, id]) => id)).size > Math.min(hits.length, 8)) return 'too_many_citations';
+    const requestedCount = requestedNewsCount(request);
     const items = [...trimmed.matchAll(/^[ \t]*(?:[-*]|\d{1,2}[.)])[ \t]+/gmu)];
-    if (items.length > requestedNewsCount(request)) return 'too_many_items';
-    if (items.some((item, index) => !/\[\[source:S[1-9]\d*\]\]/.test(trimmed.slice(
-      item.index! + item[0].length, items[index + 1]?.index ?? trimmed.length)))) return 'insufficient_citations';
+    if (requestedCount !== null && items.length > requestedCount) return 'too_many_items';
   }
   if (citations.length !== cited.length || citations.some(([, label, url]) => !hits.some((hit) =>
     canonicalSearchUrl(hit.url) === canonicalSearchUrl(url) && (mode !== 'structured_fact'
@@ -796,15 +777,14 @@ export function searchSynthesisRejectionReason(answer: string, hits: readonly We
       && citations.some(([, , url]) => canonicalSearchUrl(hit.url) === canonicalSearchUrl(url))).length < 2)) return 'insufficient_citations';
   if (mode === 'structured_fact' && hits[0]?.evidenceBundle === 'corroborated_exact' && (citations.length < 2
     || !/(?:independent sources|sources indépendantes|مصدران مستقلان|مصادر مستقلة)/iu.test(trimmed))) return 'insufficient_citations';
-  if (mode === 'fresh_news' && !hits.some((hit) => likelyPrimarySource(hit, request))
-    && new Set(citations.map(([, , url]) => canonicalSearchUrl(url))).size < 2) return 'insufficient_citations';
   if (mode === 'structured_fact' && hits.some((hit) => likelyPrimarySource(hit, request))
     && !citations.some(([, , url]) => hits.some((hit) => canonicalSearchUrl(hit.url) === canonicalSearchUrl(url)
       && likelyPrimarySource(hit, request)))) return 'insufficient_citations';
   const citedHits = hits.filter((hit) => citations.some(([, , url]) =>
     canonicalSearchUrl(hit.url) === canonicalSearchUrl(url)));
-  if (mode === 'fresh_news') {
-    if (!freshNewsNumbersSupported(trimmed, hits, request)) return 'unsupported_number';
+  if (mode !== 'structured_fact') {
+    if (sourceInstructionMarker.test(withoutLinks)) return 'unsafe_source_content';
+    if (narrativeDateViolation(withoutLinks, citedHits, request, now, mode)) return 'unsupported_date';
   } else {
     const allowedNumbers = new Set(citedHits.flatMap((hit) => `${mode === 'structured_fact' && needsFreshEvidence(request)
       && hit.evidenceLevel !== 'primary_search' ? '' : hit.title} ${hit.description} ${hit.publishedAt ?? ''}`
@@ -820,11 +800,13 @@ export function searchSynthesisRejectionReason(answer: string, hits: readonly We
       .map((hit) => evidenceStrength(hit) ? labeledVersion(factText(hit), 'current') : null).find(Boolean);
     if (current && !withoutLinks.includes(current)) return 'structured_claim_mismatch';
   }
-  if (hits.some((hit) => { const excerpt = plainExcerpt(hit.description, 400); return excerpt.length >= 24
-    && withoutLinks.toLowerCase().includes(excerpt.toLowerCase()); })) return 'copied_excerpt';
-  const claims = withoutLinks.split(/(?<=[.!?؟])\s+/u).map((sentence) => sentence.trim().toLowerCase())
-    .filter((sentence) => sentence.length > 25);
-  if (new Set(claims).size !== claims.length) return 'duplicate_claim';
+  if (mode === 'structured_fact') {
+    if (hits.some((hit) => { const excerpt = plainExcerpt(hit.description, 400); return excerpt.length >= 24
+      && withoutLinks.toLowerCase().includes(excerpt.toLowerCase()); })) return 'copied_excerpt';
+    const claims = withoutLinks.split(/(?<=[.!?؟])\s+/u).map((sentence) => sentence.trim().toLowerCase())
+      .filter((sentence) => sentence.length > 25);
+    if (new Set(claims).size !== claims.length) return 'duplicate_claim';
+  }
   return null;
 }
 
@@ -847,7 +829,7 @@ export async function guardSearchDataStream(response: Response, hits: readonly W
   const rejectionReason = searchSynthesisRejectionReason(modelAnswer, hits, request, now, locale);
   const withoutFormattingEntities = formattingSpaces(modelAnswer);
   const normalizedAnswer = rejectionReason === 'raw_results'
-    ? withoutFormattingEntities.replace(/^(?:according to (?:the )?(?:retrieved |available )?sources|d'après les sources|وفق المصادر)\s*[,،:]?\s*/iu, '')
+    ? withoutFormattingEntities.replace(/^(?:according to (?:the )?(?:retrieved |available )?sources|here are (?:the )?(?:search )?results|d'après les sources|وفق المصادر)\s*[,،:]?\s*/iu, '')
     : withoutFormattingEntities;
   const normalizedAccepted = normalizedAnswer !== modelAnswer
     && searchSynthesisRejectionReason(normalizedAnswer, hits, request, now, locale) === null;
