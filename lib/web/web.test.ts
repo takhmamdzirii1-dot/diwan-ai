@@ -108,6 +108,47 @@ test('short temporal refinement inherits only the immediately answered fresh sub
   ]).decision.path, 'optional');
 });
 
+test('more-results follow-up searches the answered fresh subject and prefers unseen sources', async () => {
+  const subject = 'اعطني اخر اخبار افريقيا';
+  const seenUrl = 'https://first.example/africa-news';
+  const choice = decideWebSearchWithHistory('اعطني باقي النتائج', [
+    { role: 'user', content: subject },
+    { role: 'assistant', content: `خبر سابق. [المصدر](${seenUrl})` },
+  ]);
+  assert.equal(choice.decision.path, 'required');
+  assert.match(choice.evidenceRequest, /اخبار افريقيا/u);
+  assert.match(choice.evidenceRequest, /باقي النتائج/u);
+  assert.deepEqual(choice.seenSourceUrls, [seenUrl]);
+  if (choice.decision.path !== 'required' || choice.decision.tool.kind !== 'web_search') return;
+  let braveCalls = 0; let tavilyCalls = 0;
+  const result = await searchContextForRequest(choice.decision.tool.query, choice.evidenceRequest, {
+    search: async (query) => { braveCalls++; assert.match(query, /اخبار افريقيا/u); return {
+      sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+        { title: 'Africa news earlier report', url: seenUrl,
+          description: 'An earlier report covers regional events and developments in Africa.', publishedAt: '2026-09-29' },
+        { title: 'Africa news additional report', url: 'https://second.example/africa-news',
+          description: 'Another report covers new regional events and developments in Africa.', publishedAt: '2026-09-29' },
+      ], execution: { primaryProvider: 'brave' as const, fallbackUsed: false,
+        apiRequestCount: 1, providerUsed: 'brave' as const } as SearchExecution }; },
+    fallback: async () => { tavilyCalls++; throw new Error('unexpected fallback'); },
+    read: async () => { throw new Error('no primary page'); },
+  }, choice.seenSourceUrls);
+  assert.equal(result.hits[0]?.url, 'https://second.example/africa-news');
+  assert.equal(braveCalls, 1);
+  assert.equal(tavilyCalls, 0);
+  assert.equal(result.telemetry.webSearchApiRequestCount, 1);
+  assert.equal(decideWebSearchWithHistory('اعطني باقي النتائج', [
+    { role: 'user', content: 'اشرح البناء الضوئي' }, { role: 'assistant', content: 'شرح.' },
+  ]).decision.path, 'optional');
+  const optionalFresh = decideWebSearchWithHistory('اعطني باقي النتائج', [
+    { role: 'user', content: 'اخر نماذج open ai' },
+    { role: 'assistant', content: 'نماذج حديثة. [المصدر](https://openai.com/models)' },
+  ]);
+  assert.equal(optionalFresh.decision.path, 'required');
+  assert.match(optionalFresh.evidenceRequest, /نماذج open ai/u);
+  assert.equal(decideWebSearch('اشرح البناء الضوئي').path, 'none');
+});
+
 test('optional native web tool has one turn-local invocation even across parallel calls', async () => {
   let requests = 0;
   const execute = oncePerTurnOptionalWebSearch('Africa news last week', async (_query, request) => {
@@ -831,6 +872,9 @@ test('current model research uses uncapped general Web synthesis rather than a s
     read: async () => { throw new Error('not needed'); },
   });
   assert.equal(result.telemetry.evidenceMode, 'general_web');
+  assert.equal(result.hits[0]?.url, 'https://openai.com/models');
+  assert.equal(result.telemetry.primaryCandidateCount, 1);
+  assert.equal(result.telemetry.officialEvidenceUsed, true);
   assert.equal(result.telemetry.requestedItemCount, null);
   assert.equal(requestedNewsCount(request), null);
   assert.equal(result.telemetry.evidenceSufficient, true);

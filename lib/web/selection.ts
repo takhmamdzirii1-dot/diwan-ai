@@ -9,6 +9,7 @@ const dynamicSubject = /\b(?:news|developments|updates|price|prices|availability
 const inherentlyCurrent = /\b(?:news|headlines|actualités|actualité|weather|forecast|météo|stock price|market price|sports score)\b|(?:أخبار|اخبار|مستجدات|تطورات|طقس|بورصة)/iu;
 const temporalOnly = /^(?:(?:آخر|اخر|هذا)\s+(?:الأسبوع|الاسبوع|أسبوع|اسبوع)|(?:آخر|اخر)\s+7\s+(?:أيام|ايام)|(?:last|past|this)\s+week|last\s+7\s+days|cette\s+semaine|la\s+semaine\s+dernière)\s*[؟?!.,]*$/iu;
 const confirmation = /^(?:هل أنت متأكد|هل انت متأكد|تأكد|تاكد|تحقق مرة أخرى|تحقق مره اخرى|are you sure|verify that|really|es-tu sûr|es tu sur)\s*[؟?!.,]*$/iu;
+const moreResults = /^(?:اعطني|أعطني|هات|ارني|أرني)\s+(?:باقي|المزيد من)\s+(?:النتائج|الأخبار|الاخبار)(?:\s+من فضلك)?\s*[؟?!.,]*$/iu;
 const transformation = /^(?:write|rewrite|draft|translate|summari[sz]e|calculate|solve|create|compose|code|explain)\b|^(?:اكتب|أعد صياغة|ترجم|لخص|احسب|أنشئ|اشرح)(?=\s|$)|^(?:écris|rédige|traduis|résume|calcule|explique)\b/iu;
 
 export function selectWebContextTool(request: string): WebContextTool | null {
@@ -57,20 +58,33 @@ export function decideWebSearch(request: string): SearchDecision {
 
 /** A confirmation question inherits only the immediately preceding answered fresh-web question. */
 export function decideWebSearchWithHistory(current: string,
-  previous: readonly { role: string; content: string }[]): { decision: SearchDecision; evidenceRequest: string } {
+  previous: readonly { role: string; content: string }[]): { decision: SearchDecision; evidenceRequest: string;
+    seenSourceUrls?: string[] } {
   const decision = decideWebSearch(current);
-  if (noWeb.test(current) || (!confirmation.test(current.trim()) && !temporalOnly.test(current.trim())))
+  if (noWeb.test(current) || (!confirmation.test(current.trim()) && !temporalOnly.test(current.trim())
+    && !moreResults.test(current.trim())))
     return { decision, evidenceRequest: current };
   const lastUser = [...previous].reverse().findIndex((message) => message.role === 'user');
   if (lastUser < 0) return { decision, evidenceRequest: current };
   const index = previous.length - 1 - lastUser;
   const earlier = previous[index].content;
-  const answered = previous.slice(index + 1).some((message) => message.role === 'assistant' && message.content.trim());
+  const answeredText = previous.slice(index + 1).filter((message) => message.role === 'assistant')
+    .map((message) => message.content).join('\n');
+  const seenSourceUrls = [...answeredText.matchAll(/\]\((https:\/\/[^)\s]+)\)/g)]
+    .map((match) => match[1]).slice(0, 16);
   const earlierDecision = decideWebSearch(earlier);
-  if (!answered || earlierDecision.path !== 'required' || earlierDecision.tool.kind !== 'web_search')
+  const priorWebSubject = earlierDecision.path === 'required' && earlierDecision.tool.kind === 'web_search'
+    || moreResults.test(current.trim()) && earlierDecision.path === 'optional'
+      && freshness.test(earlier) && seenSourceUrls.length > 0;
+  if (!answeredText.trim() || !priorWebSubject)
     return { decision: confirmation.test(current.trim()) ? { path: 'none' } : decision,
       evidenceRequest: current };
   if (confirmation.test(current.trim())) return { decision: earlierDecision, evidenceRequest: earlier };
+  if (moreResults.test(current.trim())) {
+    const evidenceRequest = `${earlier} ${current.trim()}`.trim().slice(0, 300);
+    return { decision: { path: 'required', tool: { kind: 'web_search', query: evidenceRequest } },
+      evidenceRequest, seenSourceUrls };
+  }
   const subject = earlier.replace(/\b(?:today|yesterday|this week|last week|past week|last 7 days|aujourd'hui|hier|cette semaine|semaine dernière)\b|(?:اليوم|أمس|امس|هذا الأسبوع|هذا الاسبوع|الأسبوع الماضي|الاسبوع الماضي|آخر 7 أيام|اخر 7 ايام)/giu, ' ')
     .replace(/\s+/g, ' ').trim();
   const evidenceRequest = `${subject} ${current.trim()}`.trim().slice(0, 300);

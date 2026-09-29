@@ -5,7 +5,7 @@ import type { WebContextTool } from './selection';
 import { readPublicWebPage } from './url-reader.server';
 import { searchWeb, type SearchExecution, type WebSearchHit } from './search.server';
 import { assessFreshEvidenceBundle, assessNarrativeEvidenceBundle, dedupeSearchHits, evidenceModeForRequest,
-  freshFactKey, likelyPrimarySource, needsFreshEvidence, primaryEvidenceDiagnostics, rankedEvidence, relevantWebHit,
+  canonicalSearchUrl, freshFactKey, likelyPrimarySource, needsFreshEvidence, primaryEvidenceDiagnostics, rankedEvidence, relevantWebHit,
   requestedNewsCount, searchEvidence, supportsPrimaryPage, type EvidenceMode } from './evidence';
 
 type WebResource = Awaited<ReturnType<typeof readPublicWebPage>>;
@@ -107,7 +107,7 @@ async function assessFreshHits(hits: WebSearchHit[], request: string, read: type
 }
 
 export async function searchContextForRequest(query: string, request: string,
-  operations?: SearchOperations) {
+  operations?: SearchOperations, seenSourceUrls: readonly string[] = []) {
   const active = operations ?? { search: searchWeb, read: readPublicWebPage };
   const fresh = needsFreshEvidence(request);
   const retrievalQuery = fresh ? refinedRetrievalQuery(query) : query;
@@ -139,6 +139,14 @@ export async function searchContextForRequest(query: string, request: string,
     const assessment = assessNarrativeEvidenceBundle(candidates, request, today, 'general_web');
     hits = assessment.hits; assessmentKind = assessment.kind; assessmentReason = assessment.reason;
     safeNarrativeCandidateCount = assessment.safeCandidateCount;
+  }
+  if (evidenceMode !== 'structured_fact' && seenSourceUrls.length) {
+    const seen = new Set(seenSourceUrls.map(canonicalSearchUrl).filter((url): url is string => !!url));
+    // Prefer new stories, but retain previously cited evidence if retrieval has no alternatives.
+    hits = [...hits].sort((a, b) => (evidenceMode === 'general_web'
+      ? Number(likelyPrimarySource(b, request)) - Number(likelyPrimarySource(a, request)) : 0)
+      || Number(seen.has(canonicalSearchUrl(a.url) ?? ''))
+      - Number(seen.has(canonicalSearchUrl(b.url) ?? '')));
   }
   const initialQuality = assessmentKind ?? (!hits.length ? 'insufficient' : hits[0].evidenceLevel === 'primary_page'
     ? 'primary_page' : hits[0].evidenceLevel === 'primary_search' ? 'official_search'

@@ -62,10 +62,17 @@ export function likelyPrimarySource(hit: WebSearchHit, request: string) {
   const host = new URL(url).hostname.replace(/^www\./, '').toLowerCase();
   const ignored = new Set(['latest', 'today', 'current', 'recent', 'search', 'news', 'about', 'version',
     'release', 'price', 'availability', 'what', 'which', 'when', 'where', 'now', 'the', 'official']);
-  const terms = (request.toLowerCase().match(/[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*/g) ?? [])
-    .map((term) => term.replace(/[._-]/g, '')).filter((term) => term.length >= 4 && !ignored.has(term));
+  const words = (request.toLowerCase().match(/[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*/g) ?? [])
+    .map((term) => term.replace(/[._-]/g, ''));
+  const terms = words.filter((term) => term.length >= 4 && !ignored.has(term));
+  // Brand names split by spaces (for example, "open ai") often form one domain label.
+  const joinedNames = words.slice(0, -1).flatMap((first, index) => {
+    const second = words[index + 1];
+    return !ignored.has(first) && !ignored.has(second) && first.length >= 2 && second.length >= 2
+      && first.length + second.length >= 5 ? [first + second] : [];
+  });
   const labels = host.split('.').map((part) => part.replace(/-/g, ''));
-  return terms.some((term) => labels.includes(term))
+  return [...terms, ...joinedNames].some((term) => labels.includes(term))
     || (terms.length === 0 && /\.(?:gov|edu)(?:\.[a-z]{2})?$/.test(host));
 }
 

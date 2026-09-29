@@ -355,7 +355,8 @@ export async function POST(request: Request) {
       try {
         const userRequest = webSelection.evidenceRequest;
         if (webTool.kind === 'web_search') {
-          const search = await searchContextForRequest(webTool.query, userRequest);
+          const search = await searchContextForRequest(webTool.query, userRequest, undefined,
+            webSelection.seenSourceUrls);
           webDocumentContext = search.context; webSearchHits = search.hits;
           webSearchJobMetadata = {
             webSearchTriggered: true,
