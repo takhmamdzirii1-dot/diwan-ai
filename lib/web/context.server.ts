@@ -33,6 +33,17 @@ export async function optionalWebContext(query: string, request: string,
   catch { return { status: 'unavailable' as const, context: '' }; }
 }
 
+/** One tool invocation per user turn, including failures and parallel tool calls. */
+export function oncePerTurnOptionalWebSearch(request: string,
+  run: (query: string, request: string) => ReturnType<typeof optionalWebContext> = optionalWebContext) {
+  let attempted = false;
+  return (query: string) => {
+    if (attempted) return Promise.resolve({ status: 'unavailable' as const, context: '' });
+    attempted = true;
+    return run(query, request);
+  };
+}
+
 // The injected fallback sentinel is intentionally never invoked: technical
 // fallback belongs exclusively to searchWeb's provider orchestrator.
 type SearchOperations = { search: typeof searchWeb; read: typeof readPublicWebPage;

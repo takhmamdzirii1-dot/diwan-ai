@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { selectArtifactTools, selectWebContextTool } from '@/lib/artifacts/tool-registry';
-import { optionalWebContext, searchContextForRequest, webContextForRequest } from './context.server';
+import { oncePerTurnOptionalWebSearch, optionalWebContext, searchContextForRequest, webContextForRequest } from './context.server';
 import { BraveWebSearch, orchestrateWebSearch, SearchProviderError, searchWeb, TavilyWebSearch,
   type SearchExecution, type WebSearchProvider } from './search.server';
 import { budgetWarning, type SearchHealthStore } from './search-health.server';
 import { decideWebSearch, decideWebSearchWithHistory } from './selection';
+import { vantraCoreSystemPrompt, WEB_SEARCH_TOOL_DESCRIPTION,
+  WEB_SEARCH_TOOL_INSTRUCTION } from '@/lib/chat/system-prompt';
 import { pinnedAddressLookup, readPublicWebPage, resolvePublicWebUrl } from './url-reader.server';
-import { answerUsesOnlySearchSources, assessFreshEvidenceBundle, canonicalSearchUrl, evidenceScore, groundedSearchSummary, guardSearchDataStream,
+import { answerUsesOnlySearchSources, assessFreshEvidenceBundle, canonicalSearchUrl, evidenceModeForRequest, evidenceScore, groundedSearchSummary, guardSearchDataStream,
   searchEvidence, searchSynthesisRejectionReason, usableSearchSynthesis } from './evidence';
 
 const publicDns = async () => [{ address: '93.184.215.14', family: 4 }];
@@ -42,8 +44,9 @@ test('Tool Registry activates web only on an explicit relevant request, without 
 
 test('search decision keeps ordinary Chat at zero search calls and routes current/URL requests', () => {
   for (const text of ['Write a poem about the ocean', 'Explain how recursion works',
-    'What is photosynthesis?', 'Summarize these notes', 'Calculate 2 + 2'])
+    'Summarize these notes', 'Calculate 2 + 2'])
     assert.deepEqual(decideWebSearch(text), { path: 'none' });
+  assert.deepEqual(decideWebSearch('What is photosynthesis?'), { path: 'optional' });
   assert.deepEqual(decideWebSearch('Search the web for launch trends'),
     { path: 'required', tool: { kind: 'web_search', query: 'launch trends' } });
   assert.deepEqual(decideWebSearch('What happened today?'),
@@ -56,6 +59,83 @@ test('search decision keeps ordinary Chat at zero search calls and routes curren
   assert.deepEqual(decideWebSearch('Explain how Node.js works'), { path: 'none' });
   assert.deepEqual(decideWebSearch('ابحث لي عن آخر أخبار OpenAI اليوم'),
     { path: 'required', tool: { kind: 'web_search', query: 'آخر أخبار OpenAI اليوم' } });
+});
+
+test('compositional fresh news, explicit search, override, and semantic optional decisions', () => {
+  for (const request of ['اعطيني اخر 5 اخبار في دول افريقيا', 'هات أحدث 10 أخبار عن الجزائر',
+    'ما هي اخر اخبار OpenAI', 'اخبار الجزائر', 'latest 5 news stories in Africa',
+    'les dernières actualités en Algérie']) {
+    const result = decideWebSearch(request);
+    assert.equal(result.path, 'required', request);
+    if (result.path === 'required') assert.equal(result.tool.kind, 'web_search');
+    assert.equal(evidenceModeForRequest(request), 'fresh_news');
+  }
+  for (const request of ['اشرح لي عملية البناء الضوئي', 'ترجم هذا النص إلى الفرنسية',
+    'اكتب لي رسالة اعتذار', 'جاوبني بدون بحث في الإنترنت: ما هو أحدث إصدار؟',
+    'Answer without web search: current price?', 'Réponds sans recherche internet'])
+    assert.equal(decideWebSearch(request).path, 'none', request);
+  for (const request of ['شوفلي في النت آخر أخبار الجزائر', 'تحقق من الإنترنت إذا هذا صحيح',
+    'دورلي على أخبار OpenAI']) assert.equal(decideWebSearch(request).path, 'required', request);
+  assert.equal(decideWebSearch('Is AcmeNova X7 still worth using?').path, 'optional');
+});
+
+test('core prompt is language-aware while Web Search guidance is route-conditional', () => {
+  const prompt = vantraCoreSystemPrompt({ language: 'ar', now: new Date('2026-09-29T12:00:00Z') });
+  assert.match(prompt, /premium general-purpose AI assistant/);
+  assert.match(prompt, /Respond in Arabic/);
+  assert.doesNotMatch(prompt, /web_search is available in this turn/);
+  assert.match(WEB_SEARCH_TOOL_INSTRUCTION, /web_search is available in this turn/);
+  assert.match(WEB_SEARCH_TOOL_DESCRIPTION, /one concise, self-contained query/);
+});
+
+test('short temporal refinement inherits only the immediately answered fresh subject', () => {
+  const previous = [{ role: 'user', content: 'اعطيني اخر 5 اخبار في دول افريقيا' },
+    { role: 'assistant', content: 'أخبار ذات صلة.' }];
+  for (const followup of ['اخر اسبوع', 'آخر 7 أيام', 'this week', 'cette semaine']) {
+    const result = decideWebSearchWithHistory(followup, previous);
+    assert.equal(result.decision.path, 'required');
+    assert.match(result.evidenceRequest, /اخبار في دول افريقيا/u);
+    assert.ok(result.evidenceRequest.includes(followup));
+    if (result.decision.path === 'required' && result.decision.tool.kind === 'web_search')
+      assert.equal(result.decision.tool.query, result.evidenceRequest);
+  }
+  assert.equal(decideWebSearchWithHistory('اخر اسبوع', [
+    { role: 'user', content: 'اشرح البناء الضوئي' }, { role: 'assistant', content: 'شرح.' },
+  ]).decision.path, 'optional');
+});
+
+test('optional native web tool has one turn-local invocation even across parallel calls', async () => {
+  let requests = 0;
+  const execute = oncePerTurnOptionalWebSearch('Africa news last week', async (_query, request) => {
+    requests++;
+    assert.equal(request, 'Africa news last week');
+    return { status: 'ok' as const, context: 'bounded result' };
+  });
+  const [first, second] = await Promise.all([execute('Africa news last week'), execute('another query')]);
+  assert.equal(requests, 1);
+  assert.equal(first.status, 'ok');
+  assert.equal(second.status, 'unavailable');
+});
+
+test('harmless search preamble and escaped formatting space normalize only after full guard validation', async () => {
+  const hits = [{ title: 'Node.js release notes', url: 'https://nodejs.org/en/blog/release',
+    description: 'Node.js Current 26.1.0.', source: 'nodejs.org', evidenceLevel: 'primary_search' as const }];
+  const now = new Date('2026-09-29T12:00:00Z');
+  const valid = 'وفق المصادر، الإصدار Current هو 26.1.0. [Node.js release notes](https://nodejs.org/en/blog/release)';
+  assert.equal(searchSynthesisRejectionReason(valid, hits, 'latest Node.js version now', now, 'ar'), 'raw_results');
+  const guarded = await guardSearchDataStream(new Response(`0:${JSON.stringify(valid)}\n`),
+    hits, 'latest Node.js version now', now, 'ar');
+  const text = await guarded.text();
+  assert.match(text, /الإصدار Current هو 26\.1\.0/);
+  assert.doesNotMatch(text, /وفق المصادر/);
+  const invalid = 'وفق المصادر، الإصدار Current هو 99.0.0. [Node.js release notes](https://nodejs.org/en/blog/release)';
+  const rejected = await (await guardSearchDataStream(new Response(`0:${JSON.stringify(invalid)}\n`),
+    hits, 'latest Node.js version now', now, 'ar')).text();
+  assert.doesNotMatch(rejected, /99\.0\.0/);
+  const escaped = [{ ...hits[0], title: 'Node.js&amp;#x20;release notes' }];
+  const fallback = await (await guardSearchDataStream(new Response(`0:${JSON.stringify('unsupported')}\n`),
+    escaped, 'latest Node.js version now', now, 'ar')).text();
+  assert.doesNotMatch(fallback, /&#x20;|&amp;#x20;/);
 });
 
 test('search evidence preserves exact source URL/date and never promotes older results to today', async () => {

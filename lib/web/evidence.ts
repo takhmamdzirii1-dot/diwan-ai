@@ -41,8 +41,13 @@ export function canonicalSearchUrl(url: string) {
   if (parsed.pathname !== '/') parsed.pathname = parsed.pathname.replace(/\/+$/, '');
   return parsed.toString();
 }
+// A few search snippets contain a double-escaped formatting space. Decode only
+// that harmless entity, never arbitrary HTML or source-supplied markup.
+function formattingSpaces(value: string) {
+  return value.replace(/(?:&amp;|&)#(?:x20|32);/gi, ' ');
+}
 function plainExcerpt(value: string, limit: number) {
-  return value.replace(/\[[^\]]+\]\(https?:\/\/[^)]+\)/g, (match) => match.slice(1, match.indexOf(']')))
+  return formattingSpaces(value).replace(/\[[^\]]+\]\(https?:\/\/[^)]+\)/g, (match) => match.slice(1, match.indexOf(']')))
     .replace(/https?:\/\/\S+/g, '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, limit);
 }
 
@@ -737,15 +742,24 @@ export async function guardSearchDataStream(response: Response, hits: readonly W
     catch { return []; }
   }).join('');
   const rejectionReason = searchSynthesisRejectionReason(modelAnswer, hits, request, now, locale);
+  const withoutFormattingEntities = formattingSpaces(modelAnswer);
+  const normalizedAnswer = rejectionReason === 'raw_results'
+    ? withoutFormattingEntities.replace(/^(?:according to (?:the )?(?:retrieved |available )?sources|d'après les sources|وفق المصادر)\s*[,،:]?\s*/iu, '')
+    : withoutFormattingEntities;
+  const normalizedAccepted = normalizedAnswer !== modelAnswer
+    && searchSynthesisRejectionReason(normalizedAnswer, hits, request, now, locale) === null;
   if (rejectionReason === null) {
-    console.info('WEB_SEARCH_ANSWER', { citationsCount: [...modelAnswer.matchAll(/\]\(https:\/\//g)].length,
-      synthesisAccepted: true });
-    return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers });
+    if (!normalizedAccepted) {
+      console.info('WEB_SEARCH_ANSWER', { citationsCount: [...modelAnswer.matchAll(/\]\(https:\/\//g)].length,
+        synthesisAccepted: true });
+      return new Response(body, { status: response.status,
+        statusText: response.statusText, headers: response.headers });
+    }
   }
-  const fallbackAnswer = groundedSearchSummary(hits, request, now, locale);
-  console.info('WEB_SEARCH_ANSWER', { citationsCount: [...fallbackAnswer.matchAll(/\]\(https:\/\//g)].length,
-    synthesisAccepted: false, rejectionReason });
-  const replacement = `0:${JSON.stringify(fallbackAnswer)}`;
+  const answer = normalizedAccepted ? normalizedAnswer : groundedSearchSummary(hits, request, now, locale);
+  console.info('WEB_SEARCH_ANSWER', { citationsCount: [...answer.matchAll(/\]\(https:\/\//g)].length,
+    synthesisAccepted: normalizedAccepted, ...(normalizedAccepted ? { normalized: true } : { rejectionReason }) });
+  const replacement = `0:${JSON.stringify(answer)}`;
   const next: string[] = []; let inserted = false;
   for (const line of lines) {
     if (line.startsWith('0:')) { if (!inserted) { next.push(replacement); inserted = true; } continue; }
