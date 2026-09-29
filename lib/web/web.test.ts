@@ -6,7 +6,7 @@ import { BraveWebSearch, orchestrateWebSearch, SearchProviderError, searchWeb, T
   type SearchExecution, type WebSearchProvider } from './search.server';
 import { budgetWarning, type SearchHealthStore } from './search-health.server';
 import { decideWebSearch, decideWebSearchWithHistory } from './selection';
-import { vantraCoreSystemPrompt, WEB_SEARCH_TOOL_DESCRIPTION,
+import { vantraCoreSystemPrompt, webEvidenceInstruction, WEB_SEARCH_TOOL_DESCRIPTION,
   WEB_SEARCH_TOOL_INSTRUCTION } from '@/lib/chat/system-prompt';
 import { pinnedAddressLookup, readPublicWebPage, resolvePublicWebUrl } from './url-reader.server';
 import { answerUsesOnlySearchSources, assessFreshEvidenceBundle, canonicalSearchUrl, evidenceModeForRequest, evidenceScore, groundedSearchSummary, guardSearchDataStream, requestedNewsCount,
@@ -214,7 +214,7 @@ test('same-call search synthesis answers in resolved Arabic and French without c
   const french = `La version publiée est Node.js 26.1.0. ${citation}`;
   for (const [request, language, answer] of [
     ['ما هو latest version of Node.js الآن؟', 'ar', arabic],
-    ['Quelle est la dernière version de Node.js ?', 'fr', french],
+    ['Quelle est la version de Node.js maintenant ?', 'fr', french],
   ] as const) {
     assert.equal(usableSearchSynthesis(answer, hits, request, now, language), true);
     const stream = new Response(`0:${JSON.stringify(answer)}\nd:{"finishReason":"stop"}\n`);
@@ -662,9 +662,7 @@ test('Arabic fresh news accepts independent relevant sources without an official
   assert.equal(result.telemetry.independentDomainCount, 2);
   assert.equal(result.telemetry.selectedEvidenceCount, 2);
   assert.match(result.context, /Acme announced/);
-  const answer = 'أعلنت Acme عن مكتب جديد هذا الأسبوع. '
-    + '[Acme announces a new office](https://first.example/acme-office) '
-    + '[Acme expands operations](https://second.test/acme-growth)';
+  const answer = 'أعلنت Acme عن مكتب جديد هذا الأسبوع. [[source:S1]] [[source:S2]]';
   assert.equal(usableSearchSynthesis(answer, result.hits, request, new Date(), 'ar'), true);
   assert.doesNotMatch(groundedSearchSummary(result.hits, request, new Date(), 'ar'), /لم أتمكن من التحقق/);
 });
@@ -708,10 +706,10 @@ test('cross-language Africa news retains bounded distinct candidates for one sel
   const arabic = await searchContextForRequest('اعطيني اخر 5 اخبار في دول افريقيا',
     'اعطيني اخر 5 اخبار في دول افريقيا', operations);
   assert.equal(arabic.telemetry.relevantCandidateCount, 0);
-  const answer = arabic.hits.slice(0, 5).map((hit) => `- خبر عن أفريقيا. [مصدر](${hit.url})`).join('\n');
+  const answer = arabic.hits.slice(0, 5).map((hit) => `- خبر عن أفريقيا. [[source:${hit.evidenceId}]]`).join('\n');
   assert.equal(searchSynthesisRejectionReason(answer, arabic.hits,
     'اعطيني اخر 5 اخبار في دول افريقيا', new Date(), 'ar'), null);
-  assert.equal(searchSynthesisRejectionReason(answer.replace(arabic.hits[4].url, 'https://invented.test/story'),
+  assert.equal(searchSynthesisRejectionReason(answer.replace('[[source:S5]]', '[[source:S99]]'),
     arabic.hits, 'اعطيني اخر 5 اخبار في دول افريقيا', new Date(), 'ar'), 'unsupported_url');
   const tenRequest = 'هات أحدث 10 أخبار في أفريقيا';
   const ten = await searchContextForRequest(tenRequest, tenRequest, operations);
@@ -719,7 +717,7 @@ test('cross-language Africa news retains bounded distinct candidates for one sel
   assert.equal(ten.hits.length, 7);
   assert.equal(ten.telemetry.citationCandidatesCount, 7);
   const unsupportedTen = Array.from({ length: 10 }, (_, index) =>
-    `- خبر عن أفريقيا. [مصدر](${ten.hits[index % ten.hits.length].url})`).join('\n');
+    `- خبر عن أفريقيا. [[source:${ten.hits[index % ten.hits.length].evidenceId}]]`).join('\n');
   assert.notEqual(searchSynthesisRejectionReason(unsupportedTen, ten.hits, tenRequest, new Date(), 'ar'), null);
   const structured = Array.from({ length: 4 }, (_, index) => ({
     title: `Acme release ${index}`, url: `https://acme.example/release-${index}`,
@@ -730,6 +728,50 @@ test('cross-language Africa news retains bounded distinct candidates for one sel
   assert.equal(searchSynthesisRejectionReason(fourCitations, structured,
     'latest Acme version now', new Date(), 'en'), 'too_many_citations');
   assert.equal(tavilyCalls, 0);
+});
+
+test('narrative source IDs render exact server URLs in Arabic, English, and French without leaking tokens', async () => {
+  const now = new Date('2026-09-29T12:00:00Z');
+  const hits = Array.from({ length: 5 }, (_, index) => ({ evidenceId: `S${index + 1}`,
+    title: `Africa report ${index + 1}`,
+    url: index === 0 ? 'https://first.example/story?from=brave#report'
+      : `https://source${index + 1}.example/story`,
+    description: `African regional report about a separate event with confirmed details ${index + 1}.`,
+    publishedAt: '2026-09-29', evidenceLevel: 'corroborated' as const }));
+  assert.match(webEvidenceInstruction(false, true, true), /\[\[source:S1\]\]/);
+  assert.doesNotMatch(searchEvidence(hits, 'latest 5 Africa news', now).text, /https?:\/\//);
+  const cases = [
+    { request: 'اعطيني اخر 5 اخبار في دول افريقيا', locale: 'ar' as const, item: 'خبر أفريقي مؤكد' },
+    { request: 'latest 5 news stories in Africa', locale: 'en' as const, item: 'Confirmed Africa report' },
+    { request: 'les 5 dernières actualités en Afrique', locale: 'fr' as const, item: 'Actualité africaine confirmée' },
+  ];
+  for (const { request, locale, item } of cases) {
+    const subjects = ['trade', 'health', 'energy', 'transport', 'research'];
+    const answer = hits.map((hit, index) => `${index + 1}. ${item} — ${subjects[index]}. [[source:${hit.evidenceId}]]`).join('\n');
+    assert.equal(searchSynthesisRejectionReason(answer, hits, request, now, locale), null);
+    const guarded = await guardSearchDataStream(new Response(`0:${JSON.stringify(answer)}\n`),
+      hits, request, now, locale);
+    const output = JSON.parse((await guarded.text()).split('\n')[0].slice(2)) as string;
+    assert.doesNotMatch(output, /\[\[source:|&#x20;|&amp;#x20;/);
+    assert.equal((output.match(/\]\(https:\/\//g) ?? []).length, 5);
+    for (const hit of hits) assert.ok(output.includes(`](${hit.url})`));
+    assert.equal(searchSynthesisRejectionReason(answer.replace('[[source:S5]]', '[[source:S99]]'),
+      hits, request, now, locale), 'unsupported_url');
+    assert.equal(searchSynthesisRejectionReason(answer.replace('[[source:S5]]',
+      `[Source](${hits[4].url})`), hits, request, now, locale), 'unsupported_url');
+    assert.equal(searchSynthesisRejectionReason(answer.replace('[[source:S5]]',
+      `[Source](https://source5.example/)`), hits, request, now, locale), 'unsupported_url');
+    const unknown = await guardSearchDataStream(new Response(`0:${JSON.stringify(
+      answer.replace('[[source:S5]]', '[[source:S99]]'))}\n`), hits, request, now, locale);
+    assert.doesNotMatch(await unknown.text(), /\[\[source:|S99/);
+  }
+  const general = 'Acme published a regional update. [[source:S1]] Another report followed. [[source:S2]]';
+  assert.equal(searchSynthesisRejectionReason(general, hits, 'find Acme regional reports', now, 'en'), null);
+  const withFormattingEntity = 'A regional update was published.&#x20;[[source:S1]] Another report followed. [[source:S2]]';
+  const guarded = await guardSearchDataStream(new Response(`0:${JSON.stringify(withFormattingEntity)}\n`),
+    hits, 'find regional reports', now, 'en');
+  const output = JSON.parse((await guarded.text()).split('\n')[0].slice(2)) as string;
+  assert.doesNotMatch(output, /&#x20;|\[\[source:/);
 });
 
 test('news count and timeframe caps never imply unsupported stories or dates', async () => {
@@ -999,16 +1041,16 @@ test('canonical citation identity accepts decoration but never substitutes path 
     description: 'Acme opened a new office.' };
   assert.equal(canonicalSearchUrl(source.url), 'https://example.com/article');
   assert.equal(answerUsesOnlySearchSources('Acme opened a new office. [Update](https://example.com/article)',
-    [source], 'search Acme office'), true);
+    [source], 'latest Acme version now'), true);
   assert.equal(answerUsesOnlySearchSources('Acme opened a new office. [Update](https://example.com/other)',
-    [source], 'search Acme office'), false);
+    [source], 'latest Acme version now'), false);
   assert.equal(answerUsesOnlySearchSources('Acme opened a new office. [Update](https://news.example.com/article)',
-    [source], 'search Acme office'), false);
+    [source], 'latest Acme version now'), false);
   assert.equal(answerUsesOnlySearchSources('Acme opened a new office. [Update](https://invented.test/article)',
-    [source], 'search Acme office'), false);
+    [source], 'latest Acme version now'), false);
 });
 
-test('fresh news accepts paraphrased citation labels and bullets, but rejects invented evidence', async () => {
+test('fresh news accepts source IDs and bullets, but rejects model-authored URLs and invented evidence', async () => {
   const request = 'ما آخر أخبار شركة Acme؟';
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Algiers', year: 'numeric',
     month: '2-digit', day: '2-digit' }).format(new Date());
@@ -1021,12 +1063,14 @@ test('fresh news accepts paraphrased citation labels and bullets, but rejects in
     ] }),
     read: async () => { throw new Error('not needed'); },
   });
-  const answer = '- افتتحت Acme مكتبًا جديدًا. [خبر المكتب](https://first.example/news)\n'
-    + '- وسّعت Acme خدمتها إلى مدينة أخرى. [خبر التوسع](https://second.test/news)';
+  const answer = '- افتتحت Acme مكتبًا جديدًا. [[source:S1]]\n'
+    + '- وسّعت Acme خدمتها إلى مدينة أخرى. [[source:S2]]';
   assert.equal(searchSynthesisRejectionReason(answer, result.hits, request, new Date(), 'ar'), null);
   assert.equal(usableSearchSynthesis(answer, result.hits, request, new Date(), 'ar'), true);
-  assert.equal(searchSynthesisRejectionReason(answer.replace('https://second.test/news', 'https://invented.test/news'),
+  assert.equal(searchSynthesisRejectionReason(answer.replace('[[source:S2]]', '[[source:S99]]'),
     result.hits, request, new Date(), 'ar'), 'unsupported_url');
+  assert.equal(searchSynthesisRejectionReason(answer.replace('[[source:S2]]',
+    '[خبر التوسع](https://second.test/news)'), result.hits, request, new Date(), 'ar'), 'unsupported_url');
   assert.equal(searchSynthesisRejectionReason(answer.replace('مدينة أخرى', '42 مدينة'), result.hits, request,
     new Date(), 'ar'), 'unsupported_number');
   assert.equal(searchSynthesisRejectionReason(answer.replace('افتتحت', 'افتتحت عام 2025'), result.hits,

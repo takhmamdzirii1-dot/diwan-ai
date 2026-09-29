@@ -194,13 +194,15 @@ export function searchEvidence(hits: readonly WebSearchHit[], request: string, n
   const today = localDate(now);
   const publishedToday = hits.some((hit) => hit.publishedAt === today);
   const todayRequested = asksForToday(request);
+  const narrative = evidenceModeForRequest(request) !== 'structured_fact';
   const lines = hits.flatMap((hit, index) => {
     const url = safeUrl(hit.url);
     if (!url) return [];
+    const sourceId = hit.evidenceId ?? `S${index + 1}`;
     const basis = hit.evidenceLevel === 'primary_search' ? 'Official search-result evidence'
       : hit.evidenceLevel === 'corroborated' ? 'Corroborated independent source'
         : hit.verifiedPage || hit.evidenceLevel === 'primary_page' ? 'Verified primary page' : 'Search excerpt';
-    return [`${hit.evidenceId ?? `S${index + 1}`}. ${plainExcerpt(hit.title, 180)}\nURL: ${url}\nPublished: ${hit.publishedAt ?? 'unknown'}\nSource: ${new URL(url).hostname}\n${basis}: ${plainExcerpt(hit.description, 500)}`];
+    return [`${sourceId}. ${plainExcerpt(hit.title, 180)}\n${narrative ? `Citation: [[source:${sourceId}]]` : `URL: ${url}`}\nPublished: ${hit.publishedAt ?? 'unknown'}\nSource: ${new URL(url).hostname}\n${basis}: ${plainExcerpt(hit.description, 500)}`];
   });
   const notice = todayRequested && !publishedToday
     ? `No retrieved source has a verified publication date of ${today}. Do not present older or undated results as today's news.`
@@ -690,11 +692,31 @@ export function answerUsesOnlySearchSources(answer: string, hits: readonly WebSe
   now = new Date()) {
   const evidence = searchEvidence(hits, request, now);
   if (evidence.todayRequested && !evidence.publishedToday) return false;
+  if (evidenceModeForRequest(request) !== 'structured_fact') return narrativeSourceMatches(answer, hits) !== null;
   const allowed = new Set(hits.map((hit) => canonicalSearchUrl(hit.url)).filter(Boolean));
   const cited = [...answer.matchAll(/https?:\/\/[^\s)\]>"']+/g)]
     .map((match) => canonicalSearchUrl(match[0].replace(/[.,;!?]+$/, '')));
   if (!cited.length || cited.some((url) => !url || !allowed.has(url))) return false;
   return true;
+}
+
+/** Resolve model-written source IDs against this turn's server-owned evidence only. */
+function narrativeSourceMatches(answer: string, hits: readonly WebSearchHit[]) {
+  if (/(?:[a-z][a-z0-9+.-]*:\/\/|www\.|\]\([^)]*\))/iu.test(answer)) return null;
+  const tokens = [...answer.matchAll(/\[\[source:(S[1-9]\d*)\]\]/g)];
+  if (!tokens.length || /\[\[source:/iu.test(answer.replace(/\[\[source:S[1-9]\d*\]\]/g, ''))) return null;
+  const sources = new Map(hits.map((hit, index) => [hit.evidenceId ?? `S${index + 1}`, hit.url]));
+  if (tokens.some(([, id]) => !sources.has(id) || !canonicalSearchUrl(sources.get(id)!))) return null;
+  return tokens.map(([, id]) => ({ id, url: sources.get(id)! }));
+}
+
+function renderNarrativeSourceCitations(answer: string, hits: readonly WebSearchHit[], locale: ResponseLanguage) {
+  const citations = narrativeSourceMatches(answer, hits);
+  if (!citations) return null;
+  const sources = new Map(citations.map(({ id, url }) => [id, url]));
+  const label = locale === 'ar' ? 'مصدر' : 'Source';
+  return answer.replace(/\[\[source:(S[1-9]\d*)\]\]/g, (_, id: string) =>
+    `[${label}](${sources.get(id)})`);
 }
 
 /** Content-free rejection reason for the existing same-call synthesis guard. */
@@ -705,16 +727,22 @@ export function searchSynthesisRejectionReason(answer: string, hits: readonly We
   if (!trimmed || trimmed.length > 4_000 || rawResultsRequested(request)) return 'invalid_answer';
   if (needsFreshEvidence(request) && !hits.some((hit) => evidenceStrength(hit))) return 'insufficient_evidence';
   if (!answerUsesOnlySearchSources(trimmed, hits, request, now)) return 'unsupported_url';
-  const withoutLinks = trimmed.replace(/\[[^\]]+\]\(https?:\/\/[^)]+\)/g, ' ');
+  const withoutLinks = mode === 'structured_fact'
+    ? trimmed.replace(/\[[^\]]+\]\(https?:\/\/[^)]+\)/g, ' ')
+    : trimmed.replace(/\[\[source:S[1-9]\d*\]\]/g, ' ');
   if (language === 'ar' && (withoutLinks.match(/[\u0600-\u06ff]/gu) ?? []).length < 3) return 'wrong_language';
   if (resolveResponseLanguage(withoutLinks, [], 'en') !== language) return 'wrong_language';
   if (/^(?:according to (?:the )?(?:retrieved |available )?sources|here are (?:the )?(?:search )?results|d'après les sources|وفق المصادر)/iu.test(trimmed)) return 'raw_results';
   if (mode === 'structured_fact' && /^\s*(?:[-*]|\d+\.)\s/mu.test(trimmed)) return 'raw_results';
-  const cited = [...trimmed.matchAll(/https?:\/\/[^\s)\]>"']+/g)];
+  const cited = mode === 'structured_fact' ? [...trimmed.matchAll(/https?:\/\/[^\s)\]>"']+/g)]
+    : [...trimmed.matchAll(/\[\[source:S[1-9]\d*\]\]/g)];
   const citationLimit = mode === 'structured_fact' ? 3 : Math.min(hits.length, mode === 'fresh_news'
     ? requestedNewsCount(request) : 5, 8);
   if (cited.length > citationLimit) return 'too_many_citations';
-  const citations = [...trimmed.matchAll(/\[([^\]]+)\]\((https:\/\/[^)]+)\)/g)];
+  const citations: [string, string, string][] = mode === 'structured_fact'
+    ? [...trimmed.matchAll(/\[([^\]]+)\]\((https:\/\/[^)]+)\)/g)].map((match) =>
+      [match[0], match[1], match[2]])
+    : narrativeSourceMatches(trimmed, hits)!.map(({ id, url }) => [`[[source:${id}]]`, id, url]);
   if (mode === 'fresh_news') {
     const items = [...trimmed.matchAll(/^\s*(?:[-*]|\d{1,2}[.)])\s+/gmu)].length;
     if (items > citationLimit) return 'too_many_items';
@@ -779,17 +807,16 @@ export async function guardSearchDataStream(response: Response, hits: readonly W
     : withoutFormattingEntities;
   const normalizedAccepted = normalizedAnswer !== modelAnswer
     && searchSynthesisRejectionReason(normalizedAnswer, hits, request, now, locale) === null;
-  if (rejectionReason === null) {
-    if (!normalizedAccepted) {
-      console.info('WEB_SEARCH_ANSWER', { citationsCount: [...modelAnswer.matchAll(/\]\(https:\/\//g)].length,
-        synthesisAccepted: true });
-      return new Response(body, { status: response.status,
-        statusText: response.statusText, headers: response.headers });
-    }
-  }
-  const answer = normalizedAccepted ? normalizedAnswer : groundedSearchSummary(hits, request, now, locale);
+  const accepted = rejectionReason === null || normalizedAccepted;
+  const selected = normalizedAccepted ? normalizedAnswer : modelAnswer;
+  const rendered = accepted && evidenceModeForRequest(request) !== 'structured_fact'
+    ? renderNarrativeSourceCitations(selected, hits, locale) : selected;
+  const answer = accepted && rendered !== null ? rendered : groundedSearchSummary(hits, request, now, locale);
   console.info('WEB_SEARCH_ANSWER', { citationsCount: [...answer.matchAll(/\]\(https:\/\//g)].length,
-    synthesisAccepted: normalizedAccepted, ...(normalizedAccepted ? { normalized: true } : { rejectionReason }) });
+    synthesisAccepted: accepted && rendered !== null,
+    ...(normalizedAccepted ? { normalized: true } : accepted ? {} : { rejectionReason }) });
+  if (answer === modelAnswer) return new Response(body, { status: response.status,
+    statusText: response.statusText, headers: response.headers });
   const replacement = `0:${JSON.stringify(answer)}`;
   const next: string[] = []; let inserted = false;
   for (const line of lines) {

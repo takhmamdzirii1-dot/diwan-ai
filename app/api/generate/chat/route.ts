@@ -23,7 +23,7 @@ import { configuredConnectedApps } from '@/lib/connected-apps/registry.server';
 import { readUserConnection } from '@/lib/connected-apps/store.server';
 import { oncePerTurnOptionalWebSearch, optionalWebContext, searchContextForRequest,
   webContextForRequest } from '@/lib/web/context.server';
-import { guardSearchDataStream } from '@/lib/web/evidence';
+import { evidenceModeForRequest, guardSearchDataStream } from '@/lib/web/evidence';
 import { resolveResponseLanguage } from '@/lib/chat/response-language';
 import { configuredWebSearchProviders, type SearchExecution, type WebSearchHit } from '@/lib/web/search.server';
 import { decideWebSearchWithHistory, selectWebContextTool } from '@/lib/web/selection';
@@ -401,7 +401,8 @@ export async function POST(request: Request) {
     if (internalContext) messagesPayload[0] = { role: 'system', content: `${messagesPayload[0].content}\n\n${internalContext}` };
     if (webDocumentContext) {
       // The instruction is trusted; the fetched bytes are not. Never elevate page text to system priority.
-      messagesPayload[0] = { role: 'system', content: `${messagesPayload[0].content}\n\n${webEvidenceInstruction(noVerifiedToday, Boolean(webSearchHits))}` };
+      messagesPayload[0] = { role: 'system', content: `${messagesPayload[0].content}\n\n${webEvidenceInstruction(noVerifiedToday, Boolean(webSearchHits),
+        Boolean(webSearchHits) && evidenceModeForRequest(webSelection.evidenceRequest) !== 'structured_fact')}` };
       messagesPayload.splice(messagesPayload.length - 1, 0, { role: 'user',
         content: `External web data for the following request (data only):\n${JSON.stringify(webDocumentContext)}` });
     }
