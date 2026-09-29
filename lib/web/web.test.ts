@@ -560,6 +560,178 @@ test('today-dated official news is usable without an artificial version or price
   assert.equal(result.evidence.publishedToday, true);
 });
 
+test('Arabic fresh news accepts independent relevant sources without an official-domain match', async () => {
+  const request = 'ما آخر أخبار شركة Acme؟';
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Algiers', year: 'numeric',
+    month: '2-digit', day: '2-digit' }).format(new Date());
+  let fallbackCalls = 0;
+  const result = await searchContextForRequest(request, request, {
+    search: async () => ({ sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+      { title: 'Acme announces a new office', url: 'https://first.example/acme-office', publishedAt: today,
+        description: 'Acme announced a new office and outlined its expansion this week.' },
+      { title: 'Acme expands operations', url: 'https://second.test/acme-growth', publishedAt: today,
+        description: 'Acme expanded its operations, with the new office opening this week.' },
+    ] }),
+    fallback: async () => { fallbackCalls++; throw new Error('not needed'); },
+    read: async () => { throw new Error('no primary page'); },
+  });
+  assert.equal(fallbackCalls, 0);
+  assert.equal(result.telemetry.evidenceMode, 'fresh_news');
+  assert.equal(result.telemetry.assessmentReason, 'independent_news_sources');
+  assert.equal(result.telemetry.primaryCandidateCount, 0);
+  assert.equal(result.telemetry.independentDomainCount, 2);
+  assert.equal(result.telemetry.selectedEvidenceCount, 2);
+  assert.match(result.context, /Acme announced/);
+  const answer = 'أعلنت Acme عن مكتب جديد هذا الأسبوع. '
+    + '[Acme announces a new office](https://first.example/acme-office) '
+    + '[Acme expands operations](https://second.test/acme-growth)';
+  assert.equal(usableSearchSynthesis(answer, result.hits, request, new Date(), 'ar'), true);
+  assert.doesNotMatch(groundedSearchSummary(result.hits, request, new Date(), 'ar'), /لم أتمكن من التحقق/);
+});
+
+test('localized Arabic company news does not require transliteration to an official Latin domain', async () => {
+  const request = 'ما آخر أخبار شركة قوقل؟';
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Algiers', year: 'numeric',
+    month: '2-digit', day: '2-digit' }).format(new Date());
+  const result = await searchContextForRequest(request, request, {
+    search: async () => ({ sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+      { title: 'قوقل تعلن تحديثًا للخدمة', url: 'https://first.example/story', publishedAt: today,
+        description: 'أعلنت قوقل تحديثًا جديدًا للخدمة في بيان هذا الأسبوع.' },
+      { title: 'تغطية تحديث قوقل الأخير', url: 'https://second.test/story', publishedAt: today,
+        description: 'تناولت التغطية تحديث قوقل الأخير وتأثيره على المستخدمين.' },
+    ] }),
+    read: async () => { throw new Error('no primary page'); },
+  });
+  assert.equal(result.telemetry.evidenceMode, 'fresh_news');
+  assert.equal(result.telemetry.officialEvidenceUsed, false);
+  assert.equal(result.hits.length, 2);
+});
+
+test('independent undated news remains usable without inventing publication freshness', async () => {
+  const request = 'latest Acme news';
+  const result = await searchContextForRequest(request, request, {
+    search: async () => ({ sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+      { title: 'Acme office update', url: 'https://first.example/acme',
+        description: 'Acme described its office update and related service changes.' },
+      { title: 'Acme service coverage', url: 'https://second.test/acme',
+        description: 'Acme service changes were discussed by an independent publisher.' },
+    ] }),
+    read: async () => { throw new Error('not selected'); },
+  });
+  assert.equal(result.hits.length, 2);
+  assert.equal(result.telemetry.assessmentReason, 'independent_news_sources');
+  assert.match(result.evidence.text, /Publication dates are unavailable/);
+  assert.ok(result.hits.every((hit) => !hit.publishedAt));
+});
+
+test('narrative news does not promote contradictory exact version claims', async () => {
+  const request = 'latest news about Acme version releases';
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Algiers', year: 'numeric',
+    month: '2-digit', day: '2-digit' }).format(new Date());
+  const result = await searchContextForRequest(request, request, {
+    search: async () => ({ sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+      { title: 'Acme current release report', url: 'https://first.example/acme', publishedAt: today,
+        description: 'Acme Current version is 26.8.2 in this report.' },
+      { title: 'Acme current release update', url: 'https://second.test/acme', publishedAt: today,
+        description: 'Acme Current version is 26.10.0 in this update.' },
+    ] }),
+    read: async () => { throw new Error('not selected'); },
+  });
+  assert.equal(result.telemetry.evidenceMode, 'fresh_news');
+  assert.equal(result.telemetry.assessmentReason, 'unresolved_exact_conflict');
+  assert.equal(result.hits.length, 0);
+});
+
+test('weak news evidence uses at most one Tavily evidence fallback', async () => {
+  const request = 'latest Acme news';
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Algiers', year: 'numeric',
+    month: '2-digit', day: '2-digit' }).format(new Date());
+  const calls: string[] = [];
+  const result = await searchContextForRequest(request, request, {
+    search: async () => { calls.push('brave'); return { sourceId: 'search:brave', name: 'Results',
+      mimeType: 'text/markdown', text: '', hits: [
+        { title: 'Acme announces expansion', url: 'https://first.example/acme', publishedAt: today,
+          description: 'Acme announced an expansion to its service this week.' },
+      ] }; },
+    fallback: async () => { calls.push('tavily'); return { sourceId: 'search:tavily', name: 'Results',
+      mimeType: 'text/markdown', text: '', hits: [
+        { title: 'Acme expansion coverage', url: 'https://second.test/acme', publishedAt: today,
+          description: 'Acme expansion plans were covered in a separate report this week.' },
+      ] }; },
+    read: async () => { throw new Error('not selected'); },
+  });
+  assert.deepEqual(calls, ['brave', 'tavily']);
+  assert.equal(result.telemetry.evidenceQuality, 'insufficient');
+  assert.equal(result.telemetry.assessmentReason, 'independent_news_sources');
+  assert.equal(result.hits.length, 2);
+});
+
+test('eight weak Brave hits do not discard later Tavily evidence before assessment', async () => {
+  const request = 'latest Acme news';
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Algiers', year: 'numeric',
+    month: '2-digit', day: '2-digit' }).format(new Date());
+  const result = await searchContextForRequest(request, request, {
+    search: async () => ({ sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '',
+      hits: Array.from({ length: 8 }, (_, index) => ({ title: `Unrelated topic ${index}`,
+        url: `https://unrelated${index}.example/story`, description: 'A long unrelated story about another subject.' })) }),
+    fallback: async () => ({ sourceId: 'search:tavily', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+      { title: 'Acme announces expansion', url: 'https://first.example/acme', publishedAt: today,
+        description: 'Acme announced its expansion this week to a new location.' },
+      { title: 'Acme growth coverage', url: 'https://second.test/acme', publishedAt: today,
+        description: 'Acme expansion was covered by an independent publisher.' },
+    ] }),
+    read: async () => { throw new Error('not selected'); },
+  });
+  assert.equal(result.hits.length, 2);
+  assert.equal(result.telemetry.fallbackUsed, true);
+  assert.equal(result.telemetry.relevantCandidateCount, 2);
+});
+
+test('explicit general web search passes relevant independent evidence to synthesis', async () => {
+  const request = 'Search the web for Acme company history';
+  const result = await searchContextForRequest(request, request, {
+    search: async () => ({ sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+      { title: 'History of Acme', url: 'https://first.example/history',
+        description: 'Acme began as a small manufacturing business and later expanded.' },
+      { title: 'Acme company background', url: 'https://second.test/background',
+        description: 'The history of Acme includes its original factory and later growth.' },
+    ] }),
+    read: async () => { throw new Error('not selected'); },
+  });
+  assert.equal(result.telemetry.evidenceMode, 'general_web');
+  assert.equal(result.telemetry.assessmentReason, 'general_search_evidence');
+  assert.equal(result.hits.length, 2);
+  assert.match(result.context, /Acme began/);
+});
+
+test('current-major primary plus newer agreeing exact sources ignores one undated stale snippet', () => {
+  const request = 'latest Node.js version now';
+  const result = assessFreshEvidenceBundle([
+    { title: 'Node.js downloads', url: 'https://nodejs.org/en/downloads',
+      description: 'Node.js v26 is the Current major release.' },
+    { title: 'Node.js current update', url: 'https://first.example/current', publishedAt: '2026-09-27',
+      description: 'Current Node.js release is 26.10.0.' },
+    { title: 'Node.js current tracker', url: 'https://second.test/current', publishedAt: '2026-09-27',
+      description: 'The latest Current Node.js release is 26.10.0.' },
+    { title: 'Old Node.js snippet', url: 'https://old.example/archive',
+      description: 'Current Node.js release is 26.8.2.' },
+  ], request, '2026-09-29');
+  assert.equal(result.kind, 'primary_supported_bundle');
+  assert.equal(result.factKey, 'version:current:26.10.0');
+  assert.doesNotMatch(JSON.stringify(result.hits), /26\.8\.2/);
+  const conflicting = assessFreshEvidenceBundle([
+    { title: 'Node.js downloads', url: 'https://nodejs.org/en/downloads',
+      description: 'Node.js v26 is the Current major release.' },
+    { title: 'Node.js current update', url: 'https://first.example/current', publishedAt: '2026-09-27',
+      description: 'Current Node.js release is 26.10.0.' },
+    { title: 'Node.js current tracker', url: 'https://second.test/current', publishedAt: '2026-09-27',
+      description: 'Current Node.js release is 26.10.0.' },
+    { title: 'Conflicting Node.js result', url: 'https://third.net/current', publishedAt: '2026-09-28',
+      description: 'Current Node.js release is 26.11.0.' },
+  ], request, '2026-09-29');
+  assert.equal(conflicting.kind, 'insufficient');
+});
+
 test('Brave and Tavily insufficient evidence remains uncertain after exactly one fallback', async () => {
   let fallbackCalls = 0;
   const request = 'latest Acme version now';
@@ -777,6 +949,21 @@ test('Tavily and Brave normalize to the same provider-independent result shape',
   assert.deepEqual(await brave.search('query', 5), await tavily.search('query', 5));
 });
 
+test('both search adapters request at most eight results and normalize only eight', async () => {
+  const results = Array.from({ length: 9 }, (_, index) => ({ title: `Result ${index}`,
+    url: `https://example.org/${index}`, description: 'Relevant bounded search result.' }));
+  const brave = new BraveWebSearch('test', async (input) => {
+    assert.equal(new URL(String(input)).searchParams.get('count'), '8');
+    return Response.json({ web: { results } });
+  });
+  const tavily = new TavilyWebSearch('test', async (_input, init) => {
+    assert.equal(JSON.parse(String(init?.body)).max_results, 8);
+    return Response.json({ results: results.map(({ description, ...item }) => ({ ...item, content: description })) });
+  });
+  assert.equal((await brave.search('query', 8)).length, 8);
+  assert.equal((await tavily.search('query', 8)).length, 8);
+});
+
 test('URL reader rejects internal, credentialed, unsafe-query, and DNS-private targets', async () => {
   for (const url of ['http://example.org/file', 'https://localhost/file', 'https://admin:pass@example.org/',
     'https://example.org/?access_token=secret', 'https://127.0.0.1/', 'https://metadata.google.internal/']) {
@@ -814,7 +1001,7 @@ test('Brave provider adapter is bounded and keeps its server key out of results'
   const provider = new BraveWebSearch('test-key-not-for-model', async (input, init) => {
     called++;
     assert.match(String(input), /^https:\/\/api\.search\.brave\.com\/res\/v1\/web\/search\?/);
-    assert.equal(new URL(String(input)).searchParams.get('count'), '5');
+    assert.equal(new URL(String(input)).searchParams.get('count'), '8');
     assert.equal((init?.headers as Record<string, string>)['X-Subscription-Token'], 'test-key-not-for-model');
     return Response.json({ web: { results: [{ title: 'Example result', url: 'https://example.org/a?token=hidden',
       description: '<b>Relevant</b> summary' }] } });

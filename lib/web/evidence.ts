@@ -10,6 +10,17 @@ export function needsFreshEvidence(request: string) {
     || /(?:أحدث|احدث|آخر|اخر|الآن|الان|اليوم|أخبار|اخبار|الحالي)/u.test(request);
 }
 
+export type EvidenceMode = 'structured_fact' | 'fresh_news' | 'general_web';
+
+export function evidenceModeForRequest(request: string): EvidenceMode {
+  if (!needsFreshEvidence(request)) return 'general_web';
+  if (/\b(?:news|headlines|developments|announcements|actualit[ée]s|nouvelles)\b|(?:أخبار|اخبار|مستجدات|تطورات)/iu.test(request))
+    return 'fresh_news';
+  if (/\b(?:version|release|price|prices|cost|availability|stock|status|prix|disponibilit[ée])\b|(?:إصدار|اصدار|نسخة|سعر|الأسعار|الاسعار|متاح|متوفر|الحالة)/iu.test(request))
+    return 'structured_fact';
+  return 'fresh_news';
+}
+
 function localDate(now: Date) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Algiers', year: 'numeric',
     month: '2-digit', day: '2-digit' }).format(now);
@@ -59,7 +70,8 @@ export function dedupeSearchHits(hits: readonly WebSearchHit[]) {
     if (!existing || (!existing.description.trim() && hit.description.trim()))
       unique.set(key.toString(), hit);
   }
-  return [...unique.values()].slice(0, 10);
+  // At most eight results from each of the two existing providers.
+  return [...unique.values()].slice(0, 16);
 }
 
 function factText(hit: WebSearchHit) {
@@ -173,7 +185,9 @@ export function searchEvidence(hits: readonly WebSearchHit[], request: string, n
   });
   const notice = todayRequested && !publishedToday
     ? `No retrieved source has a verified publication date of ${today}. Do not present older or undated results as today's news.`
-    : todayRequested ? `Only results dated ${today} may be described as published today.` : '';
+    : todayRequested ? `Only results dated ${today} may be described as published today.`
+      : evidenceModeForRequest(request) === 'fresh_news' && !hits.some((hit) => hit.publishedAt)
+        ? 'Publication dates are unavailable. Do not claim these reports were published today or are confirmed latest.' : '';
   return { today, todayRequested, publishedToday, notice,
     text: [notice, ...lines].filter(Boolean).join('\n\n').slice(0, 8_000) };
 }
@@ -216,6 +230,66 @@ export type FreshEvidenceKind = 'primary_exact' | 'primary_supported_bundle'
 function independentDomain(hit: WebSearchHit) {
   const host = new URL(hit.url).hostname.replace(/^www\./, '');
   return host.split('.').slice(-2).join('.');
+}
+
+const relevanceStopwords = new Set(['what', 'which', 'the', 'from', 'about', 'latest', 'current', 'recent',
+  'news', 'search', 'find', 'today', 'now', 'show', 'company', 'please', 'avec', 'pour', 'les', 'des',
+  'actualites', 'ما', 'هو', 'هي', 'من', 'عن', 'آخر', 'اخر', 'أحدث', 'احدث', 'أخبار', 'اخبار', 'شركة', 'اليوم', 'الآن', 'الان']);
+
+function relevantTerms(request: string) {
+  return (request.toLowerCase().match(/[\p{L}\p{N}]+(?:[.\-_][\p{L}\p{N}]+)*/gu) ?? [])
+    .filter((term) => term.length >= 3 && !relevanceStopwords.has(term));
+}
+
+export function relevantWebHit(hit: WebSearchHit, request: string) {
+  const terms = relevantTerms(request);
+  if (!terms.length) return false;
+  const content = `${hit.title} ${hit.description}`.toLowerCase();
+  return terms.some((term) => content.includes(term));
+}
+
+export function assessNarrativeEvidenceBundle(hits: readonly WebSearchHit[], request: string,
+  today: string, mode: 'fresh_news' | 'general_web') {
+  const valid = dedupeSearchHits(hits).filter((hit) => hit.title.trim().length >= 8
+    && hit.description.trim().length >= 24 && relevantWebHit(hit, request));
+  const todayTime = Date.parse(today);
+  const relevant = mode === 'fresh_news' ? valid.filter((hit) => {
+    if (asksForToday(request)) return hit.publishedAt === today;
+    const date = hit.publishedAt ? Date.parse(hit.publishedAt) : NaN;
+    return !Number.isFinite(date) || (date <= todayTime + 86_400_000
+      && date >= todayTime - 30 * 86_400_000);
+  }) : valid;
+  const domains = new Set(relevant.map(independentDomain));
+  const primary = relevant.filter((hit) => likelyPrimarySource(hit, request));
+  const dated = relevant.some((hit) => hit.publishedAt && Number.isFinite(Date.parse(hit.publishedAt)));
+  const explicitFacts = new Set(relevant.map((hit) => freshFactKey(`${hit.title} ${hit.description}`, request))
+    .filter(Boolean));
+  if (mode === 'fresh_news' && explicitFacts.size > 1) return { kind: 'insufficient' as const, factKey: null,
+    reason: 'unresolved_exact_conflict' as const, hits: [] as WebSearchHit[] };
+  const sufficient = mode === 'fresh_news'
+    ? (primary.length > 0 && (dated || primary.some((hit) => hit.verifiedPage)))
+      || domains.size >= 2
+    : primary.length > 0 || domains.size >= 2;
+  if (!sufficient) return { kind: 'insufficient' as const, factKey: null,
+    reason: relevant.length ? 'insufficient_source_diversity' as const : 'no_relevant_sources' as const,
+    hits: [] as WebSearchHit[] };
+  const kind = mode === 'fresh_news' ? 'independent_news_sources' as const : 'general_search_evidence' as const;
+  const ranked = [...relevant].sort((a, b) => {
+    const freshnessDifference = (b.publishedAt ?? '').localeCompare(a.publishedAt ?? '');
+    const primaryDifference = Number(likelyPrimarySource(b, request)) - Number(likelyPrimarySource(a, request));
+    return (mode === 'fresh_news' ? freshnessDifference || primaryDifference : primaryDifference || freshnessDifference)
+      || evidenceScore(b, request, today) - evidenceScore(a, request, today);
+  });
+  const chosen: WebSearchHit[] = []; const used = new Set<string>();
+  for (const hit of ranked) {
+    const domain = independentDomain(hit);
+    if (used.has(domain)) continue;
+    chosen.push({ ...hit, evidenceLevel: likelyPrimarySource(hit, request) ? 'primary_search' : 'corroborated',
+      evidenceBundle: kind });
+    used.add(domain);
+    if (chosen.length === 3) break;
+  }
+  return { kind, factKey: null, reason: kind, hits: chosen };
 }
 
 function currentMajor(text: string) {
@@ -300,10 +374,18 @@ export function assessFreshEvidenceBundle(hits: readonly WebSearchHit[], request
       domains.add(domain); return true;
     }) };
   });
-  // Any competing current exact claim prevents a secondary-only conclusion.
-  if (independent.length !== 1 || independent[0].hits.length < 2)
+  const supported = independent.filter((group) => group.hits.length >= 2);
+  if (supported.length !== 1)
     return { kind: 'insufficient' as const, factKey: null, hits: [] as WebSearchHit[] };
-  const agreed = independent[0];
+  const agreed = supported[0];
+  const agreedLatest = Math.max(...agreed.hits.map((hit) => hit.publishedAt ? Date.parse(hit.publishedAt) : NaN)
+    .filter(Number.isFinite));
+  // A lone undated or older snippet cannot veto a newer independent bundle;
+  // an equally recent competing value remains materially unresolved.
+  if (independent.some((group) => group.key !== agreed.key && group.hits.some((hit) => {
+    const date = hit.publishedAt ? Date.parse(hit.publishedAt) : NaN;
+    return !Number.isFinite(agreedLatest) || (Number.isFinite(date) && date >= agreedLatest);
+  }))) return { kind: 'insufficient' as const, factKey: null, hits: [] as WebSearchHit[] };
   if (major) {
     if (agreed.key !== `version:current:${major}` && !agreed.key.startsWith(`version:current:${major}.`))
       return { kind: 'insufficient' as const, factKey: null, hits: [] as WebSearchHit[] };
@@ -339,6 +421,14 @@ export function groundedSearchSummary(hits: readonly WebSearchHit[], request: st
     : locale === 'fr' ? `Je n’ai trouvé aucun résultat dont la publication aujourd’hui (${evidence.today}) soit vérifiée.`
       : `I found no result verified as published today (${evidence.today}).` : '';
   const first = selected[0];
+  if (evidenceModeForRequest(request) !== 'structured_fact' && !rawResultsRequested(request)) {
+    const citations = selected.slice(0, 3).map((hit) =>
+      `[${plainExcerpt(hit.title, 180).replace(/[\[\]]/g, '')}](${safeUrl(hit.url)})${hit.publishedAt ? ` (${hit.publishedAt})` : ''}`);
+    const cautious = locale === 'ar' ? `هذه مصادر ذات صلة بالسؤال؛ لا أستطيع تأكيد تفاصيل إضافية من مقتطفاتها وحدها: ${citations.join(' ')}`
+      : locale === 'fr' ? `Voici des sources pertinentes ; leurs extraits seuls ne permettent pas de confirmer davantage de détails : ${citations.join(' ')}`
+        : `These sources are relevant, but their excerpts alone do not confirm further details: ${citations.join(' ')}`;
+    return [notice, cautious].filter(Boolean).join(' ');
+  }
   if (hits[0]?.evidenceBundle === 'primary_supported_bundle') {
     const exact = hits.find((hit) => hit.evidenceLevel === 'primary_bundle');
     const official = hits.find((hit) => likelyPrimarySource(hit, request));
@@ -422,6 +512,7 @@ export function answerUsesOnlySearchSources(answer: string, hits: readonly WebSe
 /** Reject unsupported citations, copied snippets, unverified numbers, and wrong-language answers. */
 export function usableSearchSynthesis(answer: string, hits: readonly WebSearchHit[], request: string,
   now: Date, language: ResponseLanguage) {
+  const mode = evidenceModeForRequest(request);
   const trimmed = answer.trim();
   if (!trimmed || trimmed.length > 4_000 || rawResultsRequested(request)) return false;
   if (needsFreshEvidence(request) && !hits.some((hit) => evidenceStrength(hit))) return false;
@@ -441,13 +532,16 @@ export function usableSearchSynthesis(answer: string, hits: readonly WebSearchHi
       && citations.some(([, , url]) => safeUrl(hit.url) === safeUrl(url))).length < 2)) return false;
   if (hits[0]?.evidenceBundle === 'corroborated_exact' && (citations.length < 2
     || !/(?:independent sources|sources indépendantes|مصدران مستقلان|مصادر مستقلة)/iu.test(trimmed))) return false;
-  if (hits.some((hit) => likelyPrimarySource(hit, request))
+  if (mode === 'fresh_news' && !hits.some((hit) => likelyPrimarySource(hit, request))
+    && citations.length < 2) return false;
+  if (mode === 'structured_fact' && hits.some((hit) => likelyPrimarySource(hit, request))
     && !citations.some(([, , url]) => hits.some((hit) => safeUrl(hit.url) === safeUrl(url)
       && likelyPrimarySource(hit, request)))) return false;
   const citedHits = hits.filter((hit) => citations.some(([, , url]) => safeUrl(hit.url) === safeUrl(url)));
   const allowedNumbers = new Set(citedHits.flatMap((hit) => `${needsFreshEvidence(request) && hit.evidenceLevel !== 'primary_search' ? '' : hit.title} ${hit.description} ${hit.publishedAt ?? ''}`.match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []));
   if ((withoutLinks.match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []).some((value) => !allowedNumbers.has(value))) return false;
-  if (needsFreshEvidence(request) && /\bversion\b|(?:إصدار|اصدار|نسخة)/iu.test(request)) {
+  if (mode === 'structured_fact' && needsFreshEvidence(request)
+    && /\bversion\b|(?:إصدار|اصدار|نسخة)/iu.test(request)) {
     const current = rankedEvidence(hits, request, localDate(now))
       .map((hit) => evidenceStrength(hit) ? labeledVersion(factText(hit), 'current') : null).find(Boolean);
     if (current && !withoutLinks.includes(current)) return false;

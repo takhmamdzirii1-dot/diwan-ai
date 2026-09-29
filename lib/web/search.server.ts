@@ -4,7 +4,8 @@ import { searchBudget, SupabaseSearchHealthStore, type SearchFailure, type Searc
 export type WebSearchHit = { title: string; url: string; description: string;
   publishedAt?: string | null; source?: string; provider?: string; verifiedPage?: boolean;
   evidenceLevel?: 'primary_page' | 'primary_search' | 'primary_bundle' | 'corroborated';
-  evidenceBundle?: 'primary_exact' | 'primary_supported_bundle' | 'corroborated_exact';
+  evidenceBundle?: 'primary_exact' | 'primary_supported_bundle' | 'corroborated_exact'
+    | 'independent_news_sources' | 'general_search_evidence';
   evidenceId?: string };
 export interface WebSearchProvider {
   readonly id: string;
@@ -45,7 +46,7 @@ async function boundedJson(response: Response): Promise<unknown> {
 
 function normalizeHits(results: unknown, descriptionKey: 'description' | 'content'): WebSearchHit[] {
   if (!Array.isArray(results)) throw new SearchProviderError('invalid_response');
-  return results.slice(0, 5).flatMap((item: unknown) => {
+  return results.slice(0, 8).flatMap((item: unknown) => {
     if (!item || typeof item !== 'object' || !('url' in item) || typeof item.url !== 'string') return [];
     let address: URL;
     try { address = new URL(item.url); } catch { return []; }
@@ -71,7 +72,7 @@ export class BraveWebSearch implements WebSearchProvider {
   async search(query: string, limit: number): Promise<WebSearchHit[]> {
     const url = new URL('https://api.search.brave.com/res/v1/web/search');
     url.searchParams.set('q', query);
-    url.searchParams.set('count', String(Math.min(Math.max(limit, 1), 5)));
+    url.searchParams.set('count', String(Math.min(Math.max(limit, 1), 8)));
     let response: Response;
     try {
       response = await this.transport(url, { method: 'GET', redirect: 'manual',
@@ -94,7 +95,7 @@ export class TavilyWebSearch implements WebSearchProvider {
     try {
       response = await this.transport('https://api.tavily.com/search', { method: 'POST', redirect: 'manual',
         headers: { Authorization: `Bearer ${this.key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, search_depth: 'basic', max_results: Math.min(Math.max(limit, 1), 5),
+        body: JSON.stringify({ query, search_depth: 'basic', max_results: Math.min(Math.max(limit, 1), 8),
           include_answer: false, include_raw_content: false, include_images: false }),
         signal: AbortSignal.timeout(3_000), cache: 'no-store' });
     } catch (cause) { throw new SearchProviderError(cause instanceof DOMException && cause.name === 'TimeoutError' ? 'timeout' : 'unavailable'); }
@@ -173,9 +174,9 @@ export async function orchestrateWebSearch(query: string, options: {
     attempted.push(provider.id);
     const providerStarted = Date.now();
     try {
-      const hits = await provider.search(query.trim(), 5);
+      const hits = await provider.search(query.trim(), 8);
       if (!hits.length) throw new SearchProviderError('invalid_response');
-      const truncated = hits.length >= 5;
+      const truncated = hits.length >= 8;
       await record(provider.id, { success: true, latencyMs: Date.now() - providerStarted,
         resultCount: hits.length, truncated, cooldownSeconds: 0 });
       emit({ providerAttempted: attempted, providerUsed: provider.id,
@@ -201,7 +202,7 @@ export async function searchWeb(query: string, provider?: WebSearchProvider | nu
   if (!query.trim() || query.length > 300 || query.trim().split(/\s+/).length > 50 || unsafeQuery.test(query))
     throw new Error('WEB_SEARCH_INVALID_QUERY');
   let execution: SearchExecution | undefined;
-  const hits = provider ? await provider.search(query.trim(), 5) : await orchestrateWebSearch(query, {
+  const hits = provider ? await provider.search(query.trim(), 8) : await orchestrateWebSearch(query, {
     providers: options.providers, onExecution: (result) => { execution = result; },
   });
   if (!hits.length) throw new Error('WEB_SEARCH_EMPTY');
