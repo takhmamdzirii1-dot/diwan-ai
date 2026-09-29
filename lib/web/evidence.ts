@@ -242,12 +242,13 @@ function independentDomain(hit: WebSearchHit) {
   return host.split('.').slice(-2).join('.');
 }
 
-const relevanceStopwords = new Set(['what', 'which', 'the', 'from', 'about', 'latest', 'current', 'recent',
+const relevanceStopwords = new Set<string>(['what', 'which', 'the', 'from', 'about', 'latest', 'current', 'recent',
   'news', 'search', 'find', 'today', 'now', 'show', 'company', 'please', 'avec', 'pour', 'les', 'des',
   'actualites', 'ما', 'هو', 'هي', 'من', 'عن', 'آخر', 'اخر', 'أحدث', 'احدث', 'أخبار', 'اخبار', 'شركة', 'اليوم', 'الآن', 'الان']);
 
 function relevantTerms(request: string) {
-  return (request.toLowerCase().match(/[\p{L}\p{N}]+(?:[.\-_][\p{L}\p{N}]+)*/gu) ?? [])
+  const matches: string[] = request.toLowerCase().match(/[\p{L}\p{N}]+(?:[.\-_][\p{L}\p{N}]+)*/gu) ?? [];
+  return matches
     .filter((term) => term.length >= 3 && !relevanceStopwords.has(term));
 }
 

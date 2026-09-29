@@ -45,9 +45,10 @@ function refinedRetrievalQuery(request: string) {
       ? 'current official price' : /\b(?:availability|stock|status)\b|(?:متاح|متوفر|الحالة)/iu.test(request)
         ? 'current official availability' : null;
   if (!intent) return request;
-  const ignored = new Set(['latest', 'current', 'version', 'release', 'official', 'price', 'cost',
+  const ignored = new Set<string>(['latest', 'current', 'version', 'release', 'official', 'price', 'cost',
     'availability', 'stock', 'status', 'what', 'which', 'now', 'today', 'the', 'is']);
-  const entities = (request.match(/[A-Za-z][A-Za-z0-9.+-]*/g) ?? [])
+  const matches: string[] = request.match(/[A-Za-z][A-Za-z0-9.+-]*/g) ?? [];
+  const entities = matches
     .filter((word) => !ignored.has(word.toLowerCase()));
   return entities.length === 1 ? `${entities[0]} ${intent}` : request;
 }
