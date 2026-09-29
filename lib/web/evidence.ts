@@ -66,9 +66,25 @@ function factText(hit: WebSearchHit) {
   return hit.evidenceLevel === 'primary_search' ? `${hit.title} ${hit.description}` : hit.description;
 }
 
-function evergreenSource(hit: WebSearchHit) {
+function evergreenPathSegments(hit: WebSearchHit) {
   const url = safeUrl(hit.url);
-  return url ? /\/(?:download|downloads|releases|versions|pricing|prices|status|availability)(?:\/|$)/iu.test(new URL(url).pathname) : false;
+  return url ? new URL(url).pathname.toLowerCase().split('/').filter(Boolean) : [];
+}
+
+/** Prefixes may contain a locale or docs section, but a historical article is not a live index. */
+function liveIndexSegment(segments: string[], names: readonly string[]) {
+  return segments.some((segment, index) => names.includes(segment)
+    && !segments.slice(0, index).some((prefix) =>
+      ['archive', 'archives', 'blog', 'news'].includes(prefix))
+    && (index === segments.length - 1 || (index === segments.length - 2
+      && ['current', 'latest', 'index'].includes(segments[index + 1]))));
+}
+
+function evergreenSource(hit: WebSearchHit) {
+  const segments = evergreenPathSegments(hit);
+  return liveIndexSegment(segments, ['download', 'downloads', 'releases', 'versions', 'status'])
+    || segments.some((segment, index) => ['pricing', 'prices', 'availability'].includes(segment)
+      && !segments.slice(0, index).some((prefix) => ['archive', 'archives', 'blog', 'news'].includes(prefix)));
 }
 
 function latestVersionRequest(request: string) {
@@ -78,9 +94,8 @@ function latestVersionRequest(request: string) {
 
 /** A release note is a dated snapshot, even if its title called that release "Current". */
 function currentReleaseIndex(hit: WebSearchHit) {
-  const url = safeUrl(hit.url);
-  return url ? /\/(?:downloads?|releases|versions|status)(?:\/(?:current|latest|index))?\/?$/iu
-    .test(new URL(url).pathname) : false;
+  return liveIndexSegment(evergreenPathSegments(hit),
+    ['download', 'downloads', 'releases', 'versions', 'status']);
 }
 
 function publishedDay(hit: WebSearchHit) {

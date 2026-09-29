@@ -7,7 +7,7 @@ import { BraveWebSearch, orchestrateWebSearch, SearchProviderError, searchWeb, T
 import { budgetWarning, type SearchHealthStore } from './search-health.server';
 import { decideWebSearch, decideWebSearchWithHistory } from './selection';
 import { pinnedAddressLookup, readPublicWebPage, resolvePublicWebUrl } from './url-reader.server';
-import { answerUsesOnlySearchSources, assessFreshEvidenceBundle, groundedSearchSummary, guardSearchDataStream,
+import { answerUsesOnlySearchSources, assessFreshEvidenceBundle, evidenceScore, groundedSearchSummary, guardSearchDataStream,
   searchEvidence, usableSearchSynthesis } from './evidence';
 
 const publicDns = async () => [{ address: '93.184.215.14', family: 4 }];
@@ -259,6 +259,56 @@ test('exact official Brave evidence does not spend a Tavily fallback request', a
   assert.equal(result.hits[0].evidenceId, 'S1');
   assert.equal(result.telemetry.finalEvidenceQuality, 'primary_exact');
   assert.equal(result.telemetry.fallbackUsed, false);
+});
+
+test('localized official current indexes remain exact primary evidence without publication dates', () => {
+  const request = 'latest Example version now';
+  for (const locale of ['en', 'fr']) {
+    const result = assessFreshEvidenceBundle([{ title: 'Example current downloads',
+      url: `https://example.com/${locale}/download/current`, description: 'Current 26.10.0.' }],
+    request, '2026-09-29');
+    assert.equal(result.kind, 'primary_exact');
+    assert.equal(result.factKey, 'version:current:26.10.0');
+    assert.equal(result.hits[0].url, `https://example.com/${locale}/download/current`);
+  }
+  for (const path of ['/en/releases', '/docs/versions', '/en/status']) {
+    const result = assessFreshEvidenceBundle([{ title: 'Example current releases',
+      url: `https://example.com${path}`, description: 'Current 26.10.0.' }], request, '2026-09-29');
+    assert.equal(result.kind, 'primary_exact');
+  }
+});
+
+test('Arabic latest-version request accepts an undated localized official result after URL read failure', async () => {
+  const request = 'ما هو أحدث إصدار من Node.js الآن؟';
+  let fallbackCalls = 0;
+  const result = await searchContextForRequest(request, request, {
+    search: async () => ({ sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
+      { title: 'Node.js current downloads', url: 'https://nodejs.org/en/download/current',
+        description: 'Current 26.10.0; LTS 24.21.0.' },
+    ] }),
+    fallback: async () => { fallbackCalls++; throw new Error('not needed'); },
+    read: async () => { throw new Error('URL_TOO_LARGE'); },
+  });
+  assert.equal(fallbackCalls, 0);
+  assert.equal(result.telemetry.finalEvidenceQuality, 'primary_exact');
+  assert.match(groundedSearchSummary(result.hits, request, new Date(), 'ar'), /26\.10\.0.*24\.21\.0/);
+});
+
+test('prefixed evergreen paths exclude historical release articles', () => {
+  const request = 'latest Example version now';
+  const old = { title: 'Example 26.8.2 (Current)',
+    url: 'https://example.com/en/blog/release/v26.8.2',
+    description: '26.8.2 (Current).', publishedAt: '2026-09-09', verifiedPage: true };
+  const oldOnly = assessFreshEvidenceBundle([old], request, '2026-09-29');
+  assert.equal(oldOnly.kind, 'insufficient');
+  const live = { title: 'Example current downloads', url: 'https://example.com/en/download/current',
+    description: 'Current 26.10.0.' };
+  const combined = assessFreshEvidenceBundle([old, live], request, '2026-09-29');
+  assert.equal(combined.factKey, 'version:current:26.10.0');
+  assert.deepEqual(combined.hits.map((hit) => hit.url), [live.url]);
+  const archive = { ...live, url: 'https://example.com/archive/releases/old-version-article' };
+  assert.equal(evidenceScore(archive, request, '2026-09-29'),
+    evidenceScore({ ...archive, url: 'https://example.com/archive/old-version-article' }, request, '2026-09-29'));
 });
 
 test('a read old official release note cannot outrank a newer official current index', async () => {
