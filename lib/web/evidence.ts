@@ -312,6 +312,39 @@ function currentMajor(text: string) {
   return match?.[1] ?? null;
 }
 
+function primaryCurrentState(primary: readonly WebSearchHit[], request: string) {
+  const claimText = (hit: WebSearchHit) => hit.verifiedPage ? hit.description : `${hit.title} ${hit.description}`;
+  const claims = primary.map((hit) => {
+    const text = claimText(hit);
+    const labeled = labeledVersion(text, 'current')?.replace(/^v/i, '') ?? null;
+    const semver = labeled?.match(/^(\d+)\.(\d+)\.(\d+)$/)?.slice(1).map(Number) ?? null;
+    return { hit, key: freshFactKey(text, request), major: semver ? String(semver[0]) : currentMajor(text),
+      semver };
+  });
+  const majors = new Set(claims.map((claim) => claim.major).filter((major): major is string => major !== null));
+  const liveMajors = new Set(claims.filter((claim) => currentReleaseIndex(claim.hit) && claim.major)
+    .map((claim) => claim.major));
+  const major = liveMajors.size === 1 ? [...liveMajors][0]
+    : liveMajors.size === 0 && majors.size === 1 ? [...majors][0] : null;
+  return { claims, major, majors,
+    diagnostics: {
+      primaryExactCandidateCount: claims.filter((claim) => claim.key).length,
+      primaryExactGroupCount: new Set(claims.map((claim) => claim.key).filter(Boolean)).size,
+      currentMajorCandidateCount: majors.size,
+      currentMajorEstablished: major !== null,
+      liveCurrentIndexCandidateCount: claims.filter((claim) => currentReleaseIndex(claim.hit) && claim.major).length,
+      undatedPrimaryCurrentGroupCount: new Set(claims.filter((claim) => claim.semver && !claim.hit.publishedAt)
+        .map((claim) => claim.key).filter(Boolean)).size,
+    },
+  };
+}
+
+/** Counts only; version values and source content never enter operational telemetry. */
+export function primaryEvidenceDiagnostics(hits: readonly WebSearchHit[], request: string) {
+  const primary = dedupeSearchHits(hits).filter((hit) => likelyPrimarySource(hit, request));
+  return primaryCurrentState(primary, request).diagnostics;
+}
+
 export function supportsPrimaryPage(hit: WebSearchHit, request: string, today: string) {
   if (freshFactKey(hit.description, request) || currentMajor(hit.description)) return true;
   const structured = /\b(?:version|release|price|cost|availability|stock|status)\b|(?:إصدار|اصدار|نسخة|سعر|متاح|متوفر)/iu.test(request);
@@ -324,8 +357,8 @@ export function assessFreshEvidenceBundle(hits: readonly WebSearchHit[], request
   const candidates = dedupeSearchHits(hits);
   const primary = candidates.filter((hit) => likelyPrimarySource(hit, request));
   const claimText = (hit: WebSearchHit) => hit.verifiedPage ? hit.description : `${hit.title} ${hit.description}`;
-  const currentSeries = primary.filter((hit) => !freshFactKey(claimText(hit), request))
-    .map((hit) => currentMajor(claimText(hit))).find((value) => value !== null);
+  const currentState = primaryCurrentState(primary, request);
+  const currentSeries = currentState.major;
   const exactPrimary = primary.filter((hit) => {
     const key = freshFactKey(claimText(hit), request);
     return key && (!currentSeries || !key.startsWith('version:current:')
@@ -345,8 +378,30 @@ export function assessFreshEvidenceBundle(hits: readonly WebSearchHit[], request
         hits: rankedEvidence(latest.hits.map((hit) => ({ ...hit,
           evidenceLevel: hit.verifiedPage ? 'primary_page' as const : 'primary_search' as const,
           evidenceBundle: 'primary_exact' as const })), request, today) };
-      // The dated primary claim is authentic but not sufficient for "latest".
-      // Let independent current evidence be assessed below (and otherwise fall back).
+      // Undated official release snippets can establish progression within a
+      // single Current series. Never use this tie-break for LTS, prices, or
+      // claims from a different major; dated claims need the rules above.
+      const currentClaims = currentState.claims.filter((claim) =>
+        claim.key?.startsWith('version:current:'));
+      const eligible = currentClaims.filter((claim) => claim.major === currentSeries
+        && claim.semver && !claim.hit.publishedAt);
+      const groups = new Map<string, typeof eligible>();
+      for (const claim of eligible) groups.set(claim.key!, [...(groups.get(claim.key!) ?? []), claim]);
+      if (currentSeries && groups.size >= 2 && currentClaims.length === eligible.length) {
+        const ordered = [...groups.values()].sort((a, b) => {
+          const left = a[0].semver!; const right = b[0].semver!;
+          return right[0] - left[0] || right[1] - left[1] || right[2] - left[2];
+        });
+        const winner = ordered[0];
+        return { kind: 'primary_exact' as const, factKey: winner[0].key,
+          reason: 'latest_primary_semver' as const,
+          hits: rankedEvidence(winner.map(({ hit }) => ({ ...hit,
+            evidenceLevel: hit.verifiedPage ? 'primary_page' as const : 'primary_search' as const,
+            evidenceBundle: 'primary_exact' as const })), request, today) };
+      }
+      // A dated primary claim may be authentic without proving it is latest.
+      // Independent secondary evidence is considered only if primary evidence
+      // genuinely cannot resolve the request.
     } else {
       const highestStrength = Math.max(...exactPrimary.map(evidenceStrength));
       const strongest = exactPrimary.filter((hit) => evidenceStrength(hit) === highestStrength);
@@ -377,8 +432,12 @@ export function assessFreshEvidenceBundle(hits: readonly WebSearchHit[], request
   }
   // A major Current status is not an exact release. It can support, but never invent,
   // an exact value consistently reported by independent sources.
+  // Keep the older secondary corroboration contract: an exact historical
+  // primary release is not by itself a live major-only status page.
+  const majorOnly = new Set(currentState.claims.filter((claim) => !claim.key && claim.major)
+    .map((claim) => claim.major));
   const major = /\bversion\b|\brelease\b|(?:إصدار|اصدار|نسخة)/iu.test(request)
-    ? currentSeries : null;
+    && majorOnly.size === 1 ? [...majorOnly][0] : null;
   const recentSecondary = candidates.filter((hit) => !likelyPrimarySource(hit, request)
     && (!hit.publishedAt || Date.parse(hit.publishedAt) >= Date.parse(today) - 180 * 86_400_000));
   const groups = new Map<string, WebSearchHit[]>();

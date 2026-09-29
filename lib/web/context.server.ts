@@ -5,7 +5,7 @@ import type { WebContextTool } from './selection';
 import { readPublicWebPage } from './url-reader.server';
 import { searchWeb, type SearchExecution, type WebSearchHit } from './search.server';
 import { assessFreshEvidenceBundle, assessNarrativeEvidenceBundle, dedupeSearchHits, evidenceModeForRequest,
-  freshFactKey, likelyPrimarySource, needsFreshEvidence, rankedEvidence, relevantWebHit,
+  freshFactKey, likelyPrimarySource, needsFreshEvidence, primaryEvidenceDiagnostics, rankedEvidence, relevantWebHit,
   searchEvidence, supportsPrimaryPage, type EvidenceMode } from './evidence';
 
 type WebResource = Awaited<ReturnType<typeof readPublicWebPage>>;
@@ -90,6 +90,7 @@ async function assessFreshHits(hits: WebSearchHit[], request: string, read: type
         : assessment.kind === 'independent_news_sources' ? 'independent_news_sources_used'
         : 'insufficient_evidence');
   return { hits: assessment.hits, kind: assessment.kind,
+    primaryDiagnostics: primaryEvidenceDiagnostics([...pages, ...hits], request),
     reason: 'reason' in assessment ? assessment.reason : assessment.kind, diagnosticStages };
 }
 
@@ -112,10 +113,12 @@ export async function searchContextForRequest(query: string, request: string,
   let diagnosticStages: string[] = [];
   let assessmentKind: string | null = null;
   let assessmentReason: string | null = null;
+  let primaryDiagnostics = primaryEvidenceDiagnostics(candidates, request);
   const technicalFallback = resource.execution?.fallbackUsed ?? false;
   const evidenceMode: EvidenceMode = fresh ? evidenceModeForRequest(request) : 'general_web';
   if (fresh) {
-    ({ hits, kind: assessmentKind, reason: assessmentReason, diagnosticStages } = await assessFreshHits(
+    ({ hits, kind: assessmentKind, reason: assessmentReason, diagnosticStages,
+      primaryDiagnostics } = await assessFreshHits(
       candidates, request, readOnce, evidenceMode));
   } else {
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Algiers', year: 'numeric',
@@ -140,6 +143,7 @@ export async function searchContextForRequest(query: string, request: string,
       : relevantCandidateCount ? 'insufficient_source_diversity' : 'no_relevant_sources'
     : quality);
   const telemetry = { searchTriggered: true, evidenceMode, assessmentReason: reason,
+    ...primaryDiagnostics, selectionReason: reason,
     primaryCandidateCount: candidates.filter((hit) => likelyPrimarySource(hit, request)).length,
     exactFactGroupCount, relevantCandidateCount, independentDomainCount,
     selectedEvidenceCount: hits.length,
