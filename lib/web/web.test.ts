@@ -1110,6 +1110,11 @@ test('multi-major official Current progression stays below live and dated claims
   assert.equal(progressed.reason, 'latest_primary_semver_progression');
   assert.equal(progressed.factKey, 'version:current:26.10.0');
   assert.deepEqual(progressed.hits.map((hit) => hit.url), [history[3].url]);
+  const historicalDate = assessFreshEvidenceBundle([
+    release('22.12.0', '2026-09-09'), ...history.slice(1), lts, secondary,
+  ], request, '2026-09-29');
+  assert.equal(historicalDate.reason, 'latest_primary_semver_progression');
+  assert.equal(historicalDate.factKey, 'version:current:26.10.0');
   const live = assessFreshEvidenceBundle([...history, release('27.0.0'),
     { title: 'Acme downloads', url: 'https://acme.com/en/download/current',
       description: 'Acme 26.10.0 Current.' }], request, '2026-09-29');
@@ -1135,6 +1140,11 @@ test('multi-major official Current progression stays below live and dated claims
     request, '2026-09-29');
   assert.equal(contradiction.reason, 'latest_primary_dated');
   assert.notEqual(contradiction.factKey, progressed.factKey);
+  const equallyRecentConflict = assessFreshEvidenceBundle([...history,
+    release('24.9.0', '2026-09-28'), release('25.0.0', '2026-09-28')],
+  request, '2026-09-29');
+  assert.equal(equallyRecentConflict.kind, 'insufficient');
+  assert.notEqual(equallyRecentConflict.reason, 'latest_primary_semver_progression');
   for (const other of ['current Acme price now', 'current Acme status now', 'latest Acme news',
     'latest Acme version price now', 'latest Acme version news']) {
     assert.notEqual(assessFreshEvidenceBundle([...history, lts], other, '2026-09-29').reason,
@@ -1148,6 +1158,7 @@ test('production-shaped multi-major Brave result resolves after two failed URL r
     ...['22.12.0', '24.5.0', '26.8.2', '26.10.0'].map((version) => ({
       title: `Node.js ${version} Current`, url: `https://nodejs.org/en/blog/release/v${version}`,
       description: `Node.js ${version} Current release.`,
+      publishedAt: version === '22.12.0' ? '2026-09-09' : null,
     })),
     { title: 'Node.js 24.21.0 LTS', url: 'https://nodejs.org/en/blog/release/v24.21.0',
       description: 'Node.js 24.21.0 LTS release.' },
@@ -1180,6 +1191,7 @@ test('production-shaped multi-major Brave result resolves after two failed URL r
   assert.equal(result.telemetry.currentMajorCandidateCount, 3);
   assert.equal(result.telemetry.currentMajorEstablished, false);
   assert.equal(result.telemetry.liveCurrentIndexCandidateCount, 0);
+  assert.equal(result.telemetry.undatedPrimaryCurrentGroupCount, 3);
   assert.equal(result.telemetry.evidenceSufficient, true);
   assert.ok(result.telemetry.selectedEvidenceCount > 0);
   assert.equal(result.telemetry.selectionReason, 'latest_primary_semver_progression');

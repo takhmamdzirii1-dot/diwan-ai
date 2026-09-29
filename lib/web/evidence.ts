@@ -125,6 +125,8 @@ function publishedDay(hit: WebSearchHit) {
   return Number.isFinite(time) ? time : null;
 }
 
+const latestPrimaryRecencyMs = 7 * 86_400_000;
+
 function latestPrimaryClaim(hits: WebSearchHit[], request: string, today: string) {
   const claim = (hit: WebSearchHit) => freshFactKey(
     hit.verifiedPage ? hit.description : `${hit.title} ${hit.description}`, request);
@@ -146,7 +148,7 @@ function latestPrimaryClaim(hits: WebSearchHit[], request: string, today: string
   // unresolved without spending another provider request for evidence quality.
   const todayTime = Date.parse(today);
   if (!Number.isFinite(todayTime) || newestDay > todayTime + 86_400_000
-    || newestDay < todayTime - 7 * 86_400_000) return null;
+    || newestDay < todayTime - latestPrimaryRecencyMs) return null;
   return { key: claim(newest[0]), hits: newest };
 }
 
@@ -430,7 +432,8 @@ export function assessFreshEvidenceBundle(hits: readonly WebSearchHit[], request
           const datesConsistent = ordered.every(({ hit, key }) => {
             const day = publishedDay(hit);
             return day === null || (day <= todayDay + 86_400_000
-              && (key === winner.key || (winnerDay !== null && day < winnerDay)));
+              && (key === winner.key || day < todayDay - latestPrimaryRecencyMs
+                || (winnerDay !== null && day < winnerDay)));
           });
           if (datesConsistent) return { kind: 'primary_exact' as const, factKey: winner.key,
             reason: 'latest_primary_semver_progression' as const,
