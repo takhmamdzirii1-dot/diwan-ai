@@ -326,7 +326,7 @@ function primaryCurrentState(primary: readonly WebSearchHit[], request: string) 
     .map((claim) => claim.major));
   const major = liveMajors.size === 1 ? [...liveMajors][0]
     : liveMajors.size === 0 && majors.size === 1 ? [...majors][0] : null;
-  return { claims, major, majors,
+  return { claims, major, majors, liveMajors,
     diagnostics: {
       primaryExactCandidateCount: claims.filter((claim) => claim.key).length,
       primaryExactGroupCount: new Set(claims.map((claim) => claim.key).filter(Boolean)).size,
@@ -398,6 +398,47 @@ export function assessFreshEvidenceBundle(hits: readonly WebSearchHit[], request
           hits: rankedEvidence(winner.map(({ hit }) => ({ ...hit,
             evidenceLevel: hit.verifiedPage ? 'primary_page' as const : 'primary_search' as const,
             evidenceBundle: 'primary_exact' as const })), request, today) };
+      }
+      // Historical official releases may each have been "Current" at publication.
+      // Only compare stable versions across majors when every explicit Current
+      // claim belongs to the same requested product and official hostname. A
+      // live index or a newer dated conflicting claim must never lose to size.
+      if (evidenceModeForRequest(request) === 'structured_fact'
+        && !/\b(?:price|prices|cost|availability|stock|status|news|date|prix|disponibilit[ée])\b|(?:سعر|الأسعار|الاسعار|متاح|متوفر|الحالة|أخبار|اخبار|تاريخ)/iu.test(request)
+        && !currentSeries && currentState.majors.size > 1 && currentState.liveMajors.size === 0
+        && currentClaims.length >= 2 && currentClaims.every(({ hit, key, semver }) => semver
+          && /^version:current:(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(key!)
+          && !/\bv?\d+\.\d+\.\d+[-+][a-z0-9]/iu.test(`${hit.title} ${hit.description}`))) {
+        const hosts = new Set(currentClaims.map(({ hit }) => {
+          const url = safeUrl(hit.url);
+          return url ? new URL(url).hostname.toLowerCase().replace(/^www\./, '') : null;
+        }));
+        const host = [...hosts][0];
+        const hostLabels = host?.split('.').map((label) => label.replace(/[-_]/g, '')) ?? [];
+        const requestTerms = (request.toLowerCase().match(/[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*/g) ?? [])
+          .map((term) => term.replace(/[._-]/g, ''));
+        const product = requestTerms.find((term) => term.length >= 4 && hostLabels.includes(term));
+        if (hosts.size === 1 && host && product && currentClaims.every(({ hit }) =>
+          `${hit.title} ${hit.description}`.toLowerCase().replace(/[^a-z0-9]/g, '').includes(product))) {
+          const ordered = [...currentClaims].sort((a, b) => {
+            const left = a.semver!; const right = b.semver!;
+            return right[0] - left[0] || right[1] - left[1] || right[2] - left[2];
+          });
+          const winner = ordered[0];
+          const winnerDay = publishedDay(winner.hit);
+          const todayDay = Date.parse(today);
+          const datesConsistent = ordered.every(({ hit, key }) => {
+            const day = publishedDay(hit);
+            return day === null || (day <= todayDay + 86_400_000
+              && (key === winner.key || (winnerDay !== null && day < winnerDay)));
+          });
+          if (datesConsistent) return { kind: 'primary_exact' as const, factKey: winner.key,
+            reason: 'latest_primary_semver_progression' as const,
+            hits: rankedEvidence(ordered.filter((claim) => claim.key === winner.key)
+              .map(({ hit }) => ({ ...hit,
+                evidenceLevel: hit.verifiedPage ? 'primary_page' as const : 'primary_search' as const,
+                evidenceBundle: 'primary_exact' as const })), request, today) };
+        }
       }
       // A dated primary claim may be authentic without proving it is latest.
       // Independent secondary evidence is considered only if primary evidence

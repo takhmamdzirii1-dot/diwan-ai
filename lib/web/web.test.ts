@@ -1076,7 +1076,7 @@ test('primary-heavy undated Current releases resolve from one Brave response aft
   assert.doesNotMatch(groundedSearchSummary(result.hits, request, new Date(), 'ar'), /could not verify/);
 });
 
-test('primary Current SemVer tie-break remains inside one established major and below a live index', () => {
+test('same-major tie-break and multi-major progression remain below a live index', () => {
   const request = 'latest Acme version now';
   const release = (version: string) => ({ title: `Acme ${version} Current`,
     url: `https://acme.com/blog/release/v${version}`, description: `${version} Current.` });
@@ -1087,12 +1087,105 @@ test('primary Current SemVer tie-break remains inside one established major and 
   assert.equal(sameMajor.factKey, 'version:current:26.10.0');
   const conflictingMajors = assessFreshEvidenceBundle([release('26.8.2'), release('27.0.0')],
     request, '2026-09-29');
-  assert.equal(conflictingMajors.kind, 'insufficient');
+  assert.equal(conflictingMajors.reason, 'latest_primary_semver_progression');
+  assert.equal(conflictingMajors.factKey, 'version:current:27.0.0');
   const live = assessFreshEvidenceBundle([release('26.10.0'),
     { title: 'Acme live downloads', url: 'https://acme.com/en/download/current',
       description: 'Acme 26.8.2 Current.' }], request, '2026-09-29');
   assert.equal(live.reason, 'latest_primary_index');
   assert.equal(live.factKey, 'version:current:26.8.2');
+});
+
+test('multi-major official Current progression stays below live and dated claims and excludes LTS', () => {
+  const request = 'latest Acme version now';
+  const release = (version: string, publishedAt?: string) => ({ title: `Acme ${version} Current`,
+    url: `https://acme.com/blog/release/v${version}`,
+    description: `Acme ${version} Current release.`, publishedAt });
+  const history = ['22.12.0', '24.5.0', '26.8.2', '26.10.0'].map((version) => release(version));
+  const lts = { title: 'Acme 24.21.0 LTS', url: 'https://acme.com/blog/release/v24.21.0',
+    description: 'Acme 24.21.0 LTS release.' };
+  const secondary = { title: 'Acme 99.0.0 Current rumor', url: 'https://news.example/acme',
+    description: 'Acme 99.0.0 Current release.' };
+  const progressed = assessFreshEvidenceBundle([...history, lts, secondary], request, '2026-09-29');
+  assert.equal(progressed.reason, 'latest_primary_semver_progression');
+  assert.equal(progressed.factKey, 'version:current:26.10.0');
+  assert.deepEqual(progressed.hits.map((hit) => hit.url), [history[3].url]);
+  const live = assessFreshEvidenceBundle([...history, release('27.0.0'),
+    { title: 'Acme downloads', url: 'https://acme.com/en/download/current',
+      description: 'Acme 26.10.0 Current.' }], request, '2026-09-29');
+  assert.equal(live.reason, 'latest_primary_index');
+  assert.equal(live.factKey, 'version:current:26.10.0');
+  const dated = assessFreshEvidenceBundle([...history, release('26.11.0', '2026-09-28')],
+    request, '2026-09-29');
+  assert.equal(dated.reason, 'latest_primary_dated');
+  assert.equal(dated.factKey, 'version:current:26.11.0');
+  const unrelated = assessFreshEvidenceBundle([...history,
+    { title: 'Other 99.0.0 Current', url: 'https://other.com/blog/release/v99.0.0',
+      description: 'Other 99.0.0 Current release.' }], request, '2026-09-29');
+  assert.equal(unrelated.factKey, 'version:current:26.10.0');
+  const mixedAuthority = assessFreshEvidenceBundle([...history,
+    { title: 'Acme 27.0.0 Current', url: 'https://acme.net/blog/release/v27.0.0',
+      description: 'Acme 27.0.0 Current release.' }], request, '2026-09-29');
+  assert.notEqual(mixedAuthority.reason, 'latest_primary_semver_progression');
+  const prerelease = assessFreshEvidenceBundle([...history,
+    { title: 'Acme 27.0.0-beta Current', url: 'https://acme.com/blog/release/v27.0.0-beta',
+      description: 'Acme 27.0.0-beta Current preview.' }], request, '2026-09-29');
+  assert.notEqual(prerelease.reason, 'latest_primary_semver_progression');
+  const contradiction = assessFreshEvidenceBundle([...history, release('24.9.0', '2026-09-28')],
+    request, '2026-09-29');
+  assert.equal(contradiction.reason, 'latest_primary_dated');
+  assert.notEqual(contradiction.factKey, progressed.factKey);
+  for (const other of ['current Acme price now', 'current Acme status now', 'latest Acme news',
+    'latest Acme version price now', 'latest Acme version news']) {
+    assert.notEqual(assessFreshEvidenceBundle([...history, lts], other, '2026-09-29').reason,
+      'latest_primary_semver_progression');
+  }
+});
+
+test('production-shaped multi-major Brave result resolves after two failed URL reads', async () => {
+  const request = 'ما هو أحدث إصدار من Node.js الآن؟';
+  const hits = [
+    ...['22.12.0', '24.5.0', '26.8.2', '26.10.0'].map((version) => ({
+      title: `Node.js ${version} Current`, url: `https://nodejs.org/en/blog/release/v${version}`,
+      description: `Node.js ${version} Current release.`,
+    })),
+    { title: 'Node.js 24.21.0 LTS', url: 'https://nodejs.org/en/blog/release/v24.21.0',
+      description: 'Node.js 24.21.0 LTS release.' },
+    { title: 'Node.js historical releases', url: 'https://nodejs.org/en/blog/history',
+      description: 'Past Node.js release history.' },
+    { title: 'Node.js release guide', url: 'https://nodejs.org/en/docs/release-guide',
+      description: 'Node.js release schedule and support guide.' },
+    { title: 'Third-party future rumor', url: 'https://news.example/nodejs',
+      description: 'Node.js 99.0.0 Current release.' },
+  ];
+  let braveCalls = 0; let tavilyCalls = 0; let urlReads = 0;
+  let execution: SearchExecution | undefined;
+  const returned = await orchestrateWebSearch('Node.js latest current release official', {
+    providers: [
+      { id: 'brave', async search() { braveCalls++; return hits; } },
+      { id: 'tavily', async search() { tavilyCalls++; return []; } },
+    ], health: health().store, onExecution: (value) => { execution = value; },
+  });
+  const result = await searchContextForRequest(request, request, {
+    search: async (query) => { assert.equal(query, 'Node.js latest current release official');
+      return { sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '',
+        hits: returned, execution }; },
+    fallback: async () => { tavilyCalls++; throw new Error('Evidence fallback must not run'); },
+    read: async () => { urlReads++; throw new Error('URL_TOO_LARGE'); },
+  });
+  assert.deepEqual([braveCalls, tavilyCalls, urlReads, result.telemetry.webSearchApiRequestCount], [1, 0, 2, 1]);
+  assert.equal(result.telemetry.primaryCandidateCount, 7);
+  assert.equal(result.telemetry.primaryExactCandidateCount, 4);
+  assert.equal(result.telemetry.primaryExactGroupCount, 4);
+  assert.equal(result.telemetry.currentMajorCandidateCount, 3);
+  assert.equal(result.telemetry.currentMajorEstablished, false);
+  assert.equal(result.telemetry.liveCurrentIndexCandidateCount, 0);
+  assert.equal(result.telemetry.evidenceSufficient, true);
+  assert.ok(result.telemetry.selectedEvidenceCount > 0);
+  assert.equal(result.telemetry.selectionReason, 'latest_primary_semver_progression');
+  assert.equal(result.telemetry.fallbackUsed, false);
+  assert.equal(result.hits[0].url, 'https://nodejs.org/en/blog/release/v26.10.0');
+  assert.match(groundedSearchSummary(result.hits, request, new Date(), 'ar'), /26\.10\.0/);
 });
 
 test('operational metadata counts outbound searches, not skipped provider slots or URL reads', async () => {
