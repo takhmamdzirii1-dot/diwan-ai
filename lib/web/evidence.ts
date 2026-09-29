@@ -272,8 +272,12 @@ export function relevantWebHit(hit: WebSearchHit, request: string) {
 
 /** A requested list size is presentation guidance, never permission to invent items. */
 export function requestedNewsCount(request: string) {
-  const match = request.match(/(?:^|[^\d])([1-9]\d?)(?:\s+\S+){0,2}\s+(?:news|headlines|actualit[ée]s|nouvelles|أخبار|اخبار)(?=\s|\b|$)/iu);
+  const match = requestedNewsCountMatch(request);
   return match ? Number(match[1]) : 3;
+}
+
+function requestedNewsCountMatch(request: string) {
+  return request.match(/(?:^|[^\d])([1-9]\d?)(?:\s+\S+){0,2}\s+(?:news|headlines|actualit[ée]s|nouvelles|أخبار|اخبار)(?=\s|\b|$)/iu);
 }
 
 function narrativeDateRange(request: string, today: string) {
@@ -719,6 +723,41 @@ function renderNarrativeSourceCitations(answer: string, hits: readonly WebSearch
     `[${label}](${sources.get(id)})`);
 }
 
+const answerNumbers = /\b\d+(?:[.\-]\d+)*\b/g;
+const newsItemMarker = /^[ \t]*(?:[-*]|\d{1,2}[.)])[ \t]+/gmu;
+
+function freshNewsNumbersSupported(answer: string, hits: readonly WebSearchHit[], request: string) {
+  const sourceHits = new Map(hits.map((hit, index) => [hit.evidenceId ?? `S${index + 1}`, hit]));
+  const numbersFor = (sources: readonly WebSearchHit[]) => new Set(sources.flatMap((hit) =>
+    `${hit.title} ${hit.description} ${hit.publishedAt ?? ''}`.match(answerNumbers) ?? []));
+  const explicitCount = requestedNewsCountMatch(request)?.[1];
+  const requestedWindow = request.match(/(?:آخر|اخر)\s+([1-9]\d?)\s+(?:أيام|ايام)|\b(?:last|past)\s+([1-9]\d?)\s+days\b|\b([1-9]\d?)\s+derniers?\s+jours\b/iu);
+  const windowDays = requestedWindow?.slice(1).find(Boolean);
+  const stripControls = (text: string, isIntro: boolean) => {
+    let result = text.replace(/\[\[source:S[1-9]\d*\]\]/g, ' ');
+    if (windowDays) result = result.replace(/(?:آخر|اخر)\s+([1-9]\d?)\s+(?:أيام|ايام)|\b(?:last|past)\s+([1-9]\d?)\s+days\b|\b([1-9]\d?)\s+derniers?\s+jours\b/giu,
+      (phrase, ...groups: string[]) => groups.slice(0, 3).includes(windowDays) ? ' ' : phrase);
+    if (isIntro && explicitCount) result = result.replace(/([1-9]\d?)(?:\s+\S+){0,2}\s+(?:news|headlines|actualit[ée]s|nouvelles|أخبار|اخبار)(?=\s|\b|$)/giu,
+      (phrase, count: string) => count === explicitCount ? phrase.replace(count, ' ') : phrase);
+    return result;
+  };
+  const supported = (text: string, sources: readonly WebSearchHit[], isIntro: boolean) => {
+    const allowed = numbersFor(sources);
+    return (stripControls(text, isIntro).match(answerNumbers) ?? []).every((value) => allowed.has(value));
+  };
+  const items = [...answer.matchAll(newsItemMarker)];
+  const allCited = [...answer.matchAll(/\[\[source:(S[1-9]\d*)\]\]/g)]
+    .map(([, id]) => sourceHits.get(id)).filter((hit): hit is WebSearchHit => Boolean(hit));
+  if (!items.length) return supported(answer, allCited, true);
+  if (!supported(answer.slice(0, items[0].index), allCited, true)) return false;
+  return items.every((item, index) => {
+    const body = answer.slice(item.index! + item[0].length, items[index + 1]?.index ?? answer.length);
+    const cited = [...body.matchAll(/\[\[source:(S[1-9]\d*)\]\]/g)]
+      .map(([, id]) => sourceHits.get(id)).filter((hit): hit is WebSearchHit => Boolean(hit));
+    return supported(body, cited, false);
+  });
+}
+
 /** Content-free rejection reason for the existing same-call synthesis guard. */
 export function searchSynthesisRejectionReason(answer: string, hits: readonly WebSearchHit[], request: string,
   now: Date, language: ResponseLanguage) {
@@ -764,13 +803,17 @@ export function searchSynthesisRejectionReason(answer: string, hits: readonly We
       && likelyPrimarySource(hit, request)))) return 'insufficient_citations';
   const citedHits = hits.filter((hit) => citations.some(([, , url]) =>
     canonicalSearchUrl(hit.url) === canonicalSearchUrl(url)));
-  const allowedNumbers = new Set(citedHits.flatMap((hit) => `${mode === 'structured_fact' && needsFreshEvidence(request)
-    && hit.evidenceLevel !== 'primary_search' ? '' : hit.title} ${hit.description} ${hit.publishedAt ?? ''}`
-    .match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []));
-  const factualText = mode === 'structured_fact' ? withoutLinks
-    : withoutLinks.replace(/^\s*\d{1,2}[.)]\s+/gmu, '');
-  if ((factualText.match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []).some((value) => !allowedNumbers.has(value)))
-    return 'unsupported_number';
+  if (mode === 'fresh_news') {
+    if (!freshNewsNumbersSupported(trimmed, hits, request)) return 'unsupported_number';
+  } else {
+    const allowedNumbers = new Set(citedHits.flatMap((hit) => `${mode === 'structured_fact' && needsFreshEvidence(request)
+      && hit.evidenceLevel !== 'primary_search' ? '' : hit.title} ${hit.description} ${hit.publishedAt ?? ''}`
+      .match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []));
+    const factualText = mode === 'structured_fact' ? withoutLinks
+      : withoutLinks.replace(/^\s*\d{1,2}[.)]\s+/gmu, '');
+    if ((factualText.match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []).some((value) => !allowedNumbers.has(value)))
+      return 'unsupported_number';
+  }
   if (mode === 'structured_fact' && needsFreshEvidence(request)
     && /\bversion\b|(?:إصدار|اصدار|نسخة)/iu.test(request)) {
     const current = rankedEvidence(hits, request, localDate(now))

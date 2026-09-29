@@ -808,6 +808,39 @@ test('fresh-news item count is independent of valid corroborating source-token o
     'too_many_citations');
 });
 
+test('fresh-news numbers are checked per item while requested count and window remain presentation controls', () => {
+  const now = new Date('2026-09-29T12:00:00Z');
+  const request = 'أعطني آخر 5 أخبار عن أفريقيا خلال آخر 7 أيام';
+  const hits = [
+    { evidenceId: 'S1', title: 'Africa health update', url: 'https://health.example/news',
+      description: 'Health officials published a regional update.', publishedAt: '2026-09-29',
+      evidenceLevel: 'corroborated' as const },
+    { evidenceId: 'S2', title: 'Africa trade update', url: 'https://trade.example/news',
+      description: 'Trade officials published a separate regional update mentioning 42 people.',
+      publishedAt: '2026-09-29', evidenceLevel: 'corroborated' as const },
+  ];
+  const intro = 'إليك 5 أخبار من أفريقيا خلال آخر 7 أيام:\n';
+  const items = '- أعلن مسؤولون تحديثًا صحيًا. [[source:S1]]\n'
+    + '- أعلن مسؤولون تحديثًا تجاريًا شمل 42 شخصًا. [[source:S2]]';
+  assert.equal(searchSynthesisRejectionReason(intro + items, hits, request, now, 'ar'), null);
+  assert.equal(searchSynthesisRejectionReason(intro.replace('5 أخبار', '6 أخبار') + items,
+    hits, request, now, 'ar'), 'unsupported_number');
+  assert.equal(searchSynthesisRejectionReason(intro.replace('7 أيام', '8 أيام') + items,
+    hits, request, now, 'ar'), 'unsupported_number');
+  assert.equal(searchSynthesisRejectionReason(intro + items.replace('صحيًا', 'صحيًا شمل 42 شخصًا'),
+    hits, request, now, 'ar'), 'unsupported_number');
+  const withItemEvidence = [{ ...hits[0], description: `${hits[0].description} The update included 42 people.` }, hits[1]];
+  assert.equal(searchSynthesisRejectionReason(intro + items.replace('صحيًا', 'صحيًا شمل 42 شخصًا'),
+    withItemEvidence, request, now, 'ar'), null);
+  const withoutFactualNumber = intro + items.replace(' شمل 42 شخصًا', '');
+  assert.equal(searchSynthesisRejectionReason(withoutFactualNumber.replace('صحيًا', 'صحيًا شمل 42 شخصًا'),
+    hits, request, now, 'ar'), 'unsupported_number');
+  assert.equal(searchSynthesisRejectionReason(intro + items.replace('صحيًا', 'صحيًا شمل 500 شخص'),
+    hits, `${request} و500 شركة`, now, 'ar'), 'unsupported_number');
+  assert.equal(searchSynthesisRejectionReason(intro + items.replace('[[source:S1]]', '[[source:S99]]'),
+    hits, request, now, 'ar'), 'unsupported_url');
+});
+
 test('news count and timeframe caps never imply unsupported stories or dates', async () => {
   assert.equal(requestedNewsCount('هات أحدث 10 أخبار عن الجزائر'), 10);
   assert.equal(requestedNewsCount('donne-moi les 5 dernières actualités en Afrique'), 5);
