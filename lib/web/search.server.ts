@@ -1,16 +1,20 @@
 import 'server-only';
+import { decodeHTML } from 'entities';
 import { searchBudget, SupabaseSearchHealthStore, type SearchFailure, type SearchHealthStore } from './search-health.server';
 
 export type WebSearchHit = { title: string; url: string; description: string;
   publishedAt?: string | null; source?: string; provider?: string; verifiedPage?: boolean;
-  evidenceLevel?: 'primary_page' | 'primary_search' | 'primary_bundle' | 'corroborated';
+  evidenceLevel?: 'primary_page' | 'secondary_page' | 'primary_search' | 'primary_bundle' | 'corroborated';
   evidenceBundle?: 'primary_exact' | 'primary_supported_bundle' | 'corroborated_exact'
-    | 'independent_news_sources' | 'general_search_evidence';
-  evidenceId?: string };
+    | 'independent_news_sources' | 'dated_article_evidence' | 'general_search_evidence';
+  evidenceId?: string; contentComplete?: boolean; fetchedAt?: string;
+  pagePublishedAt?: string | null; pageUpdatedAt?: string | null;
+  announcementDate?: string | null; articleEvidence?: boolean };
 export interface WebSearchProvider {
   readonly id: string;
-  search(query: string, limit: number): Promise<WebSearchHit[]>;
+  search(query: string, limit: number, scope?: SearchRetrievalScope): Promise<WebSearchHit[]>;
 }
+export type SearchRetrievalScope = { publishedRange?: { start: string; end: string } };
 const unsafeQuery = /(?:sb_secret_[A-Za-z0-9_-]{8,}|gh[pousr]_[A-Za-z0-9_]{16,}|\bBearer\s+[A-Za-z0-9._-]{16,}|\b(?:API_KEY|CLIENT_SECRET|REFRESH_TOKEN)\s*[:=]\s*\S+)/i;
 
 export class SearchProviderError extends Error {
@@ -44,18 +48,19 @@ async function boundedJson(response: Response): Promise<unknown> {
   } catch { throw new SearchProviderError('invalid_response'); }
 }
 
-function normalizeHits(results: unknown, descriptionKey: 'description' | 'content'): WebSearchHit[] {
+export function normalizeSearchEvidence(results: unknown, descriptionKey: 'description' | 'content' = 'description'): WebSearchHit[] {
   if (!Array.isArray(results)) throw new SearchProviderError('invalid_response');
   return results.slice(0, 8).flatMap((item: unknown) => {
     if (!item || typeof item !== 'object' || !('url' in item) || typeof item.url !== 'string') return [];
     let address: URL;
     try { address = new URL(item.url); } catch { return []; }
     if (address.protocol !== 'https:' || address.username || address.password || item.url.length > 2048) return [];
-    address.search = ''; address.hash = '';
-    const title = 'title' in item && typeof item.title === 'string' ? item.title.replace(/<[^>]*>/g, '').slice(0, 180) : address.hostname;
+    if ([...address.searchParams.keys()].some((key) => /token|secret|auth|signature|api[_-]?key|password/i.test(key))) return [];
+    // Keep the actual safe returned URL for citations; deduplication has a separate identity.
+    const title = 'title' in item && typeof item.title === 'string' ? decodeHTML(item.title.replace(/<[^>]*>/g, '')).slice(0, 180) : address.hostname;
     const description = descriptionKey in item && typeof item[descriptionKey] === 'string'
-      ? item[descriptionKey].replace(/<[^>]*>/g, '').slice(0, 500) : '';
-    const dated = ['published_date', 'published_at', 'date', 'page_age'].flatMap((field) =>
+      ? decodeHTML(item[descriptionKey].replace(/<[^>]*>/g, '')).slice(0, 500) : '';
+    const dated = ['published_date', 'published_at', 'publishedAt', 'date', 'page_age'].flatMap((field) =>
       field in item && typeof item[field] === 'string' && /^\d{4}-\d{2}-\d{2}(?:T|$)/.test(item[field])
         ? [item[field]] : []);
     const publishedAt = dated.length && Number.isFinite(Date.parse(dated[0]))
@@ -69,10 +74,13 @@ export class BraveWebSearch implements WebSearchProvider {
   readonly id = 'brave';
   constructor(private readonly key: string, private readonly transport: typeof fetch = fetch) {}
 
-  async search(query: string, limit: number): Promise<WebSearchHit[]> {
+  async search(query: string, limit: number, scope?: SearchRetrievalScope): Promise<WebSearchHit[]> {
     const url = new URL('https://api.search.brave.com/res/v1/web/search');
     url.searchParams.set('q', query);
     url.searchParams.set('count', String(Math.min(Math.max(limit, 1), 8)));
+    if (scope?.publishedRange && [scope.publishedRange.start, scope.publishedRange.end]
+      .every((date) => /^20\d{2}-\d{2}-\d{2}$/.test(date) && Number.isFinite(Date.parse(date))))
+      url.searchParams.set('freshness', `${scope.publishedRange.start}to${scope.publishedRange.end}`);
     let response: Response;
     try {
       response = await this.transport(url, { method: 'GET', redirect: 'manual',
@@ -83,7 +91,7 @@ export class BraveWebSearch implements WebSearchProvider {
     const results = parsed && typeof parsed === 'object' && 'web' in parsed
       && parsed.web && typeof parsed.web === 'object' && 'results' in parsed.web
       ? parsed.web.results : undefined;
-    return normalizeHits(results, 'description');
+    return normalizeSearchEvidence(results, 'description');
   }
 }
 
@@ -101,7 +109,7 @@ export class TavilyWebSearch implements WebSearchProvider {
     } catch (cause) { throw new SearchProviderError(cause instanceof DOMException && cause.name === 'TimeoutError' ? 'timeout' : 'unavailable'); }
     const parsed = await boundedJson(response);
     const results = parsed && typeof parsed === 'object' && 'results' in parsed ? parsed.results : undefined;
-    return normalizeHits(results, 'content');
+    return normalizeSearchEvidence(results, 'content');
   }
 }
 
@@ -136,20 +144,13 @@ const localHealth: SearchHealthStore = {
   },
 };
 
-/** Adapter-independent slot for a future verified native-search route. None is assumed today. */
-export interface VerifiedNativeSearch {
-  verified: true;
-  search(query: string, limit: number): Promise<WebSearchHit[]>;
-}
-
 export async function orchestrateWebSearch(query: string, options: {
-  providers?: WebSearchProvider[]; health?: SearchHealthStore; native?: VerifiedNativeSearch | null;
+  providers?: WebSearchProvider[]; health?: SearchHealthStore;
   budget?: (providerId: string) => number | null; onExecution?: (metadata: SearchExecution) => void;
-} = {}): Promise<WebSearchHit[]> {
+} & SearchRetrievalScope = {}): Promise<WebSearchHit[]> {
   if (!query.trim() || query.length > 300 || query.trim().split(/\s+/).length > 50 || unsafeQuery.test(query))
     throw new Error('WEB_SEARCH_INVALID_QUERY');
-  const providers = options.native ? [{ id: 'native', search: options.native.search }, ...(options.providers ?? configuredWebSearchProviders())]
-    : options.providers ?? configuredWebSearchProviders();
+  const providers = options.providers ?? configuredWebSearchProviders();
   if (!providers.length) throw new Error('WEB_SEARCH_UNCONFIGURED');
   let health = options.health ?? new SupabaseSearchHealthStore();
   const record = async (id: string, result: Parameters<SearchHealthStore['record']>[1]) => {
@@ -194,7 +195,7 @@ export async function orchestrateWebSearch(query: string, options: {
     attempted.push(provider.id);
     const providerStarted = Date.now();
     try {
-      const hits = await provider.search(query.trim(), 8);
+      const hits = await provider.search(query.trim(), 8, options);
       if (!hits.length) throw new SearchProviderError('invalid_response');
       const truncated = hits.length >= 8;
       await record(provider.id, { success: true, latencyMs: Date.now() - providerStarted,
@@ -218,12 +219,13 @@ export async function orchestrateWebSearch(query: string, options: {
 }
 
 export async function searchWeb(query: string, provider?: WebSearchProvider | null,
-  options: { providers?: WebSearchProvider[]; onExecution?: (metadata: SearchExecution) => void } = {}) {
+  options: { providers?: WebSearchProvider[]; onExecution?: (metadata: SearchExecution) => void } & SearchRetrievalScope = {}) {
   if (provider === null) throw new Error('WEB_SEARCH_UNCONFIGURED');
   if (!query.trim() || query.length > 300 || query.trim().split(/\s+/).length > 50 || unsafeQuery.test(query))
     throw new Error('WEB_SEARCH_INVALID_QUERY');
   let execution: SearchExecution | undefined;
-  const hits = provider ? await provider.search(query.trim(), 8) : await orchestrateWebSearch(query, {
+  const hits = provider ? await provider.search(query.trim(), 8, options) : await orchestrateWebSearch(query, {
+    publishedRange: options.publishedRange,
     providers: options.providers, onExecution: (result) => { execution = result; options.onExecution?.(result); },
   });
   if (!hits.length) throw new Error('WEB_SEARCH_EMPTY');

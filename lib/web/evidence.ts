@@ -1,24 +1,21 @@
 import type { WebSearchHit } from './search.server';
 import { resolveResponseLanguage, type ResponseLanguage } from '@/lib/chat/response-language';
+import { currentInformationPolicy, type EvidenceMode } from './selection';
+import { driverRequestScope, driverEvidenceMatchesScope } from './driver-scope';
+import { datedNewsRequest, explicitCalendarDates, withoutCalendarDates } from './news-evidence';
 
 export function asksForToday(request: string) {
   return /\b(?:today|today's|aujourd'hui)\b/iu.test(request) || /(?:اليوم|نهار اليوم)/u.test(request);
 }
 
 export function needsFreshEvidence(request: string) {
-  return /\b(?:latest|current|today|now|recent|live|news|currently|what happened|aujourd'hui|actuel|récent|actualités|maintenant)\b/iu.test(request)
-    || /(?:أحدث|احدث|آخر|اخر|الآن|الان|اليوم|أخبار|اخبار|الحالي|ماذا حدث)/u.test(request);
+  return currentInformationPolicy(request).fresh;
 }
 
-export type EvidenceMode = 'structured_fact' | 'fresh_news' | 'general_web';
+export type { EvidenceMode } from './selection';
 
 export function evidenceModeForRequest(request: string): EvidenceMode {
-  if (!needsFreshEvidence(request)) return 'general_web';
-  if (/\b(?:news|headlines|developments|what happened|latest events|recent events|actualit[ée]s|nouvelles)\b|(?:أخبار|اخبار|مستجدات|تطورات|ماذا حدث)/iu.test(request))
-    return 'fresh_news';
-  if (/\b(?:version|release|price|prices|cost|availability|stock|status|prix|disponibilit[ée])\b|(?:إصدار|اصدار|نسخة|سعر|الأسعار|الاسعار|متاح|متوفر|الحالة)/iu.test(request))
-    return 'structured_fact';
-  return 'general_web';
+  return currentInformationPolicy(request).mode;
 }
 
 function localDate(now: Date) {
@@ -78,7 +75,7 @@ export function likelyPrimarySource(hit: WebSearchHit, request: string) {
 
 function evidenceStrength(hit: WebSearchHit) {
   return hit.evidenceLevel === 'primary_page' || hit.verifiedPage ? 3
-    : hit.evidenceLevel === 'primary_search' || hit.evidenceLevel === 'primary_bundle' ? 2
+    : hit.evidenceLevel === 'primary_search' || hit.evidenceLevel === 'primary_bundle' || hit.evidenceLevel === 'secondary_page' ? 2
       : hit.evidenceLevel === 'corroborated' ? 1 : 0;
 }
 
@@ -111,7 +108,7 @@ function liveIndexSegment(segments: string[], names: readonly string[]) {
     && !segments.slice(0, index).some((prefix) =>
       ['archive', 'archives', 'blog', 'news'].includes(prefix))
     && (index === segments.length - 1 || (index === segments.length - 2
-      && ['current', 'latest', 'index'].includes(segments[index + 1]))));
+      && ['current', 'latest', 'index', 'lts'].includes(segments[index + 1]))));
 }
 
 function evergreenSource(hit: WebSearchHit) {
@@ -123,13 +120,32 @@ function evergreenSource(hit: WebSearchHit) {
 
 function latestVersionRequest(request: string) {
   return needsFreshEvidence(request)
-    && /\b(?:version|release)\b|(?:إصدار|اصدار|نسخة)/iu.test(request);
+    && currentInformationPolicy(request).exactFact === 'version';
 }
 
 /** A release note is a dated snapshot, even if its title called that release "Current". */
-function currentReleaseIndex(hit: WebSearchHit) {
-  return liveIndexSegment(evergreenPathSegments(hit),
-    ['download', 'downloads', 'releases', 'versions', 'status']);
+function currentReleaseIndex(hit: WebSearchHit, request = '') {
+  const segments = evergreenPathSegments(hit);
+  if (liveIndexSegment(segments, ['download', 'downloads', 'releases', 'versions', 'status'])) return true;
+  // Some sites expose a live release listing below /blog/release. A historical
+  // article below that directory is NOT an index. Require actual fetched listing
+  // evidence (multiple dated Current entries), not the word Current in its title.
+  return requestedVersionChannel(request) !== 'lts' && hit.verifiedPage === true && hit.contentComplete !== false
+    && ['release', 'releases'].includes(segments.at(-1) ?? '')
+    && !segments.some((segment) => ['archive', 'archives'].includes(segment))
+    && new Set([...hit.description.matchAll(/\b(v?\d+\.\d+\.\d+)\s*\(?Current\)?/gi)]
+      .map((match) => match[1])).size >= 2
+    && (hit.description.match(/\b(?:20\d{2}-\d{2}-\d{2}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+20\d{2})\b/g) ?? []).length >= 2;
+}
+
+/** Read live/catalog indexes before individual dated articles; never guess a new URL. */
+export function primaryReadPriority(hit: WebSearchHit, request = '') {
+  const segments = evergreenPathSegments(hit);
+  if (requestedVersionChannel(request) === 'lts' && segments.at(-1) === 'lts' && evergreenSource(hit)) return 4;
+  if (requestedVersionChannel(request) === 'lts' && segments.at(-1) === 'current' && evergreenSource(hit)) return 2;
+  if (evergreenSource(hit)) return 3;
+  if (segments.at(-1)?.endsWith('-releases') && !segments.some((segment) => ['blog', 'archive', 'archives'].includes(segment))) return 2;
+  return ['release', 'releases', 'models', 'drivers', 'documentation'].includes(segments.at(-1) ?? '') ? 2 : 0;
 }
 
 function publishedDay(hit: WebSearchHit) {
@@ -142,13 +158,16 @@ const latestPrimaryRecencyMs = 7 * 86_400_000;
 function latestPrimaryClaim(hits: WebSearchHit[], request: string, today: string) {
   const claim = (hit: WebSearchHit) => freshFactKey(
     hit.verifiedPage ? hit.description : `${hit.title} ${hit.description}`, request);
-  const indexes = hits.filter(currentReleaseIndex);
+  const indexes = hits.filter((hit) => currentReleaseIndex(hit, request));
   if (indexes.length) {
     const keys = new Set(indexes.map(claim));
     if (keys.size === 1) return { key: claim(indexes[0]), hits: indexes };
     // Conflicting live indexes cannot be resolved by how successfully they were read.
     return null;
   }
+  // A driver release note is not the latest selectable driver for a platform/branch.
+  // Only a live exact-value index can establish that scope; historical timestamps do not.
+  if (driverRequestScope(request)) return null;
   const dated = hits.filter((hit) => publishedDay(hit) !== null)
     .sort((a, b) => publishedDay(b)! - publishedDay(a)!);
   if (!dated.length) return null;
@@ -199,31 +218,58 @@ const sourceInstructionMarker = /(?:ignore (?:all |previous )?instructions|syste
 /** Search evidence is data, never instructions; unknown publication dates stay unknown. */
 export function searchEvidence(hits: readonly WebSearchHit[], request: string, now = new Date()) {
   const today = localDate(now);
-  const publishedToday = hits.some((hit) => hit.publishedAt === today);
+  const publishedToday = hits.some((hit) => (evidenceModeForRequest(request) === 'fresh_news'
+    && datedNewsRequest(request) ? hit.announcementDate : hit.publishedAt) === today);
   const todayRequested = asksForToday(request);
-  const narrative = evidenceModeForRequest(request) !== 'structured_fact';
   const lines = hits.flatMap((hit, index) => {
     const url = safeUrl(hit.url);
     if (!url) return [];
     const sourceId = hit.evidenceId ?? `S${index + 1}`;
     const basis = hit.evidenceLevel === 'primary_search' ? 'Official search-result evidence'
+      : hit.evidenceLevel === 'secondary_page' ? 'Read article evidence (secondary source)'
       : hit.evidenceLevel === 'corroborated' ? 'Corroborated independent source'
         : hit.verifiedPage || hit.evidenceLevel === 'primary_page' ? 'Verified primary page' : 'Search excerpt';
-    return [`${sourceId}. ${plainExcerpt(hit.title, 180)}\n${narrative ? `Citation: [[source:${sourceId}]]` : `URL: ${url}`}\nPublished: ${hit.publishedAt ?? 'unknown'}\nSource: ${new URL(url).hostname}\n${basis}: ${plainExcerpt(hit.description, 500)}`];
+    const fact = currentInformationPolicy(request).exactFact;
+    const key = fact === 'version' ? freshFactKey(factText(hit), request) : null;
+    // A resolved exact fact is a scoped claim, not an invitation to report every
+    // unrelated branch in a release log. Keep the full source for validation,
+    // but give the answer model only the established requested claim.
+    const versionClaim = key?.match(/^version:(current|lts|latest):(.+)$/);
+    const driverScope = driverRequestScope(request);
+    const excerpt = versionClaim ? `${driverScope ? `${driverScope.platform} ${driverScope.channel}: ` : ''}${versionClaim[1] === 'latest' ? 'Latest version' : versionClaim[1] === 'lts' ? 'LTS' : 'Current'} ${versionClaim[2]}.`
+      : plainExcerpt(hit.description, 1800);
+    const dates = evidenceModeForRequest(request) === 'fresh_news'
+      ? `Page published: ${hit.pagePublishedAt ?? hit.publishedAt ?? 'unknown'}\nPage updated: ${hit.pageUpdatedAt ?? 'unknown'}\nAnnouncement date: ${hit.announcementDate ?? 'not verified'} (only explicit announcement evidence; not the page date)`
+      : `Published: ${hit.publishedAt ?? 'unknown'}`;
+    return [`${sourceId}. ${plainExcerpt(hit.title, 180)}\nCitation: [[source:${sourceId}]]\n${dates}\nSource: ${new URL(url).hostname}\nContent: ${hit.contentComplete === false ? 'partial excerpt, not a complete inventory' : 'bounded evidence'}\n${basis}: ${excerpt}`];
   });
   const notice = todayRequested && !publishedToday
     ? `No retrieved source has a verified publication date of ${today}. Do not present older or undated results as today's news.`
     : todayRequested ? `Only results dated ${today} may be described as published today.`
       : evidenceModeForRequest(request) === 'fresh_news' && !hits.some((hit) => hit.publishedAt)
         ? 'Publication dates are unavailable. Do not claim these reports were published today or are confirmed latest.' : '';
+  const scope = evidenceModeForRequest(request) === 'structured_fact'
+    ? 'Answer scope: give the established requested value and requested release channel with its citation concisely. Channel labels come from the source, not assumed product conventions. Do not add channel definitions, stability claims, recommendations, dates, or other current values unless the source evidence explicitly establishes them. This is a response instruction, not source content.'
+    : evidenceModeForRequest(request) === 'fresh_news' && datedNewsRequest(request)
+      ? 'Use only verified announcement dates for event dates. Page publication/update dates are separate metadata. Return fewer verified news items if necessary; never fill the requested count with undated or inferred announcements.' : '';
   return { today, todayRequested, publishedToday, notice,
-    text: [notice, ...lines].filter(Boolean).join('\n\n').slice(0, 8_000) };
+    text: [scope, notice, ...lines].filter(Boolean).join('\n\n').slice(0, 8_000) };
+}
+
+/** Channels are explicit source labels, not product-specific release-cycle rules. */
+export function requestedVersionChannel(request: string): 'current' | 'lts' | null {
+  return /\bLTS\b|\blong[- ]term support\b|\bsupport (?:à )?long terme\b|الدعم طويل (?:الأمد|المدى)/iu.test(request)
+    && !/\bCurrent\b/iu.test(request) ? 'lts' : /\bCurrent\b/iu.test(request) ? 'current' : null;
 }
 
 function labeledVersion(text: string, label: 'current' | 'lts') {
   const version = String.raw`v?\d+\.\d+(?:\.\d+)?`;
   const between = String.raw`(?:(?!\b(?:current|lts)\b)[^\d\n])`;
-  return text.match(new RegExp(String.raw`\b${label}\b${between}{0,45}?\b(${version})\b`, 'i'))?.[1]
+  // Direct value/channel adjacency outranks a later version in the next sentence.
+  const adjacent = [...text.matchAll(new RegExp(String.raw`\b(${version})\b[^\p{L}\d\n]{0,8}\b${label}\b`, 'giu'))]
+    .find((match) => !/\b(?:current|lts)\b[^\p{L}\d\n]{0,8}$/iu.test(text.slice(0, match.index)));
+  return adjacent?.[1]
+    ?? text.match(new RegExp(String.raw`\b${label}\b${between}{0,45}?\b(${version})\b`, 'i'))?.[1]
     ?? text.match(new RegExp(String.raw`\b(${version})\b(?:(?!\b(?:current|lts)\b)[^\n]){0,35}?\b${label}\b`, 'i'))?.[1]
     ?? null;
 }
@@ -231,21 +277,28 @@ function labeledVersion(text: string, label: 'current' | 'lts') {
 /** Only explicit claim-bearing excerpts qualify; a URL or source name alone is not a fact. */
 export function freshFactKey(text: string, request: string): string | null {
   const content = plainExcerpt(text, 1_000);
-  if (/\bversion\b|\brelease\b|(?:إصدار|اصدار|نسخة)/iu.test(request)) {
-    const current = labeledVersion(content, 'current')
-      ?? content.match(/\b(?:latest|newest|أحدث|احدث|آخر|اخر)\b[^\d]{0,45}?\b(v?\d+\.\d+(?:\.\d+)?)\b/iu)?.[1];
+  if (currentInformationPolicy(request).exactFact === 'version') {
+    const driver = driverRequestScope(request);
+    if (driver && (driver.missing.length || !driverEvidenceMatchesScope(content, driver))) return null;
+    const channel = requestedVersionChannel(request);
+    if (channel === 'lts') {
+      const value = labeledVersion(content, 'lts');
+      return value ? `version:lts:${value.replace(/^v/i, '')}` : null;
+    }
+    const current = labeledVersion(content, 'current');
     const lts = labeledVersion(content, 'lts');
+    const latest = !lts && !channel ? content.match(/\b(?:latest|newest|version|driver|pilote)\b[^\d]{0,45}?\b(v?\d+\.\d+(?:\.\d+)?)\b/iu)?.[1] : null;
     return current ? `version:current:${current.replace(/^v/i, '')}`
-      : lts && /\bLTS\b/iu.test(request) ? `version:lts:${lts.replace(/^v/i, '')}` : null;
+      : latest ? `version:latest:${latest.replace(/^v/i, '')}` : null;
   }
-  if (/\b(?:price|prices|prix|cost)\b|(?:سعر|الأسعار|الاسعار)/iu.test(request)) {
+  if (currentInformationPolicy(request).exactFact === 'price') {
     const price = content.match(/(?:\b(?:USD|EUR|DZD|DA)\s*|[$€£]\s*)(\d[\d,.]*)|\b(\d[\d,.]*)\s*(USD|EUR|DZD|DA|[$€£])/iu);
     if (!price) return null;
     const amount = (price[1] ?? price[2]).replace(/[,.]$/u, '').replace(/,/g, '');
     const currency = (price[3] ?? price[0].match(/USD|EUR|DZD|DA|[$€£]/iu)?.[0] ?? '').toUpperCase();
     return `price:${amount}:${currency}`;
   }
-  if (/\b(?:available|availability|stock|disponibilit[ée]|status)\b|(?:متاح|متوفر|توفر|الحالة)/iu.test(request)) {
+  if (currentInformationPolicy(request).exactFact === 'availability') {
     if (/\b(?:unavailable|out of stock|not available|indisponible)\b|(?:غير متاح|غير متوفر)/iu.test(content)) return 'availability:no';
     if (/\b(?:available|in stock|disponible)\b|(?:متاح|متوفر)/iu.test(content)) return 'availability:yes';
   }
@@ -287,7 +340,7 @@ function requestedNewsCountMatch(request: string) {
   return request.match(/(?:^|[^\d])([1-9]\d?)(?:\s+\S+){0,2}\s+(?:news|headlines|actualit[ée]s|nouvelles|أخبار|اخبار)(?=\s|\b|$)/iu);
 }
 
-function narrativeDateRange(request: string, today: string) {
+export function narrativeDateRange(request: string, today: string) {
   const end = Date.parse(today);
   const day = 86_400_000;
   const weekday = (new Date(end).getUTCDay() + 6) % 7;
@@ -305,9 +358,12 @@ export function assessNarrativeEvidenceBundle(hits: readonly WebSearchHit[], req
   const valid = dedupeSearchHits(hits).filter((hit) => hit.title.trim().length >= 8
     && hit.description.trim().length >= 24 && !sourceInstructionMarker.test(`${hit.title} ${hit.description}`));
   const window = narrativeDateRange(request, today);
+  const requireAnnouncement = mode === 'fresh_news' && datedNewsRequest(request);
   const relevant = mode === 'fresh_news' ? valid.filter((hit) => {
-    if (asksForToday(request)) return hit.publishedAt === today;
-    const date = hit.publishedAt ? Date.parse(hit.publishedAt) : NaN;
+    if (requireAnnouncement && (!hit.articleEvidence || !hit.announcementDate)) return false;
+    const eventDay = requireAnnouncement ? hit.announcementDate : hit.publishedAt;
+    if (asksForToday(request)) return eventDay === today;
+    const date = eventDay ? Date.parse(eventDay) : NaN;
     return Number.isFinite(date) ? date >= window.start && date <= window.end : !window.strict;
   }) : valid.filter((hit) => !hit.publishedAt || (Number.isFinite(Date.parse(hit.publishedAt))
     && Date.parse(hit.publishedAt) <= Date.parse(today) + 86_400_000));
@@ -315,15 +371,17 @@ export function assessNarrativeEvidenceBundle(hits: readonly WebSearchHit[], req
   const primary = relevant.filter((hit) => likelyPrimarySource(hit, request));
   const dated = relevant.some((hit) => hit.publishedAt && Number.isFinite(Date.parse(hit.publishedAt)));
   const sufficient = mode === 'fresh_news'
-    ? (primary.length > 0 && (dated || primary.some((hit) => hit.verifiedPage)))
+    ? requireAnnouncement ? relevant.length > 0
+      : (primary.length > 0 && (dated || primary.some((hit) => hit.verifiedPage)))
       || domains.size >= 2
     : primary.length > 0 || domains.size >= 2;
   if (!sufficient) return { kind: 'insufficient' as const, factKey: null,
     reason: relevant.length ? 'insufficient_source_diversity' as const : 'no_relevant_sources' as const,
     safeCandidateCount: relevant.length, hits: [] as WebSearchHit[] };
-  const kind = mode === 'fresh_news' ? 'independent_news_sources' as const : 'general_search_evidence' as const;
+  const kind = requireAnnouncement ? 'dated_article_evidence' as const
+    : mode === 'fresh_news' ? 'independent_news_sources' as const : 'general_search_evidence' as const;
   const ranked = [...relevant].sort((a, b) => {
-    const freshnessDifference = (b.publishedAt ?? '').localeCompare(a.publishedAt ?? '');
+    const freshnessDifference = (b.announcementDate ?? b.publishedAt ?? '').localeCompare(a.announcementDate ?? a.publishedAt ?? '');
     const primaryDifference = Number(likelyPrimarySource(b, request)) - Number(likelyPrimarySource(a, request));
     const lexicalHint = Number(relevantWebHit(b, request)) - Number(relevantWebHit(a, request));
     return (mode === 'fresh_news' ? freshnessDifference || primaryDifference : primaryDifference || freshnessDifference)
@@ -335,8 +393,9 @@ export function assessNarrativeEvidenceBundle(hits: readonly WebSearchHit[], req
   const limit = mode === 'fresh_news' ? 8 : 5;
   for (const hit of ranked) {
     const domain = independentDomain(hit);
-    if (used.has(domain)) continue;
-    chosen.push({ ...hit, evidenceLevel: likelyPrimarySource(hit, request) ? 'primary_search' : 'corroborated',
+    if (!requireAnnouncement && used.has(domain)) continue;
+    chosen.push({ ...hit, evidenceLevel: hit.verifiedPage ? hit.evidenceLevel
+      : likelyPrimarySource(hit, request) ? 'primary_search' : 'corroborated',
       evidenceBundle: kind });
     used.add(domain);
     if (chosen.length === limit) break;
@@ -363,7 +422,7 @@ function primaryCurrentState(primary: readonly WebSearchHit[], request: string) 
       semver };
   });
   const majors = new Set(claims.map((claim) => claim.major).filter((major): major is string => major !== null));
-  const liveMajors = new Set(claims.filter((claim) => currentReleaseIndex(claim.hit) && claim.major)
+  const liveMajors = new Set(claims.filter((claim) => currentReleaseIndex(claim.hit, request) && claim.major)
     .map((claim) => claim.major));
   const major = liveMajors.size === 1 ? [...liveMajors][0]
     : liveMajors.size === 0 && majors.size === 1 ? [...majors][0] : null;
@@ -373,7 +432,7 @@ function primaryCurrentState(primary: readonly WebSearchHit[], request: string) 
       primaryExactGroupCount: new Set(claims.map((claim) => claim.key).filter(Boolean)).size,
       currentMajorCandidateCount: majors.size,
       currentMajorEstablished: major !== null,
-      liveCurrentIndexCandidateCount: claims.filter((claim) => currentReleaseIndex(claim.hit) && claim.major).length,
+      liveCurrentIndexCandidateCount: claims.filter((claim) => currentReleaseIndex(claim.hit, request) && claim.major).length,
       undatedPrimaryCurrentGroupCount: new Set(claims.filter((claim) => claim.semver && !claim.hit.publishedAt)
         .map((claim) => claim.key).filter(Boolean)).size,
     },
@@ -388,7 +447,7 @@ export function primaryEvidenceDiagnostics(hits: readonly WebSearchHit[], reques
 
 export function supportsPrimaryPage(hit: WebSearchHit, request: string, today: string) {
   if (freshFactKey(hit.description, request) || currentMajor(hit.description)) return true;
-  const structured = /\b(?:version|release|price|cost|availability|stock|status)\b|(?:إصدار|اصدار|نسخة|سعر|متاح|متوفر)/iu.test(request);
+  const structured = currentInformationPolicy(request).exactFact !== null;
   return !structured && hit.description.trim().length >= 40
     && (!asksForToday(request) || hit.publishedAt === today);
 }
@@ -399,7 +458,7 @@ export function assessFreshEvidenceBundle(hits: readonly WebSearchHit[], request
   const primary = candidates.filter((hit) => likelyPrimarySource(hit, request));
   const claimText = (hit: WebSearchHit) => hit.verifiedPage ? hit.description : `${hit.title} ${hit.description}`;
   const currentState = primaryCurrentState(primary, request);
-  const currentSeries = currentState.major;
+  const currentSeries = requestedVersionChannel(request) === 'lts' ? null : currentState.major;
   const exactPrimary = primary.filter((hit) => {
     const key = freshFactKey(claimText(hit), request);
     return key && (!currentSeries || !key.startsWith('version:current:')
@@ -407,14 +466,14 @@ export function assessFreshEvidenceBundle(hits: readonly WebSearchHit[], request
   });
   if (exactPrimary.length) {
     if (latestVersionRequest(request)) {
-      const liveIndexClaims = new Set(exactPrimary.filter(currentReleaseIndex)
+      const liveIndexClaims = new Set(exactPrimary.filter((hit) => currentReleaseIndex(hit, request))
         .map((hit) => freshFactKey(claimText(hit), request)));
       if (liveIndexClaims.size > 1)
         return { kind: 'insufficient' as const, factKey: null, hits: [] as WebSearchHit[],
           reason: 'materially_unresolved_conflict' as const };
       const latest = latestPrimaryClaim(exactPrimary, request, today);
       if (latest?.key) return { kind: 'primary_exact' as const, factKey: latest.key,
-        reason: latest.hits.some(currentReleaseIndex) ? 'latest_primary_index' as const
+        reason: latest.hits.some((hit) => currentReleaseIndex(hit, request)) ? 'latest_primary_index' as const
           : 'latest_primary_dated' as const,
         hits: rankedEvidence(latest.hits.map((hit) => ({ ...hit,
           evidenceLevel: hit.verifiedPage ? 'primary_page' as const : 'primary_search' as const,
@@ -506,7 +565,7 @@ export function assessFreshEvidenceBundle(hits: readonly WebSearchHit[], request
       return { kind: 'insufficient' as const, factKey: null, hits: [] as WebSearchHit[] };
     }
   }
-  const structured = /\b(?:version|release|price|cost|availability|stock|status)\b|(?:إصدار|اصدار|نسخة|سعر|متاح|متوفر)/iu.test(request);
+  const structured = currentInformationPolicy(request).exactFact !== null;
   if (!structured) {
     const supported = rankedEvidence(primary.filter((hit) => supportsPrimaryPage(hit, request, today)), request, today);
     if (supported.length) return { kind: 'primary_exact' as const, factKey: null,
@@ -519,7 +578,7 @@ export function assessFreshEvidenceBundle(hits: readonly WebSearchHit[], request
   // primary release is not by itself a live major-only status page.
   const majorOnly = new Set(currentState.claims.filter((claim) => !claim.key && claim.major)
     .map((claim) => claim.major));
-  const major = /\bversion\b|\brelease\b|(?:إصدار|اصدار|نسخة)/iu.test(request)
+  const major = requestedVersionChannel(request) !== 'lts' && /\bversion\b|\brelease\b|(?:إصدار|اصدار|نسخة)/iu.test(request)
     && majorOnly.size === 1 ? [...majorOnly][0] : null;
   const recentSecondary = candidates.filter((hit) => !likelyPrimarySource(hit, request)
     && (!hit.publishedAt || Date.parse(hit.publishedAt) >= Date.parse(today) - 180 * 86_400_000));
@@ -654,11 +713,13 @@ export function groundedSearchSummary(hits: readonly WebSearchHit[], request: st
     ? ` [${plainExcerpt(second.title, 180).replace(/[\[\]]/g, '')}](${safeUrl(second.url)})${second.publishedAt ? ` (${second.publishedAt})` : ''}` : '';
   const fact = freshFactKey(factText(first), request);
   const asksVersion = /\bversion\b|(?:إصدار|اصدار|نسخة)/iu.test(request);
-  const currentVersion = asksVersion ? labeledVersion(factText(first), 'current')
+  const currentVersion = asksVersion && requestedVersionChannel(request) !== 'lts' ? labeledVersion(factText(first), 'current')
     ?? (fact?.startsWith('version:current:') ? fact.slice('version:current:'.length) : null) : null;
-  const ltsVersion = asksVersion ? labeledVersion(factText(first), 'lts') : null;
-  const version = asksVersion && !needsFreshEvidence(request)
-    ? `${first.title} ${first.description}`.match(/\b(?:v)?\d+\.\d+(?:\.\d+)?\b/i)?.[0] : null;
+  const ltsVersion = asksVersion && (requestedVersionChannel(request) === 'lts' || evergreenSource(first))
+    ? labeledVersion(factText(first), 'lts') : null;
+  const version = fact?.startsWith('version:latest:') ? fact.slice('version:latest:'.length)
+    : asksVersion && !needsFreshEvidence(request)
+      ? `${first.title} ${first.description}`.match(/\b(?:v)?\d+\.\d+(?:\.\d+)?\b/i)?.[0] : null;
   if (!rawResultsRequested(request)) {
     const price = fact?.startsWith('price:') ? fact.split(':').slice(1).join(' ') : null;
     const availability = fact === 'availability:yes' ? 'available' : fact === 'availability:no' ? 'unavailable' : null;
@@ -681,7 +742,7 @@ export function groundedSearchSummary(hits: readonly WebSearchHit[], request: st
     const direct = currentVersion ? locale === 'ar' ? `الإصدار Current هو ${currentVersion}${ltsVersion ? `، وإصدار LTS هو ${ltsVersion}` : ''}. ${firstCitation}`
       : locale === 'fr' ? `La version Current est ${currentVersion}${ltsVersion ? ` et la version LTS est ${ltsVersion}` : ''}. ${firstCitation}`
         : `The Current release is ${currentVersion}${ltsVersion ? `, and the LTS release is ${ltsVersion}` : ''}. ${firstCitation}`
-      : ltsVersion && /\bLTS\b/iu.test(request) ? locale === 'ar' ? `إصدار LTS هو ${ltsVersion}. ${firstCitation}`
+      : ltsVersion ? locale === 'ar' ? `إصدار LTS هو ${ltsVersion}. ${firstCitation}`
         : locale === 'fr' ? `La version LTS est ${ltsVersion}. ${firstCitation}`
           : `The LTS release is ${ltsVersion}. ${firstCitation}`
       : version ? locale === 'ar' ? `الإصدار الذي يذكره المصدر هو ${version}. ${firstCitation}`
@@ -703,14 +764,7 @@ export function groundedSearchSummary(hits: readonly WebSearchHit[], request: st
 /** Only exact returned source URLs may appear as citations in a model-written answer. */
 export function answerUsesOnlySearchSources(answer: string, hits: readonly WebSearchHit[], request: string,
   now = new Date()) {
-  const evidence = searchEvidence(hits, request, now);
-  if (evidence.todayRequested && !evidence.publishedToday) return false;
-  if (evidenceModeForRequest(request) !== 'structured_fact') return narrativeSourceMatches(answer, hits) !== null;
-  const allowed = new Set(hits.map((hit) => canonicalSearchUrl(hit.url)).filter(Boolean));
-  const cited = [...answer.matchAll(/https?:\/\/[^\s)\]>"']+/g)]
-    .map((match) => canonicalSearchUrl(match[0].replace(/[.,;!?]+$/, '')));
-  if (!cited.length || cited.some((url) => !url || !allowed.has(url))) return false;
-  return true;
+  return narrativeSourceMatches(answer, hits) !== null;
 }
 
 /** Resolve model-written source IDs against this turn's server-owned evidence only. */
@@ -724,18 +778,27 @@ function narrativeSourceMatches(answer: string, hits: readonly WebSearchHit[]) {
 }
 
 function renderNarrativeSourceCitations(answer: string, hits: readonly WebSearchHit[], locale: ResponseLanguage) {
-  const citations = narrativeSourceMatches(answer, hits);
-  if (!citations) return null;
-  const sources = new Map(citations.map(({ id, url }) => [id, url]));
-  const label = locale === 'ar' ? 'مصدر' : 'Source';
-  return answer.replace(/\[\[source:(S[1-9]\d*)\]\]/g, (_, id: string) =>
-    `[${label}](${sources.get(id)})`);
+  return narrativeSourceMatches(answer, hits) ? renderEvidenceSourceIds(answer, hits, locale) : null;
+}
+
+/** Artifacts and native-search adapters use the same server-owned source-ID transport. */
+export function renderEvidenceSourceIds(answer: string, hits: readonly WebSearchHit[], locale: ResponseLanguage,
+  structured = false) {
+  if (!/\[\[source:/iu.test(answer)) return answer;
+  const sources = new Map(hits.map((hit, index) => [hit.evidenceId ?? `S${index + 1}`, hit]));
+  if (/\[\[source:/iu.test(answer.replace(/\[\[source:S[1-9]\d*\]\]/g, ''))
+    || [...answer.matchAll(/\[\[source:(S[1-9]\d*)\]\]/g)].some(([, id]) => !sources.has(id))) return null;
+  return answer.replace(/\[\[source:(S[1-9]\d*)\]\]/g, (_, id: string) => {
+    const hit = sources.get(id)!;
+    const label = plainExcerpt(hit.title, 100).replace(/[\[\]\\<>]/g, '') || (locale === 'ar' ? 'مصدر' : 'Source');
+    return `[${label}](${hit.url})`;
+  });
 }
 
 /** Dates remain source-bound even though ordinary narrative numbers are not exact-match claims. */
 function narrativeDateViolation(answer: string, citedHits: readonly WebSearchHit[], request: string,
   now: Date, mode: 'fresh_news' | 'general_web') {
-  const evidence = citedHits.map((hit) => `${hit.title} ${hit.description} ${hit.publishedAt ?? ''}`).join(' ');
+  const evidence = citedHits.map((hit) => `${hit.title} ${hit.description} ${hit.publishedAt ?? ''} ${hit.announcementDate ?? ''}`).join(' ');
   const dates: string[] = answer.match(/\b(?:19|20)\d{2}(?:-\d{2}-\d{2})?\b/g) ?? [];
   if (dates.some((date) => !evidence.includes(date))) return true;
   const days = (text: string) => text.match(/(?:آخر|اخر)\s+([1-9]\d?)\s+(?:أيام|ايام)|\b(?:last|past)\s+([1-9]\d?)\s+days\b|\b([1-9]\d?)\s+derniers?\s+jours\b/iu)?.slice(1).find(Boolean);
@@ -749,36 +812,130 @@ function narrativeDateViolation(answer: string, citedHits: readonly WebSearchHit
   });
 }
 
+/** Source-local value/meaning checks, not a bag of numbers from unrelated citations.
+ * This is deliberately not a semantic entailment model. The answer model must
+ * stay within supplied evidence; these checks enforce the verifiable boundaries.
+ */
+/** A heading may use its children's citations, but a child never borrows a
+ * sibling's or ancestor's sources. Blank, unindented paragraphs stand alone.
+ */
+function sourceBoundClaimUnits(answer: string) {
+  type Node = { text: string; indent: number; list: boolean; children: Node[] };
+  const roots: Node[] = []; const stack: Node[] = [];
+  let blank = false;
+  for (const line of answer.split('\n')) {
+    if (!line.trim()) { blank = true; continue; }
+    const indent = line.match(/^[ \t]*/u)![0].replace(/\t/g, '    ').length;
+    const list = /^[ \t]*(?:[-*+]|\d{1,2}[.)])[ \t]+/u.test(line);
+    if (list) {
+      while (stack.length && (!stack[stack.length - 1].list || stack[stack.length - 1].indent >= indent)) stack.pop();
+    } else if (!blank && stack.length) {
+      stack[stack.length - 1].text += `\n${line}`;
+      continue;
+    } else {
+      while (stack.length && stack[stack.length - 1].indent >= indent) stack.pop();
+    }
+    const node: Node = { text: line, indent, list, children: [] };
+    const parent = stack[stack.length - 1];
+    if (parent) parent.children.push(node); else roots.push(node);
+    stack.push(node); blank = false;
+  }
+  const ids = (node: Node): string[] => [...node.text.matchAll(/\[\[source:(S[1-9]\d*)\]\]/g)]
+    .map((match) => match[1]);
+  const descendants = (node: Node): string[] => [...ids(node), ...node.children.flatMap(descendants)];
+  const flatten = (node: Node, topLevel = true): { text: string; ids: string[]; list: boolean; topLevel: boolean }[] => {
+    const own = ids(node);
+    return [{ text: node.text, ids: own.length ? own : node.children.flatMap(descendants), list: node.list, topLevel },
+      ...node.children.flatMap((child) => flatten(child, false))];
+  };
+  return roots.flatMap((root) => flatten(root));
+}
+
+function claimSupportFailure(answer: string, hits: readonly WebSearchHit[], request: string,
+  mode: EvidenceMode, artifact: boolean) {
+  const sources = new Map(hits.map((hit, index) => [hit.evidenceId ?? `S${index + 1}`, hit]));
+  for (const unit of sourceBoundClaimUnits(answer)) {
+    const { ids } = unit;
+    const text = unit.text.replace(/\[\[source:S[1-9]\d*\]\]/g, '')
+      .replace(/^[ \t]*(?:[-*+]|\d{1,2}[.)])[ \t]+/gmu, '').trim();
+    const cited = ids.flatMap((id) => sources.get(id) ? [sources.get(id)!] : []);
+    // Short headings and presentation controls are not independent factual claims.
+    if (!cited.length) {
+      const uncertaintyOnly = text.length <= 220 && !/\d/u.test(text)
+        && /(?:not (?:verified|confirmed|established)|could not verify|n[’'](?:est|ont) pas (?:vérifi|confirm)|pas pu vérifier|لم (?:يتم |أتمكن من )?(?:تأكيد|التحقق)|لا (?:يمكنني|أستطيع) (?:تأكيد|التحقق)|غير (?:مؤكد|متحقق))/iu.test(text);
+      // Reporting the verification boundary is not an additional current claim.
+      if (uncertaintyOnly) continue;
+      if ((mode === 'fresh_news' && (unit.list || /[.!؟]\s*$/u.test(text)))
+        || text.length > 120 || /\d+[.]\d+|\b(?:current|latest|LTS)\b|\b[A-Za-z][A-Za-z0-9]*[-.]\S*\d/iu.test(text))
+        return 'missing_claim_citation';
+      continue;
+    }
+    const evidence = cited.map((hit) => `${hit.title} ${hit.description} ${hit.publishedAt ?? ''} ${hit.announcementDate ?? ''}`).join(' ');
+    if (mode === 'fresh_news' && datedNewsRequest(request)) {
+      const eventDates = explicitCalendarDates(text);
+      if (eventDates.some((date) => !cited.some((hit) => hit.announcementDate === date)))
+        return 'announcement_date_unverified';
+    }
+    // Product/model identifiers carry factual identity even in narrative mode.
+    // This is not generic matching of list numbers or user-request controls.
+    // ISO dates have their own source-local guard; "le 2026-09-29" is not a product identifier.
+    const identifiers: string[] = withoutCalendarDates(text)
+      .match(/\b[A-Za-z][A-Za-z0-9]*(?:[-.][A-Za-z0-9]*\d[A-Za-z0-9.-]*|\s+\d{3,}[A-Za-z]*)\b/g) ?? [];
+    const identityText = evidence.toLowerCase().replace(/[^a-z0-9]+/g, ' ');
+    if (identifiers.some((value) => !identityText.includes(value.toLowerCase().replace(/[^a-z0-9]+/g, ' '))))
+      return 'unsupported_identity';
+    const values = mode === 'structured_fact' ? factualNumbers(text)
+      : text.match(/\b\d+\.\d+(?:\.\d+)?\b/g) ?? [];
+    const allowed = new Set(factualNumbers(evidence));
+    if (values.some((value) => !allowed.has(value))) return 'unsupported_number';
+    if (mode === 'structured_fact' && currentInformationPolicy(request).exactFact === 'version') {
+      for (const channel of ['current', 'lts'] as const) {
+        const claimed = labeledVersion(text, channel)?.replace(/^v/i, '');
+        if (!claimed) continue;
+        if (!cited.some((hit) => labeledVersion(factText(hit), channel)?.replace(/^v/i, '') === claimed))
+          return 'structured_claim_mismatch';
+        // An old release log saying "LTS" proves its historical channel, not the
+        // newest LTS. Do not volunteer an unverified additional current branch.
+        if (channel === 'lts' && requestedVersionChannel(request) !== 'lts' && !/\bLTS\b/iu.test(request)
+          && !cited.some((hit) => liveIndexSegment(evergreenPathSegments(hit), ['download', 'downloads', 'versions', 'status'])
+            || /\b(?:latest|newest)\s+LTS\b|\bLTS\s+(?:latest|newest)\b/iu.test(factText(hit))))
+          return 'additional_current_claim_unverified';
+      }
+    }
+  }
+  return null;
+}
+
+/** `v8.2.0` and `8.2.0` carry the same numeric value, without matching inside identifiers. */
+function factualNumbers(text: string) {
+  return [...text.matchAll(/\bv?(\d+(?:[.\-]\d+)*)\b/g)].map((match) => match[1]);
+}
+
 /** Content-free rejection reason for the existing same-call synthesis guard. */
 export function searchSynthesisRejectionReason(answer: string, hits: readonly WebSearchHit[], request: string,
-  now: Date, language: ResponseLanguage) {
+  now: Date, language: ResponseLanguage, options: { artifact?: boolean } = {}) {
   const mode = evidenceModeForRequest(request);
   const trimmed = answer.trim();
-  if (!trimmed || trimmed.length > 4_000 || rawResultsRequested(request)) return 'invalid_answer';
+  if (!trimmed || trimmed.length > (options.artifact ? 40_000 : 4_000) || rawResultsRequested(request)) return 'invalid_answer';
   if (needsFreshEvidence(request) && !hits.some((hit) => evidenceStrength(hit))) return 'insufficient_evidence';
   if (!answerUsesOnlySearchSources(trimmed, hits, request, now)) return 'unsupported_url';
-  const withoutLinks = mode === 'structured_fact'
-    ? trimmed.replace(/\[[^\]]+\]\(https?:\/\/[^)]+\)/g, ' ')
-    : trimmed.replace(/\[\[source:S[1-9]\d*\]\]/g, ' ');
+  const withoutLinks = trimmed.replace(/\[\[source:S[1-9]\d*\]\]/g, ' ');
   if (language === 'ar' && (withoutLinks.match(/[\u0600-\u06ff]/gu) ?? []).length < 3) return 'wrong_language';
   if (resolveResponseLanguage(withoutLinks, [], 'en') !== language) return 'wrong_language';
   if (/^(?:according to (?:the )?(?:retrieved |available )?sources|here are (?:the )?(?:search )?results|d'après les sources|وفق المصادر)/iu.test(trimmed)) return 'raw_results';
-  if (mode === 'structured_fact' && /^\s*(?:[-*]|\d+\.)\s/mu.test(trimmed)) return 'raw_results';
-  const cited = mode === 'structured_fact' ? [...trimmed.matchAll(/https?:\/\/[^\s)\]>"']+/g)]
-    : [...trimmed.matchAll(/\[\[source:S[1-9]\d*\]\]/g)];
-  if (mode === 'structured_fact' && cited.length > 3) return 'too_many_citations';
-  const citations: [string, string, string][] = mode === 'structured_fact'
-    ? [...trimmed.matchAll(/\[([^\]]+)\]\((https:\/\/[^)]+)\)/g)].map((match) =>
-      [match[0], match[1], match[2]])
-    : narrativeSourceMatches(trimmed, hits)!.map(({ id, url }) => [`[[source:${id}]]`, id, url]);
+  // Lists are presentation, not evidence failure. A Current/LTS comparison may
+  // naturally use bullets; its citations and exact values still pass every guard below.
+  const cited = [...trimmed.matchAll(/\[\[source:S[1-9]\d*\]\]/g)];
+  const citations: [string, string, string][] = narrativeSourceMatches(trimmed, hits)!
+    .map(({ id, url }) => [`[[source:${id}]]`, id, url]);
   if (mode === 'fresh_news') {
     const requestedCount = requestedNewsCount(request);
-    const items = [...trimmed.matchAll(/^[ \t]*(?:[-*]|\d{1,2}[.)])[ \t]+/gmu)];
+    const items = sourceBoundClaimUnits(trimmed).filter((unit) => unit.list && unit.topLevel);
     if (requestedCount !== null && items.length > requestedCount) return 'too_many_items';
   }
-  if (citations.length !== cited.length || citations.some(([, label, url]) => !hits.some((hit) =>
-    canonicalSearchUrl(hit.url) === canonicalSearchUrl(url) && (mode !== 'structured_fact'
-      || label === plainExcerpt(hit.title, 180).replace(/[\[\]]/g, ''))))) return 'unsupported_url';
+  if (citations.length !== cited.length) return 'unsupported_url';
+  const supportFailure = claimSupportFailure(trimmed, hits, request, mode, options.artifact === true);
+  if (supportFailure) return supportFailure;
   if (mode === 'structured_fact' && hits[0]?.evidenceBundle === 'primary_supported_bundle' && (citations.length < 3
     || hits.filter((hit) => hit.evidenceLevel === 'primary_bundle'
       && citations.some(([, , url]) => canonicalSearchUrl(hit.url) === canonicalSearchUrl(url))).length < 2)) return 'insufficient_citations';
@@ -793,19 +950,21 @@ export function searchSynthesisRejectionReason(answer: string, hits: readonly We
     if (sourceInstructionMarker.test(withoutLinks)) return 'unsafe_source_content';
     if (narrativeDateViolation(withoutLinks, citedHits, request, now, mode)) return 'unsupported_date';
   } else {
-    const allowedNumbers = new Set(citedHits.flatMap((hit) => `${mode === 'structured_fact' && needsFreshEvidence(request)
+    const allowedNumbers = new Set(citedHits.flatMap((hit) => factualNumbers(`${mode === 'structured_fact' && needsFreshEvidence(request)
       && hit.evidenceLevel !== 'primary_search' ? '' : hit.title} ${hit.description} ${hit.publishedAt ?? ''}`
-      .match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []));
-    const factualText = mode === 'structured_fact' ? withoutLinks
-      : withoutLinks.replace(/^\s*\d{1,2}[.)]\s+/gmu, '');
-    if ((factualText.match(/\b\d+(?:[.\-]\d+)*\b/g) ?? []).some((value) => !allowedNumbers.has(value)))
+      )));
+    const factualText = withoutLinks.replace(/^\s*\d{1,2}[.)]\s+/gmu, '');
+    if (factualNumbers(factualText).some((value) => !allowedNumbers.has(value)))
       return 'unsupported_number';
   }
   if (mode === 'structured_fact' && needsFreshEvidence(request)
-    && /\bversion\b|(?:إصدار|اصدار|نسخة)/iu.test(request)) {
-    const current = rankedEvidence(hits, request, localDate(now))
-      .map((hit) => evidenceStrength(hit) ? labeledVersion(factText(hit), 'current') : null).find(Boolean);
-    if (current && !withoutLinks.includes(current)) return 'structured_claim_mismatch';
+    && currentInformationPolicy(request).exactFact === 'version') {
+    const key = rankedEvidence(hits, request, localDate(now))
+      .map((hit) => evidenceStrength(hit) ? freshFactKey(factText(hit), request) : null).find(Boolean);
+    const expected = key?.match(/^version:(current|lts|latest):(.+)$/)?.[2];
+    const versions: string[] = withoutLinks.match(/\bv?\d+\.\d+(?:\.\d+)?\b/g) ?? [];
+    if (expected && !versions
+      .some((value) => value.replace(/^v/i, '') === expected)) return 'structured_claim_mismatch';
   }
   if (mode === 'structured_fact') {
     if (hits.some((hit) => { const excerpt = plainExcerpt(hit.description, 400); return excerpt.length >= 24
@@ -827,6 +986,8 @@ export function usableSearchSynthesis(answer: string, hits: readonly WebSearchHi
 export function evaluateSearchSynthesis(modelAnswer: string, hits: readonly WebSearchHit[], request: string,
   now = new Date(), locale: ResponseLanguage = 'en') {
   const rejectionReason = searchSynthesisRejectionReason(modelAnswer, hits, request, now, locale);
+  // A label is presentation, not source identity. Only an EXACT returned URL
+  // permits server-owned label normalization; all factual and URL guards rerun.
   const withoutFormattingEntities = formattingSpaces(modelAnswer);
   const normalizedAnswer = rejectionReason === 'raw_results'
     ? withoutFormattingEntities.replace(/^(?:according to (?:the )?(?:retrieved |available )?sources|here are (?:the )?(?:search )?results|d'après les sources|وفق المصادر)\s*[,،:]?\s*/iu, '')
@@ -835,8 +996,7 @@ export function evaluateSearchSynthesis(modelAnswer: string, hits: readonly WebS
     && searchSynthesisRejectionReason(normalizedAnswer, hits, request, now, locale) === null;
   const accepted = rejectionReason === null || normalizedAccepted;
   const selected = normalizedAccepted ? normalizedAnswer : modelAnswer;
-  const rendered = accepted && evidenceModeForRequest(request) !== 'structured_fact'
-    ? renderNarrativeSourceCitations(selected, hits, locale) : selected;
+  const rendered = accepted ? renderNarrativeSourceCitations(selected, hits, locale) : selected;
   const answer = accepted && rendered !== null ? rendered : groundedSearchSummary(hits, request, now, locale);
   return { answer, synthesisAccepted: accepted && rendered !== null,
     synthesisRejectionReason: accepted && rendered !== null ? null : rejectionReason ?? 'unsupported_url',

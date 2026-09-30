@@ -2,11 +2,14 @@ import 'server-only';
 import { attachConversationFile, attachmentRequestContext } from '@/lib/chat/conversation-attachments';
 import { boundedConnectedContent, connectedResourceAttachment } from '@/lib/connected-apps/core';
 import type { WebContextTool } from './selection';
+import { currentInformationPolicy } from './selection';
 import { readPublicWebPage } from './url-reader.server';
 import { searchWeb, type SearchExecution, type WebSearchHit } from './search.server';
+import { explicitAnnouncement, newsArticleCandidate, datedNewsRequest } from './news-evidence';
+import { driverRequestScope } from './driver-scope';
 import { assessFreshEvidenceBundle, assessNarrativeEvidenceBundle, dedupeSearchHits, evidenceModeForRequest,
-  canonicalSearchUrl, freshFactKey, likelyPrimarySource, needsFreshEvidence, primaryEvidenceDiagnostics, rankedEvidence, relevantWebHit,
-  requestedNewsCount, searchEvidence, supportsPrimaryPage, type EvidenceMode } from './evidence';
+  canonicalSearchUrl, freshFactKey, likelyPrimarySource, needsFreshEvidence, primaryEvidenceDiagnostics, primaryReadPriority, rankedEvidence, relevantWebHit,
+  requestedNewsCount, requestedVersionChannel, searchEvidence, supportsPrimaryPage, narrativeDateRange, type EvidenceMode } from './evidence';
 
 type WebResource = Awaited<ReturnType<typeof readPublicWebPage>>;
 export async function webContextForRequest(tool: WebContextTool, request: string,
@@ -52,43 +55,100 @@ type SearchOperations = { search: typeof searchWeb; read: typeof readPublicWebPa
   fallback?: typeof searchWeb };
 
 function refinedRetrievalQuery(request: string) {
-  const intent = /\b(?:version|release)\b|(?:إصدار|اصدار|نسخة)/iu.test(request)
-    ? 'latest current release official'
-    : /\b(?:price|cost)\b|(?:سعر|الأسعار|الاسعار)/iu.test(request)
-      ? 'current official price' : /\b(?:availability|stock|status)\b|(?:متاح|متوفر|الحالة)/iu.test(request)
-        ? 'current official availability' : null;
+  // Driver platform/branch are part of identity, not disposable query filler.
+  if (driverRequestScope(request)) return request;
+  const policy = currentInformationPolicy(request);
+  const fact = policy.exactFact;
+  const intent = fact === 'version'
+    ? requestedVersionChannel(request) === 'lts' ? 'latest LTS release official' : 'latest current release official'
+    : fact === 'price'
+      ? 'current official price' : fact === 'availability'
+        ? 'current official availability' : policy.fresh && policy.mode === 'general_web'
+          && /\bmodels?\b|نماذج|نموذج|\bmodèles?\b/iu.test(request) ? 'latest models official' : null;
   if (!intent) return request;
   const ignored = new Set<string>(['latest', 'current', 'version', 'release', 'official', 'price', 'cost',
-    'availability', 'stock', 'status', 'what', 'which', 'now', 'today', 'the', 'is']);
+    'availability', 'stock', 'status', 'what', 'which', 'now', 'today', 'the', 'is', 'models', 'model',
+    'are', 'of', 'modèles', 'derniers', 'lts']);
   const matches: string[] = request.match(/[A-Za-z][A-Za-z0-9.+-]*/g) ?? [];
   const entities = matches
     .filter((word) => !ignored.has(word.toLowerCase()));
-  return entities.length === 1 ? `${entities[0]} ${intent}` : request;
+  // A single Latin entity span in a non-Latin question is unambiguous even
+  // when its ordinary name contains spaces. Multiple separated spans remain raw.
+  const spans = request.match(/[A-Za-z][A-Za-z0-9.+-]*(?:\s+[A-Za-z][A-Za-z0-9.+-]*)*/g) ?? [];
+  const singleMixedEntity = fact === null && /[\u0600-\u06ff]/u.test(request)
+    && spans.length === 1 && entities.length <= 3;
+  return entities.length === 1 || singleMixedEntity ? `${entities.join(' ')} ${intent}` : request;
 }
 
 async function assessFreshHits(hits: WebSearchHit[], request: string, read: typeof readPublicWebPage,
   mode: EvidenceMode) {
-  hits = dedupeSearchHits(hits);
+  hits = dedupeSearchHits(hits).map((hit) => {
+    if (mode !== 'fresh_news') return hit;
+    const announcement = newsArticleCandidate(hit) ? explicitAnnouncement(hit.description) : null;
+    return { ...hit, pagePublishedAt: hit.publishedAt,
+      announcementDate: announcement?.date ?? null, articleEvidence: !!announcement };
+  });
   const diagnosticStages: string[] = [];
+  const readFailures: string[] = [];
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Algiers', year: 'numeric',
     month: '2-digit', day: '2-digit' }).format(new Date());
   const primary = hits.filter((candidate) => likelyPrimarySource(candidate, request));
   diagnosticStages.push(primary.length ? 'primary_candidate_found' : 'no_primary_candidate_found');
   const pages: WebSearchHit[] = [];
-  for (const hit of rankedEvidence(primary, request, today).slice(0, 2)) {
+  const newsWindow = narrativeDateRange(request, today);
+  const recentArticle = (hit: WebSearchHit) => newsArticleCandidate(hit) && (!hit.publishedAt
+    || Date.parse(hit.publishedAt) >= newsWindow.start && Date.parse(hit.publishedAt) <= newsWindow.end);
+  const readCandidates = mode === 'fresh_news'
+    ? hits.filter((hit) => !newsArticleCandidate(hit) || recentArticle(hit))
+      .sort((a, b) => Number(recentArticle(b)) - Number(recentArticle(a))
+      || Number(likelyPrimarySource(b, request)) - Number(likelyPrimarySource(a, request)))
+    : [...primary].sort((a, b) => primaryReadPriority(b, request) - primaryReadPriority(a, request));
+  for (let readIndex = 0; readIndex < Math.min(2, readCandidates.length); readIndex++) {
+    const hit = readCandidates[readIndex];
+    const stage = mode === 'fresh_news' && newsArticleCandidate(hit) ? 'article' : 'primary';
     try {
       const page = await read(hit.url);
       if (new URL(page.sourceId).hostname !== new URL(hit.url).hostname) {
-        diagnosticStages.push('primary_url_read_failed'); continue;
+        diagnosticStages.push(`${stage}_url_read_failed`); continue;
       }
-      diagnosticStages.push('primary_url_read_succeeded');
+      diagnosticStages.push(`${stage}_url_read_succeeded`);
+      if (readIndex === 0 && mode === 'fresh_news' && !newsArticleCandidate(hit)) {
+        const linkedArticles = (page.articleLinks ?? []).filter((link) => {
+          try { return new URL(link.url).origin === new URL(hit.url).origin; } catch { return false; }
+        }).map((link): WebSearchHit => ({ ...hit, title: link.title, url: link.url, description: '', publishedAt: null }))
+          .filter((article) => newsArticleCandidate(article) && relevantWebHit(article, request));
+        if (linkedArticles[0]) readCandidates.splice(1, 0, linkedArticles[0]);
+      }
+      // A search-returned official index can lead to its actual live download
+      // page. Use the remaining read slot, never guess URLs or add search calls.
+      if (readIndex === 0 && mode === 'structured_fact' && currentInformationPolicy(request).exactFact === 'version'
+        && likelyPrimarySource(hit, request)) {
+        const navigation = (page.navigationLinks ?? []).filter((link) => {
+          try { return new URL(link.url).origin === new URL(hit.url).origin && link.url !== hit.url; }
+          catch { return false; }
+        }).map((link): WebSearchHit => ({ title: link.title || hit.title, url: link.url, description: '' }))
+          .sort((a, b) => primaryReadPriority(b, request) - primaryReadPriority(a, request));
+        if (navigation[0] && primaryReadPriority(navigation[0], request) > primaryReadPriority(readCandidates[1] ?? hit, request))
+          readCandidates.splice(1, 0, navigation[0]);
+      }
       const excerpt = boundedConnectedContent(page, request, 2_000);
       if (excerpt && excerpt.length >= 24) {
-        const candidate = { ...hit, description: excerpt.slice(0, 500), verifiedPage: true,
-          evidenceLevel: 'primary_page' as const };
-        if (supportsPrimaryPage(candidate, request, today)) pages.push(candidate);
+        const announcement = stage === 'article' ? explicitAnnouncement(page.text) : null;
+        const candidate: WebSearchHit = { ...hit,
+          description: [announcement?.text, excerpt].filter(Boolean).join('\n').slice(0, 2_000), verifiedPage: true,
+          contentComplete: page.contentComplete, fetchedAt: page.fetchedAt,
+          ...(mode === 'fresh_news' ? { pagePublishedAt: page.pagePublishedAt ?? hit.publishedAt,
+            pageUpdatedAt: page.pageUpdatedAt ?? null, announcementDate: announcement?.date ?? hit.announcementDate,
+            articleEvidence: stage === 'article' } : {}),
+          evidenceLevel: likelyPrimarySource(hit, request) ? 'primary_page' : 'secondary_page' };
+        if (mode === 'fresh_news' || supportsPrimaryPage(candidate, request, today)) pages.push(candidate);
       }
-    } catch { diagnosticStages.push('primary_url_read_failed'); }
+    } catch (cause) {
+      diagnosticStages.push(`${stage}_url_read_failed`);
+      const code = cause instanceof Error ? cause.message : '';
+      readFailures.push(['URL_UNSAFE', 'URL_TOO_LARGE', 'URL_UNAVAILABLE', 'URL_CONTENT_UNSUPPORTED'].includes(code)
+        ? code : 'URL_READ_FAILED');
+    }
   }
   // Keep search snippets alongside successful reads: a page may establish only
   // Current major while independent snippets establish the exact release.
@@ -100,12 +160,13 @@ async function assessFreshHits(hits: WebSearchHit[], request: string, read: type
       : 'official_search_result_evidence_used'
     : assessment.kind === 'primary_supported_bundle' ? 'primary_supported_bundle_used'
       : assessment.kind === 'corroborated_exact' ? 'corroborated_secondary_evidence_used'
+        : assessment.kind === 'dated_article_evidence' ? 'dated_article_evidence_used'
         : assessment.kind === 'independent_news_sources' ? 'independent_news_sources_used'
         : 'insufficient_evidence');
   return { hits: assessment.hits, kind: assessment.kind,
     safeNarrativeCandidateCount: 'safeCandidateCount' in assessment ? assessment.safeCandidateCount : null,
     primaryDiagnostics: primaryEvidenceDiagnostics([...pages, ...hits], request),
-    reason: 'reason' in assessment ? assessment.reason : assessment.kind, diagnosticStages };
+    reason: 'reason' in assessment ? assessment.reason : assessment.kind, diagnosticStages, readFailures };
 }
 
 export async function searchContextForRequest(query: string, request: string,
@@ -113,18 +174,27 @@ export async function searchContextForRequest(query: string, request: string,
   const active = operations ?? { search: searchWeb, read: readPublicWebPage };
   const fresh = needsFreshEvidence(request);
   const retrievalQuery = fresh ? refinedRetrievalQuery(query) : query;
-  const resource = await active.search(retrievalQuery);
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Algiers', year: 'numeric',
+    month: '2-digit', day: '2-digit' }).format(new Date());
+  const window = narrativeDateRange(request, today);
+  const datedNews = fresh && evidenceModeForRequest(request) === 'fresh_news' && datedNewsRequest(request);
+  const resource = await active.search(retrievalQuery, undefined, datedNews ? {
+    publishedRange: { start: new Date(window.start).toISOString().slice(0, 10), end: new Date(window.end).toISOString().slice(0, 10) },
+  } : undefined);
   const readCache = new Map<string, ReturnType<typeof readPublicWebPage>>();
   let urlReadCount = 0;
   const readOnce: typeof readPublicWebPage = (url, options) => {
-    if (options) { urlReadCount++; return active.read(url, options); }
     let result = readCache.get(url);
-    if (!result) { urlReadCount++; result = active.read(url); readCache.set(url, result); }
+    if (!result) {
+      if (urlReadCount >= 2) return Promise.reject(new Error('URL_READ_BUDGET_EXHAUSTED'));
+      urlReadCount++; result = active.read(url, options); readCache.set(url, result);
+    }
     return result;
   };
   const candidates = dedupeSearchHits(resource.hits);
   let hits = candidates;
   let diagnosticStages: string[] = [];
+  let readFailures: string[] = [];
   let assessmentKind: string | null = null;
   let assessmentReason: string | null = null;
   let safeNarrativeCandidateCount: number | null = null;
@@ -132,7 +202,7 @@ export async function searchContextForRequest(query: string, request: string,
   const technicalFallback = resource.execution?.fallbackUsed ?? false;
   const evidenceMode: EvidenceMode = fresh ? evidenceModeForRequest(request) : 'general_web';
   if (fresh) {
-    ({ hits, kind: assessmentKind, reason: assessmentReason, diagnosticStages, safeNarrativeCandidateCount,
+    ({ hits, kind: assessmentKind, reason: assessmentReason, diagnosticStages, readFailures, safeNarrativeCandidateCount,
       primaryDiagnostics } = await assessFreshHits(
       candidates, request, readOnce, evidenceMode));
   } else {
@@ -185,9 +255,11 @@ export async function searchContextForRequest(query: string, request: string,
     webSearchResultCount: resource.hits.length,
     webSearchTotalLatencyMs: resource.execution?.latencyMs ?? null,
     webUrlReadCount: urlReadCount,
+    webUrlReadFailures: readFailures,
+    webUrlIncompleteEvidenceCount: hits.filter((hit) => hit.contentComplete === false).length,
     officialEvidenceUsed: hits.some((hit) => likelyPrimarySource(hit, request)),
-    urlReadOutcome: diagnosticStages.includes('primary_url_read_succeeded') ? 'succeeded'
-      : diagnosticStages.includes('primary_url_read_failed') ? 'failed' : 'not_attempted',
+    urlReadOutcome: diagnosticStages.some((stage) => stage.endsWith('_url_read_succeeded')) ? 'succeeded'
+      : diagnosticStages.some((stage) => stage.endsWith('_url_read_failed')) ? 'failed' : 'not_attempted',
     finalEvidenceQuality: quality, citationsCount: null as number | null,
     citationCandidatesCount: Math.min(hits.length, evidenceMode === 'structured_fact' ? 3
       : evidenceMode === 'fresh_news' ? requestedNewsCount(request) ?? 5 : 5) };

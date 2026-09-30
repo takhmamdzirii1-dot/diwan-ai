@@ -1,3 +1,5 @@
+import type { NativeSearchCapability } from '@/lib/web/strategy';
+
 export const CHAT_NATIVE_CAPABILITIES = ['streaming', 'visionInput', 'fileInput', 'structuredOutput', 'tools', 'parallelTools'] as const;
 export type ChatNativeCapability = typeof CHAT_NATIVE_CAPABILITIES[number];
 export type CapabilityState = 'supported' | 'unsupported' | 'unknown';
@@ -9,6 +11,7 @@ export type RouteCapabilityRecord = {
   providerModelId: string;
   evidence: Partial<Record<ChatNativeCapability, CapabilityEvidence>>;
   overrides: Partial<Record<ChatNativeCapability, CapabilityOverride>>;
+  nativeSearch?: NativeSearchCapability;
 };
 export type RouteCapabilityStore = Record<string, RouteCapabilityRecord>;
 export type RouteIdentity = { id: string; providerId: string; providerModelId: string };
@@ -44,7 +47,18 @@ export function normalizeRouteCapabilityStore(value: unknown): RouteCapabilitySt
       }
       if (['auto', 'force_enabled', 'force_disabled'].includes(String(rawOverrides[key]))) overrides[key] = rawOverrides[key] as CapabilityOverride;
     }
-    result[id] = { providerId: record.providerId, providerModelId: record.providerModelId, evidence, overrides };
+    const rawSearch = record.nativeSearch as Record<string, unknown> | undefined;
+    const nativeSearch: NativeSearchCapability | undefined = rawSearch && typeof rawSearch === 'object'
+      && ['supported', 'unsupported', 'unknown'].includes(String(rawSearch.state))
+      ? { state: rawSearch.state as NativeSearchCapability['state'],
+        ...(typeof rawSearch.protocol === 'string' && /^[a-z0-9_-]{1,80}$/.test(rawSearch.protocol)
+          ? { protocol: rawSearch.protocol } : {}),
+        ...(typeof rawSearch.verifiedAt === 'string' && Number.isFinite(Date.parse(rawSearch.verifiedAt))
+          ? { verifiedAt: rawSearch.verifiedAt } : {}),
+        ...(['provider_documentation', 'route_probe'].includes(String(rawSearch.source))
+          ? { source: rawSearch.source as NativeSearchCapability['source'] } : {}) } : undefined;
+    result[id] = { providerId: record.providerId, providerModelId: record.providerModelId, evidence, overrides,
+      ...(nativeSearch ? { nativeSearch } : {}) };
   }
   return result;
 }
@@ -82,5 +96,7 @@ export function resolveRouteCapabilities(input: {
       ? { state: selected?.state ?? 'unknown', source: selected?.source ?? 'unknown', override, checkedAt: selected?.checkedAt, errorCode: selected?.errorCode }
       : { state: override === 'force_enabled' ? 'supported' : 'unsupported', source: 'manual_override', override };
   }
-  return { resolved, record: { providerId: input.route.providerId, providerModelId: input.route.providerModelId, evidence, overrides: matching?.overrides ?? {} } satisfies RouteCapabilityRecord };
+  return { resolved, nativeSearch: matching?.nativeSearch ?? { state: 'unknown' as const },
+    record: { providerId: input.route.providerId, providerModelId: input.route.providerModelId, evidence,
+      overrides: matching?.overrides ?? {}, ...(matching?.nativeSearch ? { nativeSearch: matching.nativeSearch } : {}) } satisfies RouteCapabilityRecord };
 }

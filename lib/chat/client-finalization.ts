@@ -1,13 +1,15 @@
 import { validatedArtifactPartFromToolResult, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
 import { getArtifactTool } from '@/lib/artifacts/tool-registry';
+import { searchContextReference } from '@/lib/web/search-context';
+type SearchReference = NonNullable<ReturnType<typeof searchContextReference>>;
 
-export type CanonicalStreamStatus = 'completed' | 'aborted' | 'error';
+export type CanonicalStreamStatus = 'completed' | 'aborted' | 'error' | 'unverified';
 export function hasUsableCanonicalOutput(status: CanonicalStreamStatus, text: string, artifacts: ChatMessagePart[]): boolean {
   return status === 'completed' && (text.trim().length > 0 || artifacts.some((part) =>
     'artifact' in part || part.type === 'file' && 'content' in part));
 }
 export type ChatTerminationReason = 'completed' | 'provider_error' | 'network_error' | 'user_stop'
-  | 'navigation_abort' | 'conversation_switch_abort';
+  | 'navigation_abort' | 'conversation_switch_abort' | 'verification_failed';
 export type ChatRequestOutcome = { requestId: string; conversationId: string; reason: ChatTerminationReason };
 
 export class ChatRequestTracker {
@@ -41,9 +43,13 @@ export class ChatStreamFinalizer {
   private consumerSettled = false;
   private finalized = false;
   private invalidated = false;
+  private searchReference: SearchReference | null = null;
 
   constructor(readonly requestId: string,
-    private readonly commit: (result: { requestId: string; text: string; artifacts: ChatMessagePart[]; status: CanonicalStreamStatus }) => void) {}
+    private readonly commit: (result: { requestId: string; text: string; artifacts: ChatMessagePart[];
+      status: CanonicalStreamStatus; annotations?: SearchReference[] }) => void) {}
+
+  setSearchReference(reference: SearchReference) { if (!this.invalidated) this.searchReference = reference; }
 
   append(delta: string) {
     if (!this.rawStatus && !this.invalidated) this.text += delta;
@@ -75,7 +81,8 @@ export class ChatStreamFinalizer {
     if (this.invalidated || this.finalized || !this.rawStatus) return;
     if (this.rawStatus === 'completed' && !this.consumerSettled) return;
     this.finalized = true;
-    this.commit({ requestId: this.requestId, text: this.text, artifacts: this.artifacts, status: this.rawStatus });
+    this.commit({ requestId: this.requestId, text: this.text, artifacts: this.artifacts, status: this.rawStatus,
+      ...(this.searchReference ? { annotations: [this.searchReference] } : {}) });
   }
 }
 
@@ -85,12 +92,15 @@ export async function consumeCanonicalChatStream(stream: ReadableStream<Uint8Arr
   append: (delta: string) => void, signal?: AbortSignal,
   onErrorKind?: (reason: 'provider_error' | 'network_error') => void,
   onArtifact?: (part: ChatMessagePart) => void,
-  onToolEvent?: (event: { toolName: string; called: boolean; resultValidated: boolean }) => void): Promise<CanonicalStreamStatus> {
+  onToolEvent?: (event: { toolName: string; called: boolean; resultValidated: boolean }) => void,
+  onSearchReference?: (reference: SearchReference) => void): Promise<CanonicalStreamStatus> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let pending = '';
   let streamError = false;
   let providerError = false;
+  let verificationFailed = false;
+  let hardError = false;
   const toolCalls = new Map<string, string>();
   const abort = () => { void reader.cancel().catch(() => undefined); };
   signal?.addEventListener('abort', abort, { once: true });
@@ -132,6 +142,15 @@ export async function consumeCanonicalChatStream(stream: ReadableStream<Uint8Arr
               toolCalls.delete(result.toolCallId);
             }
           } catch { streamError = true; }
+        } else if (line.startsWith('8:')) {
+          try {
+            const annotations: unknown = JSON.parse(line.slice(2));
+            const reference = searchContextReference(annotations);
+            if (reference) onSearchReference?.(reference);
+            verificationFailed ||= Array.isArray(annotations) && annotations.some((item) => item
+              && item.type === 'vantra-web-verification' && item.state === 'unverified'
+              && item.code === 'CURRENT_INFORMATION_UNVERIFIED');
+          } catch { streamError = true; hardError = true; }
         } else if (line.startsWith('d:')) {
           try {
             const finish: unknown = JSON.parse(line.slice(2));
@@ -140,12 +159,13 @@ export async function consumeCanonicalChatStream(stream: ReadableStream<Uint8Arr
               providerError = true;
             }
           } catch { streamError = true; }
-        } else if (line.startsWith('3:')) { streamError = true; providerError = true; }
+        } else if (line.startsWith('3:')) { streamError = true; providerError = true; hardError = true; }
         newline = pending.indexOf('\n');
       }
     }
     if (signal?.aborted) return 'aborted';
     if (toolCalls.size > 0) { streamError = true; providerError = true; }
+    if (verificationFailed && !hardError && !pending.trim() && toolCalls.size === 0) return 'unverified';
     if (streamError || pending.trim()) {
       onErrorKind?.(providerError ? 'provider_error' : 'network_error');
       return 'error';

@@ -1,14 +1,14 @@
 import { after, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { InvalidToolArgumentsError, streamText, type CoreTool } from 'ai';
-import { PRESENTATION_OUTPUT_INSTRUCTION, requestedPresentationSlideCount,
-  validatedArtifactPartFromToolResult } from '@/lib/artifacts/chat-parts';
+import { PRESENTATION_OUTPUT_INSTRUCTION, requestedPresentationSlideCount, parseChatArtifact,
+  validatedArtifactPartFromToolResult, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
 import { agentToolSelection, artifactTaskInstruction, getArtifactTool, presentationToolChoice,
   requiredArtifactToolChoice, resolveArtifactToolPath, selectArtifactTools } from '@/lib/artifacts/tool-registry';
 import { buildNativeArtifactTools } from '@/lib/artifacts/tool-native.server';
 import { completeMessageText, providerChatMessages } from '@/lib/chat/message-history';
 import { vantraCoreSystemPrompt, webEvidenceInstruction,
-  WEB_SEARCH_TOOL_INSTRUCTION } from '@/lib/chat/system-prompt';
+  WEB_SEARCH_TOOL_INSTRUCTION, NATIVE_SEARCH_INSTRUCTION, SEARCH_ARTIFACT_INSTRUCTION } from '@/lib/chat/system-prompt';
 import { requiredChatModel } from '@/lib/chat/studio-model-request';
 import { routesForChatAction } from '@/lib/chat/action-routing';
 import { actionFailureCode, assessChatCompletion, emptyToolLifecycle, explicitActionName,
@@ -22,10 +22,15 @@ import { configuredConnectedApps } from '@/lib/connected-apps/registry.server';
 import { readUserConnection } from '@/lib/connected-apps/store.server';
 import { webContextForRequest } from '@/lib/web/context.server';
 import { createChatSearch, currentInformationUnavailable } from '@/lib/web/chat-search.server';
-import { evidenceModeForRequest, guardSearchDataStream } from '@/lib/web/evidence';
+import { evidenceModeForRequest } from '@/lib/web/evidence';
+import { guardCurrentInformationStream } from '@/lib/web/output-stream.server';
+import { precedingSearchReference } from '@/lib/web/search-context';
+import { loadSearchTurnContext, loadSearchSubjectContext } from '@/lib/web/search-context.server';
+import { safeStreamError } from '@/lib/web/stream-diagnostics';
+import { resolveSearchStrategy, verifiedNativeSearchAdapters } from '@/lib/web/strategy';
 import { resolveResponseLanguage } from '@/lib/chat/response-language';
 import { configuredWebSearchProviders } from '@/lib/web/search.server';
-import { decideWebSearchWithHistory } from '@/lib/web/selection';
+import { currentInformationPolicy, decideWebSearchWithHistory } from '@/lib/web/selection';
 
 import { resolveRuntimeModelAccess } from '@/lib/models/plan-entitlements.server';
 import { modelPlanErrorPayload } from '@/lib/models/plan-entitlements';
@@ -179,10 +184,13 @@ export async function POST(request: Request) {
     const connectedMatches = relevantConnectedActions(
       typeof latestUserText === 'string' ? latestUserText : '', configuredConnectedApps());
     // Only the current user turn may authorize a web fetch; replayed history is not consent.
+    const precedingReference = precedingSearchReference(Array.isArray(messages) ? messages.slice(0, -1) : []);
+    const priorSearchContext = precedingReference ? await loadSearchTurnContext(user.id, precedingReference.executionId)
+      ?? await loadSearchSubjectContext(user.id, precedingReference.executionId) : null;
     const webSelection = decideWebSearchWithHistory(Array.isArray(messages) && messages.length
       && messages.at(-1)?.role !== 'user' ? '' : typeof latestUserText === 'string' ? latestUserText : '',
     Array.isArray(messages) ? messages.slice(0, -1).map((entry) => ({ role: entry?.role ?? '',
-      content: completeMessageText(entry) })) : []);
+      content: completeMessageText(entry) })) : [], priorSearchContext);
     const webDecision = webSelection.decision;
     const webTool = webDecision.path === 'required' ? webDecision.tool : null;
     if (webTool && connectedMatches.length) return NextResponse.json({ error: 'WEB_ACTION_AMBIGUOUS' }, { status: 409 });
@@ -268,15 +276,28 @@ export async function POST(request: Request) {
     if (!languageModel) {
       return NextResponse.json({ error: 'NO_CONFIGURED_PROVIDER_ROUTE' }, { status: 503 });
     }
-    const native = resolveRouteCapabilities({
+    const routeCapabilities = resolveRouteCapabilities({
       route: { id: route.id, providerId: route.providerId, providerModelId: route.providerModelId },
       stored: runtimeModel.routeCapabilitiesV2,
-    }).resolved;
+    });
+    const native = routeCapabilities.resolved;
+    const searchStrategy = resolveSearchStrategy({
+      policy: { ...currentInformationPolicy(webSelection.evidenceRequest), decision: webDecision },
+      toolsSupported: native.tools.state === 'supported', native: routeCapabilities.nativeSearch,
+      vantraConfigured: configuredWebSearchProviders().length > 0, adapters: verifiedNativeSearchAdapters,
+      route: { providerId: route.providerId, providerModelId: route.providerModelId },
+      allowOptionalTools: !connectedMatch && !agentStep, now,
+    });
     const webSearch = createChatSearch({ decision: webDecision, request: webSelection.evidenceRequest,
       language: responseLanguage, nativeToolsSupported: native.tools.state === 'supported',
       searchConfigured: configuredWebSearchProviders().length > 0,
       allowNativeSearch: !connectedMatch && !agentStep,
-      seenSourceUrls: webSelection.seenSourceUrls, now });
+      seenSourceUrls: webSelection.seenSourceUrls, now, strategy: searchStrategy,
+      contextSubject: webSelection.contextSubject,
+      providerId: route.providerId, providerModelId: route.providerModelId, modelId: runtimeModel.modelId });
+    if (searchStrategy.nativeAdapter) languageModel = searchStrategy.nativeAdapter.bind({ model: languageModel,
+      required: webDecision.path === 'required', maxSearchInvocations: 1,
+      onEvidence: async (hits) => { await webSearch.ingestNativeEvidence(hits); return webSearch.evidence() ?? []; } });
     if (agentStep && native.tools.state !== 'supported' && native.structuredOutput.state !== 'supported') {
       return NextResponse.json({ error: 'MODEL_CAPABILITY_UNSUPPORTED' }, { status: 409 });
     }
@@ -326,12 +347,14 @@ export async function POST(request: Request) {
     let webDocumentContext: string | undefined;
     let webSearchJobMetadata: Record<string, unknown> = {};
     let requiredSearchUnavailable = false;
+    let requiredSearchClarification: string | undefined;
     if (webTool) {
       try {
         const userRequest = webSelection.evidenceRequest;
         if (webTool.kind === 'web_search') {
           const search = await webSearch.prepare();
-          requiredSearchUnavailable = search?.status !== 'ok';
+          requiredSearchClarification = search?.status === 'clarification_required' ? search.context : undefined;
+          requiredSearchUnavailable = search?.status !== 'ok' && !requiredSearchClarification;
           webDocumentContext = search?.context;
         } else {
           webDocumentContext = await webContextForRequest(webTool, userRequest);
@@ -385,15 +408,31 @@ export async function POST(request: Request) {
     if (execution.idempotent) {
       return NextResponse.json({ error: 'REQUEST_ALREADY_PROCESSED' }, { status: 409 });
     }
+    if (requiredSearchClarification) {
+      // Scope clarification performs no retrieval, model invocation, or usage reservation.
+      await finalizeGeneration({ executionId: execution.executionId, userId: user.id,
+        reservationId: null, operationKey, payloadHash, terminalStatus: 'completed', customerCharge: 0,
+        attemptCount: 0, actualUsage: { ...webSearch.snapshot(), completionStage: 'scope_clarification',
+          searchSubjectContext: webSearch.subjectForPersistence() } });
+      return new Response(`0:${JSON.stringify(requiredSearchClarification)}\n8:${JSON.stringify([
+        { type: 'vantra-search-context', executionId: execution.executionId }])}\nd:{"finishReason":"stop"}\n`,
+        { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Vercel-AI-Data-Stream': 'v1' } });
+    }
     if (requiredSearchUnavailable) {
       // A pre-search refusal is observable but never dispatches a model or reserves usage.
       webSearch.markUnverified();
       await finalizeGeneration({ executionId: execution.executionId, userId: user.id,
         reservationId: null, operationKey, payloadHash, terminalStatus: 'failed', customerCharge: 0,
         errorCode: 'CURRENT_INFORMATION_UNVERIFIED', failureOwner: 'vantra',
-        failureCategory: 'web_verification', attemptCount: 0, actualUsage: webSearch.snapshot() });
-      return NextResponse.json({ error: 'CURRENT_INFORMATION_UNVERIFIED',
-        message: currentInformationUnavailable(responseLanguage) }, { status: 409 });
+        failureCategory: 'web_verification', attemptCount: 0, actualUsage: { ...webSearch.snapshot(),
+          searchSubjectContext: webSearch.subjectForPersistence() } });
+      // The canonical execution remains failed with no model/usage reservation.
+      // A data-stream refusal preserves the explanation and owned subject in
+      // Studio; an HTTP error would replace it with a generic SDK failure.
+      return new Response(`0:${JSON.stringify(currentInformationUnavailable(responseLanguage))}\n8:${JSON.stringify([
+        { type: 'vantra-search-context', executionId: execution.executionId },
+        { type: 'vantra-web-verification', state: 'unverified', code: 'CURRENT_INFORMATION_UNVERIFIED' }])}\nd:{"finishReason":"error"}\n`,
+        { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Vercel-AI-Data-Stream': 'v1' } });
     }
     // Atomic reservation BEFORE provider dispatch: capacity is held under
     // the per-user lock, so concurrent requests cannot all pass a precheck
@@ -466,6 +505,9 @@ export async function POST(request: Request) {
 
     let outputStarted = false;
     let providerStarted = false;
+    const streamDiagnostics: Record<string, unknown> = { upstreamErrorObserved: false,
+      upstreamErrorCategory: null, upstreamErrorCode: null, upstreamHttpStatus: null,
+      providerFinishReason: null };
     let providerStreamReturned = false;
     let completedStream = false;
     let usageSettled = false;
@@ -543,6 +585,9 @@ export async function POST(request: Request) {
             ...(details.usage ?? {}),
             ...webSearch.snapshot(),
             ...webSearchJobMetadata,
+            searchTurnContext: webSearch.contextForPersistence(),
+            searchSubjectContext: webSearch.subjectForPersistence(),
+            ...streamDiagnostics,
           },
           attemptCount: providerStarted ? 1 : 0,
         });
@@ -624,6 +669,11 @@ export async function POST(request: Request) {
       if (webSearch.toolExposed) messagesPayload[0] = { role: 'system',
         content: `${messagesPayload[0].content}\n\n${WEB_SEARCH_TOOL_INSTRUCTION}\n\n${webEvidenceInstruction(false, true,
           evidenceModeForRequest(webSelection.evidenceRequest) !== 'structured_fact')}` };
+      if (searchStrategy.kind === 'provider_native') messagesPayload[0] = { role: 'system',
+        content: `${messagesPayload[0].content}\n\n${NATIVE_SEARCH_INSTRUCTION}\n\n${webEvidenceInstruction(false, true,
+          evidenceModeForRequest(webSelection.evidenceRequest) !== 'structured_fact')}` };
+      if (webTool?.kind === 'web_search' || webSearch.toolExposed || searchStrategy.kind === 'provider_native')
+        messagesPayload[0] = { role: 'system', content: `${messagesPayload[0].content}\n\n${SEARCH_ARTIFACT_INSTRUCTION}` };
       let documentToolCalls = 0;
       let documentToolResults = 0;
       let successfulDocumentExecutions = 0;
@@ -635,7 +685,8 @@ export async function POST(request: Request) {
       let actualSlideCount = 0;
       let emittedTextChars = 0;
       let streamedText = '';
-      let searchSynthesisText = '';
+      let finishAfterVerification: (() => Promise<void>) | null = null;
+      const searchArtifactParts: ChatMessagePart[] = [];
       const emittedResultIds = new Set<string>();
       const requestedSlideCount = Number.isInteger(body.requestedSlideCount)
         && body.requestedSlideCount >= 2 && body.requestedSlideCount <= 8
@@ -655,9 +706,10 @@ export async function POST(request: Request) {
         model: languageModel,
         messages: messagesPayload,
         tools: nativeTools,
-        toolChoice: requiredArtifactToolChoice(taskSelection, toolPath),
+        toolChoice: webDecision.path === 'optional' && webSearch.toolExposed
+          ? 'auto' : requiredArtifactToolChoice(taskSelection, toolPath),
         experimental_toolCallStreaming: Boolean(nativeTools && expectedAction),
-        maxSteps: webSearch.toolExposed && !expectedAction ? 2 : 1,
+        maxSteps: webSearch.toolExposed ? 2 : 1,
         temperature,
         maxTokens,
         topP,
@@ -667,25 +719,25 @@ export async function POST(request: Request) {
           if (chunk.type === 'text-delta') {
             emittedTextChars += chunk.textDelta.length;
             if (streamedText.length < 100_000) streamedText += chunk.textDelta.slice(0, 100_000 - streamedText.length);
-            if (webSearch.evidence() !== null && searchSynthesisText.length < 100_000)
-              searchSynthesisText += chunk.textDelta.slice(0, 100_000 - searchSynthesisText.length);
             if (chunk.textDelta.length > 0) outputStarted = true;
           }
           if (chunk.type === 'tool-call-streaming-start') {
             toolLifecycle.callStarted = true;
             toolLifecycle.toolNameReceived = true;
-            toolName = getArtifactTool(chunk.toolName) ? chunk.toolName : 'unrecognized_tool';
+            toolName = getArtifactTool(chunk.toolName) || chunk.toolName === 'web_search' ? chunk.toolName : 'unrecognized_tool';
           }
           if (chunk.type === 'tool-call') {
             toolLifecycle.callStarted = true;
             toolLifecycle.toolNameReceived = true;
             toolLifecycle.argumentsCompleted = true;
             toolLifecycle.argumentsValid = true;
-            toolName = getArtifactTool(chunk.toolName) ? chunk.toolName : 'unrecognized_tool';
+            toolName = getArtifactTool(chunk.toolName) || chunk.toolName === 'web_search' ? chunk.toolName : 'unrecognized_tool';
           }
           if (chunk.type === 'tool-call' && chunk.toolName === 'create_document') documentToolCalls++;
           if (chunk.type === 'tool-call' && chunk.toolName === 'create_presentation') presentationToolCalls++;
           if (chunk.type === 'tool-result') {
+            const searchPart = validatedArtifactPartFromToolResult(chunk.toolName, chunk.result);
+            if (searchPart) searchArtifactParts.push(searchPart);
             toolLifecycle.resultEmitted = true;
             const valid = Boolean(validatedArtifactPartFromToolResult(chunk.toolName, chunk.result));
             if (valid) toolLifecycle.resultValidated = true;
@@ -707,8 +759,15 @@ export async function POST(request: Request) {
           }
         },
         onFinish: async ({ finishReason, usage, toolResults }) => {
+          streamDiagnostics.providerFinishReason = finishReason;
           // The same pure guard used by the returned stream runs BEFORE terminal metadata is persisted.
-          if (!expectedAction) webSearch.validateAnswer(searchSynthesisText);
+          const structuredSearchArtifact = !searchArtifactParts.length ? parseChatArtifact(streamedText, responseLanguage) : null;
+          const webValidation = webSearch.evaluateOutput(structuredSearchArtifact ? '' : streamedText,
+            structuredSearchArtifact ? [{ type: structuredSearchArtifact.type, artifact: structuredSearchArtifact } as ChatMessagePart]
+              : searchArtifactParts);
+          trace('WEB_VERIFICATION', { decision: webDecision.path, strategy: searchStrategy.kind,
+            provider: route.providerId, providerModel: route.providerModelId,
+            accepted: webValidation?.accepted ?? null, failureReason: webValidation?.reason ?? null });
           trace('DOCUMENT_RESULT', { createDocumentCalled: documentToolCalls > 0, toolCallCount: documentToolCalls,
             toolResultCount: documentToolResults, toolExecutionSuccess: successfulDocumentExecutions > 0,
             toolResultValidationSuccess: validatedDocumentResults > 0,
@@ -743,37 +802,45 @@ export async function POST(request: Request) {
                 && expectedPart.artifact.slides.length === requestedSlideCount);
             const completion = assessChatCompletion({ expectedAction, finishReason, outputStarted,
               expectedResultValid, lifecycle: toolLifecycle });
-            const failed = !completion.completed;
-            trace('TOOL_LIFECYCLE', { action: expectedAction, toolName,
-              callStarted: toolLifecycle.callStarted, argumentsCompleted: toolLifecycle.argumentsCompleted,
-              argumentsValid: toolLifecycle.argumentsValid, executionStarted: toolLifecycle.executionStarted,
-              executionCompleted: toolLifecycle.executionCompleted, executionFailed: toolLifecycle.executionFailed,
-              resultEmitted: toolLifecycle.resultEmitted, resultValidated: expectedResultValid,
-              stage: completion.stage, failureCategory: completion.failureCategory });
-            if (!failed) {
-              completedStream = true;
-            }
-            await finalizeOnce({
-              terminalStatus: failed
-                ? failureStateForInterruptedStream(outputStarted)
-                : 'completed',
-              finishReason,
-              usage: {
-                promptTokens: usage.promptTokens,
-                completionTokens: usage.completionTokens,
-                totalTokens: usage.totalTokens,
-                completionStage: completion.stage,
-                expectedResultValidated: expectedResultValid,
-              },
-              errorCode: completion.failureCategory ? actionFailureCode(completion.failureCategory) : null,
-              failureOwner: failed ? completion.failureCategory === 'tool_execution_failed' ? 'vantra' : 'provider' : null,
-              failureCategory: completion.failureCategory,
-            });
-            // Only successful completions earn the reservation. Provider
-            // failures, cancellations, and interrupted streams release it,
-            // so held capacity is never consumed without output.
-            if (!failed) await settleChatUsage('completed');
-            else await settleChatUsage('released');
+            const finishCompletion = async () => {
+              if (request.signal.aborted) {
+                await finalizeOnce({ terminalStatus: 'user_cancelled', finishReason,
+                  errorCode: 'USER_CANCELLED', failureOwner: 'customer', failureCategory: 'user_cancel' });
+                await settleChatUsage('released');
+                return;
+              }
+              // The wire gate must also finish before a search-backed turn can Complete.
+              // Reuse the existing terminal/usage authority, not another settlement path.
+              const verificationFailed = webSearch.snapshot().webValidationOutcome === 'rejected';
+              const failed = !completion.completed || verificationFailed;
+              trace('TOOL_LIFECYCLE', { action: expectedAction, toolName,
+                callStarted: toolLifecycle.callStarted, argumentsCompleted: toolLifecycle.argumentsCompleted,
+                argumentsValid: toolLifecycle.argumentsValid, executionStarted: toolLifecycle.executionStarted,
+                executionCompleted: toolLifecycle.executionCompleted, executionFailed: toolLifecycle.executionFailed,
+                resultEmitted: toolLifecycle.resultEmitted, resultValidated: expectedResultValid,
+                stage: completion.stage, failureCategory: completion.failureCategory });
+              if (!failed) completedStream = true;
+              await finalizeOnce({
+                terminalStatus: failed ? failureStateForInterruptedStream(outputStarted) : 'completed',
+                finishReason,
+                usage: {
+                  promptTokens: usage.promptTokens,
+                  completionTokens: usage.completionTokens,
+                  totalTokens: usage.totalTokens,
+                  completionStage: completion.stage,
+                  expectedResultValidated: expectedResultValid,
+                },
+                errorCode: verificationFailed ? 'CURRENT_INFORMATION_UNVERIFIED'
+                  : completion.failureCategory ? actionFailureCode(completion.failureCategory) : null,
+                failureOwner: verificationFailed ? 'vantra'
+                  : failed ? completion.failureCategory === 'tool_execution_failed' ? 'vantra' : 'provider' : null,
+                failureCategory: verificationFailed ? 'web_verification' : completion.failureCategory,
+              });
+              // Existing failure/cancellation release semantics remain unchanged.
+              if (!failed) await settleChatUsage('completed');
+              else await settleChatUsage('released');
+            };
+            finishAfterVerification = finishCompletion;
           } catch (finalizationError) {
             console.error('[chat-generation] finalization failed', {
               executionId: execution.executionId,
@@ -792,6 +859,8 @@ export async function POST(request: Request) {
           ...(expectedAction && toolPath === 'native' ? { 'x-vantra-requires-tool-result': '1' } : {}),
         } },
         getErrorMessage: (error) => {
+          Object.assign(streamDiagnostics, safeStreamError(error));
+          trace('PROVIDER_STREAM_ERROR', safeStreamError(error));
           if (InvalidToolArgumentsError.isInstance(error)) {
             toolLifecycle.callStarted = true;
             toolLifecycle.toolNameReceived = true;
@@ -802,9 +871,24 @@ export async function POST(request: Request) {
           return '';
         },
       });
-      const guardedResponse = !expectedAction && (webTool?.kind === 'web_search' || webSearch.toolExposed)
-        ? await guardSearchDataStream(streamResponse, webSearch.evidence,
-          webSelection.evidenceRequest, now, responseLanguage) : streamResponse;
+      const guardedResponse = guardCurrentInformationStream(streamResponse, webSearch, {
+        required: webTool?.kind === 'web_search', language: responseLanguage, executionId: execution.executionId, operationId: operationKey,
+        onValidated: async () => { if (finishAfterVerification) await finishAfterVerification(); },
+        signal: request.signal,
+        onDiagnostics: (diagnostics) => Object.assign(streamDiagnostics, diagnostics),
+        onReadError: (error) => Object.assign(streamDiagnostics, safeStreamError(error)),
+        onTerminated: async (reason) => {
+          const cancelled = reason === 'cancelled';
+          const validationFailed = reason === 'validation_error';
+          await finalizeOnce({ terminalStatus: cancelled ? 'user_cancelled' : failureStateForInterruptedStream(outputStarted),
+            errorCode: cancelled ? 'USER_CANCELLED' : validationFailed ? 'CURRENT_INFORMATION_UNVERIFIED' : 'PROVIDER_STREAM_FAILED',
+            failureOwner: cancelled ? 'customer' : validationFailed ? 'vantra' : 'provider',
+            failureCategory: cancelled ? 'user_cancel' : validationFailed ? 'web_verification' : 'provider_stream_failure',
+            usage: { completionStage: 'stream_gate', streamGateFailure: reason },
+          });
+          await settleChatUsage('released');
+        },
+      });
       return traceId ? traceChatDataStream(guardedResponse, traceId,
         ({ textChars, status, errorCategory }) => trace('SERVER_STREAM', { textChars, status, errorCategory: errorCategory ?? null }), request.signal)
         : guardedResponse;

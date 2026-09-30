@@ -1,9 +1,12 @@
+import { searchContextReference } from '@/lib/web/search-context';
+
 type TextPart = { type: 'text'; text: string };
 
 type ChatHistoryMessage = {
   role: string;
   content?: unknown;
   parts?: unknown;
+  annotations?: unknown;
   experimental_attachments?: Array<{ name?: string; contentType?: string; url: string }>;
 };
 
@@ -47,13 +50,14 @@ export function chatRequestMessages(messages: readonly ChatHistoryMessage[]) {
   return messages.map((message) => ({
     role: message.role,
     content: completeMessageText(message),
+    ...(searchContextReference(message.annotations) ? { annotations: [searchContextReference(message.annotations)] } : {}),
     ...(message.experimental_attachments != null ? { experimental_attachments: message.experimental_attachments } : {}),
   }));
 }
 
 export function providerChatMessages(messages: readonly ChatHistoryMessage[]) {
   return messages.map((message) => {
-    const { vantraParts: _artifactParts, parts: _uiParts, toolInvocations: _tools, ...providerMessage } =
+    const { vantraParts: _artifactParts, parts: _uiParts, toolInvocations: _tools, annotations: _annotations, ...providerMessage } =
       message as ChatHistoryMessage & { vantraParts?: unknown; toolInvocations?: unknown };
     return { ...providerMessage, content: completeMessageText(message) };
   });

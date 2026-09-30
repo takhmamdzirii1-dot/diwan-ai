@@ -39,16 +39,16 @@ function fixture(request: string, options: { failBrave?: boolean; failBoth?: boo
   return { search, counts: () => [brave, tavily] };
 }
 
-test('current drivers, models, releases, and provider information REQUIRE one search', async () => {
-  for (const request of ['latest NVIDIA RTX driver', 'latest AI model releases',
+test('scoped current drivers, models, releases, and provider information REQUIRE one search', async () => {
+  for (const request of ['latest NVIDIA RTX driver Windows 11 Game Ready', 'latest AI model releases',
     'current provider model information', 'اخر نماذج open ai', 'derniers modèles AcmeNova',
     'Create a presentation about current AcmeNova models']) {
     assert.equal(decideWebSearch(request).path, 'required', request);
     const f = fixture(request, { hits: [
       { title: `Current ${request}`, url: 'https://vendor.example/current',
-        description: `The current information about ${request} is documented in the latest product listing.` },
+        description: `The current information about ${request} is documented in the latest product listing.${request.includes('driver') ? ' Current 600.10.' : ''}` },
       { title: `Research about ${request}`, url: 'https://research.example/current',
-        description: `This independent source discusses ${request} and current product details.` },
+        description: `This independent source discusses ${request} and current product details.${request.includes('driver') ? ' Current 600.10.' : ''}` },
     ] });
     assert.equal((await f.search.prepare())?.status, 'ok');
     assert.deepEqual(f.counts(), [1, 0]);
@@ -92,7 +92,10 @@ test('artifact exposure does not suppress native web_search; explicit artifact r
   assert.equal(f.search.snapshot().webSearchToolCalled, true);
   const explicit = selectArtifactTools('Create a presentation about current AcmeNova models');
   assert.deepEqual(explicit.names, ['create_presentation']);
-  assert.equal(fixture('Create a presentation about current AcmeNova models').search.toolExposed, true);
+  const required = fixture('Create a presentation about current AcmeNova models');
+  assert.equal(required.search.toolExposed, false);
+  assert.equal((await required.search.prepare())?.status, 'ok');
+  assert.deepEqual(required.counts(), [1, 0]);
 });
 
 test('none and tool-incapable optional turns make zero search calls; required still pre-searches', async () => {
@@ -116,7 +119,8 @@ test('required unavailable/insufficient search fails honestly and never earns sy
   assert.equal((await f.search.prepare())?.status, 'unavailable');
   assert.deepEqual(f.counts(), [1, 1]);
   assert.equal(f.search.snapshot().webSearchApiRequestCount, 2);
-  assert.equal((await f.search.nativeTool!.execute!({ query: 'retry' })).status, 'unavailable');
+  assert.equal(f.search.nativeTool, undefined, 'required search has no redundant model search tool');
+  assert.equal((await f.search.prepare())?.status, 'unavailable');
   assert.deepEqual(f.counts(), [1, 1], 'no retry loop after a failed search');
   f.search.markUnverified();
   assert.equal(f.search.snapshot().synthesisAccepted, false);
@@ -126,14 +130,17 @@ test('required unavailable/insufficient search fails honestly and never earns sy
   const refusal = route.slice(route.indexOf('if (requiredSearchUnavailable)'), route.indexOf('let chatReserved'));
   assert.match(refusal, /CURRENT_INFORMATION_UNVERIFIED/);
   assert.match(refusal, /attemptCount: 0/);
-  assert.match(refusal, /actualUsage: webSearch.snapshot\(\)/);
+  assert.match(refusal, /actualUsage: \{ \.\.\.webSearch.snapshot\(\)/);
+  assert.match(refusal, /searchSubjectContext: webSearch.subjectForPersistence\(\)/);
+  assert.match(refusal, /X-Vercel-AI-Data-Stream/);
+  assert.doesNotMatch(refusal, /NextResponse.json|3:/, 'verification refusal must not be discarded as a generic SDK transport error');
   assert.doesNotMatch(refusal, /streamText|reserveChatUsage/);
 });
 
-test('technical Brave failure uses Tavily once; cached native calls reuse pre-search', async () => {
+test('technical Brave failure uses Tavily once; repeated prepare reuses pre-search', async () => {
   const f = fixture('current AcmeNova models', { failBrave: true });
   assert.equal((await f.search.prepare())?.status, 'ok');
-  await f.search.nativeTool!.execute!({ query: 'another query' });
+  await f.search.prepare();
   assert.deepEqual(f.counts(), [1, 1]);
   assert.equal(f.search.snapshot().webSearchFallbackUsed, true);
   assert.equal(f.search.snapshot().webSearchProviderUsed, 'tavily');
@@ -176,7 +183,9 @@ test('required and optional paths share evidence, source-ID guard, and safe term
   }
   const route = readFileSync(new URL('../../app/api/generate/chat/route.ts', import.meta.url), 'utf8');
   assert.doesNotMatch(route, /taskSelection\.names\.length === 0/);
-  assert.ok(route.indexOf('webSearch.validateAnswer(searchSynthesisText)') < route.lastIndexOf('await finalizeOnce({'));
+  const validation = route.indexOf('const webValidation = webSearch.evaluateOutput');
+  assert.ok(validation >= 0 && validation < route.lastIndexOf('await finalizeOnce({'));
+  assert.match(route, /const failed = !completion.completed \|\| verificationFailed/);
 });
 
 test('unused optional search preserves incremental ordinary Chat streaming', async () => {

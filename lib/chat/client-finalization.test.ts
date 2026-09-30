@@ -1,6 +1,37 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { ChatRequestTracker, ChatStreamFinalizer, consumeCanonicalChatStream, hasUsableCanonicalOutput, restoreCanonicalAssistantText } from './client-finalization';
+import { chatRequestMessages, serializeChatSession } from './message-history';
+import { precedingSearchReference } from '@/lib/web/search-context';
+
+test('canonical stream retains the owned execution reference even when the SDK discards a failed answer', async () => {
+  const reference = { type: 'vantra-search-context' as const, executionId: '11111111-1111-4111-8111-111111111111' };
+  for (const status of ['completed', 'unverified'] as const) {
+    let committed: { text: string; annotations?: unknown[] } | undefined;
+    const finalizer = new ChatStreamFinalizer('qa-reference', result => { committed = result; });
+    const wire = `0:"Safe answer"\n8:${JSON.stringify([reference, { secret: 'must-not-persist' },
+      ...(status === 'unverified' ? [{ type: 'vantra-web-verification', state: 'unverified', code: 'CURRENT_INFORMATION_UNVERIFIED' }] : [])])}\nd:${JSON.stringify({ finishReason: status === 'completed' ? 'stop' : 'error' })}\n`;
+    const received = await consumeCanonicalChatStream(new Response(wire).body!, delta => finalizer.append(delta),
+      undefined, undefined, undefined, undefined, value => finalizer.setSearchReference(value));
+    finalizer.rawDone(received); finalizer.consumerDone();
+    assert.deepEqual(committed?.annotations, [reference]);
+    const restored = JSON.parse(serializeChatSession([{ id: 'assistant', role: 'assistant',
+      content: committed!.text, annotations: committed!.annotations }], () => []));
+    assert.deepEqual(precedingSearchReference(chatRequestMessages(restored)), reference);
+    assert.doesNotMatch(JSON.stringify(restored), /must-not-persist/);
+  }
+});
+
+test('Web verification refusal preserves the honest text but never reports successful canonical output', async () => {
+  const text = 'لم أتمكن من التحقق من المعلومات الحالية.';
+  const frame = `0:${JSON.stringify(text)}\n8:[{"type":"vantra-web-verification","state":"unverified","code":"CURRENT_INFORMATION_UNVERIFIED"}]\nd:{"finishReason":"error"}\n`;
+  let received = '';
+  const status = await consumeCanonicalChatStream(new Response(frame).body!, delta => { received += delta; });
+  assert.equal(status, 'unverified'); assert.equal(received, text);
+  assert.equal(hasUsableCanonicalOutput(status, received, []), false);
+  assert.equal(await consumeCanonicalChatStream(new Response(frame.replace('d:', '3:"provider error"\nd:')).body!,
+    () => undefined), 'error', 'a real provider error cannot be hidden by a verification annotation');
+});
 import { chatPartsFromMessage } from '@/lib/artifacts/chat-parts';
 import { runArtifactTool } from '@/lib/artifacts/tool-registry';
 

@@ -166,14 +166,14 @@ test('harmless search preamble and escaped formatting space normalize only after
   const hits = [{ title: 'Node.js release notes', url: 'https://nodejs.org/en/blog/release',
     description: 'Node.js Current 26.1.0.', source: 'nodejs.org', evidenceLevel: 'primary_search' as const }];
   const now = new Date('2026-09-29T12:00:00Z');
-  const valid = 'وفق المصادر، الإصدار Current هو 26.1.0. [Node.js release notes](https://nodejs.org/en/blog/release)';
+  const valid = 'وفق المصادر، الإصدار Current هو 26.1.0. [[source:S1]]';
   assert.equal(searchSynthesisRejectionReason(valid, hits, 'latest Node.js version now', now, 'ar'), 'raw_results');
   const guarded = await guardSearchDataStream(new Response(`0:${JSON.stringify(valid)}\n`),
     hits, 'latest Node.js version now', now, 'ar');
   const text = await guarded.text();
   assert.match(text, /الإصدار Current هو 26\.1\.0/);
   assert.doesNotMatch(text, /وفق المصادر/);
-  const invalid = 'وفق المصادر، الإصدار Current هو 99.0.0. [Node.js release notes](https://nodejs.org/en/blog/release)';
+  const invalid = 'وفق المصادر، الإصدار Current هو 99.0.0. [[source:S1]]';
   const rejected = await (await guardSearchDataStream(new Response(`0:${JSON.stringify(invalid)}\n`),
     hits, 'latest Node.js version now', now, 'ar')).text();
   assert.doesNotMatch(rejected, /99\.0\.0/);
@@ -190,7 +190,7 @@ test('search evidence preserves exact source URL/date and never promotes older r
   const evidence = searchEvidence(hits, 'ابحث عن آخر أخبار اليوم', now);
   assert.equal(evidence.publishedToday, false);
   assert.match(evidence.text, /No retrieved source has a verified publication date of 2026-09-28/);
-  assert.match(evidence.text, /Published: 2026-09-27/);
+  assert.match(evidence.text, /Page published: 2026-09-27/);
   const summary = groundedSearchSummary(hits, 'news today', now);
   assert.match(summary, /could not verify the current fact/);
   assert.doesNotMatch(summary, /verified as published today|Brave|Tavily|^- /m);
@@ -205,7 +205,7 @@ test('search-answer stream uses retrieved evidence even if model prose names an 
   const hits = [{ title: 'Official notes', url: 'https://example.org/release', description: 'Version 1.2.',
     publishedAt: '2026-09-27', source: 'example.org' }];
   const now = new Date('2026-09-28T12:00:00Z');
-  const valid = `See [Official notes](https://example.org/release) for version 1.2.`;
+  const valid = `See the official notes for version 1.2. [[source:S1]]`;
   assert.equal(answerUsesOnlySearchSources(valid, hits, 'latest release', now), true);
   assert.equal(answerUsesOnlySearchSources('See [Fake](https://fake.example/release).', hits, 'latest release', now), false);
   assert.equal(answerUsesOnlySearchSources('According to an unlinked mystery source...', hits, 'latest release', now), false);
@@ -227,7 +227,8 @@ test('search answers prefer a relevant primary source, cite at most three, and l
     { title: 'Fourth story', url: 'https://fourth.example/story', description: 'Yet another release.', publishedAt: '2026-09-24' },
   ];
   const answer = groundedSearchSummary(hits, 'latest Node.js version now', now);
-  assert.match(answer, /Current release is 26\.1\.0.*LTS release is 24\.4\.0/);
+  assert.match(answer, /Current release is 26\.1\.0/);
+  assert.doesNotMatch(answer, /24\.4\.0/, 'a dated blog is not proof of the latest LTS branch');
   assert.match(answer, /https:\/\/nodejs\.org/);
   assert.doesNotMatch(answer, /Node\.js might|Node\.js 26\.1\.0 is available/);
   assert.equal((answer.match(/\]\(https:\/\//g) ?? []).length, 1);
@@ -254,7 +255,7 @@ test('same-call search synthesis answers in resolved Arabic and French without c
   const now = new Date('2026-09-28T12:00:00Z');
   const hits = [{ title: 'Node.js release notes', url: 'https://nodejs.org/en/blog/release',
     description: 'Node.js 26.1.0 is available. The release includes fixes.', publishedAt: '2026-09-28', verifiedPage: true }];
-  const citation = '[Node.js release notes](https://nodejs.org/en/blog/release)';
+  const citation = '[[source:S1]]';
   const arabic = `الإصدار الأحدث الموثّق هو Node.js 26.1.0. ${citation}`;
   const french = `La version publiée est Node.js 26.1.0. ${citation}`;
   for (const [request, language, answer] of [
@@ -276,11 +277,11 @@ test('explicit English override and unsupported claims fail safely without anoth
   const hits = [{ title: 'Node.js release notes', url: 'https://nodejs.org/en/blog/release',
     description: 'Node.js Current 26.1.0 is available.', publishedAt: '2026-09-28', verifiedPage: true }];
   const request = 'ما هو أحدث إصدار من Node.js؟ Answer in English.';
-  const valid = 'The release note identifies version 26.1.0. [Node.js release notes](https://nodejs.org/en/blog/release)';
+  const valid = 'The release note identifies version 26.1.0. [[source:S1]]';
   assert.equal(usableSearchSynthesis(valid, hits, request, now, 'en'), true);
-  assert.equal(usableSearchSynthesis('Node.js Current 26.1.0 is available. [Node.js release notes](https://nodejs.org/en/blog/release)',
+  assert.equal(usableSearchSynthesis('Node.js Current 26.1.0 is available. [[source:S1]]',
     hits, request, now, 'en'), false);
-  const invented = 'The latest is version 99.0.0. [Node.js release notes](https://nodejs.org/en/blog/release)';
+  const invented = 'The latest is version 99.0.0. [[source:S1]]';
   assert.equal(usableSearchSynthesis(invented, hits, request, now, 'en'), false);
   const result = await (await guardSearchDataStream(new Response(`0:${JSON.stringify(invented)}\n`), hits,
     request, now, 'en')).text();
@@ -292,7 +293,7 @@ test('English question stays English when a retrieved source is Arabic', async (
   const now = new Date('2026-09-28T12:00:00Z');
   const hits = [{ title: 'إعلان رسمي', url: 'https://example.org/release',
     description: 'صدر الإصدار 26.1.0 اليوم.', publishedAt: '2026-09-28', verifiedPage: true }];
-  const answer = 'The announcement reports version 26.1.0. [إعلان رسمي](https://example.org/release)';
+  const answer = 'The announcement reports version 26.1.0. [[source:S1]]';
   assert.equal(usableSearchSynthesis(answer, hits, 'What is the latest version now?', now, 'en'), true);
   const guarded = await (await guardSearchDataStream(new Response(`0:${JSON.stringify(answer)}\n`), hits,
     'What is the latest version now?', now, 'en')).text();
@@ -574,8 +575,7 @@ test('official current major plus independent exact releases forms a grounded bu
   assert.doesNotMatch(answer, /could not verify/i);
   assert.equal((answer.match(/\]\(https:\/\//g) ?? []).length, 3);
   const sourced = 'The Current release appears to be 26.10.0; the official site confirms the current series. '
-    + '[Acme downloads](https://acme.com/downloads) [Acme update](https://first.example/acme) '
-    + '[Independent Acme release check](https://second.test/acme)';
+    + '[[source:S1]] [[source:S2]] [[source:S3]]';
   assert.equal(usableSearchSynthesis(sourced, result.hits, request, new Date(), 'en'), true);
   assert.equal(usableSearchSynthesis('The Current release appears to be 99.0.0. '
     + '[Acme downloads](https://acme.com/downloads) [Acme update](https://first.example/acme) '
@@ -637,6 +637,19 @@ test('Arabic and English current-version questions use one normalized primary re
   }
 });
 
+test('fresh mixed-script model research uses an entity-preserving primary query without a brand map', async () => {
+  for (const [request, expected] of [['اخر نماذج open ai', 'open ai latest models official'],
+    ['اخر نماذج Acme Nova', 'Acme Nova latest models official']] as const) {
+    const calls: string[] = [];
+    await searchContextForRequest(request, request, {
+      search: async (query) => { calls.push(query); return { sourceId: 'search:brave', name: 'Results',
+        mimeType: 'text/markdown', text: '', hits: [] }; },
+      read: async () => { throw new Error('no URL read without candidates'); },
+    });
+    assert.deepEqual(calls, [expected]);
+  }
+});
+
 test('timeless or uncertain multi-entity requests keep their original retrieval query', async () => {
   for (const [query, request] of [
     ['اشرح Node.js', 'اشرح Node.js'],
@@ -674,8 +687,8 @@ test('today-dated official news is usable without an artificial version or price
   let fallbackCalls = 0;
   const result = await searchContextForRequest(request, request, {
     search: async () => ({ sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
-      { title: 'Acme announces new release', url: 'https://acme.com/news/release', publishedAt: today,
-        description: 'Acme announced a new release today with updated features for customers.' },
+      { title: 'Acme announces new release', url: 'https://acme.com/news/new-product-announcement', publishedAt: today,
+        description: `Acme announced a new release on ${today} with updated features for customers.` },
     ] }),
     fallback: async () => { fallbackCalls++; throw new Error('not needed'); },
     read: async () => { throw new Error('URL_TOO_LARGE'); },
@@ -769,10 +782,10 @@ test('cross-language Africa news retains bounded distinct candidates for one sel
     title: `Acme release ${index}`, url: `https://acme.example/release-${index}`,
     description: 'Acme Current 26.10.0.', evidenceLevel: 'primary_search' as const,
   }));
-  const fourCitations = `Current is 26.10.0. ${structured.map((hit) =>
-    `[${hit.title}](${hit.url})`).join(' ')}`;
+  const fourCitations = `Current is 26.10.0. ${structured.map((hit, index) =>
+    `[[source:S${index + 1}]]`).join(' ')}`;
   assert.equal(searchSynthesisRejectionReason(fourCitations, structured,
-    'latest Acme version now', new Date(), 'en'), 'too_many_citations');
+    'latest Acme version now', new Date(), 'en'), null);
   assert.equal(tavilyCalls, 0);
 });
 
@@ -844,7 +857,7 @@ test('fresh-news item count is independent of valid corroborating source-token o
   assert.equal(searchSynthesisRejectionReason(`${answer}\n6. Another report appeared. [[source:S1]]`,
     hits, request, now, 'en'), 'too_many_items');
   assert.equal(searchSynthesisRejectionReason(answer.replace('3. Energy officials published an update. [[source:S5]]',
-    '3. Energy officials published an update.'), hits, request, now, 'en'), null);
+    '3. Energy officials published an update.'), hits, request, now, 'en'), 'missing_claim_citation');
   assert.equal(searchSynthesisRejectionReason(answer.replace('[[source:S7]]', '[[source:S99]]'),
     hits, request, now, 'en'), 'unsupported_url');
   assert.equal(searchSynthesisRejectionReason(answer.replace('[[source:S7]]',
@@ -943,10 +956,10 @@ test('news count and timeframe caps never imply unsupported stories or dates', a
   const old = new Date(Date.parse(today) - 20 * 86_400_000).toISOString().slice(0, 10);
   const recent = new Date(Date.parse(today) - 2 * 86_400_000).toISOString().slice(0, 10);
   const dated = [
-    { title: 'Africa summit report', url: 'https://first.example/story', publishedAt: recent,
-      description: 'African leaders held a summit with regional policy announcements.' },
-    { title: 'Nigeria infrastructure update', url: 'https://second.test/story', publishedAt: recent,
-      description: 'Nigeria announced an infrastructure project with regional effects.' },
+    { title: 'Africa summit report', url: 'https://first.example/africa-summit-announcement', publishedAt: recent,
+      description: `African leaders announced a summit on ${recent} with regional policy announcements.` },
+    { title: 'Nigeria infrastructure update', url: 'https://second.test/nigeria-infrastructure-announcement', publishedAt: recent,
+      description: `Nigeria announced an infrastructure project on ${recent} with regional effects.` },
     { title: 'Older Africa report', url: 'https://third.net/story', publishedAt: old,
       description: 'An earlier African Union report from a previous news cycle.' },
   ];
@@ -1197,11 +1210,11 @@ test('undated same-major semver needs an official Current series and independent
   assert.notEqual(price.reason, 'latest_supported_semver');
 });
 
-test('canonical citation identity accepts decoration but never substitutes path or subdomain', () => {
+test('source IDs preserve exact returned URL decoration and reject model-authored URLs', () => {
   const source = { title: 'Official update', url: 'https://www.example.com/article?utm_source=x#latest',
     description: 'Acme opened a new office.' };
   assert.equal(canonicalSearchUrl(source.url), 'https://example.com/article');
-  assert.equal(answerUsesOnlySearchSources('Acme opened a new office. [Update](https://example.com/article)',
+  assert.equal(answerUsesOnlySearchSources('Acme opened a new office. [[source:S1]]',
     [source], 'latest Acme version now'), true);
   assert.equal(answerUsesOnlySearchSources('Acme opened a new office. [Update](https://example.com/other)',
     [source], 'latest Acme version now'), false);
@@ -1238,7 +1251,7 @@ test('fresh news accepts source IDs and bullets, but rejects model-authored URLs
     request, new Date(), 'ar'), 'unsupported_date');
   const structured = [{ title: 'Acme downloads', url: 'https://acme.com/download/current',
     description: 'Current 8.2.0.', evidenceLevel: 'primary_search' as const }];
-  assert.equal(searchSynthesisRejectionReason('Current 99.0.0. [Acme downloads](https://acme.com/download/current)',
+  assert.equal(searchSynthesisRejectionReason('Current 99.0.0. [[source:S1]]',
     structured, 'latest Acme version now', new Date(), 'en'), 'unsupported_number');
 });
 
@@ -1268,11 +1281,11 @@ test('fresh answer numbers must belong to a cited retrieved source, not merely a
       evidenceLevel: 'corroborated' as const, evidenceId: 'S2' },
   ];
   const request = 'latest Acme version now';
-  assert.equal(usableSearchSynthesis('Current is 8.2.0. [Acme downloads](https://acme.com/downloads)',
+  assert.equal(usableSearchSynthesis('Current is 8.2.0. [[source:S1]]',
     hits, request, new Date(), 'en'), true);
-  assert.equal(usableSearchSynthesis('Current is 99.0.0. [Acme downloads](https://acme.com/downloads)',
+  assert.equal(usableSearchSynthesis('Current is 99.0.0. [[source:S1]]',
     hits, request, new Date(), 'en'), false);
-  assert.equal(usableSearchSynthesis('Current is 99.0.0. [Other product](https://other.example/release)',
+  assert.equal(usableSearchSynthesis('Current is 99.0.0. [[source:S2]]',
     hits, request, new Date(), 'en'), false);
 });
 
@@ -1344,7 +1357,7 @@ test('corroboration rejects duplicate domains and conflicting source groups', as
   }
 });
 
-test('confirmation follow-up re-verifies only the preceding answered fresh claim', () => {
+test('confirmation follow-up re-verifies the preceding fresh subject even after failed output', () => {
   const fresh = 'ما هو أحدث إصدار من Node.js الآن؟';
   const history = [{ role: 'user', content: fresh },
     { role: 'assistant', content: 'الإصدار الأحدث 20.20.0.' }];
@@ -1355,7 +1368,7 @@ test('confirmation follow-up re-verifies only the preceding answered fresh claim
     { role: 'user', content: 'Explain recursion' }, { role: 'assistant', content: 'It calls itself.' },
   ]), { decision: { path: 'none' }, evidenceRequest: 'are you sure?' });
   assert.deepEqual(decideWebSearchWithHistory('هل أنت متأكد؟', [{ role: 'user', content: fresh }]),
-    { decision: { path: 'none' }, evidenceRequest: 'هل أنت متأكد؟' });
+    { decision: { path: 'required', tool: { kind: 'web_search', query: fresh } }, evidenceRequest: fresh });
 });
 
 test('Arabic confirmation follow-up re-runs the inherited query through the evidence ladder', async () => {
@@ -1735,13 +1748,15 @@ test('Brave provider adapter is bounded and keeps its server key out of results'
     assert.match(String(input), /^https:\/\/api\.search\.brave\.com\/res\/v1\/web\/search\?/);
     assert.equal(new URL(String(input)).searchParams.get('count'), '8');
     assert.equal((init?.headers as Record<string, string>)['X-Subscription-Token'], 'test-key-not-for-model');
-    return Response.json({ web: { results: [{ title: 'Example result', url: 'https://example.org/a?token=hidden',
+    return Response.json({ web: { results: [{ title: 'Unsafe result', url: 'https://example.org/a?token=hidden',
+      description: 'This credentialed URL must be excluded.' }, { title: 'Example result', url: 'https://example.org/a?view=release',
       description: '<b>Relevant</b> summary' }] } });
   });
   const result = await searchWeb('launch trends', provider);
   assert.equal(called, 1);
   assert.match(result.text, /Relevant summary/);
   assert.doesNotMatch(result.text, /test-key-not-for-model|token=hidden/);
+  assert.match(result.text, /view=release/);
   await assert.rejects(searchWeb('x', null), /WEB_SEARCH_UNCONFIGURED/);
 });
 

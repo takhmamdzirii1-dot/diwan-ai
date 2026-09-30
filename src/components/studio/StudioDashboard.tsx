@@ -304,7 +304,7 @@ export default function StudioDashboard({
       const { requestedSlideCount } = requestAction;
       let nativeToolResultRequired = false;
       let streamErrorReason: 'provider_error' | 'network_error' = 'network_error';
-      const finalizer = new ChatStreamFinalizer(requestId, ({ text, artifacts, status }) => {
+      const finalizer = new ChatStreamFinalizer(requestId, ({ text, artifacts, status, annotations }) => {
         if (activeFinalizerRef.current !== finalizer) return;
         if ((activeSessionIdRef.current ?? 'default-session') !== sessionId) return;
         const presentation = presentationCompletion(text, artifacts, requestedSlideCount, locale);
@@ -314,7 +314,20 @@ export default function StudioDashboard({
         const finalText = action.text;
         const actionValid = action.valid && (!nativeToolResultRequired || !requestAction.expectedTool
           || artifacts.some((part) => partMatchesRequestedAction(part, requestAction.expectedTool!)));
-        if (presentation.valid && actionValid && hasUsableCanonicalOutput(status, finalText, finalArtifacts)) {
+        if (status === 'unverified') {
+          // Server-filtered refusal, not a successful answer or a provider outage.
+          // Keep its explanation and owned context available for the next turn.
+          recordRequestOutcome(requestId, sessionId, 'verification_failed');
+          setMessages((current) => {
+            const last = current[current.length - 1];
+            const assistant = last?.role === 'assistant' ? { ...last, content: text, vantraParts: [],
+              ...(annotations ? { annotations } : {}), createdAt: last.createdAt ?? new Date() }
+              : { id: crypto.randomUUID(), role: 'assistant' as const,
+              content: text, ...(annotations ? { annotations } : {}), createdAt: new Date() };
+            canonicalFinalRef.current = { sessionId, messageId: assistant.id, text };
+            return last?.role === 'assistant' ? [...current.slice(0, -1), assistant] : [...current, assistant];
+          });
+        } else if (presentation.valid && actionValid && hasUsableCanonicalOutput(status, finalText, finalArtifacts)) {
           recordRequestOutcome(requestId, sessionId, 'completed');
           setMessages((current) => {
             if ((activeSessionIdRef.current ?? 'default-session') !== sessionId) return current;
@@ -325,11 +338,11 @@ export default function StudioDashboard({
             if (last?.role === 'assistant') {
               canonicalFinalRef.current = { sessionId, messageId: last.id, text: finalText };
               return [...current.slice(0, -1), { ...last, createdAt: last.createdAt ?? new Date(), content: finalText,
-                ...(finalArtifacts.length > 0 ? { vantraParts } : {}) }];
+                ...(annotations ? { annotations } : {}), ...(finalArtifacts.length > 0 ? { vantraParts } : {}) }];
             }
             if (last?.role === 'user') {
               const assistant = { id: crypto.randomUUID(), role: 'assistant' as const, createdAt: new Date(), content: finalText,
-                ...(finalArtifacts.length > 0 ? { vantraParts } : {}) };
+                ...(annotations ? { annotations } : {}), ...(finalArtifacts.length > 0 ? { vantraParts } : {}) };
               canonicalFinalRef.current = { sessionId, messageId: assistant.id, text: finalText };
               return [...current, assistant];
             }
@@ -375,7 +388,7 @@ export default function StudioDashboard({
           if (event.toolName === 'create_document' && event.resultValidated) validatedDocumentResults++;
           if (event.toolName === 'create_presentation' && event.called) presentationToolCalls++;
           if (event.toolName === 'create_presentation' && event.resultValidated) validatedPresentationResults++;
-        }).then((status) => {
+        }, (reference) => finalizer.setSearchReference(reference)).then((status) => {
           if (chatDebugEnabled) console.info('[VANTRA_CHAT_DEBUG] CLIENT_STREAM', {
             requestId, textChars: finalizer.textChars, documentToolCalls,
             validatedDocumentResults, presentationToolCalls, validatedPresentationResults,
