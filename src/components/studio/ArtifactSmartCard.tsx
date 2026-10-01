@@ -3,6 +3,8 @@
 import { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { ChatMessagePart } from '@/lib/artifacts/chat-parts';
+import type { ChatWebSource } from '@/lib/chat/web-sources';
+import { copyChatContent } from '@/lib/chat/copy-content';
 import type { ChartArtifact, PresentationArtifact, SpreadsheetArtifact, ArtifactSheet } from '@/lib/artifacts/core';
 import { presentationFromSheet } from '@/lib/artifacts/spreadsheet-actions';
 import { artifactActionLabel, chartFromStructuredRows, documentTable, presentationFromChart,
@@ -27,11 +29,12 @@ const syntheticSheet = (artifact: SpreadsheetArtifact): ArtifactSheet | null => 
   return sheet ? { ...sheet, rows: [sheet.columns, ...sheet.rows] } : null;
 };
 
-export default function ArtifactSmartCard({ part, locale, onRequestPrompt, timestamp }: {
+export default function ArtifactSmartCard({ part, locale, onRequestPrompt, timestamp, sources }: {
   part: Extract<ChatMessagePart, { artifact: unknown }>;
   locale: string;
   onRequestPrompt?: (prompt: string, artifact?: import('@/lib/artifacts/core').SpreadsheetArtifact, context?: string) => void;
   timestamp?: string | null;
+  sources?: ChatWebSource[];
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [generatedChart, setGeneratedChart] = useState<ChartArtifact | null>(null);
@@ -51,7 +54,8 @@ export default function ArtifactSmartCard({ part, locale, onRequestPrompt, times
     try {
       if (action === 'copy' || action === 'copy_table' || action === 'copy_outline') {
         const text = action === 'copy_table' && part.type === 'document' ? readableTableCopy(part.artifact) : readableArtifactCopy(part);
-        await navigator.clipboard.writeText(text);
+        if (part.type === 'document') await copyChatContent(text, sources?.map((source) => source.url));
+        else await navigator.clipboard.writeText(text);
         setNotice(copied);
       } else if (action === 'preview' || action === 'export_document') setPreviewOpen(true);
       else if (action === 'create_chart') {
@@ -95,7 +99,7 @@ export default function ArtifactSmartCard({ part, locale, onRequestPrompt, times
   };
 
   return <section data-testid={`artifact-${part.type}`} className="w-full space-y-2" dir="ltr" aria-label={title}>
-    {part.type === 'document' && <ArtifactDocumentPreview artifact={part.artifact} locale={locale} onClose={() => undefined} inline />}
+    {part.type === 'document' && <ArtifactDocumentPreview artifact={part.artifact} locale={locale} sources={sources} onClose={() => undefined} inline />}
     {part.type === 'spreadsheet' && <ArtifactSpreadsheetPreview initialArtifact={part.artifact} locale={locale} onClose={() => undefined}
       onAnalyze={(prompt, artifact, context) => onRequestPrompt?.(prompt, artifact, context)} inline inlineActionsHandledExternally />}
     {part.type === 'chart' && <div className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-3">
@@ -121,7 +125,7 @@ export default function ArtifactSmartCard({ part, locale, onRequestPrompt, times
     {notice && <span role="status" className="text-xs text-[var(--studio-text-secondary)]">{notice}</span>}
     {actionError && <p role="alert" className="text-xs text-red-300">{actionError}</p>}
     {generatedChart && <ArtifactSmartCard part={{ type: 'chart', artifact: generatedChart }} locale={locale} />}
-    {previewOpen && part.type === 'document' && <ArtifactDocumentPreview artifact={part.artifact} locale={locale} onClose={() => setPreviewOpen(false)} />}
+    {previewOpen && part.type === 'document' && <ArtifactDocumentPreview artifact={part.artifact} locale={locale} sources={sources} onClose={() => setPreviewOpen(false)} />}
     {previewOpen && part.type === 'spreadsheet' && <ArtifactSpreadsheetPreview initialArtifact={part.artifact} locale={locale}
       onClose={() => setPreviewOpen(false)} onAnalyze={(prompt, artifact, context) => { setPreviewOpen(false); onRequestPrompt?.(prompt, artifact, context); }} />}
     {previewOpen && part.type === 'presentation' && <ArtifactPresentationPreview artifact={part.artifact} onClose={() => setPreviewOpen(false)} />}

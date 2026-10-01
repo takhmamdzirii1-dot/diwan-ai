@@ -126,6 +126,7 @@
   font-family: var(--font-chat-latin), var(--font-chat-arabic), var(--font-chat-arabic-fallback), sans-serif;
   font-size: 15px; line-height: 1.65; color: var(--studio-text-primary);
   overflow-wrap: anywhere;
+  user-select: text;
 }
 [dir="rtl"] > .chat-message-content, .chat-message-content[dir="rtl"] { font-size: 17px; line-height: 1.8; }
 .chat-message-content :is(p, li, h1, h2, h3, h4, blockquote, th, td) {

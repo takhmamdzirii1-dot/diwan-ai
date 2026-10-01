@@ -9,6 +9,7 @@
   color-scheme: light;
   background: var(--document-paper);
   color: var(--document-ink);
+  user-select: text;
 }
 
 .paper :is(h1, h2, h3, h4, h5, h6, p, li, th, td, blockquote) {
@@ -31,6 +32,13 @@
   unicode-bidi: isolate;
 }
 
+.paper :global(.chat-citation) a {
+  background: var(--document-code);
+  border-color: var(--document-line);
+  color: var(--document-link);
+  text-decoration: none;
+}
+
 .paper :is(code, pre) {
   color: var(--document-ink);
   background: var(--document-code);
@@ -45,6 +53,8 @@
 .paper li::marker {
   color: var(--document-muted);
 }
+
+.paper li { direction: inherit; unicode-bidi: isolate; }
 
 .paper ::selection {
   background: var(--document-selection);

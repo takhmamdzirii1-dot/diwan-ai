@@ -5,6 +5,9 @@ import ReactMarkdown from 'react-markdown';
 import type { DocumentArtifact } from '@/lib/artifacts/core';
 import { documentToMarkdown, documentToText } from '@/lib/artifacts/core';
 import styles from './ArtifactDocumentPreview.module.css';
+import { copyChatContent } from '@/lib/chat/copy-content';
+import { citationMarkdown, type ChatWebSource } from '@/lib/chat/web-sources';
+import { CitationBadge } from './ChatSources';
 
 const labels = {
   en: { close: 'Close', copy: 'Copy', txt: 'TXT', markdown: 'Markdown', word: 'Word', pdf: 'PDF / Print', exportError: 'Export failed. Try again.' },
@@ -19,9 +22,25 @@ function download(blob: Blob, filename: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-export default function ArtifactDocumentPreview({ artifact, locale, onClose, inline = false }: { artifact: DocumentArtifact; locale: string; onClose: () => void; inline?: boolean }) {
+export default function ArtifactDocumentPreview({ artifact, locale, onClose, inline = false, sources = [] }: { artifact: DocumentArtifact; locale: string; onClose: () => void; inline?: boolean; sources?: ChatWebSource[] }) {
   const t = labels[locale as keyof typeof labels] ?? labels.en;
   const [error, setError] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    setError(false);
+    try { await copyChatContent(documentToText(artifact), sources.map((source) => source.url));
+      setCopied(true); window.setTimeout(() => setCopied(false), 2000); }
+    catch { setError(true); }
+  };
+  const text = (value: string) => <ReactMarkdown components={{
+    a: ({ href, children }) => {
+      const index = sources.findIndex((source) => source.url === href);
+      return index >= 0 ? <CitationBadge source={sources[index]} index={index + 1} />
+        : /^(?:\d+|S\d+)$/u.test(String(children).trim()) ? null
+          : <a href={href} target="_blank" rel="noopener noreferrer" dir="auto">{children}</a>;
+    },
+    p: ({ children }) => <span>{children}</span>,
+  }}>{citationMarkdown(value, sources)}</ReactMarkdown>;
   const filename = artifact.title.replace(/[\\/:*?"<>|]/g, '').slice(0, 80) || 'document';
   const exportText = (format: 'txt' | 'md') => download(new Blob([format === 'txt' ? documentToText(artifact) : documentToMarkdown(artifact)], { type: 'text/plain;charset=utf-8' }), `${filename}.${format}`);
   const exportWord = async () => {
@@ -33,7 +52,7 @@ export default function ArtifactDocumentPreview({ artifact, locale, onClose, inl
     <div className="mx-auto max-w-4xl">
       <div data-vantra-document-actions className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-neutral-950 p-3 print:hidden">
         <h2 className="me-auto truncate text-sm font-semibold text-white">{artifact.title}</h2>
-        {!inline && <><button type="button" onClick={() => void navigator.clipboard.writeText(documentToText(artifact))} className="rounded-lg border border-white/15 px-3 py-2 text-xs text-white">{t.copy}</button>
+        {!inline && <><button type="button" onClick={() => void copy()} className="rounded-lg border border-white/15 px-3 py-2 text-xs text-white">{copied ? locale.startsWith('ar') ? 'تم النسخ' : locale.startsWith('fr') ? 'Copié' : 'Copied' : t.copy}</button>
         <button type="button" onClick={() => exportText('txt')} className="rounded-lg border border-white/15 px-3 py-2 text-xs text-white">{t.txt}</button>
         <button type="button" onClick={() => exportText('md')} className="rounded-lg border border-white/15 px-3 py-2 text-xs text-white">{t.markdown}</button>
         <button type="button" onClick={() => void exportWord()} className="rounded-lg border border-white/15 px-3 py-2 text-xs text-white">{t.word}</button>
@@ -45,10 +64,10 @@ export default function ArtifactDocumentPreview({ artifact, locale, onClose, inl
         {(!artifact.blocks[0] || artifact.blocks[0].kind !== 'heading' || artifact.blocks[0].text.trim() !== artifact.title.trim())
           && <h1 dir="auto" className="hidden text-2xl font-bold print:block">{artifact.title}</h1>}
         {artifact.blocks.map((block, index) => {
-          if (block.kind === 'heading') { const Heading = (`h${block.level}` as 'h1' | 'h2' | 'h3'); return <Heading key={index} dir="auto" className={`${block.level === 1 ? 'text-2xl' : block.level === 2 ? 'text-xl' : 'text-lg'} mb-3 mt-6 font-bold`}>{block.text}</Heading>; }
-          if (block.kind === 'paragraph') return <div key={index} dir="auto" className="mb-4 leading-7"><ReactMarkdown>{block.text}</ReactMarkdown></div>;
-          if (block.kind === 'list') { const List = block.ordered ? 'ol' : 'ul'; return <List key={index} dir={artifact.direction} className={`mb-4 ps-7 leading-7 ${block.ordered ? 'list-decimal' : 'list-disc'}`}>{block.items.map((item, itemIndex) => <li key={itemIndex} dir="auto"><ReactMarkdown>{item}</ReactMarkdown></li>)}</List>; }
-          return <div key={index} className="mb-4 overflow-x-auto"><table dir={artifact.direction} className="w-full border-collapse text-sm"><tbody>{block.rows.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, cellIndex) => <td key={cellIndex} dir="auto" className="border border-neutral-300 p-2">{cell}</td>)}</tr>)}</tbody></table></div>;
+          if (block.kind === 'heading') { const Heading = (`h${block.level}` as 'h1' | 'h2' | 'h3'); return <Heading key={index} dir="auto" className={`${block.level === 1 ? 'text-2xl' : block.level === 2 ? 'text-xl' : 'text-lg'} mb-3 mt-6 font-bold`}>{text(block.text)}</Heading>; }
+          if (block.kind === 'paragraph') return <div key={index} dir="auto" className="mb-4 leading-7">{text(block.text)}</div>;
+          if (block.kind === 'list') { const List = block.ordered ? 'ol' : 'ul'; return <List key={index} dir={artifact.direction} className={`mb-4 ps-7 leading-7 ${block.ordered ? 'list-decimal' : 'list-disc'}`}>{block.items.map((item, itemIndex) => <li key={itemIndex}>{text(item)}</li>)}</List>; }
+          return <div key={index} className="mb-4 overflow-x-auto"><table dir={artifact.direction} className="w-full border-collapse text-sm"><tbody>{block.rows.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, cellIndex) => <td key={cellIndex} dir="auto" className="border border-neutral-300 p-2">{text(cell)}</td>)}</tr>)}</tbody></table></div>;
         })}
       </article>
     </div>

@@ -3,7 +3,7 @@ import { parseChatArtifact, validatedArtifactPartFromToolResult, type ChatMessag
 import { currentInformationUnavailable, type createChatSearch } from './chat-search.server';
 import type { ResponseLanguage } from '@/lib/chat/response-language';
 import type { StreamTerminalDiagnostics } from './stream-diagnostics';
-import { webSourcesSchema } from '@/lib/chat/web-sources';
+import { webSourcesSchema, sourceClass } from '@/lib/chat/web-sources';
 
 type Search = ReturnType<typeof createChatSearch>;
 
@@ -49,8 +49,9 @@ export function guardCurrentInformationStream(response: Response, search: Search
         const hits = search.evidence() ?? [];
         const parsed = webSourcesSchema.safeParse({ type: 'vantra-web-sources', state,
           sources: hits.slice(0, 24).map((hit, index) => ({ id: hit.evidenceId ?? `S${index + 1}`,
-            title: hit.title.slice(0, 300), url: hit.url })),
-          readCount: hits.filter((hit) => hit.verifiedPage).length });
+            title: hit.title.slice(0, 300), url: hit.url,
+            sourceClass: sourceClass(hit.url, hit.evidenceLevel?.startsWith('primary') ?? false) })),
+          readCount: hits.length });
         if (parsed.success && !cancelled) controller.enqueue(encoder.encode(`8:${JSON.stringify([parsed.data])}\n`));
       };
       if (search.evidence() !== null) sourceStatus('read');

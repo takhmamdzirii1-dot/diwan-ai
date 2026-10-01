@@ -105,9 +105,9 @@ test('artifact-only document uses its client-rendered card; prose reports keep t
   assert.equal(getDocumentActionEligibility({ assistantMessage: { content: '', vantraParts: [part] } }), 'primary');
   assert.ok(primaryArtifactActions(part).includes('export_document'));
   // ArtifactSmartCard is intentionally client-only. Its actions are not rendered by this SSR test.
-  assert.doesNotMatch(render('', [part]), /Open as document/);
-  assert.match(render('# Report\n\nA written report.', undefined, 'Write me a report.'), /Open as document/);
-  assert.doesNotMatch(render('A short answer.', undefined, 'What is a report?'), /Open as document/);
+  assert.doesNotMatch(render('', [part]), /Open in document/);
+  assert.match(render('# Report\n\nA written report.', undefined, 'Write me a report.'), /Open in document/);
+  assert.doesNotMatch(render('A short answer.', undefined, 'What is a report?'), /Open in document/);
 });
 
 test('Agent progress is one customer-safe inline card with Stop and no internal prompt', () => {

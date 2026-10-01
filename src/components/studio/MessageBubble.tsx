@@ -16,7 +16,8 @@ import { getDocumentActionEligibility, readableArtifactCopy } from '@/lib/chat/c
 import type { AgentRun, AgentStep } from '@/lib/chat/agent-runtime';
 import type { ConversationAttachment } from '@/lib/chat/conversation-attachments';
 import { canRegenerateAssistantMessage, formatChatTimestamp } from '@/lib/chat/message-history';
-import { messageDirection, webSourcesAnnotation, legacyWebSources } from '@/lib/chat/web-sources';
+import { messageDirection, webSourcesAnnotation, legacyWebSources, citationMarkdown } from '@/lib/chat/web-sources';
+import { copyChatContent } from '@/lib/chat/copy-content';
 import ChatSources, { CitationBadge } from './ChatSources';
 
 const ArtifactDocumentPreview = dynamic(() => import('./ArtifactDocumentPreview'), { ssr: false });
@@ -182,8 +183,9 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
     setTimeout(() => setCopiedCodeId(null), 2000);
   };
 
-  const handleCopyMessage = () => {
-    navigator.clipboard.writeText(artifactParts.length > 0 ? parts.map(readableArtifactCopy).join('\n\n') : safeContent);
+  const handleCopyMessage = async () => {
+    try { await copyChatContent(artifactParts.length > 0 ? parts.map(readableArtifactCopy).join('\n\n') : safeContent,
+      sources?.sources.map((source) => source.url)); } catch { return; }
     setCopiedMessage(true);
     setTimeout(() => setCopiedMessage(false), 2000);
   };
@@ -191,7 +193,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   const lastArtifactIndex = renderParts.findLastIndex((part) => 'artifact' in part || part.type === 'file');
   const renderArtifactPart = (part: ChatMessagePart, index: number) => {
     if ('artifact' in part) return <ArtifactSmartCard key={index} part={part} locale={locale}
-      timestamp={index === lastArtifactIndex ? timestamp : null} onRequestPrompt={onRequestPrompt} />;
+      timestamp={index === lastArtifactIndex ? timestamp : null} onRequestPrompt={onRequestPrompt} sources={sources?.sources} />;
     if (part.type === 'image') return <img key={index} src={part.url} alt={part.name} className="max-h-[30rem] max-w-full rounded-xl border border-[var(--studio-border)] object-contain" />;
     if (part.type === 'video') return <video key={index} src={part.url} controls preload="metadata" aria-label={part.name} className="max-h-[30rem] max-w-full rounded-xl border border-[var(--studio-border)]" />;
     if (part.type === 'file' && 'content' in part) return <div key={index} className="flex w-full items-center gap-3"><button type="button"
@@ -390,6 +392,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                   a: ({ href, children }) => {
                     const index = sources?.sources.findIndex((source) => source.url === href) ?? -1;
                     if (index >= 0 && sources) return <CitationBadge source={sources.sources[index]} index={index + 1} />;
+                    if (/^(?:\d+|S\d+)$/u.test(String(children).trim())) return null;
                     return <a href={href} dir="auto" style={{ unicodeBidi: 'isolate' }} target="_blank" rel="noopener noreferrer" className="text-[var(--studio-text-primary)] underline underline-offset-4 transition-colors">
                       {children}
                     </a>;
@@ -455,7 +458,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                   }
                 }}
               >
-                {part.text}
+                {citationMarkdown(part.text, sources?.sources)}
               </ReactMarkdown>
 
               {/* Streaming Cursor */}
@@ -473,15 +476,15 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
             {/* Message-Level Hover Controls */}
             {!isStreaming && artifactParts.length === 0 && (
               <div dir="ltr" className="mt-2 flex flex-wrap items-center gap-0.5">
-                <button
+                {safeContent.trim() && <button
                   type="button"
-                  onClick={handleCopyMessage}
+                  onClick={() => void handleCopyMessage()}
                   title={t('copyMessage')}
                   aria-label={t('copyMessage')}
                   className="chat-message-action flex size-8 cursor-pointer items-center justify-center rounded-lg active:scale-95"
                 >
                   {copiedMessage ? <Check className="h-3.5 w-3.5 text-white" /> : <Copy className="h-3.5 w-3.5" />}
-                </button>
+                </button>}
                 {isLatest && onRegenerate && canRegenerateAssistantMessage(message, Boolean(agentRun)) && (
                   <button
                     type="button"
@@ -508,7 +511,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
           </div>
         )}
       </div>
-      {openDocument && <ArtifactDocumentPreview artifact={openDocument} locale={locale} onClose={() => setDocumentOpen(false)} />}
+      {openDocument && <ArtifactDocumentPreview artifact={openDocument} locale={locale} sources={sources?.sources} onClose={() => setDocumentOpen(false)} />}
     </motion.div>
   );
 }

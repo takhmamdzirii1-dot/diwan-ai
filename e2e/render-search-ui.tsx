@@ -5,6 +5,7 @@ import MessageBubble from '../src/components/studio/MessageBubble';
 import ChatSources from '../src/components/studio/ChatSources';
 import messages from '../messages/studio-en.json';
 import type { WebSourcesAnnotation } from '../lib/chat/web-sources';
+import { documentFromMarkdown } from '../lib/artifacts/core';
 
 const annotation: WebSourcesAnnotation = { type: 'vantra-web-sources', state: 'read', readCount: 2,
   sources: Array.from({ length: 7 }, (_, index) => ({ id: `S${index + 1}`,
@@ -18,4 +19,6 @@ const render = (locale: 'en' | 'ar') => renderToStaticMarkup(<IntlProvider local
     createdAt: new Date('2026-10-01T09:30:00Z') }} isLatest onRegenerate={() => {}} />
 </IntlProvider>);
 console.log(JSON.stringify({ en: render('en'), ar: render('ar'), annotation,
+  documents: { en: documentFromMarkdown('stored-en', '# Article\n\nA useful **supported claim [1]**.\n\n1. Node.js and useful context [1]\n2. More context.', 'en'),
+    ar: documentFromMarkdown('stored-ar', '# مقال\n\nهذا شرح **مدعوم للمعلومات [1]**.\n\n1. Node.js مع معلومات عربية مدعومة [1]\n2. المزيد من التفاصيل.', 'ar') },
   searching: renderToStaticMarkup(<ChatSources annotation={{ ...annotation, state: 'searching', sources: [], readCount: 0 }} locale="en" />) }));

@@ -6,6 +6,7 @@ import { PRESENTATION_OUTPUT_INSTRUCTION, requestedPresentationSlideCount, parse
 import { agentToolSelection, artifactTaskInstruction, getArtifactTool, presentationToolChoice,
   requiredArtifactToolChoice, resolveArtifactToolPath, selectArtifactTools } from '@/lib/artifacts/tool-registry';
 import { buildNativeArtifactTools } from '@/lib/artifacts/tool-native.server';
+import { documentAfterResearch } from '@/lib/chat/document-step';
 import { completeMessageText, providerChatMessages } from '@/lib/chat/message-history';
 import { vantraCoreSystemPrompt, webEvidenceInstruction,
   WEB_SEARCH_TOOL_INSTRUCTION, NATIVE_SEARCH_INSTRUCTION, SEARCH_ARTIFACT_INSTRUCTION } from '@/lib/chat/system-prompt';
@@ -114,7 +115,6 @@ export async function POST(request: Request) {
       return Math.min(max, Math.max(min, n));
     };
     const temperature = clamp(body.temperature, 0, 2, 0.7);
-    const maxTokens = Math.round(clamp(body.max_tokens, 64, 8192, 2048));
     const topP = clamp(body.top_p, 0.05, 1, 0.95);
     const customSystem =
       typeof body.system === 'string' && body.system.trim()
@@ -142,7 +142,9 @@ export async function POST(request: Request) {
         route: conversationIntent, semantic: true,
         spreadsheet: typeof body.spreadsheetContext === 'string', document: typeof body.documentContext === 'string',
       });
-    const SYSTEM_PROMPT = vantraCoreSystemPrompt({ customSystem, language: responseLanguage, now });
+    const documentTask = taskSelection.mode !== 'semantic' && taskSelection.names.includes('create_document');
+    const maxTokens = Math.round(clamp(body.max_tokens, 64, 8192, documentTask ? 8192 : 2048));
+    const SYSTEM_PROMPT = vantraCoreSystemPrompt({ customSystem, language: responseLanguage, now, document: documentTask });
 
     let messagesPayload = messages;
     if (Array.isArray(messagesPayload) && (
@@ -707,7 +709,8 @@ export async function POST(request: Request) {
         createDocumentExposed: Boolean(nativeTools?.create_document), toolPath });
       trace('PROVIDER', { callStarted: true, streamReturned: false, finishReason: null, errorCategory: null });
       const result = await streamText({
-        model: languageModel,
+        model: expectedAction === 'create_document' && toolPath === 'native' && webSearch.toolExposed
+          ? documentAfterResearch(languageModel, () => Boolean(webSearch.evidence()?.length)) : languageModel,
         messages: messagesPayload,
         tools: nativeTools,
         toolChoice: webSearch.toolExposed

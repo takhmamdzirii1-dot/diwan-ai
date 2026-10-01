@@ -27,6 +27,7 @@ import type { ChatModelOption } from '@/components/ui/model-picker';
 import { trackFunnelEvent } from '@/src/lib/funnel-analytics';
 import dynamic from 'next/dynamic';
 import { chatPartsFromMessage, requestedPresentationSlideCount, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
+import { resolveResponseLanguage } from '@/lib/chat/response-language';
 import { attachConversationFile, AttachmentActionGate, attachmentRequestContext, chartFromSpreadsheetAttachment, clearPendingAttachments,
   getConversationAttachment, getConversationAttachments, getCurrentSpreadsheetAttachment, markPendingAttachment,
   resolveSpreadsheetAttachment,
@@ -1074,6 +1075,7 @@ export default function StudioDashboard({
 
   const isEmpty = messages.length === 0;
   const lastUserPrompt = [...messages].reverse().find((message) => message.role === 'user')?.content ?? '';
+  const failureLocale = resolveResponseLanguage(lastUserPrompt, [], locale === 'ar' || locale === 'fr' ? locale : 'en');
   const requestedArtifact = selectArtifactTools(lastUserPrompt, { route: routeConversationIntent(lastUserPrompt,
     messages.filter((entry) => entry.role === 'user').slice(0, -1).map((entry) => entry.content)) }).names[0];
   const artifactRetryAction: GuidanceAction = requestedArtifact === 'create_chart' ? 'try_chart_again'
@@ -1266,9 +1268,9 @@ export default function StudioDashboard({
                         {shouldShowChatError({ busy: chatBusy, requestId: debugRequestIdRef.current,
                           conversationId: activeSessionId ?? 'default-session', outcome: requestOutcome,
                         }) && <div className="max-w-lg"><ChatGuidanceCard
-                          guidance={(() => { const guidance = guidanceForChatError(error?.message ?? 'CHAT_REQUEST_FAILED', locale);
+                          guidance={(() => { const guidance = guidanceForChatError(error?.message ?? 'CHAT_REQUEST_FAILED', failureLocale);
                             return guidance.actions.includes('try_again') ? { ...guidance, actions: [artifactRetryAction] } : guidance;
-                          })()} locale={locale} onAction={handleChatGuidanceAction} /></div>}
+                          })()} locale={failureLocale} onAction={handleChatGuidanceAction} /></div>}
                         {agentRun?.conversationId === (activeSessionId ?? 'default-session')
                           && (agentRun.status === 'waiting_for_user' || agentRun.status === 'failed') && <div className="max-w-lg"><ChatGuidanceCard
                             guidance={agentRun.status === 'waiting_for_user' ? { kind: 'requirement',

@@ -12,6 +12,13 @@ const hydration = buildSync({ stdin: { contents: `import React from 'react';
     {annotation: ${JSON.stringify(fixture.annotation)}, locale: window.fixtureLocale}));`,
   resolveDir: process.cwd(), loader: 'tsx' }, bundle: true, write: false, platform: 'browser',
   define: { 'process.env.NODE_ENV': '"production"' }, tsconfig: 'tsconfig.json' }).outputFiles[0].text;
+const documentBundle = buildSync({ stdin: { contents: `import React from 'react';
+  import {createRoot} from 'react-dom/client'; import Preview from './src/components/studio/ArtifactDocumentPreview';
+  const holder = document.createElement('div'); document.querySelector('#fixture').append(holder);
+  createRoot(holder).render(React.createElement(Preview, {artifact: ${JSON.stringify(fixture.documents)}[window.fixtureLocale],
+    locale: window.fixtureLocale, sources: ${JSON.stringify(fixture.annotation.sources)}, onClose: () => {}}));`,
+  resolveDir: process.cwd(), loader: 'tsx' }, bundle: true, write: false, platform: 'browser', outfile: 'document-fixture.js',
+  define: { 'process.env.NODE_ENV': '"production"' }, tsconfig: 'tsconfig.json' }).outputFiles;
 
 for (const theme of ['neutral', 'oled', 'warm']) for (const language of ['en', 'ar'] as const) {
   test(`@search-ui ${language} ${theme} at 380px`, async ({ page }, info) => {
@@ -41,6 +48,7 @@ for (const theme of ['neutral', 'oled', 'warm']) for (const language of ['en', '
     await expect(text.locator('bdi').filter({ hasText: '$42' })).toHaveCount(1);
     expect(await page.locator('.chat-source-footer').evaluate((node) => (node as HTMLDetailsElement).open)).toBe(false);
     await page.locator('.chat-source-footer summary').click();
+    await expect(page.locator('.chat-source-chips')).toHaveCount(0);
     await expect(page.locator('.chat-source-row')).toHaveCount(5);
     await page.locator('.chat-source-more').click();
     await expect(page.locator('.chat-source-row')).toHaveCount(7);
@@ -61,5 +69,32 @@ for (const theme of ['neutral', 'oled', 'warm']) for (const language of ['en', '
     expect(metrics.overflow).toBe(false); expect(metrics.contrasts.every((value) => value >= 4.5)).toBe(true);
     expect(metrics.font).toContain('IBM Plex Sans Arabic');
     await page.screenshot({ path: info.outputPath(`${language}-${theme}-380.png`), fullPage: true });
+    await page.addStyleTag({ content: documentBundle.find((file) => file.path.endsWith('.css'))!.text });
+    await page.addScriptTag({ content: documentBundle.find((file) => file.path.endsWith('.js'))!.text });
+    const docDialog = page.getByRole('dialog');
+    await expect(docDialog).toBeVisible();
+    await expect(docDialog.locator('.chat-citation')).toHaveCount(2);
+    expect(await docDialog.locator('article').evaluate((node) => getComputedStyle(node).userSelect)).toBe('text');
+    expect(await docDialog.locator('li').first().evaluate((node) => getComputedStyle(node).direction)).toBe(expected);
+    expect(await docDialog.evaluate((node) => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { write: async () => { throw new Error('Fixture denial'); } } });
+      Object.defineProperty(document, 'execCommand', { configurable: true, value: () => {
+        const event = new ClipboardEvent('copy', { clipboardData: new DataTransfer() });
+        document.dispatchEvent(event);
+        (window as unknown as { copied: { plain: string; html: string } }).copied = {
+          plain: event.clipboardData!.getData('text/plain'), html: event.clipboardData!.getData('text/html') };
+        return true;
+      } });
+    });
+    await docDialog.getByRole('button', { name: language === 'ar' ? 'نسخ' : 'Copy', exact: true }).click();
+    await expect(docDialog.getByRole('button', { name: language === 'ar' ? 'تم النسخ' : 'Copied', exact: true })).toBeVisible();
+    const copied = await page.evaluate(() => (window as unknown as { copied: { plain: string; html: string } }).copied);
+    expect(copied.plain).not.toMatch(/\[1\]|source:S/);
+    expect(copied.html).toContain(`dir="${expected}"`);
+    const download = page.waitForEvent('download');
+    await docDialog.getByRole('button', { name: 'TXT', exact: true }).click();
+    expect((await download).suggestedFilename()).toMatch(/\.txt$/);
+    await page.screenshot({ path: info.outputPath(`${language}-${theme}-document-380.png`), fullPage: true });
   });
 }

@@ -7,7 +7,8 @@ const publicUrl = z.string().url().max(2048).refine((value) => {
     && url.hostname.includes('.') && !/^[\d.]+$|:|(?:^|\.)(?:localhost|local|internal)$/i.test(url.hostname)
     && ![...url.searchParams.keys()].some((key) => /token|secret|auth|signature|api[_-]?key|password/i.test(key));
 });
-const source = z.object({ id: z.string().regex(/^S[1-9]\d*$/), title: z.string().max(300), url: publicUrl }).strict();
+const source = z.object({ id: z.string().regex(/^S[1-9]\d*$/), title: z.string().max(300), url: publicUrl,
+  sourceClass: z.enum(['primary', 'news', 'forum', 'other']).optional() }).strict();
 export const webSourcesSchema = z.object({ type: z.literal('vantra-web-sources'),
   state: z.enum(['searching', 'read']), sources: z.array(source).max(24),
   readCount: z.number().int().min(0).max(100) }).strict();
@@ -33,7 +34,23 @@ export function messageDirection(text: string, fallback: 'ltr' | 'rtl' = 'ltr') 
   return arabic === other ? fallback : arabic > other ? 'rtl' : 'ltr';
 }
 
-export function sourceDomain(url: string) { return new URL(url).hostname.replace(/^www\./, ''); }
+export function sourceDomain(url: string) { return new URL(url).hostname.replace(/^(?:(?:www|ar|sa)\.)+/u, ''); }
+
+export function sourceClass(url: string, primary = false): ChatWebSource['sourceClass'] {
+  const domain = sourceDomain(url);
+  if (/(?:^|\.)(?:reddit\.com|quora\.com)$/u.test(domain)) return 'forum';
+  if (primary) return 'primary';
+  return /(?:^|\.)(?:reuters\.com|apnews\.com|bbc\.(?:com|co\.uk)|ft\.com|bloomberg\.com|nytimes\.com|theguardian\.com|yahoo\.com)$/u.test(domain) ? 'news' : 'other';
+}
+
+/** Resolve only recognizable citation syntax, never ordinary factual digits. */
+export function citationMarkdown(text: string, sources: readonly ChatWebSource[] = []) {
+  return text.replace(/\[\[source:(S\d+)\]\]|\[(S?\d+)\](?!\()/gu, (_all, id: string | undefined, number: string | undefined) => {
+    const found = id ? sources.find((source) => source.id === id)
+      : sources.find((source) => source.id === `S${number!.replace(/^S/u, '')}`);
+    return found ? `[${found.id}](${found.url})` : '';
+  });
+}
 
 /** Older saved search messages contain server-rendered links but no UI registry. */
 export function legacyWebSources(annotations: unknown, text: string): WebSourcesAnnotation | null {

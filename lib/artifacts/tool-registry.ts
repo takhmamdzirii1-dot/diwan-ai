@@ -72,7 +72,7 @@ const definitions: Record<ExistingArtifactToolName, ToolDefinition> = {
     verify: verifyChart,
   },
   create_document: {
-    name: 'create_document', description: 'Create a structured document from concise Markdown.', group: 'document', risk: 'CREATE',
+    name: 'create_document', description: 'Create the complete requested document or long-form article from Markdown, preserving supporting citations.', group: 'document', risk: 'CREATE',
     progress: { en: 'Creating document…', fr: 'Création du document…', ar: 'جارٍ إنشاء المستند…' }, inputSchema: documentInput,
     exampleInput: { title: 'Brief', markdown: '# Brief\n\nKey point.' },
     execute: (input: z.infer<typeof documentInput>) => ({ ...documentFromMarkdown(crypto.randomUUID(), input.markdown, input.language), title: input.title }),
@@ -255,7 +255,7 @@ export function requiredArtifactToolChoice(selection: ArtifactToolSelection, pat
 const skills: Record<ArtifactTaskSkill, string> = {
   presentation: 'Create a concise slide narrative: cover, key metrics, trend only when data supports it, and evidence-based insights. Never paste raw spreadsheet rows or invent chart references.',
   'spreadsheet-analysis': 'Use only the bounded spreadsheet context supplied in this request. State missing data and limitations; do not infer unseen rows.',
-  document: 'Write a concise structured document with clear headings and only claims supported by the user context.',
+  document: 'Write the complete requested article/document with clear headings and developed paragraphs, not a short Chat summary. Use supported context and retrieved evidence. Research tools are intermediate steps, not the deliverable; finish with create_document. Valid source-ID citations are allowed in document content.',
 };
 
 export function artifactTaskInstruction(selection: ArtifactToolSelection, path: ArtifactToolPath): string {
