@@ -16,9 +16,21 @@ import { getDocumentActionEligibility, readableArtifactCopy } from '@/lib/chat/c
 import type { AgentRun, AgentStep } from '@/lib/chat/agent-runtime';
 import type { ConversationAttachment } from '@/lib/chat/conversation-attachments';
 import { canRegenerateAssistantMessage, formatChatTimestamp } from '@/lib/chat/message-history';
+import { messageDirection, webSourcesAnnotation, legacyWebSources } from '@/lib/chat/web-sources';
+import ChatSources, { CitationBadge } from './ChatSources';
 
 const ArtifactDocumentPreview = dynamic(() => import('./ArtifactDocumentPreview'), { ssr: false });
 const ArtifactSmartCard = dynamic(() => import('./ArtifactSmartCard'), { ssr: false });
+
+function isolatedNumbers(children: React.ReactNode): React.ReactNode {
+  return React.Children.map(children, (child) => {
+    if (typeof child === 'string') return child.split(/((?:[~≈$€£¥+−-]\s*)?[\p{Number}]+(?:[.,٬٫:/-][\p{Number}]+)*(?:\s*(?:[%٪$€£¥]|USD|EUR|DZD|DA))?)/gu)
+      .map((text, index) => index % 2 ? <bdi dir="ltr" key={index}>{text}</bdi> : text);
+    if (!React.isValidElement<{ children?: React.ReactNode; node?: { tagName?: string } }>(child)
+      || ['code', 'pre', 'bdi', 'a'].includes(child.props.node?.tagName ?? String(child.type))) return child;
+    return React.cloneElement(child, {}, isolatedNumbers(child.props.children));
+  });
+}
 
 export interface MessageBubbleProps {
   message: Message;
@@ -116,6 +128,9 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   [documentOpen, documentArtifact, message.id, message.content, locale]);
   const safeContent = isStreaming ? streamingSafeText(message.content)
     : parts.filter((part) => part.type === 'text').map((part) => part.text).join('');
+  const sources = !isUser ? webSourcesAnnotation(message.annotations) ?? legacyWebSources(message.annotations, safeContent) : null;
+  const contentDirection = messageDirection(isUser ? message.content : safeContent || precedingUserMessage?.content || '',
+    locale.startsWith('ar') ? 'rtl' : 'ltr');
   const documentEligibility = !isUser && !isStreaming
     ? getDocumentActionEligibility({ assistantMessage: message as Message & { vantraParts?: unknown }, precedingUserMessage })
     : 'hidden';
@@ -186,8 +201,8 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
         link.href = url; link.download = part.name; link.click();
         window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
       }} className="inline-flex rounded-lg border border-[var(--studio-border)] px-3 py-2 text-sm text-[var(--studio-text-primary)] underline">
-      {part.name}</button>{index === lastArtifactIndex && timestamp && <time className="ms-auto text-[10px] text-white/40">{timestamp}</time>}</div>;
-    if (part.type === 'file') return <div key={index} className="flex w-full items-center gap-3"><a href={part.url} download={part.name} className="inline-flex rounded-lg border border-[var(--studio-border)] px-3 py-2 text-sm text-[var(--studio-text-primary)] underline">{part.name}</a>{index === lastArtifactIndex && timestamp && <time className="ms-auto text-[10px] text-white/40">{timestamp}</time>}</div>;
+      {part.name}</button>{index === lastArtifactIndex && timestamp && <time className="ms-auto text-[10px] text-[var(--studio-text-secondary)]">{timestamp}</time>}</div>;
+    if (part.type === 'file') return <div key={index} dir="ltr" className="flex w-full items-center gap-3"><a href={part.url} download={part.name} className="inline-flex rounded-lg border border-[var(--studio-border)] px-3 py-2 text-sm text-[var(--studio-text-primary)] underline">{part.name}</a>{index === lastArtifactIndex && timestamp && <time className="ms-auto text-[10px] text-[var(--studio-text-secondary)]">{timestamp}</time>}</div>;
     return null;
   };
 
@@ -247,10 +262,10 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
             {/* Text Content */}
             {cleanContent && (
               <p
-                dir="auto"
-                className="text-start [unicode-bidi:plaintext] text-[14.5px] sm:text-[15px] text-white/90 font-normal font-sans antialiased leading-relaxed whitespace-pre-wrap break-words"
+                dir={contentDirection}
+                className="chat-message-content text-start font-normal antialiased whitespace-pre-wrap break-words"
               >
-                {cleanContent}
+                {isolatedNumbers(cleanContent)}
               </p>
             )}
             {sentAttachments.length > 0 && <div className="flex flex-wrap gap-2" data-sent-attachments="">
@@ -266,16 +281,16 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
               </div>)}
             </div>}
             {timestamp && <time dateTime={new Date(String(message.createdAt)).toISOString()}
-              className="self-end text-[9px] leading-none tabular-nums text-white/45 transition-colors group-hover:text-white/60 group-focus-within:text-white/60 sm:text-white/35">
+              className="self-end text-[10px] leading-none tabular-nums text-[var(--studio-text-secondary)]">
               {timestamp}</time>}
           </div>
         ) : (
           <div
-            dir="ltr"
+            dir={contentDirection}
             className="w-full max-w-4xl min-w-0 bg-transparent shadow-none border-none pt-0.5"
           >
             {/* Thinking state indicator */}
-            {agentRun && <section className="mb-3 max-w-md rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-white/70" role="status" aria-live="polite">
+            {agentRun && <section dir="ltr" className="mb-3 max-w-md rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-white/70" role="status" aria-live="polite">
               <div className="mb-2 flex items-center justify-between gap-3"><span className="font-medium text-white/85">{agentRun.status === 'completed'
                 ? locale === 'ar' ? 'اكتملت المهمة' : locale === 'fr' ? 'Tâche terminée' : 'Task complete'
                 : agentRun.status === 'cancelled' ? locale === 'ar' ? 'توقفت المهمة' : locale === 'fr' ? 'Tâche arrêtée' : 'Task stopped'
@@ -297,14 +312,15 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
               </div>
             )}
 
-            {isStreaming && !displayContent && <p role="status" className="text-sm text-[var(--studio-text-muted)]">{locale === 'ar' ? 'جارٍ تحضير المعاينة…' : locale === 'fr' ? 'Préparation de l’aperçu…' : 'Preparing preview…'}</p>}
+            {isStreaming && !displayContent && !sources && <p role="status" className="text-sm text-[var(--studio-text-secondary)]">{locale === 'ar' ? 'جارٍ تحضير المعاينة…' : locale === 'fr' ? 'Préparation de l’aperçu…' : 'Preparing preview…'}</p>}
+            {sources?.state === 'searching' && <ChatSources annotation={sources} locale={locale} />}
             {toolProgress && <p className="mt-2 text-xs text-[var(--studio-text-secondary)]" role="status">{toolProgress}</p>}
-            {renderParts.map((part, index) => part.type === 'text' ? part.text && <div key={index} data-chat-rendered-text="" dir="ltr" className={cn(
+            {renderParts.map((part, index) => part.type === 'text' ? part.text && <div key={index} data-chat-rendered-text="" className={cn(
               "prose prose-invert max-w-none font-sans antialiased text-white/90 text-[15px] font-normal leading-relaxed",
               "prose-p:text-white/90 prose-p:text-[15px] prose-p:font-sans prose-p:antialiased prose-p:leading-relaxed prose-p:font-normal",
               "prose-headings:text-white/90 prose-headings:font-semibold prose-strong:text-white/90 prose-strong:font-semibold",
               "prose-li:text-white/90 prose-li:text-[15px] prose-li:font-sans prose-code:text-white/90",
-              "text-left"
+              "chat-message-content text-start"
             )}>
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
@@ -312,8 +328,8 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                 components={{
                   pre: ({ children }) => <>{children}</>,
                   p: ({ children }) => (
-                    <p dir="auto" className="text-start [unicode-bidi:plaintext] text-white/90 text-[15px] font-sans antialiased leading-relaxed font-normal mb-3.5 last:mb-0">
-                      {children}
+                    <p className="text-start font-normal mb-3.5 last:mb-0">
+                      {isolatedNumbers(children)}
                     </p>
                   ),
                   span: ({ children }) => (
@@ -332,64 +348,66 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                     </em>
                   ),
                   h1: ({ children }) => (
-                    <h1 dir="auto" className="text-start [unicode-bidi:plaintext] text-white/90 text-xl font-semibold font-sans antialiased mt-6 mb-3">
-                      {children}
+                    <h1 className="text-start text-xl font-semibold mt-6 mb-3">
+                      {isolatedNumbers(children)}
                     </h1>
                   ),
                   h2: ({ children }) => (
-                    <h2 dir="auto" className="text-start [unicode-bidi:plaintext] text-white/90 text-lg font-semibold font-sans antialiased border-b border-white/10 pb-1.5 mt-5 mb-2.5">
-                      {children}
+                    <h2 className="text-start text-lg font-semibold border-b border-[var(--studio-border)] pb-1.5 mt-5 mb-2.5">
+                      {isolatedNumbers(children)}
                     </h2>
                   ),
                   h3: ({ children }) => (
-                    <h3 dir="auto" className="text-start [unicode-bidi:plaintext] text-white/90 text-base font-semibold font-sans antialiased mt-4 mb-2">
-                      {children}
+                    <h3 className="text-start text-base font-semibold mt-4 mb-2">
+                      {isolatedNumbers(children)}
                     </h3>
                   ),
                   h4: ({ children }) => (
-                    <h4 dir="auto" className="text-start [unicode-bidi:plaintext] text-white/90 text-sm font-semibold font-sans antialiased mt-3 mb-1.5">
-                      {children}
+                    <h4 className="text-start text-sm font-semibold mt-3 mb-1.5">
+                      {isolatedNumbers(children)}
                     </h4>
                   ),
                   ul: ({ children }) => (
-                    <ul dir="auto" className="my-3 flex flex-col gap-1.5 ps-5 list-disc text-white/90 font-sans antialiased text-[15px] leading-relaxed">
+                    <ul className="my-3 flex flex-col gap-1.5 ps-5 list-disc">
                       {children}
                     </ul>
                   ),
                   ol: ({ children }) => (
-                    <ol dir="auto" className="my-3 flex flex-col gap-1.5 ps-5 list-decimal text-white/90 font-sans antialiased text-[15px] leading-relaxed">
+                    <ol className="my-3 flex flex-col gap-1.5 ps-5 list-decimal">
                       {children}
                     </ol>
                   ),
                   li: ({ children }) => (
-                    <li dir="auto" className="text-start [unicode-bidi:plaintext] text-white/90 text-[15px] font-sans antialiased leading-relaxed font-normal">
-                      {children}
+                    <li className="text-start font-normal">
+                      {isolatedNumbers(children)}
                     </li>
                   ),
                   blockquote: ({ children }) => (
-                    <blockquote dir="auto" className="text-start [unicode-bidi:plaintext] my-4 py-2 px-4 bg-white/[0.03] rounded-e-lg border-s-2 border-white/20 font-sans antialiased text-white/90">
-                      {children}
+                    <blockquote className="text-start my-4 py-2 px-4 bg-[var(--studio-card)] rounded-e-lg border-s-2 border-[var(--studio-border-strong)]">
+                      {isolatedNumbers(children)}
                     </blockquote>
                   ),
-                  a: ({ href, children }) => (
-                    <a href={href} dir="auto" style={{ unicodeBidi: 'isolate' }} target="_blank" rel="noopener noreferrer" className="text-white/90 underline underline-offset-4 hover:text-white transition-colors font-sans antialiased">
+                  a: ({ href, children }) => {
+                    const index = sources?.sources.findIndex((source) => source.url === href) ?? -1;
+                    if (index >= 0 && sources) return <CitationBadge source={sources.sources[index]} index={index + 1} />;
+                    return <a href={href} dir="auto" style={{ unicodeBidi: 'isolate' }} target="_blank" rel="noopener noreferrer" className="text-[var(--studio-text-primary)] underline underline-offset-4 transition-colors">
                       {children}
-                    </a>
-                  ),
+                    </a>;
+                  },
                   table: ({ children }) => (
-                    <div className="my-6 overflow-x-auto custom-scrollbar rounded-xl border border-[var(--studio-border)] bg-[var(--studio-recessed)]" dir="ltr">
+                    <div className="my-6 overflow-x-auto custom-scrollbar rounded-xl border border-[var(--studio-border)] bg-[var(--studio-recessed)]">
                       <table className="w-full text-[14px] font-sans text-white/90 border-collapse min-w-[520px]">{children}</table>
                     </div>
                   ),
                   thead: ({ children }) => <thead className="bg-white/[0.045] font-sans text-white/90">{children}</thead>,
                   th: ({ children }) => (
-                    <th dir="auto" className="px-4 py-3.5 text-start font-sans text-[12.5px] font-semibold uppercase tracking-wider text-white/90 border-b border-white/[0.12]">
-                      {children}
+                    <th className="px-4 py-3.5 text-start text-[12.5px] font-semibold border-b border-[var(--studio-border)]">
+                      {isolatedNumbers(children)}
                     </th>
                   ),
                   td: ({ children }) => (
-                    <td dir="auto" className="px-4 py-3.5 align-top font-sans text-white/90 text-[14px] leading-relaxed border-b border-white/[0.05]">
-                      {children}
+                    <td className="px-4 py-3.5 align-top text-[14px] border-b border-[var(--studio-border-subtle)]">
+                      {isolatedNumbers(children)}
                     </td>
                   ),
                   tr: ({ children }) => <tr className="transition-colors hover:bg-white/[0.02]">{children}</tr>,
@@ -412,7 +430,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                           <button
                             type="button"
                             onClick={() => handleCopyCode(codeString, blockId)}
-                            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-white/55 hover:bg-white/[0.06] hover:text-white transition cursor-pointer shrink-0 active:scale-95"
+                            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] transition-colors duration-150 cursor-pointer shrink-0 focus-visible:outline-2 active:scale-95"
                           >
                             {copiedCodeId === blockId ? (
                               <>
@@ -450,16 +468,17 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                 </span>
               )}
             </div> : renderArtifactPart(part, index))}
+            {sources?.state === 'read' && <ChatSources annotation={sources} locale={locale} />}
 
             {/* Message-Level Hover Controls */}
             {!isStreaming && artifactParts.length === 0 && (
-              <div className="mt-2 flex items-center gap-0.5 opacity-100 transition-opacity duration-150 sm:opacity-35 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+              <div dir="ltr" className="mt-2 flex flex-wrap items-center gap-0.5">
                 <button
                   type="button"
                   onClick={handleCopyMessage}
                   title={t('copyMessage')}
                   aria-label={t('copyMessage')}
-                  className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-white/50 transition-colors duration-150 hover:bg-white/[0.05] hover:text-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"
+                  className="chat-message-action flex size-8 cursor-pointer items-center justify-center rounded-lg active:scale-95"
                 >
                   {copiedMessage ? <Check className="h-3.5 w-3.5 text-white" /> : <Copy className="h-3.5 w-3.5" />}
                 </button>
@@ -469,7 +488,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                     onClick={onRegenerate}
                     title={t('retryResponse')}
                     aria-label={t('retryResponse')}
-                    className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-white/50 transition-colors duration-150 hover:bg-white/[0.05] hover:text-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"
+                    className="chat-message-action flex size-8 cursor-pointer items-center justify-center rounded-lg active:scale-95"
                   >
                     <RefreshCw className="h-3.5 w-3.5" />
                   </button>
@@ -478,14 +497,14 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                   onClick={onRetryArtifact} className="rounded-lg px-2.5 py-1.5 text-xs text-white/70 hover:bg-white/[0.05] hover:text-white">
                   {locale.startsWith('fr') ? 'Réessayer le graphique' : locale.startsWith('ar') ? 'أعد محاولة الرسم البياني' : 'Try chart again'}
                 </button>}
-                {documentEligibility !== 'hidden' && <button type="button" onClick={() => setDocumentOpen(true)} className={cn('ms-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors duration-150 hover:bg-white/[0.05] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40', documentEligibility === 'secondary' ? 'text-white/45' : 'text-white/70')}>{locale === 'ar' ? 'فتح كمستند' : locale === 'fr' ? 'Ouvrir en document' : 'Open as document'}</button>}
+                {documentEligibility !== 'hidden' && <button type="button" onClick={() => setDocumentOpen(true)} className="chat-message-action ms-2 inline-flex items-center gap-1.5 rounded-lg border border-[var(--studio-border-strong)] bg-[var(--studio-card)] px-2.5 py-1.5 text-xs"><FileText size={14} aria-hidden="true" />{locale === 'ar' ? 'فتح كمستند' : locale === 'fr' ? 'Ouvrir en document' : 'Open in document'}</button>}
                 {timestamp && <time dateTime={new Date(String(message.createdAt)).toISOString()}
-                  className="ms-auto text-[10px] tabular-nums text-white/40 sm:text-white/25 sm:group-hover:text-white/55">{timestamp}</time>}
+                  className="ms-auto text-[10px] tabular-nums text-[var(--studio-text-secondary)]">{timestamp}</time>}
               </div>
             )}
             {!isStreaming && artifactParts.length > 0 && lastArtifactIndex < 0 && timestamp &&
               <time dateTime={new Date(String(message.createdAt)).toISOString()}
-                className="block text-end text-[10px] tabular-nums text-white/40">{timestamp}</time>}
+                dir="ltr" className="block text-end text-[10px] tabular-nums text-[var(--studio-text-secondary)]">{timestamp}</time>}
           </div>
         )}
       </div>

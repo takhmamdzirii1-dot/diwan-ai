@@ -432,6 +432,7 @@ export async function POST(request: Request) {
       // Studio; an HTTP error would replace it with a generic SDK failure.
       return new Response(`0:${JSON.stringify(currentInformationUnavailable(responseLanguage))}\n8:${JSON.stringify([
         { type: 'vantra-search-context', executionId: execution.executionId },
+        { type: 'vantra-web-sources', state: 'read', sources: [], readCount: 0 },
         { type: 'vantra-web-verification', state: 'unverified', code: 'CURRENT_INFORMATION_UNVERIFIED' }])}\nd:{"finishReason":"error"}\n`,
         { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Vercel-AI-Data-Stream': 'v1' } });
     }

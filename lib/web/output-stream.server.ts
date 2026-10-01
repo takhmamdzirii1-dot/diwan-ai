@@ -3,6 +3,7 @@ import { parseChatArtifact, validatedArtifactPartFromToolResult, type ChatMessag
 import { currentInformationUnavailable, type createChatSearch } from './chat-search.server';
 import type { ResponseLanguage } from '@/lib/chat/response-language';
 import type { StreamTerminalDiagnostics } from './stream-diagnostics';
+import { webSourcesSchema } from '@/lib/chat/web-sources';
 
 type Search = ReturnType<typeof createChatSearch>;
 
@@ -44,7 +45,25 @@ export function guardCurrentInformationStream(response: Response, search: Search
   if (options.signal?.aborted) abort();
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
+      const sourceStatus = (state: 'searching' | 'read') => {
+        const hits = search.evidence() ?? [];
+        const parsed = webSourcesSchema.safeParse({ type: 'vantra-web-sources', state,
+          sources: hits.slice(0, 24).map((hit, index) => ({ id: hit.evidenceId ?? `S${index + 1}`,
+            title: hit.title.slice(0, 300), url: hit.url })),
+          readCount: hits.filter((hit) => hit.verifiedPage).length });
+        if (parsed.success && !cancelled) controller.enqueue(encoder.encode(`8:${JSON.stringify([parsed.data])}\n`));
+      };
+      if (search.evidence() !== null) sourceStatus('read');
+      else if (options.required) sourceStatus('searching');
+      const progressCalls = new Map<string, string>();
       const processLine = (line: string) => {
+        if (/^[9a]:/.test(line)) {
+          const value = JSON.parse(line.slice(2));
+          if (line.startsWith('9:')) {
+            progressCalls.set(value.toolCallId, value.toolName);
+            if (value.toolName === 'web_search') sourceStatus('searching');
+          } else if (['web_search', 'read_web_page'].includes(progressCalls.get(value.toolCallId) ?? '')) sourceStatus('read');
+        }
         if (line.startsWith('3:')) { providerError = true; errorFrameSeen = true; }
         if (line.startsWith('d:')) {
           const terminal = JSON.parse(line.slice(2));
@@ -106,6 +125,7 @@ export function guardCurrentInformationStream(response: Response, search: Search
           const outcome = search.evaluateOutput(structured ? '' : text,
             structured ? [{ type: structured.type, artifact: structured } as ChatMessagePart] : parts);
           await finalize();
+          if (search.evidence() !== null) sourceStatus('read');
           if (outcome && !outcome.accepted) {
             // Never emit an unverified artifact, partial arguments, or model-memory answer.
             // The execution is failed/released by finalize above. Deliver the

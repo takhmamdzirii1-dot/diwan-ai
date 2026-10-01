@@ -1,6 +1,7 @@
 import { validatedArtifactPartFromToolResult, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
 import { getArtifactTool } from '@/lib/artifacts/tool-registry';
 import { searchContextReference } from '@/lib/web/search-context';
+import { webSourcesAnnotation, type WebSourcesAnnotation } from './web-sources';
 type SearchReference = NonNullable<ReturnType<typeof searchContextReference>>;
 
 export type CanonicalStreamStatus = 'completed' | 'aborted' | 'error' | 'unverified';
@@ -44,12 +45,14 @@ export class ChatStreamFinalizer {
   private finalized = false;
   private invalidated = false;
   private searchReference: SearchReference | null = null;
+  private webSources: WebSourcesAnnotation | null = null;
 
   constructor(readonly requestId: string,
     private readonly commit: (result: { requestId: string; text: string; artifacts: ChatMessagePart[];
-      status: CanonicalStreamStatus; annotations?: SearchReference[] }) => void) {}
+      status: CanonicalStreamStatus; annotations?: Array<SearchReference | WebSourcesAnnotation> }) => void) {}
 
   setSearchReference(reference: SearchReference) { if (!this.invalidated) this.searchReference = reference; }
+  setWebSources(annotation: WebSourcesAnnotation) { if (!this.invalidated) this.webSources = annotation; }
 
   append(delta: string) {
     if (!this.rawStatus && !this.invalidated) this.text += delta;
@@ -81,8 +84,9 @@ export class ChatStreamFinalizer {
     if (this.invalidated || this.finalized || !this.rawStatus) return;
     if (this.rawStatus === 'completed' && !this.consumerSettled) return;
     this.finalized = true;
+    const annotations = [...(this.searchReference ? [this.searchReference] : []), ...(this.webSources ? [this.webSources] : [])];
     this.commit({ requestId: this.requestId, text: this.text, artifacts: this.artifacts, status: this.rawStatus,
-      ...(this.searchReference ? { annotations: [this.searchReference] } : {}) });
+      ...(annotations.length ? { annotations } : {}) });
   }
 }
 
@@ -93,7 +97,8 @@ export async function consumeCanonicalChatStream(stream: ReadableStream<Uint8Arr
   onErrorKind?: (reason: 'provider_error' | 'network_error') => void,
   onArtifact?: (part: ChatMessagePart) => void,
   onToolEvent?: (event: { toolName: string; called: boolean; resultValidated: boolean }) => void,
-  onSearchReference?: (reference: SearchReference) => void): Promise<CanonicalStreamStatus> {
+  onSearchReference?: (reference: SearchReference) => void,
+  onWebSources?: (annotation: WebSourcesAnnotation) => void): Promise<CanonicalStreamStatus> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let pending = '';
@@ -147,6 +152,8 @@ export async function consumeCanonicalChatStream(stream: ReadableStream<Uint8Arr
             const annotations: unknown = JSON.parse(line.slice(2));
             const reference = searchContextReference(annotations);
             if (reference) onSearchReference?.(reference);
+            const sources = webSourcesAnnotation(annotations);
+            if (sources) onWebSources?.(sources);
             verificationFailed ||= Array.isArray(annotations) && annotations.some((item) => item
               && item.type === 'vantra-web-verification' && item.state === 'unverified'
               && item.code === 'CURRENT_INFORMATION_UNVERIFIED');

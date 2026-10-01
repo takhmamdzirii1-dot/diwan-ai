@@ -48,6 +48,7 @@ import { routeConversationIntent } from '@/lib/chat/intent-router';
 import { deterministicContextOutput, expectedOutputType, partMatchesRequestedAction,
   validateRequestedChatOutput } from '@/lib/chat/action-routing';
 import ChatGuidanceCard from './ChatGuidanceCard';
+import { decideWebSearchWithHistory } from '@/lib/web/selection';
 
 const ArtifactSpreadsheetPreview = dynamic(() => import('./ArtifactSpreadsheetPreview'), { ssr: false });
 const FileAttachmentPreview = dynamic(() => import('./FileAttachmentPreview'), { ssr: false });
@@ -388,7 +389,7 @@ export default function StudioDashboard({
           if (event.toolName === 'create_document' && event.resultValidated) validatedDocumentResults++;
           if (event.toolName === 'create_presentation' && event.called) presentationToolCalls++;
           if (event.toolName === 'create_presentation' && event.resultValidated) validatedPresentationResults++;
-        }, (reference) => finalizer.setSearchReference(reference)).then((status) => {
+        }, (reference) => finalizer.setSearchReference(reference), (sources) => finalizer.setWebSources(sources)).then((status) => {
           if (chatDebugEnabled) console.info('[VANTRA_CHAT_DEBUG] CLIENT_STREAM', {
             requestId, textChars: finalizer.textChars, documentToolCalls,
             validatedDocumentResults, presentationToolCalls, validatedPresentationResults,
@@ -520,6 +521,10 @@ export default function StudioDashboard({
   }, []);
 
   const chatBusy = isLoading || canonicalPending || agentRun?.status === 'running';
+  // Presentation only: use the shared decision while required retrieval is
+  // awaiting response headers. Actual source progress comes from the server.
+  const awaitingSearch = chatBusy && messages.at(-1)?.role === 'user'
+    && decideWebSearchWithHistory(messages.at(-1)!.content, messages.slice(0, -1)).decision.path === 'required';
   const wasSdkLoadingRef = useRef(false);
   useEffect(() => {
     if (wasSdkLoadingRef.current && !isLoading) activeFinalizerRef.current?.consumerDone();
@@ -1251,7 +1256,9 @@ export default function StudioDashboard({
                                 <Sparkles className="h-3 w-3 text-white/70" />
                               </div>
                             </div>
-                            <span className="font-sans antialiased text-white/70 font-normal">{t('thinking')}</span>
+                            <span className="font-sans antialiased text-[var(--studio-text-secondary)] font-normal">{awaitingSearch
+                              ? locale === 'ar' ? 'جارٍ البحث…' : locale === 'fr' ? 'Recherche…' : 'Searching…'
+                              : t('thinking')}</span>
                           </div>
                         )}
 
