@@ -294,6 +294,7 @@ export async function POST(request: Request) {
       allowNativeSearch: !connectedMatch && !agentStep,
       seenSourceUrls: webSelection.seenSourceUrls, now, strategy: searchStrategy,
       contextSubject: webSelection.contextSubject,
+      signal: request.signal,
       providerId: route.providerId, providerModelId: route.providerModelId, modelId: runtimeModel.modelId });
     if (searchStrategy.nativeAdapter) languageModel = searchStrategy.nativeAdapter.bind({ model: languageModel,
       required: webDecision.path === 'required', maxSearchInvocations: 1,
@@ -665,6 +666,7 @@ export async function POST(request: Request) {
         }) : undefined;
       const nativeTools = (webSearch.nativeTool ? { ...artifactTools,
         web_search: webSearch.nativeTool,
+        read_web_page: webSearch.readTool!,
       } : artifactTools) as Record<string, CoreTool & { execute: NonNullable<CoreTool['execute']> }> | undefined;
       if (webSearch.toolExposed) messagesPayload[0] = { role: 'system',
         content: `${messagesPayload[0].content}\n\n${WEB_SEARCH_TOOL_INSTRUCTION}\n\n${webEvidenceInstruction(false, true,
@@ -687,6 +689,7 @@ export async function POST(request: Request) {
       let streamedText = '';
       let finishAfterVerification: (() => Promise<void>) | null = null;
       const searchArtifactParts: ChatMessagePart[] = [];
+      const observedToolResults: Array<{ toolName: string; toolCallId: string; result: unknown }> = [];
       const emittedResultIds = new Set<string>();
       const requestedSlideCount = Number.isInteger(body.requestedSlideCount)
         && body.requestedSlideCount >= 2 && body.requestedSlideCount <= 8
@@ -706,10 +709,10 @@ export async function POST(request: Request) {
         model: languageModel,
         messages: messagesPayload,
         tools: nativeTools,
-        toolChoice: webDecision.path === 'optional' && webSearch.toolExposed
+        toolChoice: webSearch.toolExposed
           ? 'auto' : requiredArtifactToolChoice(taskSelection, toolPath),
         experimental_toolCallStreaming: Boolean(nativeTools && expectedAction),
-        maxSteps: webSearch.toolExposed ? 2 : 1,
+        maxSteps: webSearch.toolExposed ? 5 : 1,
         temperature,
         maxTokens,
         topP,
@@ -736,6 +739,7 @@ export async function POST(request: Request) {
           if (chunk.type === 'tool-call' && chunk.toolName === 'create_document') documentToolCalls++;
           if (chunk.type === 'tool-call' && chunk.toolName === 'create_presentation') presentationToolCalls++;
           if (chunk.type === 'tool-result') {
+            observedToolResults.push({ toolName: chunk.toolName, toolCallId: chunk.toolCallId, result: chunk.result });
             const searchPart = validatedArtifactPartFromToolResult(chunk.toolName, chunk.result);
             if (searchPart) searchArtifactParts.push(searchPart);
             toolLifecycle.resultEmitted = true;
@@ -796,8 +800,12 @@ export async function POST(request: Request) {
               return;
             }
             const expectedPart = expectedAction ? validatedExpectedActionPart(expectedAction, toolPath,
-              streamedText, toolResults, emittedResultIds) : null;
-            const expectedResultValid = Boolean(expectedPart) && (expectedAction !== 'create_presentation'
+              streamedText, observedToolResults.length ? observedToolResults : toolResults, emittedResultIds) : null;
+            const expectedResultValid = Boolean(expectedPart) && (!webValidation || webValidation.parts.some((part) =>
+              expectedPart && 'artifact' in expectedPart && 'artifact' in part
+                ? part.artifact.id === expectedPart.artifact.id
+                : expectedPart?.type === 'file' && part.type === 'file' && part.name === expectedPart.name))
+              && (expectedAction !== 'create_presentation'
               || requestedSlideCount === null || expectedPart?.type === 'presentation'
                 && expectedPart.artifact.slides.length === requestedSlideCount);
             const completion = assessChatCompletion({ expectedAction, finishReason, outputStarted,

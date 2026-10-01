@@ -31,8 +31,20 @@ function isConfirmation(request: string) {
   const clauses = request.trim().split(/[؟?!.;]+/u).map((value) => value.trim()).filter(Boolean);
   return clauses.length > 0 && clauses.length <= 3 && clauses.every((value) => confirmation.test(value));
 }
-const moreResults = /^(?:اعطني|أعطني|هات|ارني|أرني)\s+(?:باقي|المزيد من)\s+(?:النتائج|الأخبار|الاخبار)(?:\s+من فضلك)?\s*[؟?!.,]*$/iu;
+const moreResults = /^(?:(?:اعطني|أعطني|هات|ارني|أرني)\s+(?:باقي|المزيد من)\s+(?:النتائج|الأخبار|الاخبار)(?:\s+من فضلك)?|(?:(?:show|give)(?: me)? )?(?:more|remaining|other) (?:results|news|examples)|(?:montre|donne)(?:-moi)? (?:les autres|plus de|le reste des) (?:résultats|actualités))\s*[؟?!.,]*$/iu;
 const transformation = /^(?:write|rewrite|draft|translate|summari[sz]e|calculate|solve|create|compose|code|explain)\b|^(?:اكتب|أعد صياغة|ترجم|لخص|احسب|أنشئ|اشرح)(?=\s|$)|^(?:écris|rédige|traduis|résume|calcule|explique)\b/iu;
+
+/** Resolve explicit anaphora, not a catalogue of follow-up sentence prefixes.
+ * This only carries a subject; observations must be acquired again for this turn.
+ */
+function referencesPreviousSubject(text: string) {
+  return text.length <= 300 && (
+    /\b(?:this|that|these|those)\s+(?:version|release|model|product|service|database|driver|company|option|result|announcement)s?\b/iu.test(text)
+    || /\b(?:its|their)\s+(?:price|cost|features|support|availability|requirements|changes)\b/iu.test(text)
+    || /\b(?:cette|ce|ces)\s+(?:version|modèle|produit|service|pilote|entreprise|option|résultat)s?\b/iu.test(text)
+    || /(?:هذا|هذه|ذلك|تلك)\s+(?:الإصدار|الاصدار|النسخة|النموذج|المنتج|الخدمة|التعريف|الشركة|الخيار|النتيجة|النتائج)/u.test(text)
+  );
+}
 
 export function selectWebContextTool(request: string): WebContextTool | null {
   const text = request.slice(0, 800).trim();
@@ -70,8 +82,7 @@ function searchDecision(request: string): SearchDecision {
   const freshSubject = freshness.test(text) && !temporalOnly.test(text) && dynamicSubject.test(text);
   if (transformation.test(text) && !freshSubject && !/\b(?:research|search|browse|online|web)\b|(?:ابحث|بحث|تحقق من الإنترنت)/iu.test(text))
     return { path: 'none' };
-  if ((freshness.test(text) && !temporalOnly.test(text)
-    && (dynamicSubject.test(text) || /\b(?:what|who|which|when|where|how|is|are|did|happened)\b|(?:ما|من|ماذا|هل|كيف|متى|وش)/iu.test(text)))
+  if ((freshness.test(text) && !temporalOnly.test(text))
     || inherentlyCurrent.test(text) || /(?:الأسعار الحالية|السعر الحالي)/iu.test(text))
     return { path: 'required', tool: { kind: 'web_search', query: text.slice(0, 300) } };
   // The selected Chat model decides ambiguous factual turns using its native
@@ -83,7 +94,7 @@ function searchDecision(request: string): SearchDecision {
 export function currentInformationPolicy(request: string): CurrentInformationPolicy {
   const decision = searchDecision(request);
   const fresh = decision.path !== 'none' && (freshness.test(request) || inherentlyCurrent.test(request));
-  const news = /\b(?:news|headlines|developments|what happened|events|actualit[ée]s|nouvelles)\b|(?:أخبار|اخبار|مستجدات|تطورات|ماذا حدث)/iu.test(request);
+  const news = /\b(?:news|headlines|developments|what happened|events|announcements|annonces|événements|actualit[ée]s|nouvelles)\b|(?:أخبار|اخبار|مستجدات|تطورات|أحداث|احداث|إعلانات|اعلانات|ماذا حدث)/iu.test(request);
   const exactFact = /\b(?:version|release|driver|pilote|version actuelle)\b|(?:إصدار|اصدار|نسخة|تعريف)/iu.test(request)
     ? 'version' : /\b(?:price|prices|cost|prix)\b|(?:سعر|الأسعار|الاسعار)/iu.test(request)
       ? 'price' : /\b(?:availability|stock|status|disponibilit[ée])\b|(?:متاح|متوفر|توفر|الحالة)/iu.test(request)
@@ -108,19 +119,20 @@ export function decideWebSearchWithHistory(current: string,
     && /\b(?:verify|check|vérifie|vérifier|vérifiez)\b|تحقق|تأكد|تاكد/iu.test(text)
     && /\b(?:this|that|these|those|again|ces|cela|ça|nouveau)\b|هذا|هذه|ذلك|تلك|مرة أخرى/iu.test(text);
   const contextual = isConfirmation(text) || verifyReference || temporalOnly.test(text) || moreResults.test(text)
+    || referencesPreviousSubject(text)
     || !!driverRequestScope(trustedContext?.subject ?? '') && driverScopeRefinement(text)
-    || text.length <= 120 && /^(?:and (?:is it|does it)|what about (?:it|that|its)|is it|does it|et (?:est-il|son)|est-il|est-ce|وهل|هل هو|وكم|ومتى)(?=\s|$)/iu.test(text);
-  if (trustedContext?.fresh && contextual && !noWeb.test(current) && !sensitiveInput.test(current)) {
+    || text.length <= 160 && /^(?:and (?:what about|how about|is it|does it|which one)\b|what about (?:it|that|its|weekends)\b|is it\b|does it\b|which (?:one|of them)\b|compare (?:them|these)\b|et (?:lequel|laquelle|est-il|est-ce)\b|lequel\b|laquelle\b|est-il\b|est-ce\b|وهل|هل هو|هل هي|وكم|ومتى|وأيهما|قارن بينها)(?=\s|$)/iu.test(text);
+  if (trustedContext && contextual && !noWeb.test(current) && !sensitiveInput.test(current)) {
     const subject = searchSubject(trustedContext.subject);
     const refinement = isConfirmation(text) || verifyReference ? requestTimeframe(text) || trustedContext.timeframe
       : temporalOnly.test(text) ? text : `${trustedContext.timeframe} ${text}`.trim();
     const evidenceRequest = `${subject.slice(0, Math.max(1, 299 - refinement.length))} ${refinement}`.trim();
-    return { decision: { path: 'required', tool: { kind: 'web_search', query: evidenceRequest } },
+    return { decision: trustedContext.fresh || isConfirmation(text) || moreResults.test(text)
+        ? { path: 'required', tool: { kind: 'web_search', query: evidenceRequest } } : { path: 'optional' },
       evidenceRequest, contextSubject: driverScopeRefinement(text) ? evidenceRequest : subject,
       seenSourceUrls: moreResults.test(text) && 'sourceUrls' in trustedContext ? trustedContext.sourceUrls : undefined };
   }
-  if (noWeb.test(current) || (!isConfirmation(current) && !temporalOnly.test(current.trim())
-    && !moreResults.test(current.trim())))
+  if (noWeb.test(current) || sensitiveInput.test(current) || !contextual)
     return { decision, evidenceRequest: current };
   const lastUser = [...previous].reverse().findIndex((message) => message.role === 'user');
   if (lastUser < 0) return { decision, evidenceRequest: current };
@@ -130,7 +142,8 @@ export function decideWebSearchWithHistory(current: string,
   // new subjects. Walk only that bounded contiguous chain, never past a new topic.
   for (let scanned = 0; scanned < 8; scanned++) {
     const prior = previous[index].content.trim();
-    if (!isConfirmation(prior) && !temporalOnly.test(prior) && !moreResults.test(prior)) break;
+    if (!isConfirmation(prior) && !temporalOnly.test(prior) && !moreResults.test(prior)
+      && !referencesPreviousSubject(prior)) break;
     if (!inheritedTimeframe && temporalOnly.test(prior)) inheritedTimeframe = prior;
     let next = index - 1;
     while (next >= 0 && previous[next].role !== 'user') next--;

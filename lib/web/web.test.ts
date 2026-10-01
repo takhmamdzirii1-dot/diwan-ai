@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { selectArtifactTools, selectWebContextTool } from '@/lib/artifacts/tool-registry';
 import { oncePerTurnOptionalWebSearch, optionalWebContext, searchContextForRequest, webContextForRequest } from './context.server';
+import { deliverResearchAnswer } from './research-answer';
 import { BraveWebSearch, orchestrateWebSearch, SearchProviderError, searchWeb, TavilyWebSearch,
   type SearchExecution, type WebSearchProvider } from './search.server';
 import { budgetWarning, type SearchHealthStore } from './search-health.server';
@@ -86,10 +87,10 @@ test('compositional fresh news, explicit search, override, and semantic optional
 test('core prompt is language-aware while Web Search guidance is route-conditional', () => {
   const prompt = vantraCoreSystemPrompt({ language: 'ar', now: new Date('2026-09-29T12:00:00Z') });
   assert.match(prompt, /premium general-purpose AI assistant/);
-  assert.match(prompt, /Respond in Arabic/);
-  assert.doesNotMatch(prompt, /web_search is available in this turn/);
-  assert.match(WEB_SEARCH_TOOL_INSTRUCTION, /web_search is available in this turn/);
-  assert.match(WEB_SEARCH_TOOL_DESCRIPTION, /one concise, self-contained query/);
+  assert.match(prompt, /language hint is Arabic/);
+  assert.doesNotMatch(prompt, /web_search and read_web_page are available/g);
+  assert.match(WEB_SEARCH_TOOL_INSTRUCTION, /web_search and read_web_page are available/);
+  assert.match(WEB_SEARCH_TOOL_DESCRIPTION, /concise, self-contained query/);
 });
 
 test('short temporal refinement inherits only the immediately answered fresh subject', () => {
@@ -159,7 +160,7 @@ test('optional native web tool has one turn-local invocation even across paralle
   const [first, second] = await Promise.all([execute('Africa news last week'), execute('another query')]);
   assert.equal(requests, 1);
   assert.equal(first.status, 'ok');
-  assert.equal(second.status, 'unavailable');
+  assert.deepEqual(second, first);
 });
 
 test('harmless search preamble and escaped formatting space normalize only after full guard validation', async () => {
@@ -300,7 +301,7 @@ test('English question stays English when a retrieved source is Arabic', async (
   assert.match(guarded, /The announcement reports version 26\.1\.0/);
 });
 
-test('fresh facts verify a primary page and discard a conflicting secondary snippet', async () => {
+test('fresh facts read primary pages while retaining competing observations for the selected answer model', async () => {
   const request = 'ما هو أحدث إصدار من Node.js الآن؟';
   const now = new Date('2026-09-28T12:00:00Z');
   const readUrls: string[] = [];
@@ -317,24 +318,17 @@ test('fresh facts verify a primary page and discard a conflicting secondary snip
       mimeType: 'text/markdown', text: url.includes('/blog/')
         ? 'Node.js release notes: Current 20.20.0.' : 'Node.js downloads: Current 26.1.0. LTS 24.4.0.' }; },
   });
-  assert.deepEqual(readUrls, ['https://nodejs.org/en/download', 'https://nodejs.org/en/blog/release/v20']);
-  assert.equal(result.hits.length, 1);
-  assert.equal(result.hits[0].url, 'https://nodejs.org/en/download');
-  assert.equal(result.hits[0].verifiedPage, true);
-  assert.match(result.context, /Current 26\.1\.0/);
-  assert.doesNotMatch(result.context, /Version checker/);
-  const fallback = groundedSearchSummary(result.hits, request, now, 'ar');
-  assert.match(fallback, /26\.1\.0.*24\.4\.0/);
-  assert.doesNotMatch(fallback, /20\.20\.0/);
-  const stale = 'الإصدار الأحدث هو 20.20.0. [Older official release](https://nodejs.org/en/blog/release/v20)';
-  assert.equal(usableSearchSynthesis(stale, result.hits, request, now, 'ar'), false);
-  const guarded = await (await guardSearchDataStream(new Response(`0:${JSON.stringify(stale)}\n`),
-    result.hits, request, now, 'ar')).text();
-  assert.match(guarded, /26\.1\.0/);
-  assert.doesNotMatch(guarded, /20\.20\.0/);
+  assert.deepEqual(new Set(readUrls), new Set(['https://nodejs.org/en/download', 'https://nodejs.org/en/blog/release/v20']));
+  assert.equal(result.hits.length, 3);
+  const downloads = result.hits.find((hit) => hit.url.endsWith('/download'))!;
+  assert.equal(downloads.verifiedPage, true);
+  assert.match(downloads.description, /Current 26\.1\.0/);
+  assert.match(result.context, /Version checker/);
+  assert.match(result.context, /does not prove an event date or latest status/);
+  assert.equal(result.telemetry.selectionReason, 'authority_hint_with_competing_observations');
 });
 
-test('fresh facts remain uncertain when primary read fails or no primary result exists', async () => {
+test('fresh facts preserve available source observations after read failure without certifying latest', async () => {
   const request = 'latest Node.js version now';
   let reads = 0;
   const result = await searchContextForRequest(request, request, {
@@ -344,10 +338,12 @@ test('fresh facts remain uncertain when primary read fails or no primary result 
     ] }),
     read: async () => { reads++; throw new Error('URL_UNAVAILABLE'); },
   });
-  assert.equal(reads, 1);
-  assert.deepEqual(result.hits, []);
-  assert.match(groundedSearchSummary(result.hits, request), /could not verify the current fact/);
-  assert.doesNotMatch(result.context, /20\.20\.0|26\.1\.0/);
+  assert.equal(reads, 2);
+  assert.equal(result.hits.length, 2);
+  assert.match(result.context, /20\.20\.0/);
+  assert.match(result.context, /26\.1\.0/);
+  assert.equal(result.telemetry.urlReadOutcome, 'failed');
+  assert.equal(result.telemetry.selectionReason, 'authority_hint_with_competing_observations');
 });
 
 test('official search evidence survives URL Reader failure and outranks stale secondary evidence', async () => {
@@ -360,15 +356,12 @@ test('official search evidence survives URL Reader failure and outranks stale se
     ] }),
     read: async () => { throw new Error('URL_CONTENT_UNSUPPORTED'); },
   });
-  assert.deepEqual(result.diagnosticStages, ['primary_candidate_found', 'primary_url_read_failed',
-    'official_search_result_evidence_used']);
-  assert.equal(result.hits[0].evidenceLevel, 'primary_search');
-  assert.match(result.context, /Official search-result evidence.*Current 26\.1\.0/s);
-  assert.doesNotMatch(result.context, /20\.20\.0/);
-  const answer = groundedSearchSummary(result.hits, request, new Date('2026-09-28T12:00:00Z'), 'ar');
-  assert.match(answer, /26\.1\.0.*24\.4\.0/);
-  assert.match(answer, /https:\/\/nodejs\.org\/en\/download/);
-  assert.doesNotMatch(answer, /20\.20\.0/);
+  assert.deepEqual(result.diagnosticStages, ['search_observations']);
+  assert.equal(result.hits[0].url, 'https://nodejs.org/en/download');
+  assert.match(result.context, /Current 26\.1\.0/);
+  assert.match(result.context, /20\.20\.0/);
+  assert.deepEqual(result.telemetry.webUrlReadFailures, ['URL_CONTENT_UNSUPPORTED', 'URL_CONTENT_UNSUPPORTED']);
+  assert.equal(result.telemetry.officialEvidenceUsed, true);
 });
 
 test('exact official Brave evidence does not spend a Tavily fallback request', async () => {
@@ -383,7 +376,7 @@ test('exact official Brave evidence does not spend a Tavily fallback request', a
   });
   assert.equal(fallbackCalls, 0);
   assert.equal(result.hits[0].evidenceId, 'S1');
-  assert.equal(result.telemetry.finalEvidenceQuality, 'primary_exact');
+  assert.equal(result.telemetry.finalEvidenceQuality, 'search_observations');
   assert.equal(result.telemetry.fallbackUsed, false);
 });
 
@@ -416,8 +409,8 @@ test('Arabic latest-version request accepts an undated localized official result
     read: async () => { throw new Error('URL_TOO_LARGE'); },
   });
   assert.equal(fallbackCalls, 0);
-  assert.equal(result.telemetry.finalEvidenceQuality, 'primary_exact');
-  assert.match(groundedSearchSummary(result.hits, request, new Date(), 'ar'), /26\.10\.0.*24\.21\.0/);
+  assert.equal(result.telemetry.finalEvidenceQuality, 'search_observations');
+  assert.match(result.context, /26\.10\.0.*24\.21\.0/);
 });
 
 test('prefixed evergreen paths exclude historical release articles', () => {
@@ -454,7 +447,7 @@ test('a read old official release note cannot outrank a newer official current i
   assert.doesNotMatch(answer, /26\.8\.2/);
 });
 
-test('a stale official release note stays uncertain without an evidence-quality provider fallback', async () => {
+test('historical release observations retain their date and never request a quality fallback', async () => {
   const request = 'latest Acme version now';
   const today = new Date();
   const oldDate = new Date(today.getTime() - 20 * 86_400_000).toISOString().slice(0, 10);
@@ -477,9 +470,11 @@ test('a stale official release note stays uncertain without an evidence-quality 
     },
   });
   assert.equal(fallbackCalls, 0);
-  assert.equal(result.telemetry.evidenceQuality, 'insufficient');
-  assert.equal(result.telemetry.finalEvidenceQuality, 'insufficient');
-  assert.deepEqual(result.hits, []);
+  assert.equal(result.telemetry.evidenceQuality, 'page_and_search_observations');
+  assert.equal(result.telemetry.finalEvidenceQuality, 'page_and_search_observations');
+  assert.equal(result.hits.length, 1);
+  assert.equal(result.hits[0].publishedAt, oldDate);
+  assert.match(result.context, /does not prove an event date or latest status/);
   assert.equal(result.telemetry.fallbackUsed, false);
 });
 
@@ -521,9 +516,9 @@ test('weak Brave evidence does not trigger Tavily', async () => {
     read: async () => { throw new Error('unexpected read'); },
   });
   assert.deepEqual(calls, ['brave']);
-  assert.equal(result.hits.length, 0);
+  assert.equal(result.hits.length, 1);
   assert.equal(result.telemetry.fallbackUsed, false);
-  assert.equal(result.telemetry.finalEvidenceQuality, 'insufficient');
+  assert.equal(result.telemetry.finalEvidenceQuality, 'search_observations');
 });
 
 test('a stale Brave snippet cannot trigger a separate Tavily evidence search', async () => {
@@ -539,11 +534,12 @@ test('a stale Brave snippet cannot trigger a separate Tavily evidence search', a
     read: async () => { throw new Error('URL_TOO_LARGE'); },
   });
   assert.equal(result.telemetry.fallbackUsed, false);
-  assert.deepEqual(result.hits, []);
+  assert.equal(result.hits.length, 1);
+  assert.equal(result.hits[0].publishedAt, '2025-01-01');
   assert.doesNotMatch(result.context, /8\.2\.0/);
 });
 
-test('official current major plus independent exact releases forms a grounded bundle after URL_TOO_LARGE', async () => {
+test('official scope and independent observations remain available after URL_TOO_LARGE', async () => {
   const request = 'latest Acme version now';
   const calls: string[] = [];
   const result = await searchContextForRequest(request, request, {
@@ -566,31 +562,18 @@ test('official current major plus independent exact releases forms a grounded bu
     read: async () => { throw new Error('URL_TOO_LARGE'); },
   });
   assert.deepEqual(calls, ['brave']);
-  assert.equal(result.telemetry.finalEvidenceQuality, 'primary_supported_bundle');
+  assert.equal(result.telemetry.finalEvidenceQuality, 'search_observations');
   assert.equal(result.hits.length, 3);
-  assert.equal(result.hits.filter((hit) => hit.evidenceLevel === 'primary_bundle').length, 2);
+  assert.equal(result.telemetry.officialEvidenceUsed, true);
+  assert.match(result.context, /v26 is the Current/);
   assert.match(result.context, /26\.10\.0/);
-  const answer = groundedSearchSummary(result.hits, request, new Date(), 'en');
-  assert.match(answer, /26\.10\.0/);
-  assert.doesNotMatch(answer, /could not verify/i);
-  assert.equal((answer.match(/\]\(https:\/\//g) ?? []).length, 3);
-  const sourced = 'The Current release appears to be 26.10.0; the official site confirms the current series. '
-    + '[[source:S1]] [[source:S2]] [[source:S3]]';
-  assert.equal(usableSearchSynthesis(sourced, result.hits, request, new Date(), 'en'), true);
-  assert.equal(usableSearchSynthesis('The Current release appears to be 99.0.0. '
-    + '[Acme downloads](https://acme.com/downloads) [Acme update](https://first.example/acme) '
-    + '[Independent Acme release check](https://second.test/acme)', result.hits, request, new Date(), 'en'), false);
-  const fabricated = 'The Current release is 99.0.0. [Acme downloads](https://acme.com/downloads)';
-  const guarded = await (await guardSearchDataStream(new Response(`0:${JSON.stringify(fabricated)}\n`),
-    result.hits, request, new Date(), 'en')).text();
-  assert.match(guarded, /26\.10\.0/);
-  assert.doesNotMatch(guarded, /99\.0\.0/);
-  const arabic = groundedSearchSummary(result.hits, 'ما هو أحدث إصدار من Acme الآن؟', new Date(), 'ar');
-  assert.match(arabic, /26\.10\.0/);
-  assert.match(arabic, /[\u0600-\u06ff]/u);
+  const delivered = deliverResearchAnswer('The reported release is 26.10.0; the official site establishes only the major series. [[source:S1]] [[source:S2]] [[source:S3]]', result.hits, 'en');
+  assert.equal(delivered.accepted, true);
+  assert.equal(delivered.citationsCount, 3);
+  assert.equal(deliverResearchAnswer('Unregistered supporting source. [[source:S99]]', result.hits, 'en').accepted, false);
 });
 
-test('Arabic fresh request may refine retrieval while keeping the answer Arabic', async () => {
+test('Arabic scope survives primary retrieval without a forced English query rewrite', async () => {
   const request = 'ما هو أحدث إصدار من Acme الآن؟';
   let primary = '';
   let refined = '';
@@ -606,15 +589,16 @@ test('Arabic fresh request may refine retrieval while keeping the answer Arabic'
       ] }; },
     read: async () => { throw new Error('URL_TOO_LARGE'); },
   });
-  assert.equal(primary, 'Acme latest current release official');
+  assert.equal(primary, request);
   assert.equal(refined, '');
-  assert.equal(result.telemetry.finalEvidenceQuality, 'primary_supported_bundle');
-  const answer = groundedSearchSummary(result.hits, request, new Date(), 'ar');
-  assert.match(answer, /[\u0600-\u06ff]/u);
-  assert.match(answer, /26\.10\.0/);
+  assert.equal(result.telemetry.finalEvidenceQuality, 'search_observations');
+  assert.match(result.context, /26\.10\.0/);
+  const delivered = deliverResearchAnswer('تشير التقارير إلى 26.10.0 وتؤكد الصفحة الرسمية السلسلة الرئيسية فقط. [[source:S1]] [[source:S2]]', result.hits, 'ar');
+  assert.equal(delivered.accepted, true);
+  assert.match(delivered.text, /[\u0600-\u06ff]/u);
 });
 
-test('Arabic and English current-version questions use one normalized primary retrieval query', async () => {
+test('Arabic and English current-version queries preserve scope in one primary retrieval', async () => {
   for (const request of ['ما هو أحدث إصدار من Node.js الآن؟', 'What is the latest Node.js version now?']) {
     const calls: string[] = [];
     const result = await searchContextForRequest(request, request, {
@@ -626,18 +610,18 @@ test('Arabic and English current-version questions use one normalized primary re
       fallback: async (query) => { calls.push(`fallback:${query}`); throw new Error('not needed'); },
       read: async () => { throw new Error('URL_TOO_LARGE'); },
     });
-    assert.deepEqual(calls, ['Node.js latest current release official']);
-    assert.equal(result.telemetry.finalEvidenceQuality, 'primary_exact');
+    assert.deepEqual(calls, [request]);
+    assert.equal(result.telemetry.finalEvidenceQuality, 'search_observations');
     assert.equal(result.telemetry.fallbackUsed, false);
     assert.match(result.context, /26\.10\.0/);
     const language = request.startsWith('ما') ? 'ar' : 'en';
-    const answer = groundedSearchSummary(result.hits, request, new Date(), language);
+    const answer = deliverResearchAnswer(language === 'ar' ? 'تشير صفحة التنزيل إلى Current 26.10.0. [[source:S1]]' : 'The downloads list Current 26.10.0. [[source:S1]]', result.hits, language).text;
     assert.match(answer, /26\.10\.0/);
     if (language === 'ar') assert.match(answer, /[\u0600-\u06ff]/u);
   }
 });
 
-test('fresh mixed-script model research uses an entity-preserving primary query without a brand map', async () => {
+test('mixed-script model research preserves the original subject without a brand map', async () => {
   for (const [request, expected] of [['اخر نماذج open ai', 'open ai latest models official'],
     ['اخر نماذج Acme Nova', 'Acme Nova latest models official']] as const) {
     const calls: string[] = [];
@@ -646,7 +630,7 @@ test('fresh mixed-script model research uses an entity-preserving primary query 
         mimeType: 'text/markdown', text: '', hits: [] }; },
       read: async () => { throw new Error('no URL read without candidates'); },
     });
-    assert.deepEqual(calls, [expected]);
+    assert.deepEqual(calls, [request]);
   }
 });
 
@@ -665,7 +649,7 @@ test('timeless or uncertain multi-entity requests keep their original retrieval 
   }
 });
 
-test('fresh price and availability requests reuse deterministic intent for primary retrieval', async () => {
+test('price and availability retrieval preserve user scope', async () => {
   for (const [request, expected] of [
     ['What is the current Acme price now?', 'Acme current official price'],
     ['What is the current Acme availability?', 'Acme current official availability'],
@@ -676,7 +660,7 @@ test('fresh price and availability requests reuse deterministic intent for prima
         mimeType: 'text/markdown', text: '', hits: [] }; },
       read: async () => { throw new Error('unexpected read'); },
     });
-    assert.equal(searched, expected);
+    assert.equal(searched, request);
   }
 });
 
@@ -694,8 +678,9 @@ test('today-dated official news is usable without an artificial version or price
     read: async () => { throw new Error('URL_TOO_LARGE'); },
   });
   assert.equal(fallbackCalls, 0);
-  assert.equal(result.hits[0].evidenceLevel, 'primary_search');
-  assert.equal(result.evidence.publishedToday, true);
+  assert.equal(result.hits[0].publishedAt, today);
+  assert.equal(result.telemetry.officialEvidenceUsed, true);
+  assert.match(result.context, /Requested event window/);
 });
 
 test('Arabic fresh news accepts independent relevant sources without an official-domain match', async () => {
@@ -715,14 +700,14 @@ test('Arabic fresh news accepts independent relevant sources without an official
   });
   assert.equal(fallbackCalls, 0);
   assert.equal(result.telemetry.evidenceMode, 'fresh_news');
-  assert.equal(result.telemetry.assessmentReason, 'independent_news_sources');
+  assert.equal(result.telemetry.assessmentReason, 'model_interpreted_observations');
   assert.equal(result.telemetry.primaryCandidateCount, 0);
   assert.equal(result.telemetry.independentDomainCount, 2);
   assert.equal(result.telemetry.selectedEvidenceCount, 2);
   assert.match(result.context, /Acme announced/);
   const answer = 'أعلنت Acme عن مكتب جديد هذا الأسبوع. [[source:S1]] [[source:S2]]';
-  assert.equal(usableSearchSynthesis(answer, result.hits, request, new Date(), 'ar'), true);
-  assert.doesNotMatch(groundedSearchSummary(result.hits, request, new Date(), 'ar'), /لم أتمكن من التحقق/);
+  assert.equal(deliverResearchAnswer(answer, result.hits, 'ar').accepted, true);
+  assert.match(result.context, /observations, not certified answers/);
 });
 
 test('cross-language Africa news retains bounded distinct candidates for one selected-model answer', async () => {
@@ -765,18 +750,19 @@ test('cross-language Africa news retains bounded distinct candidates for one sel
     'اعطيني اخر 5 اخبار في دول افريقيا', operations);
   assert.equal(arabic.telemetry.relevantCandidateCount, 0);
   const answer = arabic.hits.slice(0, 5).map((hit) => `- خبر عن أفريقيا. [[source:${hit.evidenceId}]]`).join('\n');
-  assert.equal(searchSynthesisRejectionReason(answer, arabic.hits,
+  const legacyHits = arabic.hits.map((hit) => ({ ...hit, evidenceLevel: 'corroborated' as const, evidenceBundle: 'independent_news_sources' as const }));
+  assert.equal(searchSynthesisRejectionReason(answer, legacyHits,
     'اعطيني اخر 5 اخبار في دول افريقيا', new Date(), 'ar'), null);
   assert.equal(searchSynthesisRejectionReason(answer.replace('[[source:S5]]', '[[source:S99]]'),
-    arabic.hits, 'اعطيني اخر 5 اخبار في دول افريقيا', new Date(), 'ar'), 'unsupported_url');
+    legacyHits, 'اعطيني اخر 5 اخبار في دول افريقيا', new Date(), 'ar'), 'unsupported_url');
   const tenRequest = 'هات أحدث 10 أخبار في أفريقيا';
   const ten = await searchContextForRequest(tenRequest, tenRequest, operations);
   assert.equal(ten.telemetry.requestedItemCount, 10);
-  assert.equal(ten.hits.length, 7);
-  assert.equal(ten.telemetry.citationCandidatesCount, 7);
+  assert.equal(ten.hits.length, 8);
+  assert.equal(ten.telemetry.citationCandidatesCount, 8);
   const unsupportedEleven = Array.from({ length: 11 }, (_, index) =>
     `- خبر عن أفريقيا. [[source:${ten.hits[index % ten.hits.length].evidenceId}]]`).join('\n');
-  assert.equal(searchSynthesisRejectionReason(unsupportedEleven, ten.hits, tenRequest, new Date(), 'ar'),
+  assert.equal(searchSynthesisRejectionReason(unsupportedEleven, ten.hits.map((hit) => ({ ...hit, evidenceLevel: 'corroborated' as const, evidenceBundle: 'independent_news_sources' as const })), tenRequest, new Date(), 'ar'),
     'too_many_items');
   const structured = Array.from({ length: 4 }, (_, index) => ({
     title: `Acme release ${index}`, url: `https://acme.example/release-${index}`,
@@ -896,25 +882,14 @@ test('current model research uses uncapped general Web synthesis rather than a s
     + '2. نماذج عامة للكتابة والتحليل. [[source:S2]]\n'
     + '3. تختلف الخيارات بحسب المهمة المطلوبة. [[source:S1]]\n'
     + '4. توضح المقارنة تنوع العائلات الحالية. [[source:S2]]';
-  assert.equal(searchSynthesisRejectionReason(answer, result.hits, request, now, 'ar'), null);
-  assert.equal(searchSynthesisRejectionReason(answer.replace('[[source:S2]]', '[[source:S99]]'),
-    result.hits, request, now, 'ar'), 'unsupported_url');
-  assert.equal(searchSynthesisRejectionReason(answer.replace('[[source:S2]]',
-    '[Source](https://research.example/models)'), result.hits, request, now, 'ar'), 'unsupported_url');
-  const guarded = await guardSearchDataStream(new Response(`0:${JSON.stringify(answer)}\n`),
-    result.hits, request, now, 'ar');
-  const rendered = JSON.parse((await guarded.text()).split('\n')[0].slice(2)) as string;
-  assert.match(rendered, /تضم النماذج الحالية/);
-  assert.doesNotMatch(rendered, /هذه مصادر ذات صلة|\[\[source:|&#x20;/);
-  assert.match(rendered, /\]\(https:\/\/openai\.com\/models\)/);
-  const prefaced = await guardSearchDataStream(new Response(`0:${JSON.stringify(`Here are the search results: ${answer}`)}\n`),
-    result.hits, request, now, 'ar');
-  const normalized = JSON.parse((await prefaced.text()).split('\n')[0].slice(2)) as string;
-  assert.match(normalized, /^تضم النماذج الحالية/);
-  assert.doesNotMatch(normalized, /Here are the search results|هذه مصادر ذات صلة/);
-  const lastResort = groundedSearchSummary(result.hits, request, now, 'ar');
-  assert.match(lastResort, /current lineup includes reasoning and general-purpose model families/);
-  assert.doesNotMatch(lastResort, /هذه مصادر ذات صلة/);
+  const rendered = deliverResearchAnswer(answer, result.hits, 'ar');
+  assert.equal(rendered.accepted, true);
+  assert.match(rendered.text, /تضم النماذج الحالية/);
+  assert.doesNotMatch(rendered.text, /هذه مصادر ذات صلة|\[\[source:|&#x20;/);
+  assert.match(rendered.text, /\]\(https:\/\/openai\.com\/models\)/);
+  const unsafe = deliverResearchAnswer('Invalid reference. [[source:S99]]', result.hits, 'ar');
+  assert.equal(unsafe.accepted, false);
+  assert.equal(deliverResearchAnswer('[Source](https://research.example/altered)', result.hits, 'ar').accepted, false);
   assert.equal(braveCalls, 1);
   assert.equal(tavilyCalls, 0);
 });
@@ -948,7 +923,7 @@ test('narrative news accepts ordinary numbers but rejects unsupported dates and 
     hits, request, now, 'ar'), 'unsupported_url');
 });
 
-test('news count and timeframe caps never imply unsupported stories or dates', async () => {
+test('news requests carry the event window while retaining separately dated observations', async () => {
   assert.equal(requestedNewsCount('هات أحدث 10 أخبار عن الجزائر'), 10);
   assert.equal(requestedNewsCount('donne-moi les 5 dernières actualités en Afrique'), 5);
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Algiers', year: 'numeric',
@@ -973,11 +948,13 @@ test('news count and timeframe caps never imply unsupported stories or dates', a
   assert.match(followup.evidenceRequest, /اخبار في دول افريقيا/u);
   const week = await searchContextForRequest(followup.evidenceRequest, followup.evidenceRequest, operations);
   assert.equal(week.telemetry.evidenceMode, 'fresh_news');
-  assert.equal(week.hits.length, 2);
-  assert.ok(week.hits.every((hit) => hit.publishedAt === recent));
+  assert.equal(week.hits.length, 3);
+  assert.match(week.context, /Requested event window/);
+  assert.ok(week.hits.some((hit) => hit.publishedAt === old));
   const todayOnly = await searchContextForRequest('أعطني أخبار أفريقيا اليوم',
     'أعطني أخبار أفريقيا اليوم', operations);
-  assert.equal(todayOnly.hits.length, 0);
+  assert.equal(todayOnly.hits.length, 3);
+  assert.match(todayOnly.context, /Do not call an older event part of this window/);
   assert.equal(todayOnly.evidence.publishedToday, false);
   assert.equal(decideWebSearch('اشرح لي عملية البناء الضوئي').path, 'none');
 });
@@ -1012,8 +989,8 @@ test('independent undated news remains usable without inventing publication fres
     read: async () => { throw new Error('not selected'); },
   });
   assert.equal(result.hits.length, 2);
-  assert.equal(result.telemetry.assessmentReason, 'independent_news_sources');
-  assert.match(result.evidence.text, /Publication dates are unavailable/);
+  assert.equal(result.telemetry.assessmentReason, 'model_interpreted_observations');
+  assert.match(result.evidence.text, /"pagePublishedAt":null/);
   assert.ok(result.hits.every((hit) => !hit.publishedAt));
 });
 
@@ -1051,7 +1028,7 @@ test('narrative news keeps conflicting reports available for same-call synthesis
     read: async () => { throw new Error('not selected'); },
   });
   assert.equal(result.telemetry.evidenceMode, 'fresh_news');
-  assert.equal(result.telemetry.assessmentReason, 'independent_news_sources');
+  assert.equal(result.telemetry.assessmentReason, 'model_interpreted_observations');
   assert.equal(result.hits.length, 2);
 });
 
@@ -1074,9 +1051,9 @@ test('weak news evidence does not trigger Tavily', async () => {
     read: async () => { throw new Error('not selected'); },
   });
   assert.deepEqual(calls, ['brave']);
-  assert.equal(result.telemetry.evidenceQuality, 'insufficient');
-  assert.equal(result.telemetry.assessmentReason, 'insufficient_source_diversity');
-  assert.equal(result.hits.length, 0);
+  assert.equal(result.telemetry.evidenceQuality, 'search_observations');
+  assert.equal(result.telemetry.assessmentReason, 'model_interpreted_observations');
+  assert.equal(result.hits.length, 1);
 });
 
 test('narrative candidates are not discarded by lexical relevance and never invoke quality fallback', async () => {
@@ -1113,7 +1090,7 @@ test('explicit general web search passes relevant independent evidence to synthe
     read: async () => { throw new Error('not selected'); },
   });
   assert.equal(result.telemetry.evidenceMode, 'general_web');
-  assert.equal(result.telemetry.assessmentReason, 'general_search_evidence');
+  assert.equal(result.telemetry.assessmentReason, 'model_interpreted_observations');
   assert.equal(result.hits.length, 2);
   assert.match(result.context, /Acme began/);
 });
@@ -1237,17 +1214,18 @@ test('fresh news accepts source IDs and bullets, but rejects model-authored URLs
     ] }),
     read: async () => { throw new Error('not needed'); },
   });
+  const legacyHits = result.hits.map((hit) => ({ ...hit, evidenceLevel: 'corroborated' as const, evidenceBundle: 'independent_news_sources' as const }));
   const answer = '- افتتحت Acme مكتبًا جديدًا. [[source:S1]]\n'
     + '- وسّعت Acme خدمتها إلى مدينة أخرى. [[source:S2]]';
-  assert.equal(searchSynthesisRejectionReason(answer, result.hits, request, new Date(), 'ar'), null);
-  assert.equal(usableSearchSynthesis(answer, result.hits, request, new Date(), 'ar'), true);
+  assert.equal(searchSynthesisRejectionReason(answer, legacyHits, request, new Date(), 'ar'), null);
+  assert.equal(usableSearchSynthesis(answer, legacyHits, request, new Date(), 'ar'), true);
   assert.equal(searchSynthesisRejectionReason(answer.replace('[[source:S2]]', '[[source:S99]]'),
-    result.hits, request, new Date(), 'ar'), 'unsupported_url');
+    legacyHits, request, new Date(), 'ar'), 'unsupported_url');
   assert.equal(searchSynthesisRejectionReason(answer.replace('[[source:S2]]',
-    '[خبر التوسع](https://second.test/news)'), result.hits, request, new Date(), 'ar'), 'unsupported_url');
-  assert.equal(searchSynthesisRejectionReason(answer.replace('مدينة أخرى', '42 مدينة'), result.hits, request,
+    '[خبر التوسع](https://second.test/news)'), legacyHits, request, new Date(), 'ar'), 'unsupported_url');
+  assert.equal(searchSynthesisRejectionReason(answer.replace('مدينة أخرى', '42 مدينة'), legacyHits, request,
     new Date(), 'ar'), null);
-  assert.equal(searchSynthesisRejectionReason(answer.replace('افتتحت', 'افتتحت عام 2025'), result.hits,
+  assert.equal(searchSynthesisRejectionReason(answer.replace('افتتحت', 'افتتحت عام 2025'), legacyHits,
     request, new Date(), 'ar'), 'unsupported_date');
   const structured = [{ title: 'Acme downloads', url: 'https://acme.com/download/current',
     description: 'Current 8.2.0.', evidenceLevel: 'primary_search' as const }];
@@ -1255,7 +1233,7 @@ test('fresh news accepts source IDs and bullets, but rejects model-authored URLs
     structured, 'latest Acme version now', new Date(), 'en'), 'unsupported_number');
 });
 
-test('insufficient Brave evidence remains uncertain without Tavily', async () => {
+test('speculative observations remain labeled as data and never trigger a quality fallback', async () => {
   let fallbackCalls = 0;
   const request = 'latest Acme version now';
   const result = await searchContextForRequest(request, request, {
@@ -1268,9 +1246,10 @@ test('insufficient Brave evidence remains uncertain without Tavily', async () =>
     read: async () => { throw new Error('unexpected read'); },
   });
   assert.equal(fallbackCalls, 0);
-  assert.equal(result.hits.length, 0);
-  assert.equal(result.telemetry.finalEvidenceQuality, 'insufficient');
-  assert.match(groundedSearchSummary(result.hits, request), /could not verify/);
+  assert.equal(result.hits.length, 1);
+  assert.equal(result.telemetry.finalEvidenceQuality, 'search_observations');
+  assert.match(result.context, /Maybe 8\.2\.0/);
+  assert.match(result.context, /observations, not certified answers/);
 });
 
 test('fresh answer numbers must belong to a cited retrieved source, not merely another hit', () => {
@@ -1297,11 +1276,12 @@ test('official search fallback is generic for current prices, not tied to a prod
     ] }),
     read: async () => { throw new Error('URL_TOO_LARGE'); },
   });
-  assert.equal(result.hits[0].evidenceLevel, 'primary_search');
-  assert.match(groundedSearchSummary(result.hits, request), /99 \$.*https:\/\/acme\.com\/pricing/);
+  assert.equal(result.telemetry.officialEvidenceUsed, true);
+  assert.match(result.context, /Current price: \$99/);
+  assert.equal(result.hits[0].url, 'https://acme.com/pricing');
 });
 
-test('two independent agreeing sources give a cautious answer without primary evidence', async () => {
+test('independent agreeing observations retain both provenances without a truth certificate', async () => {
   const request = 'latest Acme version now';
   const result = await searchContextForRequest(request, request, {
     search: async () => ({ sourceId: 'search:test', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
@@ -1310,18 +1290,16 @@ test('two independent agreeing sources give a cautious answer without primary ev
     ] }),
     read: async () => { throw new Error('unexpected read'); },
   });
-  assert.deepEqual(result.diagnosticStages, ['no_primary_candidate_found', 'corroborated_secondary_evidence_used']);
+  assert.deepEqual(result.diagnosticStages, ['search_observations']);
   assert.equal(result.hits.length, 2);
-  const answer = groundedSearchSummary(result.hits, request);
-  assert.match(answer, /Two independent sources report|Two independent sources agree/);
-  assert.match(answer, /8\.2\.0/);
-  assert.equal((answer.match(/\]\(https:\/\//g) ?? []).length, 2);
-  assert.doesNotMatch(answer, /7\.0\.0/);
-  assert.equal(usableSearchSynthesis('Current is 8.2.0. [Acme release report](https://first.example/release)',
-    result.hits, request, new Date(), 'en'), false);
+  assert.equal(result.telemetry.independentDomainCount, 2);
+  assert.match(result.context, /8\.2\.0/);
+  const delivered = deliverResearchAnswer('Both retrieved reports list 8.2.0. [[source:S1]] [[source:S2]]', result.hits, 'en');
+  assert.equal(delivered.accepted, true);
+  assert.equal(delivered.citationsCount, 2);
 });
 
-test('one unsupported source is insufficient and cannot be promoted to a fresh fact', async () => {
+test('one source remains an attributed observation, not a certified fresh fact', async () => {
   const request = 'latest Acme version now';
   const result = await searchContextForRequest(request, request, {
     search: async () => ({ sourceId: 'search:test', name: 'Results', mimeType: 'text/markdown', text: '', hits: [
@@ -1329,12 +1307,13 @@ test('one unsupported source is insufficient and cannot be promoted to a fresh f
     ] }),
     read: async () => { throw new Error('unexpected read'); },
   });
-  assert.deepEqual(result.diagnosticStages, ['no_primary_candidate_found', 'insufficient_evidence']);
-  assert.deepEqual(result.hits, []);
-  assert.match(groundedSearchSummary(result.hits, request), /could not verify/);
+  assert.deepEqual(result.diagnosticStages, ['search_observations']);
+  assert.equal(result.hits.length, 1);
+  assert.equal(result.telemetry.officialEvidenceUsed, false);
+  assert.match(result.context, /observations, not certified answers/);
 });
 
-test('corroboration rejects duplicate domains and conflicting source groups', async () => {
+test('competing observations preserve domain and claim differences for synthesis', async () => {
   const request = 'latest Acme version now';
   for (const hits of [
     [
@@ -1352,8 +1331,9 @@ test('corroboration rejects duplicate domains and conflicting source groups', as
       search: async () => ({ sourceId: 'search:test', name: 'Results', mimeType: 'text/markdown', text: '', hits }),
       read: async () => { throw new Error('unexpected read'); },
     });
-    assert.deepEqual(result.hits, []);
-    assert.ok(result.diagnosticStages.includes('insufficient_evidence'));
+    assert.equal(result.hits.length, hits.length);
+    for (const hit of hits) assert.ok(result.hits.some((candidate) => candidate.url === hit.url));
+    assert.deepEqual(result.diagnosticStages, ['search_observations']);
   }
 });
 
@@ -1378,15 +1358,15 @@ test('Arabic confirmation follow-up re-runs the inherited query through the evid
   ]);
   assert.equal(choice.decision.path, 'required');
   const result = await searchContextForRequest(choice.evidenceRequest, choice.evidenceRequest, {
-    search: async (query) => { assert.equal(query, 'Node.js latest current release official'); return { sourceId: 'search:test',
+    search: async (query) => { assert.equal(query, original); return { sourceId: 'search:test',
       name: 'Results', mimeType: 'text/markdown', text: '', hits: [
         { title: 'Node.js downloads', url: 'https://nodejs.org/en/download',
           description: 'Current 26.1.0; LTS 24.4.0.' },
       ] }; },
     read: async () => { throw new Error('URL_UNAVAILABLE'); },
   });
-  assert.equal(result.hits[0].evidenceLevel, 'primary_search');
-  assert.match(groundedSearchSummary(result.hits, choice.evidenceRequest, new Date(), 'ar'), /26\.1\.0/);
+  assert.equal(result.telemetry.officialEvidenceUsed, true);
+  assert.match(result.context, /26\.1\.0/);
 });
 
 test('Brave and Tavily preserve publication dates when returned, without inventing missing dates', async () => {
@@ -1464,7 +1444,7 @@ test('primary-heavy undated Current releases resolve from one Brave response aft
   assert.ok(execution);
   let urlReads = 0;
   const result = await searchContextForRequest(request, request, {
-    search: async (query) => { assert.equal(query, 'Node.js latest current release official');
+    search: async (query) => { assert.equal(query, request);
       return { sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '',
         hits: returned, execution }; },
     fallback: async () => { tavilyCalls++; throw new Error('Evidence fallback must not run'); },
@@ -1482,14 +1462,16 @@ test('primary-heavy undated Current releases resolve from one Brave response aft
   assert.equal(result.telemetry.currentMajorEstablished, true);
   assert.equal(result.telemetry.liveCurrentIndexCandidateCount, 1);
   assert.equal(result.telemetry.undatedPrimaryCurrentGroupCount, 4);
-  assert.equal(result.telemetry.assessmentReason, 'latest_primary_semver');
-  assert.equal(result.telemetry.selectionReason, 'latest_primary_semver');
+  assert.equal(result.telemetry.assessmentReason, 'model_interpreted_observations');
+  assert.equal(result.telemetry.selectionReason, 'authority_hint_with_competing_observations');
   assert.equal(result.telemetry.evidenceSufficient, true);
   assert.ok(result.telemetry.selectedEvidenceCount > 0);
   assert.equal(result.telemetry.fallbackUsed, false);
-  assert.equal(result.hits[0].url, 'https://nodejs.org/en/blog/release/v26.10.0');
-  assert.match(groundedSearchSummary(result.hits, request, new Date(), 'ar'), /26\.10\.0/);
-  assert.doesNotMatch(groundedSearchSummary(result.hits, request, new Date(), 'ar'), /could not verify/);
+  assert.equal(result.hits.length, 8);
+  assert.ok(result.hits.some((hit) => hit.url === 'https://nodejs.org/en/blog/release/v26.10.0'));
+  assert.match(result.context, /26\.10\.0/);
+  assert.match(result.context, /LTS/);
+  assert.match(result.context, /historical|Archived/);
 });
 
 test('same-major tie-break and multi-major progression remain below a live index', () => {
@@ -1594,7 +1576,7 @@ test('production-shaped multi-major Brave result resolves after two failed URL r
     ], health: health().store, onExecution: (value) => { execution = value; },
   });
   const result = await searchContextForRequest(request, request, {
-    search: async (query) => { assert.equal(query, 'Node.js latest current release official');
+    search: async (query) => { assert.equal(query, request);
       return { sourceId: 'search:brave', name: 'Results', mimeType: 'text/markdown', text: '',
         hits: returned, execution }; },
     fallback: async () => { tavilyCalls++; throw new Error('Evidence fallback must not run'); },
@@ -1610,10 +1592,13 @@ test('production-shaped multi-major Brave result resolves after two failed URL r
   assert.equal(result.telemetry.undatedPrimaryCurrentGroupCount, 3);
   assert.equal(result.telemetry.evidenceSufficient, true);
   assert.ok(result.telemetry.selectedEvidenceCount > 0);
-  assert.equal(result.telemetry.selectionReason, 'latest_primary_semver_progression');
+  assert.equal(result.telemetry.selectionReason, 'authority_hint_with_competing_observations');
   assert.equal(result.telemetry.fallbackUsed, false);
-  assert.equal(result.hits[0].url, 'https://nodejs.org/en/blog/release/v26.10.0');
-  assert.match(groundedSearchSummary(result.hits, request, new Date(), 'ar'), /26\.10\.0/);
+  assert.equal(result.hits.length, 8);
+  assert.ok(result.hits.some((hit) => hit.url === 'https://nodejs.org/en/blog/release/v26.10.0'));
+  assert.match(result.context, /26\.10\.0/);
+  assert.match(result.context, /LTS/);
+  assert.match(result.context, /historical|Archived/);
 });
 
 test('operational metadata counts outbound searches, not skipped provider slots or URL reads', async () => {

@@ -1,8 +1,7 @@
-import type { ChatMessagePart } from '@/lib/artifacts/chat-parts';
+import { chatPartsFromMessage, type ChatMessagePart } from '@/lib/artifacts/chat-parts';
 import type { ResponseLanguage } from '@/lib/chat/response-language';
-import { evaluateSearchSynthesis, renderEvidenceSourceIds, searchSynthesisRejectionReason } from './evidence';
+import { deliverResearchAnswer } from './research-answer';
 import type { WebSearchHit } from './search.server';
-import { currentInformationPolicy } from './selection';
 
 /** Only customer content participates: not IDs, chart references, filenames, or schema versions. */
 export function artifactEvidenceText(part: ChatMessagePart): string {
@@ -23,32 +22,11 @@ export function artifactEvidenceText(part: ChatMessagePart): string {
   }
 }
 
-/** Numeric artifact data are measured facts, not list numbering. Validate them
- * against that artifact/row's cited evidence; a neighboring artifact cannot grant support. */
-function numericArtifactFailure(part: ChatMessagePart, hits: readonly WebSearchHit[]) {
-  const supported = (content: string, values: number[]) => {
-    if (!values.length) return true;
-    const ids = new Set([...content.matchAll(/\[\[source:(S[1-9]\d*)\]\]/g)].map((match) => match[1]));
-    const evidence = hits.filter((hit, index) => ids.has(hit.evidenceId ?? `S${index + 1}`))
-      .map((hit) => `${hit.title} ${hit.description}`).join(' ');
-    const allowed = new Set((evidence.match(/\b\d+(?:\.\d+)?\b/g) ?? []).map(Number));
-    return values.every((value) => allowed.has(value));
-  };
-  if (part.type === 'chart') {
-    const values = part.artifact.series.flatMap((series) => series.values.filter((value): value is number => value !== null));
-    return supported(artifactEvidenceText(part), values) ? null : 'artifact_value_unverified';
-  }
-  if (part.type === 'spreadsheet' && part.artifact.sheets.some((sheet) => sheet.rows.some((row) =>
-    !supported(row.map(String).join(' '), row.filter((value): value is number => typeof value === 'number')))))
-    return 'artifact_value_unverified';
-  return null;
-}
-
 function renderPart(part: ChatMessagePart, hits: readonly WebSearchHit[], language: ResponseLanguage): ChatMessagePart {
   // Schema/identity fields are left untouched. Only source tokens in content strings are resolved.
   const map = (value: unknown, key = ''): unknown => {
     if (typeof value === 'string') return ['id', 'chartId', 'src', 'mimeType', 'direction', 'type', 'language'].includes(key)
-      ? value : renderEvidenceSourceIds(value, hits, language) ?? value;
+      ? value : deliverResearchAnswer(value, hits, language).text;
     if (Array.isArray(value)) return value.map((item) => map(item, key));
     if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value)
       .map(([field, item]) => [field, field === 'metadata' ? item : map(item, field)]));
@@ -60,31 +38,43 @@ function renderPart(part: ChatMessagePart, hits: readonly WebSearchHit[], langua
 
 export function evaluateCurrentOutput(input: { text: string; parts: readonly ChatMessagePart[];
   hits: readonly WebSearchHit[]; request: string; language: ResponseLanguage; now: Date }) {
-  const policy = currentInformationPolicy(input.request);
-  const parts = input.parts.filter((part) => 'artifact' in part || part.type === 'file' && 'content' in part);
-  let reason: string | null = null;
+  const warnings = new Set<string>();
   let artifactCitations = 0;
-  const charts = new Set(parts.flatMap((part) => part.type === 'chart' ? [part.artifact.id] : []));
-  // Both normal text and every produced artifact/file must satisfy the same evidence contract.
-  for (const part of parts) {
-    reason = numericArtifactFailure(part, input.hits);
-    if (reason) break;
-    // A pre-existing chart reference is not evidence of the current chart's factual content.
+  const eligible = input.parts.filter((part) => 'artifact' in part || part.type === 'file' && 'content' in part);
+  const safeParts = eligible.filter((part) => {
+    const delivery = deliverResearchAnswer(artifactEvidenceText(part), input.hits, input.language);
+    for (const warning of delivery.warnings) warnings.add(warning);
+    // A suspect artifact is withheld, not published with unsafe citations. Keep
+    // independent safe text/artifacts rather than deleting the whole answer.
+    if (!delivery.accepted || delivery.warnings.some((warning) =>
+      /unsafe|unknown_source|unsupported_citation/.test(warning))) {
+      warnings.add('unsafe_artifact_omitted'); return false;
+    }
+    artifactCitations += delivery.citationsCount;
+    return true;
+  });
+  // Citation expansion can change field lengths. Reuse the canonical schemas
+  // after rendering, rather than casting transformed data into a valid artifact.
+  const renderedParts = safeParts.flatMap((part) => {
+    const rendered = renderPart(part, input.hits, input.language);
+    const validated = chatPartsFromMessage('', input.language, [rendered])[0];
+    if (!validated || validated.type !== part.type) {
+      warnings.add('artifact_schema_omitted'); return [];
+    }
+    return [validated];
+  });
+  const charts = new Set(renderedParts.flatMap((part) => part.type === 'chart' ? [part.artifact.id] : []));
+  const parts = renderedParts.filter((part) => {
     if (part.type === 'presentation' && part.artifact.slides.some((slide) => slide.blocks.some((block) =>
       block.kind === 'chart' && !charts.has(block.chartId)))) {
-      reason = 'artifact_evidence_unavailable'; break;
+      warnings.add('artifact_reference_omitted'); return false;
     }
-    const content = artifactEvidenceText(part);
-    reason = searchSynthesisRejectionReason(content,
-      input.hits, input.request, input.now, input.language, { artifact: true });
-    if (reason) break;
-    artifactCitations += [...content.matchAll(/\[\[source:S\d+\]\]|\]\(https:\/\/[^)\s]+\)/g)].length;
-  }
-  const textResult = input.text.trim() ? evaluateSearchSynthesis(input.text, input.hits,
-    input.request, input.now, input.language) : null;
-  reason ??= textResult && !textResult.synthesisAccepted ? textResult.synthesisRejectionReason : null;
-  if (!parts.length && !textResult) reason ??= 'expected_answer_missing';
-  return { accepted: reason === null, reason, text: textResult?.answer ?? '',
-    parts: reason ? [] : parts.map((part) => renderPart(part, input.hits, input.language)),
-    citationsCount: (textResult?.citationsCount ?? 0) + artifactCitations };
+    return true;
+  });
+  const delivery = input.text.trim() ? deliverResearchAnswer(input.text, input.hits, input.language) : null;
+  for (const warning of delivery?.warnings ?? []) warnings.add(warning);
+  const accepted = Boolean(delivery?.accepted || parts.length);
+  return { accepted, reason: accepted ? null : delivery?.reason ?? 'expected_answer_missing',
+    text: delivery?.text ?? '', parts, warnings: [...warnings],
+    citationsCount: (delivery?.citationsCount ?? 0) + artifactCitations };
 }

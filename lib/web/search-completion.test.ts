@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { assessFreshEvidenceBundle, evaluateSearchSynthesis, freshFactKey, groundedSearchSummary, searchEvidence } from './evidence';
 import { searchContextForRequest } from './context.server';
+import { deliverResearchAnswer } from './research-answer';
 import { createChatSearch } from './chat-search.server';
 import { currentInformationPolicy, decideWebSearchWithHistory } from './selection';
 import { readPublicWebPage } from './url-reader.server';
@@ -18,7 +19,7 @@ const now = new Date('2026-09-30T12:00:00Z');
 
 // Sanitized public evidence and provider text captured for execution 82bf1180.
 // Replay upstream output: no model, search, URL, or financial calls in this test.
-test('recorded French news stream isolates presentation from unsupported uncited claims', async () => {
+test('recorded French news accepts supported prose formatting but rejects unregistered references', async () => {
   const request = 'Donne-moi jusqu’à 3 actualités sur les annonces de nouveaux modèles d’IA cette semaine, avec la date de chaque annonce.';
   const evidence: WebSearchHit = {
     title: 'Vous avez raté la conférence OpenAI DevDay ? On vous résume les annonces (dots, GPT-6.1, etc.) - Numerama',
@@ -29,7 +30,7 @@ test('recorded French news stream isolates presentation from unsupported uncited
   };
   const item = '1. **OpenAI DevDay 2026** – Annonce faite le **29 septembre 2026**.\n   - Nouveaux modèles et outils : **GPT-6.1 Sol**, des agents IA « toujours actifs », des outils collaboratifs positionnés face à Microsoft et Google, et un abonnement à **500 $/mois** [[source:S1]].';
   const recorded = 'Je dispose maintenant d’une source confirmant une annonce récente. Voici ce qui est vérifié pour cette semaine (semaine du 29 septembre 2026) :\n\n' + item + '\n\nC’est l’unique annonce de modèle d’IA datée de cette semaine que je peux citer de manière vérifiée. Si vous souhaitez que j’élargisse la recherche à d’autres annonces (autres fabricants, autre semaine), dites-le-moi.';
-  for (const [answer, accepted] of [[recorded, false], [item, true], [item.replace('GPT-6.1 Sol', 'GPT-99.9 Sol'), false]] as const) {
+  for (const [answer, accepted] of [[recorded, true], [item, true], [item.replace('S1', 'S99'), false]] as const) {
     const search = createChatSearch({ decision: { path: 'required', tool: { kind: 'web_search', query: request } },
       request, language: 'fr', now, nativeToolsSupported: false, searchConfigured: true,
       operations: { search: async () => ({ sourceId: 'recorded', name: 'Search', mimeType: 'text/markdown', text: '', hits: [evidence] }),
@@ -47,7 +48,7 @@ test('recorded French news stream isolates presentation from unsupported uncited
     assert.equal(finalized, 1); assert.equal(finalAccepted, accepted);
     assert.equal(status, accepted ? 'completed' : 'unverified');
     if (accepted) { assert.match(delivered, /GPT-6\.1 Sol/); assert.match(delivered, /https:\/\/numerama.com\/tech\/2342271/); }
-    else { assert.doesNotMatch(delivered, /GPT-99|semaine du 29|500/); assert.equal(search.contextForPersistence(), null); }
+    else { assert.doesNotMatch(delivered, /source:S99|500/); assert.equal(search.contextForPersistence(), null); }
     assert.doesNotMatch(delivered, /\[\[source:|&#x20;/);
   }
 });
@@ -90,14 +91,14 @@ test('generic versions do not assume Current/LTS conventions; old Current listin
   assert.equal(assessFreshEvidenceBundle([archive, dual], 'latest Acme LTS version now', '2026-09-30').factKey, 'version:lts:7.1.0');
 });
 
-test('deterministic retrieval refinement preserves explicit LTS instead of searching Current', async () => {
+test('retrieval keeps the original multilingual request and explicit channel scope', async () => {
   const request = 'ما هو أحدث إصدار Acme LTS الآن؟'; let query = '';
   const result = await searchContextForRequest(request, request, {
     search: async (value) => { query = value; return { sourceId: 'fixture', name: 'Search',
       mimeType: 'text/markdown', text: '', hits: [dual] }; }, read: async () => { throw new Error('URL_TOO_LARGE'); },
   });
-  assert.equal(query, 'Acme latest LTS release official');
-  assert.equal(result.telemetry.evidenceQuality, 'primary_exact');
+  assert.equal(query, request);
+  assert.equal(result.telemetry.evidenceQuality, 'search_observations');
   assert.match(result.evidence.text, /LTS 7\.1\.0/);
 });
 
@@ -116,14 +117,14 @@ test('dated French news reads returned articles, not aggregate pages; event date
       pagePublishedAt: '2026-09-30', pageUpdatedAt: '2026-09-30', contentComplete: true }; },
   });
   assert.equal(searches, 1); assert.deepEqual(reads, articles.slice(0, 2).map((hit) => hit.url));
-  assert.equal(result.hits.length, 2); assert.equal(result.telemetry.evidenceQuality, 'dated_article_evidence');
-  assert.ok(result.hits.every((hit) => hit.evidenceLevel === 'secondary_page' && hit.announcementDate === '2026-09-29'
-    && hit.pagePublishedAt === '2026-09-30' && hit.pageUpdatedAt === '2026-09-30'));
-  assert.match(result.evidence.text, /Announcement date: 2026-09-29/);
+  assert.equal(result.hits.length, 4); assert.equal(result.telemetry.evidenceQuality, 'page_and_search_observations');
+  assert.equal(result.hits.filter((hit) => hit.verifiedPage).length, 2);
+  assert.ok(result.hits.filter((hit) => hit.verifiedPage).every((hit) => hit.pagePublishedAt === '2026-09-30' && hit.pageUpdatedAt === '2026-09-30'));
+  assert.match(result.evidence.text, /29 septembre 2026/);
   const answer = '1. Acme a annoncé son produit le 2026-09-29. [[source:S1]]\n2. Une autre annonce Acme date du 2026-09-29. [[source:S2]]';
-  const evaluated = evaluateSearchSynthesis(answer, result.hits, request, now, 'fr');
-  assert.equal(evaluated.synthesisAccepted, true, evaluated.synthesisRejectionReason ?? 'rejected');
-  assert.equal(evaluateSearchSynthesis(answer.replaceAll('2026-09-29', '2026-09-30'), result.hits, request, now, 'fr').synthesisAccepted, false);
+  const evaluated = deliverResearchAnswer(answer, result.hits, 'fr');
+  assert.equal(evaluated.accepted, true);
+  assert.equal(deliverResearchAnswer(answer.replaceAll('S1', 'S99').replaceAll('S2', 'S99'), result.hits, 'fr').accepted, false);
 });
 
 test('publication dates are never inferred announcement dates; reader preserves metadata separately', async () => {
@@ -141,16 +142,18 @@ test('publication dates are never inferred announcement dates; reader preserves 
         description: 'The aggregate page contains various recent product announcements.' }] }),
     read: async () => ({ ...page, sourceId: 'https://acme.com/news', text: 'Published 2026-09-30. Acme launched a new product.' }),
   });
-  assert.equal(result.hits.length, 0);
+  assert.equal(result.hits.length, 1);
+  assert.equal(result.hits[0].announcementDate ?? null, null);
+  assert.match(result.context, /does not prove an event date/);
 });
 
-test('driver clarification dispatches neither search nor model; scope survives follow-ups', async () => {
+test('driver scope survives follow-ups without certifying historical snippets', async () => {
   let calls = 0; const request = 'latest NVIDIA RTX driver';
   const search = createChatSearch({ request, decision: currentInformationPolicy(request).decision, language: 'en',
     searchConfigured: true, nativeToolsSupported: true, operations: {
       search: async () => { calls++; throw new Error('not allowed'); }, read: async () => { calls++; throw new Error('not allowed'); } } });
-  assert.equal((await search.prepare())?.status, 'clarification_required'); assert.equal(calls, 0);
-  assert.deepEqual(search.snapshot().webSearchScopeMissing, ['platform', 'channel']);
+  await search.prepare(); assert.equal(calls, 1);
+  assert.deepEqual(driverRequestScope(request)?.missing, ['platform', 'channel']);
   const selection = decideWebSearchWithHistory('Windows 11 Game Ready', [], search.subjectForPersistence());
   assert.equal(selection.decision.path, 'required');
   assert.match(selection.evidenceRequest, /NVIDIA RTX driver.*Windows 11 Game Ready/);
@@ -196,14 +199,14 @@ test('client stream -> persisted reload -> owned subject -> consecutive failed f
         mimeType: 'text/markdown', text: '', hits: [dual] }; }, read: async () => { throw new Error('URL_TOO_LARGE'); } } });
     assert.equal((await search.prepare())?.status, 'ok');
     const id = `11111111-1111-4111-8111-11111111111${turn}`;
-    const text = turn < 3 ? 'أحدث إصدار LTS هو 99.9.0. [[source:S1]]' : 'أحدث إصدار LTS هو 7.1.0. [[source:S1]]';
+    const text = turn < 3 ? 'مرجع غير معروف. [[source:S99]]' : 'أحدث إصدار LTS هو 7.1.0. [[source:S1]]';
     const guarded = guardCurrentInformationStream(new Response(`0:${JSON.stringify(text)}\nd:{"finishReason":"stop"}\n`), search,
       { required: true, language: 'ar', executionId: id });
     let delivered = ''; let savedReference: unknown;
     const status = await consumeCanonicalChatStream(guarded.body!, (delta) => { delivered += delta; }, undefined,
       undefined, undefined, undefined, (value) => { savedReference = value; });
     assert.equal(status, turn < 3 ? 'unverified' : 'completed');
-    assert.doesNotMatch(delivered, /99\.9\.0|\[\[source:/);
+    assert.doesNotMatch(delivered, /مرجع غير معروف|\[\[source:/);
     if (turn === 3) assert.match(delivered, /7\.1\.0.*https:\/\/acme.com\/fr\/download\/lts/);
     else assert.equal(search.contextForPersistence(), null);
     assert.deepEqual(savedReference, { type: 'vantra-search-context', executionId: id });

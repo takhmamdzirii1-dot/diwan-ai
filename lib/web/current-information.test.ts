@@ -150,7 +150,7 @@ test('tool-incapable required turns pre-search; weak evidence cannot invoke Tavi
   assert.deepEqual(f.counts(), [1, 0]);
   assert.equal(f.search.nativeTool, undefined);
   const weak = fixture('current AcmeNova models', { weak: true });
-  assert.equal((await weak.search.prepare())?.status, 'unavailable');
+  assert.equal((await weak.search.prepare())?.status, 'ok');
   assert.deepEqual(weak.counts(), [1, 0]);
   const technical = fixture('current AcmeNova models', { failBrave: true });
   await technical.search.prepare();
@@ -170,7 +170,7 @@ test('required-current policy cannot be downgraded by an optional caller/model t
   await search.prepare();
   assert.equal(requests, 1);
   assert.equal(search.snapshot().webSearchDecision, 'required');
-  assert.equal(search.evaluateOutput('An uncited claim from model memory.')?.accepted, false);
+  assert.equal(search.evaluateOutput('Invalid source. [[source:S99]]')?.accepted, false);
 });
 
 test('static and tool-incapable optional profiles make zero retrieval calls', async () => {
@@ -239,9 +239,9 @@ test('current text/document/presentation/spreadsheet/chart/file share the eviden
     } as Extract<ChatMessagePart, { type: 'presentation' }>['artifact'] },
     { type: 'spreadsheet', artifact: { schemaVersion: 1, type: 'spreadsheet', id: 'sheet-1', title: 'AcmeNova models',
       language: 'en', direction: 'ltr', metadata: {}, sheets: [{ id: 's1', name: 'Models', columns: ['Model'], rows: [[answer]] }] } },
-    { type: 'chart', artifact: { schemaVersion: 1, type: 'chart', id: 'chart-1', title: answer, language: 'en',
-      direction: 'ltr', metadata: {}, chartType: 'bar', categories: ['Reasoning'], series: [{ name: 'Models', values: [null] }] } },
-    { type: 'file', name: 'models.txt', mimeType: 'text/plain', format: 'txt', content: answer }];
+    { type: 'chart', artifact: { schemaVersion: 1, type: 'chart', id: 'chart-1', title: 'Models', language: 'en',
+      direction: 'ltr', metadata: {}, chartType: 'bar', categories: [answer], series: [{ name: 'Models', values: [null] }] } },
+    { type: 'file', name: 'models.txt', mimeType: 'text/plain;charset=utf-8', format: 'txt', content: answer }];
   for (const part of parts) {
     const input = { text: '', parts: [part], hits, request: 'current AcmeNova models', now, language: 'en' as const };
     const result = evaluateCurrentOutput(input);
@@ -254,17 +254,20 @@ test('current text/document/presentation/spreadsheet/chart/file share the eviden
     hits, request: 'current AcmeNova models', now, language: 'en' }).accepted, false);
 });
 
-test('exact current values stay strict in both text and artifacts', () => {
-  const exact: WebSearchHit[] = [{ title: 'Acme Current release', url: 'https://acme.com/en/download/current',
-    description: 'Acme Current 3.2.0, LTS 2.1.0.', evidenceId: 'S1', evidenceLevel: 'primary_search', evidenceBundle: 'primary_exact' }];
-  for (const value of ['99.9.0', '3.2.0']) {
-    const result = evaluateCurrentOutput({ text: '', parts: [document(`Acme Current ${value}. [[source:S1]]`)],
-      hits: exact, request: 'latest Acme version now', language: 'en', now });
-    assert.equal(result.accepted, value === '3.2.0');
+test('transparent current-value calculations preserve provenance in text and artifacts', () => {
+  const evidence: WebSearchHit[] = [{ title: 'Acme fares', url: 'https://acme.com/fares',
+    description: 'A single trip costs approximately 4 units.', evidenceId: 'S1' }];
+  for (const value of ['A return trip would cost approximately 8 units (two single fares). [[source:S1]]',
+    'The observed single fare is around 4 units. [[source:S1]]']) {
+    const input = { hits: evidence, request: 'current Acme return fare', language: 'en' as const, now };
+    assert.equal(evaluateCurrentOutput({ ...input, text: value, parts: [] }).accepted, true);
+    assert.equal(evaluateCurrentOutput({ ...input, text: '', parts: [document(value)] }).accepted, true);
+    assert.equal(evaluateCurrentOutput({ ...input, text: value.replace('S1', 'S99'), parts: [] }).accepted, false);
+    assert.equal(evaluateCurrentOutput({ ...input, text: '', parts: [document(value.replace('S1', 'S99'))] }).accepted, false);
   }
 });
 
-test('verified current/LTS bullet formatting is accepted while unsupported facts and sources still fail', () => {
+test('current/LTS bullet formatting and exact server-owned URLs remain compatible', () => {
   const exact: WebSearchHit[] = [{ title: 'Acme downloads', url: 'https://acme.com/en/download/current',
     description: 'Acme Current 3.2.0, LTS 2.1.0.', evidenceLevel: 'primary_search', evidenceBundle: 'primary_exact' }];
   const text = '- الإصدار الحالي (Current): **3.2.0** [[source:S1]]\n- الدعم طويل الأمد (LTS): **2.1.0** [[source:S1]]';
@@ -273,24 +276,25 @@ test('verified current/LTS bullet formatting is accepted while unsupported facts
   const differentlyLabeled = evaluateCurrentOutput({ ...input, hits: [{ ...exact[0], title: 'Official release blog' }] });
   assert.equal(differentlyLabeled.accepted, true);
   assert.match(differentlyLabeled.text, /\[Official release blog\]\(https:\/\/acme.com\/en\/download\/current\)/);
-  assert.equal(evaluateCurrentOutput({ ...input, text: text.replace('3.2.0', '99.9.0') }).reason, 'unsupported_number');
-  assert.equal(evaluateCurrentOutput({ ...input, text: text.replace('[[source:S1]]', '[[source:S99]]') }).reason, 'unsupported_url');
-  assert.equal(evaluateCurrentOutput({ ...input, text: text.replace('[[source:S1]]', '[Source](https://acme.com/en/download/current)') }).reason, 'unsupported_url');
+  assert.match(evaluateCurrentOutput(input).text, /Current.*3\.2\.0/);
+  assert.match(evaluateCurrentOutput(input).text, /LTS.*2\.1\.0/);
+  assert.equal(evaluateCurrentOutput({ ...input, text: text.replaceAll('[[source:S1]]', '[[source:S99]]') }).accepted, false);
+  assert.equal(evaluateCurrentOutput({ ...input, text: text.replaceAll('[[source:S1]]', '[Source](https://acme.com/altered)') }).accepted, false);
 });
 
-test('captured QA extra LTS claim is not established by a release-log snippet; current-only source-ID answer succeeds', () => {
-  const official: WebSearchHit[] = [{ title: 'Node.js', url: 'https://nodejs.org/en/blog/release',
-    description: 'Node.js 22.23.3 (LTS). Node.js 26.10.0 (Current).',
-    evidenceLevel: 'primary_search', evidenceBundle: 'primary_exact' }];
-  const captured = 'نعم، بحسب آخر معلومات موثقة على موقع Node.js الرسمي، أحدث إصداريّن هما:\n\n- **Node.js 26.10.0 (Current)**\n- **Node.js 22.23.3 (LTS)**\n\nالمصدر: [nodejs.org — Release Blog](https://nodejs.org/en/blog/release)';
-  const input = { text: captured, parts: [], hits: official, request: 'ما هو أحدث إصدار من Node.js الآن؟',
-    language: 'ar' as const, now };
-  assert.equal(evaluateCurrentOutput(input).accepted, false, 'model-authored URLs are no longer a citation transport');
-  assert.equal(evaluateCurrentOutput({ ...input, text: '- أحدث إصدار Current هو 26.10.0. [[source:S1]]\n- إصدار LTS هو 22.23.3. [[source:S1]]' }).reason, 'additional_current_claim_unverified');
-  assert.equal(evaluateCurrentOutput({ ...input, text: 'الإصدار الحالي هو Node.js 26.10.0 (Current). [[source:S1]]' }).accepted, true);
-  const uncited = 'الأحدث حالياً هو Node.js 26.10.0 (Current)، بينما الإصدار المستقر من نوع LTS هو Node.js 22.23.3.\n\nالمصدر: Node.js Releases (nodejs.org)';
-  assert.equal(evaluateCurrentOutput({ ...input, text: uncited }).reason, 'unsupported_url');
-  assert.equal(evaluateCurrentOutput({ ...input, text: captured.replace('26.10.0', '99.9.0') }).accepted, false);
+test('release history retains channel scope and is never certified as latest by citation presence', async () => {
+  const official: WebSearchHit[] = [{ title: 'Acme release history', url: 'https://acme.com/blog/release',
+    description: 'Acme 22.23.3 (LTS) historical entry. Acme 26.10.0 (Current) release entry.' }];
+  const request = 'ما هو أحدث إصدار Acme LTS الآن؟';
+  const search = createChatSearch({ request, decision: currentInformationPolicy(request).decision, language: 'ar', now,
+    nativeToolsSupported: false, searchConfigured: true, operations: {
+      search: async () => ({ sourceId: 'fixture', name: 'Search', mimeType: 'text/markdown', text: '', hits: official }),
+      read: async () => { throw new Error('URL_UNAVAILABLE'); } } });
+  const prepared = await search.prepare();
+  assert.match(prepared!.context, /LTS/);
+  assert.match(prepared!.context, /historical entry/);
+  assert.match(prepared!.context, /26\.10\.0 \(Current\)/);
+  assert.equal(search.evaluateOutput('إصدار LTS موثق هنا. [[source:S99]]')?.accepted, false);
 });
 
 test('failed current turn keeps conversational subject but never loads rejected evidence', async () => {
@@ -298,7 +302,7 @@ test('failed current turn keeps conversational subject but never loads rejected 
   const selection = decideWebSearchWithHistory('هل أنت متأكد؟', [{ role: 'user', content: original }]);
   assert.equal(selection.decision.path, 'required');
   assert.equal(selection.evidenceRequest, original);
-  const f = fixture(); await f.search.prepare(); f.search.evaluateOutput('Unsupported memory claim.');
+  const f = fixture(); await f.search.prepare(); f.search.evaluateOutput('Invalid source. [[source:S99]]');
   assert.equal(f.search.contextForPersistence(), null);
   const subject = f.search.subjectForPersistence(); assert.ok(subject);
   assert.equal('sourceUrls' in subject, false);
@@ -351,7 +355,7 @@ test('provider error terminal versus missing terminal are distinguishable and ne
 test('wire gate blocks unverified tool results and renders valid artifacts with exact URLs', async () => {
   for (const valid of [true, false]) {
     const f = fixture(); await f.search.prepare();
-    const part = document(valid ? answer : 'An unsupported current claim.');
+    const part = document(valid ? answer : 'Invalid source. [[source:S99]]');
     const frame = `9:${JSON.stringify({ toolCallId: 'doc-1', toolName: 'create_document', args: {} })}\n`
       + `a:${JSON.stringify({ toolCallId: 'doc-1', result: { status: 'ok', artifact: 'artifact' in part ? part.artifact : null } })}\n`
       + 'd:{"finishReason":"tool-calls"}\n';
@@ -362,7 +366,7 @@ test('wire gate blocks unverified tool results and renders valid artifacts with 
       const result = JSON.parse(body.split('\n').find((line) => line.startsWith('a:'))!.slice(2));
       assert.doesNotMatch(JSON.stringify(result), /\[\[source:/);
       assert.match(body, /vantra-search-context/);
-    } else assert.doesNotMatch(body, /unsupported current claim|a:|9:/);
+    } else assert.doesNotMatch(body, /Invalid source|a:|9:/);
   }
 });
 
@@ -488,7 +492,7 @@ test('optional search wire validation includes the prefix even without prior onF
 });
 
 test('terminal callback observes rejected output before any success can be persisted', async () => {
-  for (const frame of ['0:"Uncited current model claim."\nd:{"finishReason":"stop"}\n',
+  for (const frame of ['0:"Invalid source. [[source:S99]]"\nd:{"finishReason":"stop"}\n',
     `0:${JSON.stringify('x'.repeat(1_000_001))}\n`]) {
     const f = fixture(); await f.search.prepare(); let outcome: unknown;
     const body = await guardCurrentInformationStream(new Response(frame), f.search, {
@@ -498,7 +502,7 @@ test('terminal callback observes rejected output before any success can be persi
     }).text();
     assert.equal(outcome, 'rejected');
     assert.match(body, /CURRENT_INFORMATION_UNVERIFIED/);
-    assert.doesNotMatch(body, /Uncited current/);
+    assert.doesNotMatch(body, /Invalid source/);
   }
 });
 
@@ -602,5 +606,5 @@ test('current presentation cannot bypass verification through a cached chart ref
       blocks: [{ kind: 'text', text: answer }, { kind: 'chart', chartId: 'unverified-cached-chart' }] }],
   } as Extract<ChatMessagePart, { type: 'presentation' }>['artifact'] };
   assert.equal(evaluateCurrentOutput({ text: '', parts: [part], hits,
-    request: 'current AcmeNova models', language: 'en', now }).reason, 'artifact_evidence_unavailable');
+    request: 'current AcmeNova models', language: 'en', now }).reason, 'expected_answer_missing');
 });

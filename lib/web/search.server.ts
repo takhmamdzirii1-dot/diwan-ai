@@ -14,7 +14,7 @@ export interface WebSearchProvider {
   readonly id: string;
   search(query: string, limit: number, scope?: SearchRetrievalScope): Promise<WebSearchHit[]>;
 }
-export type SearchRetrievalScope = { publishedRange?: { start: string; end: string } };
+export type SearchRetrievalScope = { publishedRange?: { start: string; end: string }; signal?: AbortSignal };
 const unsafeQuery = /(?:sb_secret_[A-Za-z0-9_-]{8,}|gh[pousr]_[A-Za-z0-9_]{16,}|\bBearer\s+[A-Za-z0-9._-]{16,}|\b(?:API_KEY|CLIENT_SECRET|REFRESH_TOKEN)\s*[:=]\s*\S+)/i;
 
 export class SearchProviderError extends Error {
@@ -85,7 +85,7 @@ export class BraveWebSearch implements WebSearchProvider {
     try {
       response = await this.transport(url, { method: 'GET', redirect: 'manual',
         headers: { Accept: 'application/json', 'X-Subscription-Token': this.key },
-        signal: AbortSignal.timeout(3_000), cache: 'no-store' });
+        signal: scope?.signal ? AbortSignal.any([scope.signal, AbortSignal.timeout(3_000)]) : AbortSignal.timeout(3_000), cache: 'no-store' });
     } catch (cause) { throw new SearchProviderError(cause instanceof DOMException && cause.name === 'TimeoutError' ? 'timeout' : 'unavailable'); }
     const parsed = await boundedJson(response);
     const results = parsed && typeof parsed === 'object' && 'web' in parsed
@@ -98,14 +98,14 @@ export class BraveWebSearch implements WebSearchProvider {
 export class TavilyWebSearch implements WebSearchProvider {
   readonly id = 'tavily';
   constructor(private readonly key: string, private readonly transport: typeof fetch = fetch) {}
-  async search(query: string, limit: number): Promise<WebSearchHit[]> {
+  async search(query: string, limit: number, scope?: SearchRetrievalScope): Promise<WebSearchHit[]> {
     let response: Response;
     try {
       response = await this.transport('https://api.tavily.com/search', { method: 'POST', redirect: 'manual',
         headers: { Authorization: `Bearer ${this.key}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, search_depth: 'basic', max_results: Math.min(Math.max(limit, 1), 8),
           include_answer: false, include_raw_content: false, include_images: false }),
-        signal: AbortSignal.timeout(3_000), cache: 'no-store' });
+        signal: scope?.signal ? AbortSignal.any([scope.signal, AbortSignal.timeout(3_000)]) : AbortSignal.timeout(3_000), cache: 'no-store' });
     } catch (cause) { throw new SearchProviderError(cause instanceof DOMException && cause.name === 'TimeoutError' ? 'timeout' : 'unavailable'); }
     const parsed = await boundedJson(response);
     const results = parsed && typeof parsed === 'object' && 'results' in parsed ? parsed.results : undefined;
@@ -175,6 +175,7 @@ export async function orchestrateWebSearch(query: string, options: {
     console.info('WEB_SEARCH_EXECUTION', metadata);
   };
   for (const [index, provider] of providers.slice(0, 2).entries()) {
+    options.signal?.throwIfAborted();
     if (index > 0) fallbackUsed = true;
     const budget = (options.budget ?? searchBudget)(provider.id);
     let claim: 'ok' | 'cooldown' | 'budget';
@@ -205,6 +206,13 @@ export async function orchestrateWebSearch(query: string, options: {
       emit(execution(provider.id, hits.length, truncated));
       return hits.map((hit) => ({ ...hit, provider: provider.id }));
     } catch (cause) {
+      if (options.signal?.aborted) {
+        // Cancellation is not a provider outage, but an issued request still
+        // belongs in actual request accounting. Never dispatch fallback here.
+        attempts.push({ provider: provider.id, outboundRequestIssued: true,
+          status: 'failed', failureCategory: null, resultCount: 0, latencyMs: Date.now() - providerStarted });
+        emit(execution(null, 0, false)); throw cause;
+      }
       const category = cause instanceof SearchProviderError ? cause.category : 'unavailable';
       lastFailure = category;
       attempts.push({ provider: provider.id, outboundRequestIssued: true, status: 'failed',
@@ -226,6 +234,7 @@ export async function searchWeb(query: string, provider?: WebSearchProvider | nu
   let execution: SearchExecution | undefined;
   const hits = provider ? await provider.search(query.trim(), 8, options) : await orchestrateWebSearch(query, {
     publishedRange: options.publishedRange,
+    signal: options.signal,
     providers: options.providers, onExecution: (result) => { execution = result; options.onExecution?.(result); },
   });
   if (!hits.length) throw new Error('WEB_SEARCH_EMPTY');

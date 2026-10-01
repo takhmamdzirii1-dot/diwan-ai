@@ -113,11 +113,14 @@ export function guardCurrentInformationStream(response: Response, search: Search
             // would discard it and replace it with a generic transport failure.
             controller.enqueue(encoder.encode(`0:${JSON.stringify(currentInformationUnavailable(options.language))}\n8:${JSON.stringify([{ type: 'vantra-search-context', executionId: options.executionId }, { type: 'vantra-web-verification', state: 'unverified', code: 'CURRENT_INFORMATION_UNVERIFIED' }])}\nd:{"finishReason":"error"}\n`));
           } else {
-            let textWritten = false; let partIndex = 0;
+            const partKey = (part: ChatMessagePart) => 'artifact' in part ? `artifact:${part.artifact.id}`
+              : part.type === 'file' ? `file:${part.name}` : null;
+            const retained = new Map(outcome?.parts.map((part) => [partKey(part), part]) ?? []);
+            let textWritten = false;
             for (const [index, line] of lines.entries()) {
               if (/^[9a]:/.test(line)) {
                 const value = JSON.parse(line.slice(2));
-                if (calls.get(value.toolCallId) === 'web_search') continue;
+                if (['web_search', 'read_web_page'].includes(calls.get(value.toolCallId) ?? '')) continue;
               }
               if (outcome && line.startsWith('0:')) {
                 if (!textWritten) controller.enqueue(encoder.encode(`0:${JSON.stringify(structured
@@ -125,9 +128,14 @@ export function guardCurrentInformationStream(response: Response, search: Search
                   ? JSON.stringify(outcome.parts[0].artifact) : outcome.text)}\n`));
                 textWritten = true;
               } else if (outcome && frames.has(index)) {
-                const frame = frames.get(index)!; const part = outcome.parts[partIndex++];
+                const frame = frames.get(index)!;
+                const original = validatedArtifactPartFromToolResult(calls.get(frame.toolCallId) ?? '', frame.result);
+                const part = original ? retained.get(partKey(original)) : null;
+                // A withheld part must never fall back to its unvalidated wire result.
+                if (!part) continue;
                 const result = part && 'artifact' in part ? { status: 'ok', artifact: part.artifact }
-                  : part?.type === 'file' && 'content' in part ? { status: 'ok', file: { ...part, type: 'file' } } : frame.result;
+                  : part.type === 'file' && 'content' in part ? { status: 'ok', file: { ...part, type: 'file' } } : null;
+                if (!result) continue;
                 controller.enqueue(encoder.encode(`a:${JSON.stringify({ ...frame, result })}\n`));
               } else controller.enqueue(encoder.encode(`${line}\n`));
             }

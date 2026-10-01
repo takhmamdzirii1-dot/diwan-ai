@@ -7,6 +7,7 @@ import { selectArtifactTools } from '@/lib/artifacts/tool-registry';
 import { createChatSearch, currentInformationUnavailable } from './chat-search.server';
 import { decideWebSearch } from './selection';
 import { guardSearchDataStream } from './evidence';
+import { guardCurrentInformationStream } from './output-stream.server';
 import { orchestrateWebSearch, SearchProviderError, type SearchExecution, type WebSearchHit } from './search.server';
 
 const now = new Date('2026-09-29T12:00:00Z');
@@ -88,12 +89,12 @@ test('artifact exposure does not suppress native web_search; explicit artifact r
   assert.deepEqual(f.counts(), [0, 0]);
   await Promise.all([f.search.nativeTool!.execute!({ query: 'AcmeNova models' }),
     f.search.nativeTool!.execute!({ query: 'AcmeNova other query' })]);
-  assert.deepEqual(f.counts(), [1, 0]);
+  assert.deepEqual(f.counts(), [2, 0], 'distinct refinements are separate acquisitions, not a hidden retry');
   assert.equal(f.search.snapshot().webSearchToolCalled, true);
   const explicit = selectArtifactTools('Create a presentation about current AcmeNova models');
   assert.deepEqual(explicit.names, ['create_presentation']);
   const required = fixture('Create a presentation about current AcmeNova models');
-  assert.equal(required.search.toolExposed, false);
+  assert.equal(required.search.toolExposed, true, 'required pre-search can expose tools for a material remaining gap');
   assert.equal((await required.search.prepare())?.status, 'ok');
   assert.deepEqual(required.counts(), [1, 0]);
 });
@@ -119,12 +120,12 @@ test('required unavailable/insufficient search fails honestly and never earns sy
   assert.equal((await f.search.prepare())?.status, 'unavailable');
   assert.deepEqual(f.counts(), [1, 1]);
   assert.equal(f.search.snapshot().webSearchApiRequestCount, 2);
-  assert.equal(f.search.nativeTool, undefined, 'required search has no redundant model search tool');
+  assert.ok(f.search.nativeTool, 'tool exposure is independent from pre-search requirement');
   assert.equal((await f.search.prepare())?.status, 'unavailable');
   assert.deepEqual(f.counts(), [1, 1], 'no retry loop after a failed search');
-  f.search.markUnverified();
+  f.search.evaluateOutput('A current-memory answer must not escape failed acquisition.');
   assert.equal(f.search.snapshot().synthesisAccepted, false);
-  assert.equal(f.search.snapshot().synthesisRejectionReason, 'search_unavailable');
+  assert.equal(f.search.snapshot().synthesisRejectionReason, 'no_external_observations');
   for (const language of ['ar', 'en', 'fr'] as const) assert.ok(currentInformationUnavailable(language));
   const route = readFileSync(new URL('../../app/api/generate/chat/route.ts', import.meta.url), 'utf8');
   const refusal = route.slice(route.indexOf('if (requiredSearchUnavailable)'), route.indexOf('let chatReserved'));
@@ -147,16 +148,16 @@ test('technical Brave failure uses Tavily once; repeated prepare reuses pre-sear
   assert.equal(f.search.snapshot().webSearchApiRequestCount, 2);
 });
 
-test('technically successful but insufficient evidence never triggers Tavily or permits a memory answer', async () => {
+test('historical observations remain useful context without triggering Tavily or certifying a latest value', async () => {
   const f = fixture('latest AcmeNova version', { hits: [{ title: 'AcmeNova history',
     url: 'https://history.example/acmenova', description: 'A historical overview of the company founding.' }] });
-  assert.equal((await f.search.prepare())?.status, 'unavailable');
+  assert.equal((await f.search.prepare())?.status, 'ok');
   assert.deepEqual(f.counts(), [1, 0]);
   assert.equal(f.search.snapshot().webSearchApiRequestCount, 1);
-  assert.equal(f.search.snapshot().webSearchEvidenceSufficient, false);
-  f.search.markUnverified();
-  assert.equal(f.search.snapshot().synthesisAccepted, false);
-  assert.equal(f.search.snapshot().synthesisRejectionReason, 'insufficient_evidence');
+  assert.equal(f.search.snapshot().webSearchEvidenceSufficient, true, 'observations exist, not a truth certificate');
+  f.search.evaluateOutput('The available source describes the company’s founding, not its latest release. [[source:S1]]');
+  assert.equal(f.search.snapshot().synthesisAccepted, true);
+  assert.equal(f.search.snapshot().webValidationScope, 'delivery_safety_not_factual_certification');
   const guarded = await guardSearchDataStream(new Response('0:"An unverified current model guess."\n'),
     f.search.evidence, 'latest AcmeNova version', now, 'en');
   assert.doesNotMatch(await guarded.text(), /unverified current model guess/);
@@ -172,13 +173,14 @@ test('required and optional paths share evidence, source-ID guard, and safe term
   for (const f of [required, optional]) {
     f.search.validateAnswer(answer);
     assert.equal(f.search.snapshot().synthesisAccepted, true);
-    const rendered = await (await guardSearchDataStream(new Response(`0:${JSON.stringify(answer)}\n`),
-      f.search.evidence, 'current AcmeNova models', now, 'en')).text();
+    const rendered = await guardCurrentInformationStream(new Response(`0:${JSON.stringify(answer)}\nd:{"finishReason":"stop"}\n`),
+      f.search, { required: f.search.snapshot().webSearchDecision === 'required', executionId: 'fixture', language: 'en' }).text();
     assert.match(rendered, /https:\/\/acmenova.com\/models/);
     assert.doesNotMatch(rendered, /\[\[source:|&#x20;/);
     f.search.validateAnswer(answer.replace('S1', 'S99'));
     assert.equal(f.search.snapshot().synthesisAccepted, false);
-    assert.equal(f.search.snapshot().synthesisRejectionReason, 'unsupported_url');
+    assert.equal(f.search.snapshot().synthesisRejectionReason, 'no_deliverable_content');
+    assert.ok((f.search.snapshot().webDeliveryWarnings as string[]).includes('unknown_source_omitted'));
     assert.doesNotMatch(JSON.stringify(f.search.snapshot()), /https:|AcmeNova|source:S|reasoning and/);
   }
   const route = readFileSync(new URL('../../app/api/generate/chat/route.ts', import.meta.url), 'utf8');
@@ -213,7 +215,7 @@ test('locked SDK native tool loop uses selected model and validates continuation
     defaultObjectGenerationMode: undefined, doGenerate: async () => { throw new Error('unused'); },
     doStream: async (options) => {
       const first = calls++ === 0;
-      if (!first) assert.match(JSON.stringify(options.prompt), /source:S1/);
+      if (!first) assert.match(JSON.stringify(options.prompt), /S1/);
       return { rawCall: { rawPrompt: [], rawSettings: {} }, stream: new ReadableStream({ start(controller) {
         if (first) {
           controller.enqueue({ type: 'text-delta', textDelta: 'I will check.' });
@@ -229,8 +231,8 @@ test('locked SDK native tool loop uses selected model and validates continuation
     maxRetries: 0, maxSteps: 2, onChunk: ({ chunk }) => {
       if (chunk.type === 'text-delta' && f.search.evidence() !== null) synthesis += chunk.textDelta;
     }, onFinish: () => { f.search.validateAnswer(synthesis); saved = f.search.snapshot(); } });
-  const response = await guardSearchDataStream(result.toDataStreamResponse(), f.search.evidence,
-    'Which AcmeNova models suit our company?', now, 'en');
+  const response = guardCurrentInformationStream(result.toDataStreamResponse(), f.search,
+    { required: false, executionId: 'fixture', language: 'en' });
   const body = await response.text();
   assert.equal(calls, 2, 'one selected-model tool loop; no classifier or other model');
   assert.deepEqual(f.counts(), [1, 0]);
