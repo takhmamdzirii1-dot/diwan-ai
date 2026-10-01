@@ -6,7 +6,7 @@ import { PRESENTATION_OUTPUT_INSTRUCTION, requestedPresentationSlideCount, parse
 import { agentToolSelection, artifactTaskInstruction, getArtifactTool, presentationToolChoice,
   requiredArtifactToolChoice, resolveArtifactToolPath, selectArtifactTools } from '@/lib/artifacts/tool-registry';
 import { buildNativeArtifactTools } from '@/lib/artifacts/tool-native.server';
-import { documentAfterResearch } from '@/lib/chat/document-step';
+import { artifactAfterResearch } from '@/lib/chat/document-step';
 import { CustomerAnswer } from '@/lib/chat/customer-answer';
 import { completeMessageText, providerChatMessages } from '@/lib/chat/message-history';
 import { vantraCoreSystemPrompt, webEvidenceInstruction,
@@ -28,7 +28,7 @@ import { evidenceModeForRequest } from '@/lib/web/evidence';
 import { guardCurrentInformationStream } from '@/lib/web/output-stream.server';
 import { precedingSearchReference } from '@/lib/web/search-context';
 import { loadSearchTurnContext, loadSearchSubjectContext } from '@/lib/web/search-context.server';
-import { safeStreamError } from '@/lib/web/stream-diagnostics';
+import { safeStreamError, safeToolArgumentIssues } from '@/lib/web/stream-diagnostics';
 import { resolveSearchStrategy, verifiedNativeSearchAdapters } from '@/lib/web/strategy';
 import { resolveResponseLanguage } from '@/lib/chat/response-language';
 import { configuredWebSearchProviders } from '@/lib/web/search.server';
@@ -711,8 +711,8 @@ export async function POST(request: Request) {
         createDocumentExposed: Boolean(nativeTools?.create_document), toolPath });
       trace('PROVIDER', { callStarted: true, streamReturned: false, finishReason: null, errorCategory: null });
       const result = await streamText({
-        model: expectedAction === 'create_document' && toolPath === 'native' && webSearch.toolExposed
-          ? documentAfterResearch(languageModel, () => Boolean(webSearch.evidence()?.length)) : languageModel,
+        model: (expectedAction === 'create_document' || expectedAction === 'create_presentation') && toolPath === 'native' && webSearch.toolExposed
+          ? artifactAfterResearch(languageModel, expectedAction, () => Boolean(webSearch.evidence()?.length)) : languageModel,
         messages: messagesPayload,
         tools: nativeTools,
         toolChoice: webSearch.toolExposed
@@ -884,6 +884,7 @@ export async function POST(request: Request) {
           Object.assign(streamDiagnostics, safeStreamError(error));
           trace('PROVIDER_STREAM_ERROR', safeStreamError(error));
           if (InvalidToolArgumentsError.isInstance(error)) {
+            streamDiagnostics.toolArgumentIssues = safeToolArgumentIssues(error);
             toolLifecycle.callStarted = true;
             toolLifecycle.toolNameReceived = true;
             toolLifecycle.argumentsCompleted = true;
@@ -903,11 +904,12 @@ export async function POST(request: Request) {
         onTerminated: async (reason) => {
           const cancelled = reason === 'cancelled';
           const validationFailed = reason === 'validation_error';
+          const invalidArguments = reason === 'provider_error' && toolLifecycle.argumentsInvalid;
           await finalizeOnce({ terminalStatus: cancelled ? 'user_cancelled' : failureStateForInterruptedStream(outputStarted),
-            errorCode: cancelled ? 'USER_CANCELLED' : validationFailed ? 'CURRENT_INFORMATION_UNVERIFIED' : 'PROVIDER_STREAM_FAILED',
+            errorCode: cancelled ? 'USER_CANCELLED' : validationFailed ? 'CURRENT_INFORMATION_UNVERIFIED' : invalidArguments ? 'TOOL_ARGUMENTS_INVALID' : 'PROVIDER_STREAM_FAILED',
             failureOwner: cancelled ? 'customer' : validationFailed ? 'vantra' : 'provider',
-            failureCategory: cancelled ? 'user_cancel' : validationFailed ? 'web_verification' : 'provider_stream_failure',
-            usage: { completionStage: 'stream_gate', streamGateFailure: reason },
+            failureCategory: cancelled ? 'user_cancel' : validationFailed ? 'web_verification' : invalidArguments ? 'tool_arguments_invalid' : 'provider_stream_failure',
+            usage: { completionStage: invalidArguments ? 'validation' : 'stream_gate', streamGateFailure: reason },
           });
           await settleChatUsage('released');
         },

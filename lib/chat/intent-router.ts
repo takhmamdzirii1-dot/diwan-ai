@@ -35,7 +35,7 @@ const subjects: Record<Exclude<ChatIntent, 'normal_chat' | `export_${string}`>, 
   create_document: ['report', 'article', 'brief', 'document', 'resume', 'cv', 'proposal',
     'executive summary', 'rapport', 'proposition',
     'تقرير', 'تقريرا', 'التقرير', 'مقال', 'مقالا', 'مستند', 'وثيقة', 'مقترح', 'سيرة ذاتية'],
-  create_presentation: ['presentation', 'presntation', 'powerpoint', 'power point', 'ppt', 'pptx',
+  create_presentation: ['presentation', 'presntation', 'presanttion', 'powerpoint', 'power point', 'ppt', 'pptx',
     'slide deck', 'slides', 'diaporama', 'عرض تقديمي', 'العرض التقديمي', 'عرض شرائح',
     'بوربوينت', 'بريزنتيشن', 'شرائح'],
   create_spreadsheet: ['spreadsheet', 'workbook', 'sheet', 'tableur', 'feuille de calcul', 'excel', 'exel',
@@ -135,7 +135,8 @@ export function routeChatIntent(input: string, resources: readonly IntentResourc
     .map((intent) => ({ intent, found: findAlias(tokens, formats[intent], false) }))
     .filter((item): item is { intent: keyof typeof formats; found: Found } => item.found !== null)
     .sort((a, b) => a.found.index - b.found.index)[0] ?? null;
-  const barePresentation = subjects.create_presentation.some((alias) => normalized === normalizeIntentText(alias));
+  const presentationWords = subjects.create_presentation.flatMap(alias => normalizeIntentText(alias).split(' '));
+  const barePresentation = subject?.intent === 'create_presentation' && tokens.every(token => presentationWords.includes(token));
   if (barePresentation) return finish('create_presentation', 'high');
   const bareDocumentFormat = tokens.length <= 3 && subject?.intent === 'create_document'
     && (format?.intent === 'export_pdf' || format?.intent === 'export_docx');

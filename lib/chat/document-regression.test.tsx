@@ -6,7 +6,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { streamText } from 'ai';
 import type { LanguageModelV1, LanguageModelV1StreamPart } from '@ai-sdk/provider';
 import { z } from 'zod';
-import { documentAfterResearch } from './document-step';
+import { artifactAfterResearch, documentAfterResearch } from './document-step';
+import { buildNativeArtifactTools } from '@/lib/artifacts/tool-native.server';
+import { selectArtifactTools } from '@/lib/artifacts/tool-registry';
 import { assessChatCompletion, emptyToolLifecycle, validatedExpectedActionPart } from './action-completion';
 import { getArtifactTool } from '@/lib/artifacts/tool-registry';
 import { documentFromMarkdown } from '@/lib/artifacts/core';
@@ -57,7 +59,7 @@ test('production-shaped research -> stop fails; research -> required document pr
   const before = await researchThenDocument(false);
   assert.equal(before.completion.failureCategory, 'expected_artifact_missing');
   const after = await researchThenDocument(true);
-  assert.deepEqual(after.choices, [{ type: 'auto' }, { type: 'tool', toolName: 'create_document' }, { type: 'none' }]);
+  assert.deepEqual(after.choices, [{ type: 'required' }, { type: 'tool', toolName: 'create_document' }, { type: 'none' }]);
   assert.equal(after.part?.type, 'document');
   assert.equal(after.completion.completed, true);
 });
@@ -74,7 +76,41 @@ test('server pre-search requires document immediately, old conversation tool res
       { role: 'user' as const, content: [{ type: 'text' as const, text: 'New article' }] }] };
   await documentAfterResearch(model).doStream(options);
   await documentAfterResearch(model, () => true).doStream(options);
-  assert.deepEqual(choices, [{ type: 'auto' }, { type: 'tool', toolName: 'create_document' }]);
+  assert.deepEqual(choices, [{ type: 'required' }, { type: 'tool', toolName: 'create_document' }]);
+});
+
+test('explicit metals article and bare PowerPoint cannot stop as ordinary prose when optional search is exposed', async () => {
+  for (const prompt of ['اكتبلي مقال مقارنة بين اقوى معادن', 'presanttion power point']) {
+    const selection = selectArtifactTools(prompt);
+    const action = selection.names[0];
+    const definition = getArtifactTool(action)!;
+    const choices: unknown[] = [];
+    let searches = 0;
+    const model: LanguageModelV1 = { specificationVersion: 'v1', provider: 'fixture', modelId: 'fixture',
+      defaultObjectGenerationMode: 'json', doGenerate: async () => { throw new Error('UNUSED'); },
+      doStream: async (params) => {
+        if (params.mode.type !== 'regular') throw new Error('UNEXPECTED_MODE');
+        const choice = params.mode.toolChoice;
+        choices.push(choice);
+        const mustAct = choice?.type === 'required' || choice?.type === 'tool';
+        const parts: LanguageModelV1StreamPart[] = mustAct
+          ? [{ type: 'tool-call', toolCallType: 'function', toolCallId: 'artifact-1', toolName: action,
+            args: JSON.stringify(definition.exampleInput) }]
+          : [{ type: 'text-delta', textDelta: 'Ordinary prose cannot replace the requested file.' }];
+        parts.push({ type: 'finish', finishReason: mustAct ? 'tool-calls' : 'stop', usage: { promptTokens: 1, completionTokens: 1 } });
+        return { stream: new ReadableStream({ start(c) { parts.forEach(part => c.enqueue(part)); c.close(); } }),
+          rawCall: { rawPrompt: null, rawSettings: {} } };
+      } };
+    const result = await streamText({ model: artifactAfterResearch(model, action), prompt, maxSteps: 5, maxRetries: 0,
+      toolChoice: 'auto', tools: { ...buildNativeArtifactTools(selection),
+        web_search: { parameters: z.object({ query: z.string() }), execute: async () => { searches++; return {}; } } } });
+    const results: { toolCallId: string; toolName: string; result: unknown }[] = [];
+    for await (const event of result.fullStream) if (event.type === 'tool-result') results.push(event);
+    const part = validatedExpectedActionPart(action, 'native', await result.text, results, new Set(results.map(entry => entry.toolCallId)));
+    assert.equal(part?.type, action === 'create_document' ? 'document' : 'presentation');
+    assert.deepEqual(choices, [{ type: 'required' }, { type: 'none' }]);
+    assert.equal(searches, 0);
+  }
 });
 
 test('document instructions stay long-form after research; ordinary Chat style is unchanged', () => {

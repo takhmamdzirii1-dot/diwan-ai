@@ -5,6 +5,7 @@ import type { LanguageModelV1 } from '@ai-sdk/provider';
 import { z } from 'zod';
 import { runArtifactTool } from '@/lib/artifacts/tool-registry';
 import { buildNativeArtifactTools } from '@/lib/artifacts/tool-native.server';
+import { safeToolArgumentIssues } from '@/lib/web/stream-diagnostics';
 import { partMatchesRequestedAction, validateRequestedChatOutput } from './action-routing';
 import { assessChatCompletion, emptyToolLifecycle, validatedExpectedActionPart } from './action-completion';
 
@@ -145,4 +146,14 @@ test('AI SDK executes and emits a valid presentation result in the same model st
   assert.ok(events.includes('tool-result'));
   assert.equal(validatedExpectedActionPart('create_presentation', 'native', '', finishResults, emitted)?.type,
     'presentation');
+});
+test('invalid native arguments retain safe schema coordinates without content or secret key names', () => {
+  const issues = safeToolArgumentIssues({ cause: { cause: { issues: [
+    { path: ['slides', 4, 'blocks', 1, 'kind'], code: 'invalid_enum_value', message: 'PRIVATE CUSTOMER CONTENT' },
+    { path: ['secret-token'], code: 'unrecognized_keys', keys: ['SECRET'] },
+  ] } } });
+  assert.deepEqual(issues, [{ field: 'slides.[].blocks.[].kind', code: 'invalid_enum_value' },
+    { field: 'unknown_field', code: 'unrecognized_keys' }]);
+  assert.doesNotMatch(JSON.stringify(issues), /PRIVATE|SECRET|secret-token/);
+  assert.deepEqual(safeToolArgumentIssues(new Error('secret')), []);
 });

@@ -7,7 +7,9 @@ export function buildNativeArtifactTools(selection: ArtifactToolSelection, maxCa
   let calls = 0;
   const failures = new Map<string, number>();
   return Object.fromEntries(Object.values(selectedNativeArtifactTools(selection)).map((definition) => [definition.name, tool({
-    description: definition.description,
+    description: definition.name === 'create_document' || definition.name === 'create_presentation'
+      ? `${definition.description} Call with the input object only, not an Artifact Core/output object. Do not add schemaVersion, type, id, direction, metadata, slide IDs, or unsupported fields. Input example: ${JSON.stringify(definition.exampleInput)}`
+      : definition.description,
     parameters: definition.inputSchema,
     execute: async (args) => {
       onExecution?.({ toolName: definition.name, stage: 'started' });

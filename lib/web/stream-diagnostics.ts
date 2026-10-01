@@ -24,3 +24,26 @@ export type StreamTerminalDiagnostics = {
   streamTerminalFrameSeen: boolean; streamTerminalFrameMissing: boolean;
   streamWireFinishReason: string | null; streamReadFailed: boolean; streamErrorFrameSeen: boolean;
 };
+
+/** Bounded schema coordinates only; never arguments, validation messages or unknown keys. */
+export function safeToolArgumentIssues(error: unknown): Array<{ field: string; code: string }> {
+  const fields = new Set(['title', 'language', 'slides', 'subtitle', 'variant', 'layout', 'blocks',
+    'kind', 'text', 'items', 'rows', 'markdown', 'columns', 'sheets', 'name', 'values', 'series',
+    'chartType', 'categories', 'content']);
+  const codes = new Set(['invalid_type', 'invalid_enum_value', 'too_small', 'too_big', 'unrecognized_keys',
+    'invalid_union', 'invalid_string', 'custom']);
+  let candidate: unknown = error;
+  for (let depth = 0; depth < 4; depth++) {
+    if (!candidate || typeof candidate !== 'object') break;
+    const value = candidate as Record<string, unknown>;
+    if (Array.isArray(value.issues)) return value.issues.slice(0, 8).map((issue: unknown) => {
+      const entry = issue && typeof issue === 'object' ? issue as Record<string, unknown> : {};
+      const path = Array.isArray(entry.path) ? entry.path.slice(0, 6) : [];
+      return { field: path.map(segment => typeof segment === 'number' ? '[]'
+        : typeof segment === 'string' && fields.has(segment) ? segment : 'unknown_field').join('.') || 'input',
+      code: typeof entry.code === 'string' && codes.has(entry.code) ? entry.code : 'validation_error' };
+    });
+    candidate = value.cause;
+  }
+  return [];
+}

@@ -4,6 +4,16 @@ import { chatPartsFromMessage, chatPartsFromToolInvocations } from './chat-parts
 import { buildNativeArtifactTools } from './tool-native.server';
 import { agentToolSelection, artifactTaskInstruction, artifactToolProgress, documentToolChoice, presentationToolChoice, requiredArtifactToolChoice, getArtifactTool, resolveArtifactToolPath, runArtifactTool, selectArtifactTools, verifyArtifactToolResult } from './tool-registry';
 
+test('native presentation instructions demonstrate validated input, not the Artifact Core result envelope', () => {
+  const selection = selectArtifactTools('presanttion power point');
+  const native = buildNativeArtifactTools(selection).create_presentation;
+  const definition = getArtifactTool('create_presentation')!;
+  assert.match(native.description!, /input object only/);
+  assert.ok(native.description!.includes(JSON.stringify(definition.exampleInput)));
+  assert.equal(definition.inputSchema.safeParse(definition.exampleInput).success, true);
+  assert.equal(definition.inputSchema.safeParse({ ...definition.exampleInput, schemaVersion: '1' }).success, false);
+});
+
 test('explicit downloadable output formats select one validated result without a classifier call', () => {
   const cases = [
     ['Give me these statistics as Excel', 'create_spreadsheet'],
