@@ -62,7 +62,7 @@
       "aiPreferences": "AI Preferences",
       "planCredits": "Plan & Credits",
       "connectedApps": "Connected apps",
-      "connectedAppsPanel": {"title":"Connected apps","description":"Connect an app only when you need it.","loading":"Loading apps…","empty":"No connected apps are available yet.","signIn":"Sign in to manage connected apps.","connected":"Connected","notConnected":"Not connected","expired":"Authorization expired","connect":"Connect","disconnect":"Disconnect","working":"Working…","connectedFeedback":"App connected.","disconnectedFeedback":"App disconnected.","error":"Could not update connected apps. Please try again."},
+      "connectedAppsPanel": {"disconnectedLocal":"Disconnected from VANTRA. Provider revocation could not be confirmed; remove access in your provider account settings.","title":"Connected apps","description":"Connect an app only when you need it.","loading":"Loading apps…","empty":"No connected apps are available yet.","signIn":"Sign in to manage connected apps.","connected":"Connected","notConnected":"Not connected","expired":"Authorization expired","connect":"Connect","disconnect":"Disconnect","working":"Working…","connectedFeedback":"App connected.","disconnectedFeedback":"App disconnected.","error":"Could not update connected apps. Please try again."},
       "generalDescription": "Workspace identity and interface defaults.",
       "language": "Language",
       "appearance": "Appearance",

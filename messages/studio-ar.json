@@ -62,7 +62,7 @@
       "aiPreferences": "تفضيلات الذكاء الاصطناعي",
       "planCredits": "الخطة والأرصدة",
       "connectedApps": "التطبيقات المتصلة",
-      "connectedAppsPanel": {"title":"التطبيقات المتصلة","description":"اربط التطبيق فقط عندما تحتاج إليه.","loading":"جارٍ تحميل التطبيقات…","empty":"لا توجد تطبيقات متاحة للاتصال حاليًا.","signIn":"سجّل الدخول لإدارة التطبيقات المتصلة.","connected":"متصل","notConnected":"غير متصل","expired":"انتهت صلاحية التفويض","connect":"ربط","disconnect":"قطع الاتصال","working":"جارٍ التنفيذ…","connectedFeedback":"تم ربط التطبيق.","disconnectedFeedback":"تم قطع اتصال التطبيق.","error":"تعذر تحديث التطبيقات المتصلة. حاول مرة أخرى."},
+      "connectedAppsPanel": {"disconnectedLocal":"تم قطع الاتصال بـ VANTRA. لم يتأكد إلغاء التفويض لدى الخدمة؛ أزل الوصول من إعدادات حسابك لدى الخدمة.","title":"التطبيقات المتصلة","description":"اربط التطبيق فقط عندما تحتاج إليه.","loading":"جارٍ تحميل التطبيقات…","empty":"لا توجد تطبيقات متاحة للاتصال حاليًا.","signIn":"سجّل الدخول لإدارة التطبيقات المتصلة.","connected":"متصل","notConnected":"غير متصل","expired":"انتهت صلاحية التفويض","connect":"ربط","disconnect":"قطع الاتصال","working":"جارٍ التنفيذ…","connectedFeedback":"تم ربط التطبيق.","disconnectedFeedback":"تم قطع اتصال التطبيق.","error":"تعذر تحديث التطبيقات المتصلة. حاول مرة أخرى."},
       "generalDescription": "حسابك وتفضيلات مساحة العمل.",
       "language": "اللغة",
       "appearance": "المظهر",

@@ -62,7 +62,7 @@
       "aiPreferences": "Préférences IA",
       "planCredits": "Formule et crédits",
       "connectedApps": "Applications connectées",
-      "connectedAppsPanel": {"title":"Applications connectées","description":"Connectez une application uniquement quand vous en avez besoin.","loading":"Chargement des applications…","empty":"Aucune application connectée n’est disponible pour le moment.","signIn":"Connectez-vous pour gérer vos applications.","connected":"Connectée","notConnected":"Non connectée","expired":"Autorisation expirée","connect":"Connecter","disconnect":"Déconnecter","working":"En cours…","connectedFeedback":"Application connectée.","disconnectedFeedback":"Application déconnectée.","error":"Impossible de mettre à jour les applications connectées. Réessayez."},
+      "connectedAppsPanel": {"disconnectedLocal":"Déconnectée de VANTRA. La révocation chez le fournisseur n’a pas pu être confirmée ; retirez l’accès dans les paramètres de votre compte fournisseur.","title":"Applications connectées","description":"Connectez une application uniquement quand vous en avez besoin.","loading":"Chargement des applications…","empty":"Aucune application connectée n’est disponible pour le moment.","signIn":"Connectez-vous pour gérer vos applications.","connected":"Connectée","notConnected":"Non connectée","expired":"Autorisation expirée","connect":"Connecter","disconnect":"Déconnecter","working":"En cours…","connectedFeedback":"Application connectée.","disconnectedFeedback":"Application déconnectée.","error":"Impossible de mettre à jour les applications connectées. Réessayez."},
       "generalDescription": "Votre compte et les préférences de l’espace.",
       "language": "Langue",
       "appearance": "Apparence",

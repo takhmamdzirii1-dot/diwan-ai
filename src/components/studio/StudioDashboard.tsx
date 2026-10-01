@@ -104,6 +104,11 @@ export default function StudioDashboard({
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<'general' | 'apps'>('general');
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has('connected_app_result')) {
+      setSettingsInitialTab('apps'); setSettingsOpen(true);
+    }
+  }, []);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [attachmentsBySession, setAttachmentsBySession] = useState<ConversationAttachmentStore>({});
   const attachmentsBySessionRef = useRef<ConversationAttachmentStore>({});

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/src/lib/supabase/server';
-import { configuredConnectedApps } from '@/lib/connected-apps/registry.server';
+import { configuredConnectedApps, knownConnectedApp } from '@/lib/connected-apps/registry.server';
 import { disconnectUserConnection, listUserConnections, saveUserConnection } from '@/lib/connected-apps/store.server';
 
 export const dynamic = 'force-dynamic';
@@ -23,11 +23,14 @@ export async function GET() {
   const id = await userId();
   if (!id) return NextResponse.json({ error: 'AUTHENTICATION_REQUIRED' }, { status: 401, headers: noStore });
   const adapters = configuredConnectedApps();
-  if (!adapters.length) return NextResponse.json({ apps: [] }, { headers: noStore });
   try {
     const connections = await listUserConnections(id);
+    for (const connection of connections) {
+      const known = knownConnectedApp(connection.appId);
+      if (known && connection.status === 'connected' && !adapters.some(app => app.id === known.id)) adapters.push(known);
+    }
     return NextResponse.json({ apps: adapters.map((adapter) => ({ id: adapter.id, name: adapter.name,
-      authorization: adapter.authorization, canConnect: Boolean(adapter.connect),
+      authorization: adapter.authorization, canConnect: configuredConnectedApps().some(app => app.id === adapter.id) && Boolean(adapter.connect || adapter.oauth),
       connection: connections.find((item) => item.appId === adapter.id) ?? null })) }, { headers: noStore });
   } catch { return NextResponse.json({ error: 'CONNECTED_APPS_UNAVAILABLE' }, { status: 503, headers: noStore }); }
 }
@@ -54,10 +57,10 @@ export async function DELETE(request: Request) {
   if (!id) return NextResponse.json({ error: 'AUTHENTICATION_REQUIRED' }, { status: 401, headers: noStore });
   const parsed = appRequest.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: 'INVALID_APP' }, { status: 400, headers: noStore });
-  const adapter = configuredConnectedApps().find((item) => item.id === parsed.data.appId);
+  const adapter = knownConnectedApp(parsed.data.appId);
   if (!adapter) return NextResponse.json({ error: 'INVALID_APP' }, { status: 400, headers: noStore });
   try {
-    await disconnectUserConnection(id, adapter.id);
-    return NextResponse.json({ connection: null }, { headers: noStore });
+    const result = await disconnectUserConnection(id, adapter.id);
+    return NextResponse.json({ connection: null, revoked: result.revoked }, { headers: noStore });
   } catch { return NextResponse.json({ error: 'CONNECTED_APPS_UNAVAILABLE' }, { status: 503, headers: noStore }); }
 }

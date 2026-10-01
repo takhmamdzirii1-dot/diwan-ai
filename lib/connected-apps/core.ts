@@ -6,6 +6,7 @@ export type ConnectedAppError = 'app_not_connected' | 'permission_missing' | 'au
   | 'provider_rate_limited' | 'action_failed';
 export type ConnectedAppConnection = {
   id: string; appId: string; scopes: string[]; status: 'connected' | 'disconnected'; expiresAt: string | null;
+  account?: { name: string; email?: string };
 };
 export type ConnectedResource = {
   sourceId: string; name: string; mimeType: string; text: string;
@@ -19,9 +20,17 @@ export type ConnectedAppAdapter = {
   id: string; name: string; authorization: 'reference' | 'oauth'; actions: readonly ConnectedAction[];
   // A real OAuth adapter must initiate its own server-side authorization flow.
   connect?: () => Promise<{ scopes: string[] }>;
+  oauth?: {
+    authorize: (input: { redirectUri: string; state: string; challenge: string }) => string;
+    exchange: (input: { redirectUri: string; code: string; verifier: string }) => Promise<ConnectedCredentials>;
+    refresh?: (credentials: ConnectedCredentials) => Promise<ConnectedCredentials>;
+    revoke?: (credentials: ConnectedCredentials) => Promise<void>;
+  };
   execute: (input: { actionId: string; request: string; userId: string;
-    credential: string | null }) => Promise<ConnectedResource>;
+    credential: string | null; signal?: AbortSignal }) => Promise<ConnectedResource>;
 };
+export type ConnectedCredentials = { accessToken: string; refreshToken?: string; expiresAt: string;
+  scopes: string[]; account: { id: string; name: string; email?: string } };
 export type ConnectedActionMatch = { adapter: ConnectedAppAdapter; action: ConnectedAction };
 
 /** Conservative gate: mentioning an app/file is not permission to read it. */
@@ -46,14 +55,15 @@ export function connectionError(connection: ConnectedAppConnection | null, actio
   now = Date.now()): ConnectedAppError | null {
   if (!action.requiresConnection) return null;
   if (!connection || connection.status !== 'connected') return 'app_not_connected';
-  if (connection.expiresAt && new Date(connection.expiresAt).getTime() <= now) return 'authorization_expired';
+  if (connection.expiresAt && (!Number.isFinite(Date.parse(connection.expiresAt)) || Date.parse(connection.expiresAt) <= now)) return 'authorization_expired';
   if (action.requiredScopes.some((scope) => !connection.scopes.includes(scope))) return 'permission_missing';
   return null;
 }
 
 export async function executeConnectedAction(input: { match: ConnectedActionMatch; request: string;
-  userId: string; connection: ConnectedAppConnection | null; credential: string | null }): Promise<{ resource: ConnectedResource; error: null } | { resource: null; error: ConnectedAppError }> {
+  userId: string; connection: ConnectedAppConnection | null; credential: string | null; signal?: AbortSignal }): Promise<{ resource: ConnectedResource; error: null } | { resource: null; error: ConnectedAppError }> {
   const { adapter, action } = input.match;
+  if (!explicitConnectedReadRequest(input.request)) return { resource: null, error: 'action_requires_confirmation' };
   if (action.requiresConnection && input.connection?.appId !== adapter.id)
     return { resource: null, error: 'app_not_connected' };
   const blocked = connectionError(input.connection, action);
@@ -65,14 +75,15 @@ export async function executeConnectedAction(input: { match: ConnectedActionMatc
     return { resource: null, error: 'action_requires_confirmation' };
   try {
     const resource = await adapter.execute({ actionId: action.id, request: input.request.slice(0, 800),
-      userId: input.userId, credential: input.credential });
+      userId: input.userId, credential: input.credential, signal: input.signal });
     if (!resource.sourceId || resource.sourceId.length > 256 || !resource.name || resource.name.length > 160
       || !/^text\/(plain|markdown|csv)$/.test(resource.mimeType) || !resource.text.trim()
       || resource.text.length > 30_000) return { resource: null, error: 'resource_not_found' };
     return { resource, error: null };
   } catch (cause) {
     const code = cause instanceof Error ? cause.message : '';
-    const error: ConnectedAppError = code === 'resource_not_found' ? 'resource_not_found'
+    const error: ConnectedAppError = code === 'authorization_expired' ? 'authorization_expired'
+      : code === 'permission_missing' ? 'permission_missing' : code === 'resource_not_found' ? 'resource_not_found'
       : code === 'provider_rate_limited' ? 'provider_rate_limited'
         : code === 'provider_unavailable' ? 'provider_unavailable' : 'action_failed';
     return { resource: null, error };
