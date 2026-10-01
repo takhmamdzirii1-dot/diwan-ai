@@ -7,6 +7,7 @@ import { agentToolSelection, artifactTaskInstruction, getArtifactTool, presentat
   requiredArtifactToolChoice, resolveArtifactToolPath, selectArtifactTools } from '@/lib/artifacts/tool-registry';
 import { buildNativeArtifactTools } from '@/lib/artifacts/tool-native.server';
 import { documentAfterResearch } from '@/lib/chat/document-step';
+import { CustomerAnswer } from '@/lib/chat/customer-answer';
 import { completeMessageText, providerChatMessages } from '@/lib/chat/message-history';
 import { vantraCoreSystemPrompt, webEvidenceInstruction,
   WEB_SEARCH_TOOL_INSTRUCTION, NATIVE_SEARCH_INSTRUCTION, SEARCH_ARTIFACT_INSTRUCTION } from '@/lib/chat/system-prompt';
@@ -690,6 +691,7 @@ export async function POST(request: Request) {
       let actualSlideCount = 0;
       let emittedTextChars = 0;
       let streamedText = '';
+      const customerAnswer = new CustomerAnswer();
       let finishAfterVerification: (() => Promise<void>) | null = null;
       const searchArtifactParts: ChatMessagePart[] = [];
       const observedToolResults: Array<{ toolName: string; toolCallId: string; result: unknown }> = [];
@@ -724,6 +726,7 @@ export async function POST(request: Request) {
         abortSignal: request.signal,
         onChunk: ({ chunk }) => {
           if (chunk.type === 'text-delta') {
+            customerAnswer.append(chunk.textDelta);
             emittedTextChars += chunk.textDelta.length;
             if (streamedText.length < 100_000) streamedText += chunk.textDelta.slice(0, 100_000 - streamedText.length);
             if (chunk.textDelta.length > 0) outputStarted = true;
@@ -766,7 +769,12 @@ export async function POST(request: Request) {
             }
           }
         },
+        onStepFinish: (step) => { customerAnswer.finishStep(step); },
         onFinish: async ({ finishReason, usage, toolResults }) => {
+          streamedText = customerAnswer.text;
+          outputStarted = Boolean(streamedText.trim() || searchArtifactParts.length);
+          trace('CUSTOMER_ANSWER', { internalTextChars: customerAnswer.internalTextChars,
+            finalTextChars: streamedText.length });
           streamDiagnostics.providerFinishReason = finishReason;
           // The same pure guard used by the returned stream runs BEFORE terminal metadata is persisted.
           const structuredSearchArtifact = !searchArtifactParts.length ? parseChatArtifact(streamedText, responseLanguage) : null;
@@ -840,6 +848,8 @@ export async function POST(request: Request) {
                   completionTokens: usage.completionTokens,
                   totalTokens: usage.totalTokens,
                   completionStage: completion.stage,
+                  internalToolStepTextChars: customerAnswer.internalTextChars,
+                  customerAnswerTextChars: streamedText.length,
                   expectedResultValidated: expectedResultValid,
                 },
                 errorCode: verificationFailed ? 'CURRENT_INFORMATION_UNVERIFIED'
@@ -884,6 +894,7 @@ export async function POST(request: Request) {
         },
       });
       const guardedResponse = guardCurrentInformationStream(streamResponse, webSearch, {
+        toolSteps: Boolean(nativeTools),
         required: webTool?.kind === 'web_search', language: responseLanguage, executionId: execution.executionId, operationId: operationKey,
         onValidated: async () => { if (finishAfterVerification) await finishAfterVerification(); },
         signal: request.signal,

@@ -24,6 +24,17 @@ const hits: WebSearchHit[] = [{ title: 'AcmeNova models', url: 'https://acmenova
   description: 'Current AcmeNova models include reasoning and general-purpose models for different tasks.',
   evidenceId: 'S1', evidenceLevel: 'primary_search', evidenceBundle: 'general_search_evidence' }];
 const answer = 'AcmeNova provides reasoning and general-purpose models for different tasks. [[source:S1]]';
+test('tool-step planning never reaches complete-answer validation, delivery, or settlement; final grounded answer does', async () => {
+  const f = fixture(); await f.search.prepare();
+  const planning = 'The user is asking about current models. Identify Intent. I should use web_search.';
+  const wire = `0:${JSON.stringify(planning)}\n9:{"toolCallId":"search-1","toolName":"web_search","args":{}}\ne:{"finishReason":"tool-calls","isContinued":false}\na:{"toolCallId":"search-1","result":{}}\n0:${JSON.stringify(answer)}\ne:{"finishReason":"stop","isContinued":false}\nd:{"finishReason":"stop"}\n`;
+  let settled = 0; let released = 0;
+  const body = await guardCurrentInformationStream(new Response(wire), f.search, { required: true, toolSteps: true,
+    language: 'en', executionId, onValidated: async () => { settled++; }, onTerminated: async () => { released++; } }).text();
+  assert.doesNotMatch(body, /Identify Intent|I should use web_search|The user is asking/);
+  assert.match(body, /AcmeNova provides/); assert.match(body, /https:\/\/acmenova.com/);
+  assert.equal(settled, 1); assert.equal(released, 0); assert.deepEqual(f.counts(), [1, 0]);
+});
 test('combined verification clauses inherit only a fresh owned subject, including a failed prior answer', () => {
   const prior = [{ role: 'user', content: 'ما هو أحدث إصدار من Acme الآن؟' },
     { role: 'assistant', content: 'لم أتمكن من التحقق من المعلومات الحالية.' }];
@@ -541,7 +552,14 @@ test('downstream cancellation and request abort release once without a late Comp
     const downstream = response.body!.getReader();
     if (abortRequest) {
       aborter.abort();
-      assert.equal((await downstream.read()).done, true, 'request abort must close the downstream too');
+      // The read-status annotation can already be queued before abort. It is
+      // not customer answer content; drain it and assert terminal closure.
+      let next = await downstream.read();
+      while (!next.done) {
+        assert.match(new TextDecoder().decode(next.value), /^8:/u);
+        next = await downstream.read();
+      }
+      assert.equal(next.done, true, 'request abort must close the downstream too');
     } else await downstream.cancel();
     await new Promise((resolve) => setTimeout(resolve, 0));
     assert.equal(sourceCancelled, true);

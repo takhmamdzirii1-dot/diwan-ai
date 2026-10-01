@@ -18,7 +18,8 @@ import type { ConversationAttachment } from '@/lib/chat/conversation-attachments
 import { canRegenerateAssistantMessage, formatChatTimestamp } from '@/lib/chat/message-history';
 import { messageDirection, webSourcesAnnotation, legacyWebSources, citationMarkdown } from '@/lib/chat/web-sources';
 import { copyChatContent } from '@/lib/chat/copy-content';
-import ChatSources, { CitationBadge } from './ChatSources';
+import { remarkCitationGroups, referencedSources } from '@/lib/chat/citation-presentation';
+import ChatSources, { CitationGroup } from './ChatSources';
 
 const ArtifactDocumentPreview = dynamic(() => import('./ArtifactDocumentPreview'), { ssr: false });
 const ArtifactSmartCard = dynamic(() => import('./ArtifactSmartCard'), { ssr: false });
@@ -130,6 +131,8 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   const safeContent = isStreaming ? streamingSafeText(message.content)
     : parts.filter((part) => part.type === 'text').map((part) => part.text).join('');
   const sources = !isUser ? webSourcesAnnotation(message.annotations) ?? legacyWebSources(message.annotations, safeContent) : null;
+  const displayedSources = sources ? { ...sources, sources: referencedSources(
+    safeContent + '\n' + artifactParts.map((part) => JSON.stringify(part)).join('\n'), sources.sources) } : null;
   const contentDirection = messageDirection(isUser ? message.content : safeContent || precedingUserMessage?.content || '',
     locale.startsWith('ar') ? 'rtl' : 'ltr');
   const documentEligibility = !isUser && !isStreaming
@@ -325,7 +328,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
               "chat-message-content text-start"
             )}>
               <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
+                remarkPlugins={[remarkGfm, [remarkCitationGroups, { sources: sources?.sources ?? [] }]]}
                 rehypePlugins={[rehypeRaw]}
                 components={{
                   pre: ({ children }) => <>{children}</>,
@@ -389,9 +392,12 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                       {isolatedNumbers(children)}
                     </blockquote>
                   ),
-                  a: ({ href, children }) => {
-                    const index = sources?.sources.findIndex((source) => source.url === href) ?? -1;
-                    if (index >= 0 && sources) return <CitationBadge source={sources.sources[index]} index={index + 1} />;
+                  a: ({ href, title, children }) => {
+                    if (title?.startsWith('vantra-citations:') && sources) {
+                      const ids = title.slice('vantra-citations:'.length).split(',');
+                      return <CitationGroup sources={sources.sources.filter((source) => ids.includes(source.id))}
+                        registry={sources.sources} locale={locale} />;
+                    }
                     if (/^(?:\d+|S\d+)$/u.test(String(children).trim())) return null;
                     return <a href={href} dir="auto" style={{ unicodeBidi: 'isolate' }} target="_blank" rel="noopener noreferrer" className="text-[var(--studio-text-primary)] underline underline-offset-4 transition-colors">
                       {children}
@@ -471,7 +477,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                 </span>
               )}
             </div> : renderArtifactPart(part, index))}
-            {sources?.state === 'read' && <ChatSources annotation={sources} locale={locale} />}
+            {displayedSources?.state === 'read' && <ChatSources annotation={displayedSources} locale={locale} />}
 
             {/* Message-Level Hover Controls */}
             {!isStreaming && artifactParts.length === 0 && (

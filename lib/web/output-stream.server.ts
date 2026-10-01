@@ -4,6 +4,7 @@ import { currentInformationUnavailable, type createChatSearch } from './chat-sea
 import type { ResponseLanguage } from '@/lib/chat/response-language';
 import type { StreamTerminalDiagnostics } from './stream-diagnostics';
 import { webSourcesSchema, sourceClass } from '@/lib/chat/web-sources';
+import { internalTextFrames } from '@/lib/chat/customer-answer';
 
 type Search = ReturnType<typeof createChatSearch>;
 
@@ -14,6 +15,7 @@ type Search = ReturnType<typeof createChatSearch>;
 export function guardCurrentInformationStream(response: Response, search: Search, options: {
   required: boolean; language: ResponseLanguage; executionId: string;
   operationId?: string;
+  toolSteps?: boolean;
   onValidated?: () => Promise<void>;
   signal?: AbortSignal;
   onDiagnostics?: (diagnostics: StreamTerminalDiagnostics) => void;
@@ -23,7 +25,7 @@ export function guardCurrentInformationStream(response: Response, search: Search
   if (!response.body) return response;
   const reader = response.body.getReader();
   const encoder = new TextEncoder(); const decoder = new TextDecoder();
-  let held = options.required || search.toolExposed || search.strategy.kind === 'provider_native';
+  let held = options.required || options.toolSteps === true || search.toolExposed || search.strategy.kind === 'provider_native';
   let partial = ''; let bytes = 0; const lines: string[] = [];
   let finalized = false;
   let cancelled = false;
@@ -108,11 +110,13 @@ export function guardCurrentInformationStream(response: Response, search: Search
           return;
         }
         if (held) {
+          const internalFrames = internalTextFrames(lines);
           const calls = new Map<string, string>();
           const parts: ChatMessagePart[] = [];
           const frames = new Map<number, { toolCallId: string; result: unknown }>();
           let text = '';
           for (const [index, line] of lines.entries()) {
+            if (internalFrames.has(index)) continue;
             if (!/^[09a]:/.test(line)) continue;
             const value = JSON.parse(line.slice(2));
             if (line.startsWith('0:') && typeof value === 'string') text += value;
@@ -139,6 +143,7 @@ export function guardCurrentInformationStream(response: Response, search: Search
             const retained = new Map(outcome?.parts.map((part) => [partKey(part), part]) ?? []);
             let textWritten = false;
             for (const [index, line] of lines.entries()) {
+              if (internalFrames.has(index)) continue;
               if (/^[9a]:/.test(line)) {
                 const value = JSON.parse(line.slice(2));
                 if (['web_search', 'read_web_page'].includes(calls.get(value.toolCallId) ?? '')) continue;

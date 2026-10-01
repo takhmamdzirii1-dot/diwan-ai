@@ -5,11 +5,16 @@ import { test, expect } from '@playwright/test';
 const fixture = JSON.parse(execFileSync(process.execPath, ['--import', 'tsx', 'e2e/render-search-ui.tsx'],
   { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }));
 const hydration = buildSync({ stdin: { contents: `import React from 'react';
-  import {hydrateRoot} from 'react-dom/client'; import ChatSources from './src/components/studio/ChatSources';
+  import {hydrateRoot} from 'react-dom/client'; import ChatSources, {CitationGroup} from './src/components/studio/ChatSources';
   const section = document.querySelector('[data-chat-sources]');
   const holder = document.createElement('div'); section.replaceWith(holder); holder.append(section);
   hydrateRoot(holder, React.createElement(ChatSources,
-    {annotation: ${JSON.stringify(fixture.annotation)}, locale: window.fixtureLocale}));`,
+    {annotation: ${JSON.stringify(fixture.annotation)}, locale: window.fixtureLocale}));
+  for (const group of document.querySelectorAll('.chat-citation-group')) {
+    const host = document.createElement('span'); group.replaceWith(host); host.append(group);
+    hydrateRoot(host, React.createElement(CitationGroup,
+      {sources: ${JSON.stringify(fixture.annotation.sources)}, registry: ${JSON.stringify(fixture.annotation.sources)}, locale: window.fixtureLocale}));
+  }`,
   resolveDir: process.cwd(), loader: 'tsx' }, bundle: true, write: false, platform: 'browser',
   define: { 'process.env.NODE_ENV': '"production"' }, tsconfig: 'tsconfig.json' }).outputFiles[0].text;
 const documentBundle = buildSync({ stdin: { contents: `import React from 'react';
@@ -20,9 +25,9 @@ const documentBundle = buildSync({ stdin: { contents: `import React from 'react'
   resolveDir: process.cwd(), loader: 'tsx' }, bundle: true, write: false, platform: 'browser', outfile: 'document-fixture.js',
   define: { 'process.env.NODE_ENV': '"production"' }, tsconfig: 'tsconfig.json' }).outputFiles;
 
-for (const theme of ['neutral', 'oled', 'warm']) for (const language of ['en', 'ar'] as const) {
-  test(`@search-ui ${language} ${theme} at 380px`, async ({ page }, info) => {
-    await page.setViewportSize({ width: 380, height: 900 });
+for (const width of [380, 1440]) for (const theme of ['neutral', 'oled', 'warm']) for (const language of ['en', 'ar'] as const) {
+  test(`@search-ui ${language} ${theme} at ${width}px`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 900 });
     await page.route('https://www.google.com/s2/favicons?**', (route) => route.fulfill({ status: 404, body: '' }));
     await page.goto('/en', { waitUntil: 'networkidle' });
     await page.evaluate(({ markup, theme, language }) => {
@@ -45,6 +50,11 @@ for (const theme of ['neutral', 'oled', 'warm']) for (const language of ['en', '
     expect(await page.locator('[data-chat-sources]').evaluate((node) => getComputedStyle(node).direction)).toBe(expected);
     await expect(page.locator('.chat-citation')).toHaveCount(1);
     expect(await page.locator('.chat-citation').evaluate((node) => getComputedStyle(node).fontSize)).toBe('11px');
+    await page.locator('.chat-citation button').click();
+    await expect(page.locator('.chat-citation-popover a')).toHaveCount(7);
+    await expect(page.locator('.chat-citation-popover a').first()).toHaveAttribute('href', fixture.annotation.sources[0].url);
+    await page.locator('.chat-citation button').press('Escape');
+    await expect(page.locator('.chat-citation-popover')).toHaveCount(0);
     await expect(text.locator('bdi').filter({ hasText: '$42' })).toHaveCount(1);
     expect(await page.locator('.chat-source-footer').evaluate((node) => (node as HTMLDetailsElement).open)).toBe(false);
     await page.locator('.chat-source-footer summary').click();

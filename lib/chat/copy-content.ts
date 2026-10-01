@@ -1,4 +1,5 @@
 import { messageDirection } from './web-sources';
+import { bidiRuns, isolatedPlainText, type TextDirection } from './bidi';
 
 export function cleanCopyText(text: string, sourceUrls: readonly string[] = []) {
   const sources = new Set(sourceUrls);
@@ -8,15 +9,18 @@ export function cleanCopyText(text: string, sourceUrls: readonly string[] = []) 
     .replace(/\*\*|__/gu, '').replace(/^#{1,6}\s+/gmu, '').trim();
 }
 
-export function copyPayload(text: string, sourceUrls: readonly string[] = []) {
-  const plain = cleanCopyText(text, sourceUrls);
-  const escaped = plain.replace(/[&<>"']/gu, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!);
-  return { plain, html: `<div dir="${messageDirection(plain)}" style="white-space:pre-wrap;unicode-bidi:plaintext">${escaped}</div>` };
+export function copyPayload(text: string, sourceUrls: readonly string[] = [], direction?: TextDirection) {
+  const clean = cleanCopyText(text, sourceUrls);
+  const dir = direction ?? messageDirection(clean);
+  const escape = (text: string) => text.replace(/[&<>"']/gu, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!);
+  const html = bidiRuns(clean, dir).map((run) => run.direction
+    ? `<bdi dir="${run.direction}">${escape(run.text)}</bdi>` : escape(run.text)).join('');
+  return { plain: isolatedPlainText(clean, dir), html: `<div dir="${dir}" style="white-space:pre-wrap;unicode-bidi:isolate">${html}</div>` };
 }
 
 /** Rich clipboard when supported; native copy-event fallback for embedded browsers. */
-export async function copyChatContent(text: string, sourceUrls: readonly string[] = []) {
-  const { plain, html } = copyPayload(text, sourceUrls);
+export async function copyChatContent(text: string, sourceUrls: readonly string[] = [], direction?: TextDirection) {
+  const { plain, html } = copyPayload(text, sourceUrls, direction);
   if (!plain) throw new Error('NOTHING_TO_COPY');
   try {
     if (navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {

@@ -14,6 +14,11 @@ const texts = {
   en: 'The observed price is approximately $42 as of 09:30 UTC. [Official](https://source1.example/current)\n\n1. Node.js and the supported figure ~5%.\n2. A second short point.\n\n' + 'Useful supported context remains readable and concise. '.repeat(18),
   ar: 'السعر المرصود حوالي $42 حتى الساعة 09:30 UTC. [Official](https://source1.example/current)\n\n1. Node.js أحدث المعلومات العربية المطلوبة ونسبة ~5%.\n2. هذه نقطة أخرى باللغة العربية.\n\n' + 'هذا شرح للمعلومات المدعومة والملاحظات المتاحة باللغة العربية. '.repeat(18),
 };
+// Every registered source is actually referenced; duplicate/nested citations
+// remain claim-linked in storage but share a paragraph-end presentation group.
+const references = annotation.sources.map((source) => `[${source.id}](${source.url})`).join(' ');
+texts.en = texts.en.replace('[Official](https://source1.example/current)', `**[Official](https://source1.example/current)** ${references}`);
+texts.ar = texts.ar.replace('[Official](https://source1.example/current)', `**[Official](https://source1.example/current)** ${references}`);
 const render = (locale: 'en' | 'ar') => renderToStaticMarkup(<IntlProvider locale={locale} timeZone="UTC" messages={messages}>
   <MessageBubble message={{ id: 'search-ui', role: 'assistant', content: `${locale === 'ar' ? '## ملخص\n\n' : '## Summary\n\n'}${texts[locale]}\n\n${locale === 'ar' ? '## التفاصيل\n\n' : '## Details\n\n'}${locale === 'ar' ? 'معلومات مدعومة.' : 'Supported context.'}`, annotations: [annotation],
     createdAt: new Date('2026-10-01T09:30:00Z') }} isLatest onRegenerate={() => {}} />

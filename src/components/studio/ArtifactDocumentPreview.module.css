@@ -15,7 +15,7 @@
 .paper :is(h1, h2, h3, h4, h5, h6, p, li, th, td, blockquote) {
   color: var(--document-ink);
   text-align: start;
-  unicode-bidi: plaintext;
+  unicode-bidi: isolate;
 }
 
 .paper :is(ul, ol, table) {
@@ -32,12 +32,26 @@
   unicode-bidi: isolate;
 }
 
-.paper :global(.chat-citation) a {
+.paper :global(.chat-citation) :is(a, button) {
   background: var(--document-code);
   border-color: var(--document-line);
   color: var(--document-link);
   text-decoration: none;
 }
+
+.paper :global(.chat-citation-popover) {
+  background: var(--document-paper);
+  border-color: var(--document-line);
+}
+
+.paper :global(.chat-source-footer) {
+  color: var(--document-muted);
+  border-color: var(--document-line);
+}
+
+.paper :global(.chat-search-status),
+.paper :global(.chat-source-domain) { color: var(--document-muted); }
+.paper :global(.chat-source-row) { color: var(--document-ink); }
 
 .paper :is(code, pre) {
   color: var(--document-ink);

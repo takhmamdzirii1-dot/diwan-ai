@@ -89,20 +89,35 @@ test('document instructions stay long-form after research; ordinary Chat style i
 test('copy is clean RTL text plus escaped HTML; real factual and ordered-list numbers survive', () => {
   const payload = copyPayload(markdown + '\n\n42 <script> is plain content.', sources.map((s) => s.url));
   assert.doesNotMatch(payload.plain, /source:S1|\[1\]|\*\*/);
-  assert.match(payload.plain, /1\. Node.js/); assert.match(payload.plain, /42/);
-  assert.match(payload.html, /dir="rtl"/); assert.match(payload.html, /&lt;script&gt;/);
+  assert.match(payload.plain.replace(/[\u2066-\u2069]/gu, ''), /1\. Node.js/); assert.match(payload.plain, /42/);
+  assert.match(payload.html, /dir="rtl"/);
+  assert.match(payload.html.replace(/<\/?bdi[^>]*>/gu, ''), /&lt;script&gt;/);
+  assert.doesNotMatch(payload.html, /<script[\s>]/iu);
   assert.equal(cleanCopyText('[S1](https://example.com/article) Text', sources.map((s) => s.url)), 'Text');
 });
 
 test('stored Arabic document renders citations inside bold/lists; unsourced markers disappear', () => {
   const artifact = documentFromMarkdown('stored-doc', markdown, 'ar');
   const html = renderToStaticMarkup(<ArtifactDocumentPreview artifact={artifact} locale="ar" onClose={() => {}} sources={sources} />);
-  assert.equal((html.match(/class="chat-citation"/gu) ?? []).length, 2);
+  assert.equal((html.match(/class="chat-citation chat-citation-group"/gu) ?? []).length, 2);
   assert.match(html, /<ol dir="rtl"/); assert.doesNotMatch(html, /source:S1/);
   assert.equal(citationMarkdown('Useful **text [1]** and 42.'), 'Useful **text ** and 42.');
 });
 
-test('source presentation merges localized domains and keeps primary before outlets before Reddit', () => {
+test('nested repeated citations collapse at paragraph boundaries without changing stored claim associations', () => {
+  const registry = [...sources, { id: 'S2', title: 'Second page', url: 'https://example.com/second' },
+    { id: 'S3', title: 'Unreferenced', url: 'https://unused.example/page' }];
+  const artifact = documentFromMarkdown('grouped', 'Claim **one [[source:S1]]** and *two [[source:S2]]*; corroboration [[source:S1]].\n\nSeparate claim [[source:S2]].', 'en');
+  const before = JSON.stringify(artifact);
+  const html = renderToStaticMarkup(<ArtifactDocumentPreview artifact={artifact} locale="en" onClose={() => {}} sources={registry} />);
+  assert.equal((html.match(/class="chat-citation chat-citation-group"/gu) ?? []).length, 2);
+  assert.match(html, /<bdi>1, 2<\/bdi>/u);
+  assert.match(html, /<strong>one <\/strong>/u);
+  assert.doesNotMatch(html, /unused.example|Unreferenced|source:S/u);
+  assert.equal(JSON.stringify(artifact), before);
+});
+
+test('collapsed source panel keeps exact referenced pages and primary before outlets before Reddit', () => {
   assert.equal(sourceDomain('https://ar.sa.example.com/a'), 'example.com');
   const html = renderToStaticMarkup(<ChatSources locale="ar" annotation={{ type: 'vantra-web-sources', state: 'read', readCount: 3,
     sources: [{ id: 'S2', title: 'Forum', url: 'https://www.reddit.com/r/test' },
@@ -111,5 +126,6 @@ test('source presentation merges localized domains and keeps primary before outl
   assert.ok(html.indexOf('example.com') < html.indexOf('reuters.com'));
   assert.ok(html.indexOf('reuters.com') < html.indexOf('reddit.com'));
   assert.match(html, /المصادر/); assert.doesNotMatch(html, /Read 0/);
-  assert.equal((html.match(/class="chat-source-chip"/gu) ?? []).length, 3);
+  assert.equal((html.match(/class="chat-source-chip"/gu) ?? []).length, 0);
+  assert.equal((html.match(/class="chat-source-row"/gu) ?? []).length, 4);
 });
