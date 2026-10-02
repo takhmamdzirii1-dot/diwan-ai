@@ -4,6 +4,12 @@ Google Drive's deployed read adapter is preserved. This package adds server-side
 
 ## One setup checklist
 
+### Production configuration diagnostics
+
+The authenticated connector-list route logs `CONNECTED_APPS_CONFIGURATION` once per changed configuration/process. It records only allowlisted prerequisite presence/nonblank booleans, exact flag validity/enabled booleans, and disabled reasons; it never returns these diagnostics to the browser or logs credential values. An empty HTTP-200 list is distinct from the route's HTTP-503 database/service failure.
+
+Production's empty-list incident was traced to `PROVIDER_TOKEN_ENCRYPTION_KEY` being absent at runtime, while every implemented OAuth credential pair was present and both enable flags were valid/enabled. Restore the existing key from authorized private configuration, never generate/rotate a replacement casually. Environment-variable names in deployment metadata do not prove nonempty runtime values. Verify the authenticated list after the Git deployment; configuration availability is not a live OAuth/read test. Shopify and Meta/WhatsApp remain deliberately disabled as described below.
+
 1. In [Google Cloud](https://console.cloud.google.com/apis/library/drive.googleapis.com), enable Google Drive API. In [Google Auth Platform](https://console.cloud.google.com/auth/clients), create a **Web application** OAuth client. Configure branding/audience and add the authorized QA account as a test user while the app is in testing.
 2. Register exact redirect URIs:
    - Production: `https://joinvantra.com/api/connected-apps/oauth/callback`
