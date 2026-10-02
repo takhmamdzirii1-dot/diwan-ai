@@ -4,7 +4,7 @@ import type { ZodTypeAny } from 'zod';
 
 export type ConnectedAppError = 'app_not_connected' | 'permission_missing' | 'authorization_expired'
   | 'resource_not_found' | 'action_requires_confirmation' | 'provider_unavailable'
-  | 'provider_rate_limited' | 'action_failed';
+  | 'provider_rate_limited' | 'action_failed' | 'resource_unsupported' | 'resource_too_large';
 export type ConnectedAppConnection = {
   id: string; appId: string; scopes: string[]; status: 'connected' | 'disconnected'; expiresAt: string | null;
   account?: { name: string; email?: string };
@@ -40,18 +40,20 @@ export type ConnectedActionMatch = { adapter: ConnectedAppAdapter; action: Conne
 export function safeConnectedError(cause: unknown): ConnectedAppError {
   const code = cause instanceof Error ? cause.message : '';
   return (['app_not_connected', 'permission_missing', 'authorization_expired', 'resource_not_found',
-    'action_requires_confirmation', 'provider_unavailable', 'provider_rate_limited', 'action_failed'] as const)
+    'action_requires_confirmation', 'provider_unavailable', 'provider_rate_limited', 'action_failed', 'resource_unsupported', 'resource_too_large'] as const)
     .find(value => value === code) ?? 'provider_unavailable';
 }
 
 /** Conservative gate: mentioning an app/file is not permission to read it. */
 export function explicitConnectedReadRequest(request: string): boolean {
   const text = request.slice(0, 800).trim();
-  if (/\b(?:do not|don't|without|never)\s+(?:read|open|search|use)\b/i.test(text)) return false;
-  return /^(?:(?:please|can you|could you)\s+)*(?:read|open|search|find|summari[sz]e|analy[sz]e)\b/i.test(text)
+  if (/\b(?:do not|don't|without|never|ne pas|sans)\b|(?:لا\s|بدون)/iu.test(text)) return false;
+  return /^(?:(?:please|can you|could you)\s+)*(?:read|open|search|find|show|list|check|summari[sz]e|analy[sz]e)\b/i.test(text)
+    || /^(?:what|which)\b[^\n]{0,120}\b(?:my|in my)\b/iu.test(text)
     || /^(?:create|build|make|write)\b[^\n]{0,240}\b(?:from|using|based on)\b/i.test(text)
-    || /^(?:اقرأ|افتح|ابحث|لخص|حلل|أنشئ|اصنع)(?:\s|$)/u.test(text)
-    || /^(?:lis|lisez|ouvre|ouvrez|cherche|cherchez|résume|résumez|analyse|analysez|crée|créez)\b/iu.test(text);
+    || /^(?:اقرأ|اقرا|افتح|ابحث|لخص|لخّص|حلل|أنشئ|اصنع|اعطني|أعطني|اعطيني|أرني|ارني|هات|اعرض)(?:\s|$)/u.test(text)
+    || /^(?:ما|ماذا|أي|اي)(?:\s)[^\n]{0,120}(?:بريدي|رسائلي|Gmail)/iu.test(text)
+    || /^(?:lis|lisez|ouvre|ouvrez|cherche|cherchez|résume|résumez|analyse|analysez|crée|créez|montre|montrez|affiche|affichez|liste|listez)\b/iu.test(text);
 }
 
 /** Connecting alone is never authority for an external write. Negations fail closed. */
@@ -100,19 +102,20 @@ export async function executeConnectedAction(input: { match: ConnectedActionMatc
       userId: input.userId, credential: input.credential, signal: input.signal, arguments: args });
     if (!resource.sourceId || resource.sourceId.length > 256 || !resource.name || resource.name.length > 160
       || !/^text\/(plain|markdown|csv)$/.test(resource.mimeType) || !resource.text.trim()
-      || resource.text.length > 30_000) return { resource: null, error: 'resource_not_found' };
+      || resource.text.length > 120_000) return { resource: null, error: 'resource_not_found' };
     return { resource, error: null };
   } catch (cause) {
     const code = cause instanceof Error ? cause.message : '';
     const error: ConnectedAppError = code === 'authorization_expired' ? 'authorization_expired'
       : code === 'permission_missing' ? 'permission_missing' : code === 'resource_not_found' ? 'resource_not_found'
+      : code === 'resource_unsupported' ? 'resource_unsupported' : code === 'resource_too_large' ? 'resource_too_large'
       : code === 'provider_rate_limited' ? 'provider_rate_limited'
         : code === 'provider_unavailable' ? 'provider_unavailable' : 'action_failed';
     return { resource: null, error };
   }
 }
 
-/** Return one bounded, relevant excerpt; unclear large-file relevance fails closed. */
+/** Bounded excerpts from the one authorized resource; summaries may use a partial opening excerpt. */
 export function boundedConnectedContent(resource: ConnectedResource, request: string, maxChars = 8_000): string | null {
   const secretPattern = /(?:sb_secret_[A-Za-z0-9_-]{8,}|gh[pousr]_[A-Za-z0-9_]{16,}|\bBearer\s+[A-Za-z0-9._-]{16,}|\b(?:API_KEY|CLIENT_SECRET|REFRESH_TOKEN)\s*[:=]\s*\S+)/i;
   if (secretPattern.test(resource.text)) return null;
@@ -124,14 +127,14 @@ export function boundedConnectedContent(resource: ConnectedResource, request: st
   const ranked = sections.map((text, index) => ({ text, index,
     score: [...terms].reduce((count, term) => count + Number(text.toLowerCase().includes(term)), 0) }))
     .filter((entry) => entry.score > 0).sort((a, b) => b.score - a.score || a.index - b.index);
-  if (!ranked.length) return null;
+  if (!ranked.length) return /summari[sz]e|résum|لخص|لخّص|ملخص/iu.test(request) ? resource.text.slice(0, maxChars) : null;
   let remaining = maxChars;
   const selected = ranked.filter((entry) => {
     if (entry.text.length + 2 > remaining) return false;
     remaining -= entry.text.length + 2;
     return true;
   }).sort((a, b) => a.index - b.index);
-  return selected.length ? selected.map((entry) => entry.text).join('\n\n') : null;
+  return selected.length ? selected.map((entry) => entry.text).join('\n\n') : ranked[0].text.slice(0, maxChars);
 }
 
 /** Reuse the local-upload Conversation Resources document path, not a parallel artifact type. */

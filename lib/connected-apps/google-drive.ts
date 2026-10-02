@@ -9,12 +9,12 @@ export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
 export const DRIVE_SCOPES = ['openid', 'email', DRIVE_SCOPE];
 
 async function boundedBody(response: Response, max = 120_000) {
-  if (Number(response.headers.get('content-length')) > max) { await response.body?.cancel(); throw new Error('resource_not_found'); }
+  if (Number(response.headers.get('content-length')) > max) { await response.body?.cancel(); throw new Error('resource_too_large'); }
   const reader = response.body?.getReader();
   if (!reader) throw new Error('provider_unavailable');
   const chunks: Uint8Array[] = []; let size = 0;
   try { for (;;) { const { value, done } = await reader.read(); if (done) break;
-    size += value.byteLength; if (size > max) { await reader.cancel(); throw new Error('resource_not_found'); } chunks.push(value); }
+    size += value.byteLength; if (size > max) { await reader.cancel(); throw new Error('resource_too_large'); } chunks.push(value); }
     return Buffer.concat(chunks).toString('utf8');
   } finally { reader.releaseLock(); }
 }
@@ -78,8 +78,8 @@ export function googleDriveAdapter(fetcher: typeof fetch = fetch): ConnectedAppA
       const exported = file.mimeType === 'application/vnd.google-apps.document' ? 'text/plain'
         : file.mimeType === 'application/vnd.google-apps.spreadsheet' ? 'text/csv'
           : file.mimeType === 'application/vnd.google-apps.presentation' ? 'text/plain' : null;
-      if (!exported && !['text/plain', 'text/markdown', 'text/csv'].includes(file.mimeType)) throw new Error('resource_not_found');
-      if (file.size && Number(file.size) > 120_000) throw new Error('resource_not_found');
+      if (!exported && !['text/plain', 'text/markdown', 'text/csv'].includes(file.mimeType)) throw new Error('resource_unsupported');
+      if (file.size && Number(file.size) > 120_000) throw new Error('resource_too_large');
       const content = await upstream(exported ? `${base}/export?mimeType=${encodeURIComponent(exported)}` : `${base}?alt=media`, { headers }, signal);
       const text = await boundedBody(content);
       if (text.includes(credentials.accessToken) || (credentials.refreshToken && text.includes(credentials.refreshToken))) throw new Error('permission_missing');

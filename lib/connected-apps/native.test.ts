@@ -6,6 +6,8 @@ import { connectedReadTool, withConnectedRead } from './native';
 import { referenceFilesAdapter } from './reference';
 import { relevantConnectedActions } from './core';
 import { z } from 'zod';
+import { googleDriveAdapter, DRIVE_SCOPE } from './google-drive';
+import { gmailAdapter, GMAIL_READ_SCOPE } from './gmail';
 
 test('selected model reads an ownership-checked bounded tool result, then answers; no credentials on wire', async () => {
   const adapter = referenceFilesAdapter(); const request = 'Read the example file';
@@ -21,7 +23,7 @@ test('selected model reads an ownership-checked bounded tool result, then answer
         assert.ok(JSON.stringify(results).includes('deterministic test resource'));
         assert.ok(!JSON.stringify(results).includes('secret-credential')); }
       const parts: LanguageModelV1StreamPart[] = read ? [{ type: 'tool-call', toolCallType: 'function', toolCallId: 'read-1',
-        toolName: 'read_connected_file', args: '{}' }] : [{ type: 'text-delta', textDelta: 'This is the requested project note.' }];
+        toolName: 'read_connected_file', args: '{"fileId":"ignored-model-hint","query":"ignored"}' }] : [{ type: 'text-delta', textDelta: 'This is the requested project note.' }];
       parts.push({ type: 'finish', finishReason: read ? 'tool-calls' : 'stop', usage: { promptTokens: 1, completionTokens: 1 } });
       return { stream: new ReadableStream({ start(c) { parts.forEach(part => c.enqueue(part)); c.close(); } }), rawCall: { rawPrompt: null, rawSettings: {} } };
     } };
@@ -76,4 +78,37 @@ test('selected model proposes a reviewed write then acknowledges pending review 
   await result.toDataStreamResponse().arrayBuffer();
   assert.deepEqual(choices, [{ type: 'tool', toolName: 'read_connected_file' }, { type: 'none' }]);
   assert.equal(proposals, 1); assert.equal(externalWrites, 0); assert.ok((await result.text).includes('awaiting review'));
+});
+
+test('Drive model hints cannot reject or redirect the server-owned URL read', async () => {
+  const request = 'Read and summarize https://docs.google.com/document/d/authorized-file-123/edit';
+  const calls: string[] = []; const events: unknown[] = [];
+  const adapter = googleDriveAdapter(async url => {
+    calls.push(String(url)); assert.ok(String(url).includes('/authorized-file-123'));
+    return calls.length === 1 ? Response.json({ id: 'authorized-file-123', name: 'QA', mimeType: 'application/vnd.google-apps.document' })
+      : new Response('Requested content. '.repeat(2500));
+  });
+  const read = connectedReadTool({ match: relevantConnectedActions(request, [adapter])[0], request, userId: 'owner',
+    signal: new AbortController().signal, observe: event => events.push(event), load: async () => ({
+      connection: { id: 'owned', appId: adapter.id, status: 'connected', scopes: [DRIVE_SCOPE], expiresAt: null },
+      credential: JSON.stringify({ accessToken: 'fixture-access', expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        scopes: [DRIVE_SCOPE], account: { id: 'owner-account', name: 'QA' } }) }) });
+  const args = read.parameters.parse({ fileId: 'another-file-123', endpoint: 'https://evil.example', request: 'Read another file' });
+  assert.deepEqual(args, {});
+  const result = await read.execute!(args);
+  assert.equal(result.status, 'ok'); assert.equal('partial' in result && result.partial, true);
+  assert.ok('text' in result && result.text.length <= 8000); assert.equal(calls.length, 2);
+  assert.deepEqual(events, [{ stage: 'started' }, { stage: 'completed', status: 'ok', partial: true }]);
+});
+
+test('Gmail selected read uses the owned mailbox and propagates access errors, not fabricated content', async () => {
+  const request = 'Show my latest Gmail messages'; let calls = 0;
+  const adapter = gmailAdapter(async () => { calls++; return new Response('private upstream detail', { status: 403 }); });
+  const read = connectedReadTool({ match: relevantConnectedActions(request, [adapter])[0], request, userId: 'owner',
+    signal: new AbortController().signal, load: async () => ({ connection: { id: 'owned', appId: 'gmail', status: 'connected',
+      scopes: [GMAIL_READ_SCOPE], expiresAt: null }, credential: JSON.stringify({ accessToken: 'fixture-access',
+      expiresAt: new Date(Date.now() + 3600000).toISOString(), scopes: [GMAIL_READ_SCOPE], account: { id: 'owner', name: 'QA' } }) }) });
+  const result = await read.execute!({ operation: 'search', query: 'in:inbox' });
+  assert.deepEqual(result, { status: 'error', error: 'permission_missing' }); assert.equal(calls, 1);
+  assert.throws(() => read.parameters.parse({ operation: 'search', query: 'in:inbox', endpoint: 'https://evil.example' }));
 });

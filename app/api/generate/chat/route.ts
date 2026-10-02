@@ -362,6 +362,7 @@ export async function POST(request: Request) {
         connectedMatch.adapter.id, connectedGrant.connection?.id ?? '');
       connectedDocumentContext = attachmentRequestContext(
         attachConversationFile([], draft, 'connected-app')).documentContext;
+      if (excerpt.length < outcome.resource.text.length) connectedDocumentContext += '\nThis is a partial excerpt, not the complete file. Do not claim a full-file summary.';
     }
     let webDocumentContext: string | undefined;
     let webSearchJobMetadata: Record<string, unknown> = {};
@@ -686,6 +687,16 @@ export async function POST(request: Request) {
       const connectedTools = connectedMatch && native.tools.state === 'supported' ? {
         read_connected_file: connectedReadTool({ match: connectedMatch, request: latestUserText, userId: user.id,
           signal: request.signal, load: () => readUserConnection(user.id, connectedMatch.adapter.id),
+          observe: event => {
+            if (event.stage === 'started') toolLifecycle.executionStarted = true;
+            if (event.stage === 'completed') toolLifecycle.executionCompleted = true;
+            if (event.stage === 'failed') toolLifecycle.executionFailed = true;
+            Object.assign(streamDiagnostics, { connectedApp: connectedMatch.adapter.id,
+              connectedAction: connectedMatch.action.id, connectedActionStage: event.stage,
+              connectedActionStatus: event.status ?? null, connectedActionError: event.error ?? null,
+              connectedContentPartial: event.partial ?? null });
+            trace('CONNECTED_ACTION', { app: connectedMatch.adapter.id, action: connectedMatch.action.id, ...event });
+          },
           prepare: arguments_ => prepareConnectedReview({ userId: user.id, operationId: execution.executionId,
             match: connectedMatch, request: latestUserText, arguments: arguments_ }) }),
       } : undefined;
@@ -912,7 +923,8 @@ export async function POST(request: Request) {
             toolLifecycle.toolNameReceived = true;
             toolLifecycle.argumentsCompleted = true;
             toolLifecycle.argumentsInvalid = true;
-            toolName = getArtifactTool(error.toolName) ? error.toolName : 'unrecognized_tool';
+            toolName = getArtifactTool(error.toolName) || ['web_search', 'read_connected_file'].includes(error.toolName)
+              ? error.toolName : 'unrecognized_tool';
           }
           return '';
         },

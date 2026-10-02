@@ -13,7 +13,8 @@ const readInput = z.object({ operation: z.literal('read'), messageId: id }).stri
 const inputSchema = z.discriminatedUnion('operation', [searchInput, readInput]);
 const draftInput = z.object({ to: z.string().email().max(254), subject: z.string().min(1).max(200).refine(value => !/[\r\n]/u.test(value)),
   body: z.string().min(1).max(12_000), replyMessageId: id.optional() }).strict();
-const draftIntent = (request: string) => explicitConnectedWriteRequest(request) && /\bgmail\b/iu.test(request)
+const mailboxRequested = (request: string) => /\bgmail\b|\bmy\s+(?:(?:latest|recent|unread|new|last)\s+){0,3}(?:emails?|mail|inbox)\b|(?:بريدي|صندوق\s+الوارد)|\b(?:mes\s+(?:(?:derniers|nouveaux|récents)\s+){0,3}(?:e-?mails|courriels)|ma\s+bo[iî]te\s+mail)\b/iu.test(request);
+const draftIntent = (request: string) => explicitConnectedWriteRequest(request) && mailboxRequested(request)
   && /\b(?:draft|reply|email|message)\b|(?:مسودة|رد|رسالة)|(?:brouillon|répond|message|courriel)/iu.test(request);
 
 function plainParts(part: unknown, depth = 0): string {
@@ -32,7 +33,7 @@ export function gmailAdapter(fetcher: typeof fetch = fetch): ConnectedAppAdapter
     actions: [
       { id: 'search_gmail', description: 'Search the explicitly requested Gmail mailbox. Returns up to 10 messages and a continuation token; never reads unrelated mail.',
         classification: 'read', risk: 'low', requiredScopes: [GMAIL_READ_SCOPE], requiresConnection: true, requiresConfirmation: false,
-        parameters: inputSchema, matches: request => /\bgmail\b/iu.test(request) && !draftIntent(request) },
+        parameters: inputSchema, matches: request => mailboxRequested(request) && !draftIntent(request) },
       ...(process.env.CONNECTED_APPS_WRITES_ENABLED === 'true' ? [{ id: 'draft_gmail',
         description: 'Prepare a Gmail draft or reply for exact user review in Connected apps. This never sends an email. Do not claim it was created before approval.',
         classification: 'write' as const, risk: 'low' as const, requiredScopes: [GMAIL_READ_SCOPE, GMAIL_DRAFT_SCOPE],

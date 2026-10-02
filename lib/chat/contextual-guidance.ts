@@ -213,6 +213,14 @@ export function guidanceForChatError(raw: string, locale: string): ChatGuidance 
     en: 'Check the file link and make sure the connected account can open it. No file was read.',
     fr: 'Vérifiez le lien et l’accès du compte connecté. Aucun fichier n’a été lu.',
     ar: 'تحقق من رابط الملف ومن قدرة الحساب المتصل على فتحه. لم تتم قراءة أي ملف.' }), actions: [] };
+  if (/resource_unsupported/i.test(code)) return { kind: 'recoverable_error', message: say(locale, {
+    en: 'This connected file type is not supported. Use a Google Doc, Sheet, or text file, or upload a supported document.',
+    fr: 'Ce type de fichier connecté n’est pas pris en charge. Utilisez un Google Doc, Sheet ou fichier texte, ou importez un document compatible.',
+    ar: 'نوع هذا الملف المتصل غير مدعوم. استخدم مستند Google أو جدولًا أو ملفًا نصيًا، أو ارفع مستندًا مدعومًا.' }), actions: ['upload_document'] };
+  if (/resource_too_large/i.test(code)) return { kind: 'recoverable_error', message: say(locale, {
+    en: 'This connected file exceeds the read limit. Share a smaller relevant excerpt or upload a supported document.',
+    fr: 'Ce fichier connecté dépasse la limite de lecture. Fournissez un extrait pertinent plus court ou importez un document compatible.',
+    ar: 'يتجاوز هذا الملف المتصل حد القراءة. قدم مقتطفًا أقصر ذا صلة أو ارفع مستندًا مدعومًا.' }), actions: ['upload_document'] };
   if (/app_not_connected/i.test(code)) return {
     kind: 'requirement', message: say(locale, {
       en: 'Connect this app in Settings to continue.', fr: 'Connectez cette application dans les paramètres pour continuer.',

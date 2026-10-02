@@ -37,6 +37,8 @@ test('connector failures give specific recovery steps without claiming a read', 
   assert.match(guidanceForChatError('permission_missing', 'en').message, /grant the required permission/);
   assert.match(guidanceForChatError('authorization_expired', 'en').message, /expired/);
   assert.match(guidanceForChatError('app_not_connected', 'en').message, /Connect this app/);
+  assert.match(guidanceForChatError('resource_unsupported', 'en').message, /type is not supported/);
+  assert.match(guidanceForChatError('resource_too_large', 'en').message, /exceeds the read limit/);
 });
 
 test('missing file and wrong model produce task actions while ordinary text stays clean', () => {

@@ -97,6 +97,6 @@ test('denied, expired, rate limited and unavailable responses expose only safe e
 test('oversized and unsupported files fail closed without arbitrary media fetches', async () => {
   let calls = 0;
   const adapter = googleDriveAdapter(async () => { calls++; return Response.json({ id: fileId, name: 'PDF', mimeType: 'application/pdf' }); });
-  await assert.rejects(adapter.execute({ actionId: 'read_google_drive_file', request, userId: 'u', credential: JSON.stringify(grant) }), /resource_not_found/);
+  await assert.rejects(adapter.execute({ actionId: 'read_google_drive_file', request, userId: 'u', credential: JSON.stringify(grant) }), /resource_unsupported/);
   assert.equal(calls, 1);
 });

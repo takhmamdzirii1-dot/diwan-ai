@@ -13,6 +13,20 @@ import { relevantConnectedActions, executeConnectedAction, explicitConnectedWrit
 const grant = { accessToken: 'fixture-access-not-real', refreshToken: 'fixture-refresh-not-real',
   expiresAt: new Date(Date.now() + 3600000).toISOString(), scopes: [GMAIL_READ_SCOPE], account: { id: 'qa-account', name: 'QA' } };
 
+test('explicit EN/FR/AR mailbox requests expose Gmail; mere mentions and negations do not', () => {
+  const adapter = gmailAdapter();
+  for (const request of ['Show my latest Gmail messages', 'Find my latest email from Google and show the sender and subject', 'List my emails', 'What is in my Gmail inbox?',
+    'اعطني آخر رسائل Gmail', 'ما الجديد في بريدي؟', 'Montre mes courriels']) {
+    assert.deepEqual(relevantConnectedActions(request, [adapter]).map(match => match.action.id), ['search_gmail']);
+  }
+  for (const request of ['I use Gmail', 'Explain how Gmail works', 'Show an example email',
+    'Do not read Gmail', 'لا تقرأ بريدي', 'Sans lire Gmail']) assert.equal(relevantConnectedActions(request, [adapter]).length, 0);
+  const previous = process.env.CONNECTED_APPS_WRITES_ENABLED; process.env.CONNECTED_APPS_WRITES_ENABLED = 'true';
+  try {
+    assert.deepEqual(relevantConnectedActions('Draft a Gmail reply', [gmailAdapter()]).map(match => match.action.id), ['draft_gmail']);
+  } finally { if (previous === undefined) delete process.env.CONNECTED_APPS_WRITES_ENABLED; else process.env.CONNECTED_APPS_WRITES_ENABLED = previous; }
+});
+
 test('GitHub target authorization matches exact repository segments, not a prefix', () => {
   assert.equal(requestedGithubRepository('Read https://github.com/qa/project-other', 'qa', 'project'), false);
   assert.equal(requestedGithubRepository('Read https://github.com/qa/project/file', 'qa', 'project'), true);
