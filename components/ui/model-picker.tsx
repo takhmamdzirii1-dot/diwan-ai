@@ -10,6 +10,7 @@ import { ModelBrandIcon } from './model-brand-icon';
 import { isHierarchicalAllowedPlans, MODEL_PLAN_CODES, type ModelPlanCode } from '@/lib/models/plan-entitlements';
 import type { ModelAccessState } from '@/lib/models/model-access';
 import { positionModelPicker, type PickerAnchor } from './model-picker-position';
+import { uniqueVisibleModels } from './model-picker-options';
 
 export interface ChatModelOption {
   id: string;
@@ -38,7 +39,7 @@ function readRecent(): RecentByModality {
   try {
     const stored = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '{}') as Partial<RecentByModality>;
     return Object.fromEntries((['chat', 'image', 'video'] as const).map((modality) => [
-      modality, Array.isArray(stored[modality]) ? stored[modality].filter((id): id is string => typeof id === 'string').slice(0, MAX_RECENT) : [],
+      modality, Array.isArray(stored[modality]) ? [...new Set(stored[modality].filter((id): id is string => typeof id === 'string'))].slice(0, MAX_RECENT) : [],
     ])) as RecentByModality;
   } catch { return emptyRecent(); }
 }
@@ -68,7 +69,7 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, on
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
-  const visibleModels = useMemo(() => models.filter((model) => model.enabled && ['available', 'beta'].includes(model.availability)), [models]);
+  const visibleModels = useMemo(() => uniqueVisibleModels(models), [models]);
   const current = visibleModels.find((model) => model.id === selectedModel) ?? visibleModels[0];
 
   useEffect(() => setRecent(readRecent()), []);
@@ -112,12 +113,14 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, on
     });
     const byBrand = new Map<string, ChatModelOption[]>();
     matches.forEach((model) => {
+      // Recent rows already expose these identities; keep one row per model.
+      if (!term && recent[modality].includes(model.id)) return;
       const brand = modelBrand(model.name, modality, model.provider, model.id, model.brand).name;
       byBrand.set(brand, [...(byBrand.get(brand) ?? []), model]);
     });
     // Stable alphabetical brand order — never reordered by selection or state.
     return { term, matches, groups: [...byBrand.entries()].sort(([a], [b]) => a.localeCompare(b)) };
-  }, [visibleModels, modality, search]);
+  }, [visibleModels, modality, search, recent]);
   const recentModels = recent[modality].map((id) => visibleModels.find((model) => model.id === id)).filter((model): model is ChatModelOption => Boolean(model));
   const close = useCallback(() => { setOpen(false); setSearch(''); trigger.current?.focus(); }, []);
   const pick = (model: ChatModelOption) => {
@@ -169,12 +172,12 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, on
       style={{ backgroundColor: 'color-mix(in srgb, var(--studio-popover) 96%, transparent)',
         ...(anchor && typeof window !== 'undefined' && window.innerWidth >= 640
           ? { top: anchor.top, bottom: anchor.bottom, left: anchor.left, maxHeight: anchor.height } : {}) }}
-      className="fixed inset-x-0 bottom-0 z-[110] flex max-h-[min(85dvh,620px)] flex-col overflow-hidden rounded-t-2xl border border-[var(--studio-border)] bg-[var(--studio-popover)] text-[var(--studio-text-primary)] shadow-lg sm:inset-x-auto sm:bottom-auto sm:w-[min(408px,calc(100vw-32px))] sm:rounded-2xl sm:max-h-[540px]">
-      <div className="shrink-0 border-b border-[var(--studio-border)] bg-[var(--studio-popover)] p-3">
+      className="fixed inset-x-0 bottom-0 z-[110] flex max-h-[min(85dvh,620px)] flex-col overflow-hidden rounded-t-2xl border border-[var(--studio-border)] bg-[var(--studio-popover)] text-[var(--studio-text-primary)] shadow-[var(--studio-shadow)] sm:inset-x-auto sm:bottom-auto sm:w-[min(408px,calc(100vw-32px))] sm:rounded-2xl sm:max-h-[540px]">
+      <div className="sticky top-0 z-10 shrink-0 border-b border-[var(--studio-border)] bg-[var(--studio-popover)] p-3">
         <div className="mb-2 flex items-center justify-between sm:hidden"><span className="text-sm font-semibold">{menuLabel ?? t('menuLabel')}</span><button type="button" onClick={close} aria-label={t('picker.close')} className="flex h-9 w-9 items-center justify-center rounded-lg"><X className="h-4 w-4" /></button></div>
         <label className="flex h-10 items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface)] px-3 focus-within:border-[var(--studio-border-strong)]"><Search className="h-4 w-4 shrink-0 text-[var(--studio-text-muted)]" /><span className="sr-only">{t('picker.search')}</span><input ref={searchInput} value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('picker.search')} className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-[var(--studio-text-muted)]" /></label>
       </div>
-      <div className="min-h-0 overflow-y-auto overscroll-contain px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 [scrollbar-width:thin]">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 [scrollbar-width:thin]">
         {groups.term ? <section aria-label={t('picker.allModels')}>
           {groups.matches.length ? groups.matches.map((model) => row(model, 'flat'))
             : <p className="px-3 py-6 text-center text-[12px] text-[var(--studio-text-muted)]">{t('picker.noResults')}</p>}
@@ -194,7 +197,7 @@ export function ModelPicker({ models, selectedModel, onSelect, onSignInClick, on
               <ModelBrandIcon url={icon} name={brandName} size={20} />
               <span className="min-w-0 flex-1 truncate text-[12px] font-semibold">{brandName}</span><span className="shrink-0 text-[11px] text-[var(--studio-text-muted)]">{t('picker.modelsCount', { count: items.length })}</span><ChevronRight className={`h-4 w-4 shrink-0 text-[var(--studio-text-muted)] transition-transform duration-150 ${openGroup ? 'rotate-90' : ''}`} />
             </button>{openGroup && <div className="ms-2 rounded-lg border-s border-[var(--studio-border-subtle)] bg-black/10 py-1 pe-1 ps-1">{items.map((model) => row(model))}</div>}</div>;
-          }) : <p className="px-3 py-6 text-center text-[12px] text-[var(--studio-text-muted)]">{emptyLabel ?? t('noModels')}</p>}
+          }) : !recentModels.length && <p className="px-3 py-6 text-center text-[12px] text-[var(--studio-text-muted)]">{emptyLabel ?? t('noModels')}</p>}
         </section></>}
       </div>
     </div>

@@ -239,7 +239,7 @@ export default function StudioDashboard({
             return true;
           });
           setSessions(cleaned);
-          setActiveSessionId(cleaned.length > 0 ? cleaned[0].id : `draft-${Date.now()}`);
+          setActiveSessionId(`draft-${Date.now()}`);
           return;
         }
       }
@@ -1134,20 +1134,20 @@ export default function StudioDashboard({
                 initial={reduceMotion ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }}
-                className="absolute inset-0 flex flex-col min-h-0 overflow-hidden"
+                className={cn('absolute inset-0 flex flex-col min-h-0', isEmpty ? 'overflow-y-auto [justify-content:safe_center] pt-14 pb-8 sm:pt-8' : 'overflow-hidden')}
               >
                 {/* Scrollable Message Timeline Area */}
-                <div className="flex-1 min-h-0 relative flex flex-col overflow-hidden">
+                <div className={cn('min-h-0 relative flex flex-col', isEmpty ? 'shrink-0' : 'flex-1 overflow-hidden')}>
                   <div
                     ref={scrollContainerRef}
                     onScroll={handleScroll}
                     tabIndex={0}
-                    className="chat-scrollbar flex-1 h-full overflow-y-auto focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-white/30"
-                    style={{ overflowAnchor: 'none', paddingBottom: composerPadding }}
+                    className={cn('chat-scrollbar focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-white/30', isEmpty ? 'shrink-0' : 'flex-1 h-full overflow-y-auto')}
+                    style={{ overflowAnchor: 'none', paddingBottom: isEmpty ? 0 : composerPadding }}
                   >
                     <div ref={transcriptRef} className={cn(
                       'w-full flex justify-center transition-[min-height,padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none',
-                      isEmpty ? 'min-h-full items-center py-6' : 'pt-6'
+                      isEmpty ? 'items-center' : 'pt-6'
                     )}>
                       <div className="mx-auto flex w-full max-w-4xl flex-col gap-y-5 px-4 sm:px-6">
                         {/* Empty State: Headline & Magic Skills Cards (Animated Exit) */}
@@ -1180,7 +1180,7 @@ export default function StudioDashboard({
                                 initial={{ opacity: 0, y: 6 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: reduceMotion ? 0 : 0.16 }}
-                                className="mb-5 grid w-full grid-cols-1 gap-3 text-start sm:grid-cols-2"
+                                className="mb-4 grid w-full grid-cols-2 gap-2.5 text-start sm:gap-3"
                               >
                                 {MAGIC_SKILLS.map((skill) => {
                                   const Icon = skill.icon;
@@ -1189,15 +1189,15 @@ export default function StudioDashboard({
                                       key={skill.key}
                                       type="button"
                                       onClick={() => handleStarter(t(`starters.${skill.key}.prompt`))}
-                                      className="group flex min-h-24 cursor-pointer flex-col gap-2 rounded-xl border border-white/[0.07] bg-white/[0.025] p-4 text-start text-sm text-white/70 transition-[color,background-color,border-color,transform] duration-150 hover:border-white/[0.14] hover:bg-white/[0.06] hover:text-white active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none"
+                                      className="group flex min-h-24 cursor-pointer flex-col gap-2 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-card)] p-3 text-start text-[13px] text-[var(--studio-text-secondary)] transition-[color,background-color,border-color] duration-150 hover:border-[var(--studio-border-strong)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] active:bg-[var(--studio-selected)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)] motion-reduce:transition-none sm:p-4 sm:text-sm"
                                     >
                                       <div className="flex items-center gap-2.5">
-                                        <div className="h-7 w-7 rounded-lg border border-white/10 bg-white/[0.04] flex items-center justify-center text-white/90 shrink-0 group-hover:border-white/20 transition-colors">
+                                        <div className="h-7 w-7 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] flex items-center justify-center text-[var(--studio-text-primary)] shrink-0 group-hover:border-[var(--studio-border-strong)] transition-colors duration-150">
                                           <Icon className="h-3.5 w-3.5" />
                                         </div>
-                                        <span className="font-medium text-white/90">{t(`starters.${skill.key}.title`)}</span>
+                                        <span className="font-medium text-[var(--studio-text-primary)]">{t(`starters.${skill.key}.title`)}</span>
                                       </div>
-                                      <p className="text-[12.5px] text-white/55 leading-relaxed font-normal">
+                                      <p className="text-[12px] text-[var(--studio-text-secondary)] leading-relaxed font-normal sm:text-[12.5px]">
                                         {t(`starters.${skill.key}.description`)}
                                       </p>
                                     </button>
@@ -1333,10 +1333,10 @@ export default function StudioDashboard({
                 </div>
 
                 {/* 3rd (Bottom): Floating composer over the fading message timeline */}
-                <div ref={composerRef} className="absolute bottom-0 left-0 flex w-full flex-col items-center justify-end bg-transparent p-4 pb-6 pointer-events-none">
+                <div ref={composerRef} className={cn('flex w-full flex-col items-center justify-end bg-transparent px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pointer-events-none', isEmpty ? 'relative shrink-0' : 'absolute inset-x-0 bottom-0 pt-4')}>
                   <>
                     <ChatCapacityHint refreshSignal={chatExchanges} />
-                    <div className="pointer-events-auto mx-auto w-full max-w-4xl px-6">
+                    <div className="pointer-events-auto mx-auto w-full max-w-4xl sm:px-2">
                       <ClaudeChatInput
                       onSendMessage={handleSend}
                       onSelectFile={(file) => setPendingFile(file)}

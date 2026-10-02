@@ -117,7 +117,7 @@ export default function DashboardSidebar({
   const renderHistory = () => {
     if (activeWorkspace !== 'chat' || sessions.length === 0) {
       return (
-        <p className="px-2 py-1 text-[11px] text-white/45 italic">{historyCopy.empty}</p>
+        <p className="px-2 py-1 text-[11px] text-[var(--studio-text-muted)] italic">{historyCopy.empty}</p>
       );
     }
     return (
@@ -129,7 +129,7 @@ export default function DashboardSidebar({
               key={session.id}
               className={cn(
                 'group relative flex items-center rounded-lg transition-colors',
-                active ? 'bg-white/[0.08]' : 'hover:bg-white/[0.04]'
+                active ? 'bg-[var(--studio-selected)]' : 'hover:bg-[var(--studio-hover)]'
               )}
             >
               <button
@@ -140,11 +140,11 @@ export default function DashboardSidebar({
                   onCloseMobile?.();
                 }}
                 className={cn(
-                  'flex-1 min-w-0 flex items-center gap-2.5 px-2.5 py-2 text-start text-[12.5px] cursor-pointer transition-colors rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
-                  active ? 'text-white font-medium' : 'text-white/60 hover:text-white'
+                  'flex-1 min-w-0 flex items-center gap-2.5 px-2.5 py-2 text-start text-[12.5px] cursor-pointer transition-colors rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]',
+                  active ? 'text-[var(--studio-text-primary)] font-medium' : 'text-[var(--studio-text-secondary)] hover:text-[var(--studio-text-primary)]'
                 )}
               >
-                <MessageSquare className={cn('h-3.5 w-3.5 shrink-0', active ? 'text-white' : 'text-white/40')} />
+                <MessageSquare className={cn('h-3.5 w-3.5 shrink-0', active ? 'text-[var(--studio-text-primary)]' : 'text-[var(--studio-text-muted)]')} />
                 <span className="truncate">{session.title}</span>
               </button>
               {onDeleteSession && (
@@ -155,7 +155,7 @@ export default function DashboardSidebar({
                     onDeleteSession(session.id);
                   }}
                   aria-label={t('deleteChat', { title: session.title })}
-                  className="shrink-0 me-1 p-1 rounded-md text-white/25 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                  className="shrink-0 me-1 p-1 rounded-md text-[var(--studio-text-muted)] opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-[var(--studio-text-primary)] hover:bg-[var(--studio-selected)] transition-[color,background-color,opacity] duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]"
                 >
                   <Trash2 className="h-3 w-3" />
                 </button>
@@ -187,20 +187,20 @@ export default function DashboardSidebar({
         )}
       >
         {/* Brand — matches 56px top bar height */}
-        <div className="flex items-center justify-between h-14 shrink-0 px-4 border-b border-white/[0.08]">
+        <div className="flex items-center justify-between h-14 shrink-0 px-4 border-b border-[var(--studio-border-subtle)]">
           <div dir="ltr" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--studio-border)] bg-[var(--studio-card)]">
               <VantraLogo tone="dark" className="h-[22px] w-[22px]" />
             </div>
             <VantraWordmark tone="white" className="h-[13px] w-[74px]" />
-            <span className="text-[9.5px] font-mono uppercase tracking-[0.2em] text-white/30 mt-0.5">Studio</span>
+            <span className="text-[9.5px] font-mono uppercase tracking-[0.2em] text-[var(--studio-text-muted)] mt-0.5">Studio</span>
           </div>
           {isMobileOpen && (
             <button
               type="button"
               onClick={onCloseMobile}
               aria-label={t('closeNavigation')}
-              className="lg:hidden p-1.5 rounded-lg bg-transparent border-none text-white/60 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+              className="lg:hidden p-1.5 rounded-lg bg-transparent border-none text-[var(--studio-text-secondary)] hover:text-[var(--studio-text-primary)] hover:bg-[var(--studio-hover)] transition-colors cursor-pointer"
             >
               <X className="h-4 w-4" />
             </button>
@@ -215,7 +215,7 @@ export default function DashboardSidebar({
               onNewChat?.();
               onCloseMobile?.();
             }}
-            className="w-full h-9 rounded-lg bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] text-white font-medium text-[13px] flex items-center justify-center gap-2 transition-colors active:scale-[0.99] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+            className="w-full h-9 rounded-lg bg-[var(--studio-card)] hover:bg-[var(--studio-hover)] border border-[var(--studio-border-subtle)] text-[var(--studio-text-primary)] font-medium text-[13px] flex items-center justify-center gap-2 transition-colors active:scale-[0.99] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]"
           >
             <Plus className="h-4 w-4 shrink-0" />
             {t('newChat')}
@@ -223,7 +223,7 @@ export default function DashboardSidebar({
 
           {/* Group 1: CREATE */}
           <nav aria-label="Create tools" className="space-y-0.5">
-            <p className="text-[11px] uppercase tracking-[0.12em] text-white/35 font-medium mb-1.5 px-2">
+            <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--studio-text-muted)] font-medium mb-1.5 px-2">
               {t('create')}
             </p>
             {CREATE_ITEMS.map((ws) => {
@@ -235,15 +235,18 @@ export default function DashboardSidebar({
                   href={`/studio/${ws.id}`}
                   prefetch={false}
                   aria-current={active ? 'page' : undefined}
-                  onClick={onCloseMobile}
+                  onClick={(event) => {
+                    if (ws.id === 'chat' && onNewChat) { event.preventDefault(); onNewChat(); }
+                    onCloseMobile?.();
+                  }}
                   className={cn(
-                    'w-full flex items-center gap-2.5 px-2.5 h-8.5 rounded-lg text-[12.5px] font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
+                    'w-full flex items-center gap-2.5 px-2.5 h-9 rounded-lg text-[12.5px] font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]',
                     active
-                      ? 'bg-white/[0.08] text-white'
-                      : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
+                      ? 'bg-[var(--studio-selected)] text-[var(--studio-text-primary)]'
+                      : 'text-[var(--studio-text-secondary)] hover:text-[var(--studio-text-primary)] hover:bg-[var(--studio-hover)]'
                   )}
                 >
-                  <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-white' : 'text-white/40')} />
+                  <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-[var(--studio-text-primary)]' : 'text-[var(--studio-text-muted)]')} />
                   <span className="truncate">{t(ws.label)}</span>
                 </Link>
               );
@@ -252,7 +255,7 @@ export default function DashboardSidebar({
 
           {/* Group 2: WORKSPACE */}
           <nav aria-label="Workspace tools" className="space-y-0.5">
-            <p className="text-[11px] uppercase tracking-[0.12em] text-white/35 font-medium mb-1.5 px-2">
+            <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--studio-text-muted)] font-medium mb-1.5 px-2">
               {t('workspace')}
             </p>
             {WORKSPACE_ITEMS.map((ws) => {
@@ -266,13 +269,13 @@ export default function DashboardSidebar({
                   aria-current={active ? 'page' : undefined}
                   onClick={onCloseMobile}
                   className={cn(
-                    'w-full flex items-center gap-2.5 px-2.5 h-8.5 rounded-lg text-[12.5px] font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
+                    'w-full flex items-center gap-2.5 px-2.5 h-9 rounded-lg text-[12.5px] font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]',
                     active
-                      ? 'bg-white/[0.08] text-white'
-                      : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
+                      ? 'bg-[var(--studio-selected)] text-[var(--studio-text-primary)]'
+                      : 'text-[var(--studio-text-secondary)] hover:text-[var(--studio-text-primary)] hover:bg-[var(--studio-hover)]'
                   )}
                 >
-                  <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-white' : 'text-white/40')} />
+                  <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-[var(--studio-text-primary)]' : 'text-[var(--studio-text-muted)]')} />
                   <span className="truncate">{t(ws.label)}</span>
                 </Link>
               );
@@ -280,7 +283,7 @@ export default function DashboardSidebar({
           </nav>
 
           <nav aria-label={t('system')} className="space-y-0.5">
-            <p className="text-[11px] uppercase tracking-[0.12em] text-white/35 font-medium mb-1.5 px-2">
+            <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--studio-text-muted)] font-medium mb-1.5 px-2">
               {t('system')}
             </p>
             <button
@@ -289,16 +292,16 @@ export default function DashboardSidebar({
                 onOpenSettings?.();
                 onCloseMobile?.();
               }}
-              className="w-full flex items-center gap-2.5 px-2.5 h-8.5 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white hover:bg-white/[0.05] transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+              className="w-full flex items-center gap-2.5 px-2.5 h-9 rounded-lg text-[12.5px] font-medium text-[var(--studio-text-secondary)] hover:text-[var(--studio-text-primary)] hover:bg-[var(--studio-hover)] transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]"
             >
-              <Settings className="h-4 w-4 shrink-0 text-white/45" />
+              <Settings className="h-4 w-4 shrink-0 text-[var(--studio-text-muted)]" />
               <span className="truncate">{t('settings')}</span>
             </button>
           </nav>
 
           {/* Group 3: RECENT */}
           <section aria-label={historyCopy.label} className="space-y-1">
-            <p className="text-[11px] uppercase tracking-[0.12em] text-white/35 font-medium mb-1.5 px-2">
+            <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--studio-text-muted)] font-medium mb-1.5 px-2">
               {historyCopy.label}
             </p>
             {renderHistory()}
@@ -306,12 +309,12 @@ export default function DashboardSidebar({
         </ScrollArea>
 
         {/* Verified credits + profile */}
-        <div className="shrink-0 p-3 space-y-3 border-t border-white/[0.08]">
+        <div className="shrink-0 p-3 space-y-3 border-t border-[var(--studio-border-subtle)]">
           {user && <div className="rounded-xl border border-[var(--studio-border-subtle)] bg-[var(--studio-surface-raised)] px-3 py-2.5">
             <PanelLabel className="px-0 mb-1">{t('unifiedCredits')}</PanelLabel>
             <div className="flex items-center justify-between gap-3">
               <span className="text-[11px] text-[var(--studio-text-muted)]">{t('balance')}</span>
-              <div className="flex items-center gap-2"><span className="font-mono text-[12px] font-semibold text-white" aria-live="polite" aria-busy={balanceStatus === 'loading'}>
+              <div className="flex items-center gap-2"><span className="font-mono text-[12px] font-semibold text-[var(--studio-text-primary)]" aria-live="polite" aria-busy={balanceStatus === 'loading'}>
                 {balanceStatus === 'loading' ? (
                   <span className="block h-3 w-12 animate-pulse rounded bg-white/10 motion-reduce:animate-none" aria-hidden="true" />
                 ) : user && balanceStatus === 'ready' && balance !== null ? balance.toLocaleString() : '—'}
@@ -330,16 +333,16 @@ export default function DashboardSidebar({
                 aria-expanded={profileOpen}
                 aria-haspopup="menu"
                 onClick={() => setProfileOpen((v) => !v)}
-                className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/[0.05] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-[var(--studio-hover)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]"
               >
-                <span className="h-8 w-8 shrink-0 rounded-lg bg-white/[0.10] border border-white/10 flex items-center justify-center text-[12px] font-semibold text-white">
+                <span className="h-8 w-8 shrink-0 rounded-lg bg-[var(--studio-selected)] border border-[var(--studio-border)] flex items-center justify-center text-[12px] font-semibold text-[var(--studio-text-primary)]">
                   {displayName[0].toUpperCase()}
                 </span>
                 <span className="flex-1 min-w-0 text-start">
-                  <span className="block text-[12.5px] font-medium text-white truncate">{displayName}</span>
-                  <span className="block text-[10.5px] text-white/40" aria-live="polite" aria-busy={planStatus === 'loading'}>{planLabel}</span>
+                  <span className="block text-[12.5px] font-medium text-[var(--studio-text-primary)] truncate">{displayName}</span>
+                  <span className="block text-[10.5px] text-[var(--studio-text-muted)]" aria-live="polite" aria-busy={planStatus === 'loading'}>{planLabel}</span>
                 </span>
-                <ChevronDown className={cn('h-4 w-4 shrink-0 text-white/40 transition-transform', profileOpen && 'rotate-180')} />
+                <ChevronDown className={cn('h-4 w-4 shrink-0 text-[var(--studio-text-muted)] transition-transform', profileOpen && 'rotate-180')} />
               </button>
 
               {profileOpen && (
@@ -356,7 +359,7 @@ export default function DashboardSidebar({
                       onOpenSettings?.();
                       onCloseMobile?.();
                     }}
-                    className="w-full flex items-center gap-2.5 px-3 h-9 rounded-lg text-[12.5px] text-white/80 hover:text-white hover:bg-white/[0.07] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                    className="w-full flex items-center gap-2.5 px-3 h-9 rounded-lg text-[12.5px] text-[var(--studio-text-secondary)] hover:text-[var(--studio-text-primary)] hover:bg-[var(--studio-hover)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]"
                   >
                     <Settings className="h-4 w-4" />
                     {t('settings')}
@@ -368,7 +371,7 @@ export default function DashboardSidebar({
                       setProfileOpen(false);
                       signOut();
                     }}
-                    className="w-full flex items-center gap-2.5 px-3 h-9 rounded-lg text-[12.5px] text-white/60 hover:text-white hover:bg-white/[0.07] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                    className="w-full flex items-center gap-2.5 px-3 h-9 rounded-lg text-[12.5px] text-[var(--studio-text-secondary)] hover:text-[var(--studio-text-primary)] hover:bg-[var(--studio-hover)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]"
                   >
                     <LogOut className="h-4 w-4" />
                     {t('signOut')}
@@ -380,7 +383,7 @@ export default function DashboardSidebar({
             <button
               type="button"
               onClick={() => openAuthModal('signin')}
-              className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border border-white/10 text-[12.5px] font-medium text-white/80 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+              className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border border-[var(--studio-border)] text-[12.5px] font-medium text-[var(--studio-text-secondary)] hover:text-[var(--studio-text-primary)] hover:bg-[var(--studio-hover)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]"
             >
               <LogIn className="h-4 w-4" />
               {t('signIn')}
