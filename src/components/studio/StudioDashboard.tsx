@@ -9,6 +9,7 @@ import { useModal } from '../../context/ModalContext';
 import { ClaudeChatInput } from '@/components/ui/claude-style-chat-input';
 import DashboardSidebar from './DashboardSidebar';
 import MessageBubble from './MessageBubble';
+import { connectedReviewIds } from '@/lib/connected-apps/review-reference';
 import ChatCapacityHint from './ChatCapacityHint';
 import RenewalBanner from './RenewalBanner';
 import ImageCanvas, { type ImageGenerationResult, type ImageRequestDraft } from './ImageCanvas';
@@ -334,7 +335,8 @@ export default function StudioDashboard({
             canonicalFinalRef.current = { sessionId, messageId: assistant.id, text };
             return last?.role === 'assistant' ? [...current.slice(0, -1), assistant] : [...current, assistant];
           });
-        } else if (presentation.valid && actionValid && hasUsableCanonicalOutput(status, finalText, finalArtifacts)) {
+        } else if (presentation.valid && actionValid && (hasUsableCanonicalOutput(status, finalText, finalArtifacts)
+          || status === 'completed' && connectedReviewIds({ annotations }).length > 0)) {
           recordRequestOutcome(requestId, sessionId, 'completed');
           setMessages((current) => {
             if ((activeSessionIdRef.current ?? 'default-session') !== sessionId) return current;
@@ -381,6 +383,12 @@ export default function StudioDashboard({
           return response;
         }
         nativeToolResultRequired = response.headers.get('x-vantra-requires-tool-result') === '1';
+        // The server resolves whether this is an external reviewed write rather
+        // than a local artifact. Never discard a valid owned proposal as a missing Sheet/Doc.
+        if (response.headers.get('x-vantra-connected-review') === '1') {
+          requestAction.expectedType = null;
+          requestAction.expectedTool = undefined;
+        }
         const [sdkBody, canonicalBody] = response.body.tee();
         let documentToolCalls = 0;
         let validatedDocumentResults = 0;
@@ -395,7 +403,8 @@ export default function StudioDashboard({
           if (event.toolName === 'create_document' && event.resultValidated) validatedDocumentResults++;
           if (event.toolName === 'create_presentation' && event.called) presentationToolCalls++;
           if (event.toolName === 'create_presentation' && event.resultValidated) validatedPresentationResults++;
-        }, (reference) => finalizer.setSearchReference(reference), (sources) => finalizer.setWebSources(sources)).then((status) => {
+        }, (reference) => finalizer.setSearchReference(reference), (sources) => finalizer.setWebSources(sources),
+        (review) => finalizer.addConnectedReview(review)).then((status) => {
           if (chatDebugEnabled) console.info('[VANTRA_CHAT_DEBUG] CLIENT_STREAM', {
             requestId, textChars: finalizer.textChars, documentToolCalls,
             validatedDocumentResults, presentationToolCalls, validatedPresentationResults,
@@ -1220,6 +1229,7 @@ export default function StudioDashboard({
                               <MessageBubble
                                 key={msg.id || idx}
                                 message={msg}
+                                hiddenReviewIds={messages.slice(0, idx).flatMap(entry => connectedReviewIds(entry))}
                                 sentAttachments={msg.role === 'user' ? sentMessageAttachments(attachmentsBySession,
                                   conversationId, (msg as Message & { vantraAttachmentIds?: unknown }).vantraAttachmentIds) : []}
                                 agentRun={msg.role === 'assistant' && msg.id === agentMessageRef.current?.assistantId

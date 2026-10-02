@@ -47,7 +47,8 @@ export function safeConnectedError(cause: unknown): ConnectedAppError {
 /** Conservative gate: mentioning an app/file is not permission to read it. */
 export function explicitConnectedReadRequest(request: string): boolean {
   const text = request.slice(0, 800).trim();
-  if (/\b(?:do not|don't|without|never|ne pas|sans)\b|(?:لا\s|بدون)/iu.test(text)) return false;
+  if (/^(?:do not|don't|never|ne pas|sans|لا|بدون)\s/iu.test(text)) return false;
+  if (/\b(?:do not|don't|never|without)\s+(?:read|open|access|search|check|browse)\b|(?:لا\s+(?:تقرأ|تقرا|تفتح|تبحث))|\bne\s+(?:lis|lisez|cherche|cherchez)\s+pas\b/iu.test(text)) return false;
   return /^(?:(?:please|can you|could you)\s+)*(?:read|open|search|find|show|list|check|summari[sz]e|analy[sz]e)\b/i.test(text)
     || /^(?:what|which)\b[^\n]{0,120}\b(?:my|in my)\b/iu.test(text)
     || /^(?:create|build|make|write)\b[^\n]{0,240}\b(?:from|using|based on)\b/i.test(text)
@@ -59,7 +60,8 @@ export function explicitConnectedReadRequest(request: string): boolean {
 /** Connecting alone is never authority for an external write. Negations fail closed. */
 export function explicitConnectedWriteRequest(request: string): boolean {
   const text = request.slice(0, 800).trim();
-  if (/\b(?:do not|don't|never|without|ne pas|sans)\b|(?:لا\s|بدون)/iu.test(text)) return false;
+  if (/^(?:do not|don't|never|ne pas|sans|لا|بدون)\s/iu.test(text)) return false;
+  if (/\b(?:do not|don't|never|without)\s+(?:create|draft|update|edit|write|delete|publish)\b|(?:لا\s+(?:تنشئ|تكتب|تعدل|تحذف))|\bne\s+(?:crée|créez|rédige|rédigez|modifie|modifiez)\s+pas\b/iu.test(text)) return false;
   return /^(?:(?:please|can you|could you)\s+)*(?:create|update|draft|reply|send|publish|delete|edit|write|make|export)\b/iu.test(text)
     || /^(?:أنشئ|انشئ|اكتب|عدل|عدّل|أرسل|ارسل|انشر|احذف|رد|جهز|صدر|صدّر)(?:\s|$)/u.test(text)
     || /^(?:crée|créez|modifie|modifiez|rédige|rédigez|envoie|envoyez|publie|publiez|supprime|supprimez|exporte|exportez)\b/iu.test(text);
@@ -71,6 +73,26 @@ export function relevantConnectedActions(request: string, adapters: readonly Con
   return adapters.flatMap((adapter) => adapter.actions.map((action) => ({ adapter, action })))
     .filter(({ action }) => (action.classification === 'write' ? explicitConnectedWriteRequest(request) : explicitConnectedReadRequest(request))
       && action.matches(bounded)).slice(0, limit);
+}
+
+/** Resolve the private resource domain, not a particular command phrase. The selected
+ * model chooses among this ONE connector's scoped operations. Actual reads and writes
+ * still pass execution authorization; writes only prepare an exact owned review. */
+export function connectedActionCandidates(request: string, adapters: readonly ConnectedAppAdapter[]): ConnectedActionMatch[] {
+  const text = request.slice(0, 800);
+  if (/^(?:do not|don't|never|ne pas|لا)\s/iu.test(text)) return [];
+  if (!explicitConnectedReadRequest(text) && !explicitConnectedWriteRequest(text)) return [];
+  if (/\b(?:example|sample|explain how|translate|rewrite)\b|(?:مثال|ترجم)|\b(?:exemple|tradui[st])\b/iu.test(text)) return [];
+  const fileReads = relevantConnectedActions(text, adapters).filter(match => match.adapter.id === 'google_drive');
+  if (fileReads.length) return fileReads;
+  const mail = /\b(?:gmail|inbox|e-?mails?|mailbox|courriels?|brouillon)\b|(?:بريد|مسودة)/iu.test(text)
+    || /\b(?:draft|reply)\b[\s\S]*[\w.+-]+@[\w.-]+\.[a-z]{2,}/iu.test(text);
+  const workspace = /\bgoogle\s+(?:docs?|sheets?|spreadsheet|document)\b|(?:جوجل|غوغل|قوقل)\s*(?:شيت|مستند|جدول)/iu.test(text);
+  if (mail && workspace) return [];
+  const appId = mail ? 'gmail' : workspace ? 'google_workspace' : null;
+  if (!appId) return relevantConnectedActions(request, adapters);
+  const adapter = adapters.find(app => app.id === appId);
+  return adapter ? adapter.actions.map(action => ({ adapter, action })) : [];
 }
 
 export function connectionError(connection: ConnectedAppConnection | null, action: ConnectedAction,

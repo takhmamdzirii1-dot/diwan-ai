@@ -2,6 +2,7 @@ import { validatedArtifactPartFromToolResult, type ChatMessagePart } from '@/lib
 import { getArtifactTool } from '@/lib/artifacts/tool-registry';
 import { searchContextReference } from '@/lib/web/search-context';
 import { webSourcesAnnotation, type WebSourcesAnnotation } from './web-sources';
+import { connectedReviewAnnotation, type ConnectedReviewAnnotation } from '@/lib/connected-apps/review-reference';
 type SearchReference = NonNullable<ReturnType<typeof searchContextReference>>;
 
 export type CanonicalStreamStatus = 'completed' | 'aborted' | 'error' | 'unverified';
@@ -46,13 +47,17 @@ export class ChatStreamFinalizer {
   private invalidated = false;
   private searchReference: SearchReference | null = null;
   private webSources: WebSourcesAnnotation | null = null;
+  private connectedReviews: ConnectedReviewAnnotation[] = [];
 
   constructor(readonly requestId: string,
     private readonly commit: (result: { requestId: string; text: string; artifacts: ChatMessagePart[];
-      status: CanonicalStreamStatus; annotations?: Array<SearchReference | WebSourcesAnnotation> }) => void) {}
+      status: CanonicalStreamStatus; annotations?: Array<SearchReference | WebSourcesAnnotation | ConnectedReviewAnnotation> }) => void) {}
 
   setSearchReference(reference: SearchReference) { if (!this.invalidated) this.searchReference = reference; }
   setWebSources(annotation: WebSourcesAnnotation) { if (!this.invalidated) this.webSources = annotation; }
+  addConnectedReview(review: ConnectedReviewAnnotation) {
+    if (!this.invalidated && !this.connectedReviews.some(item => item.reviewId === review.reviewId)) this.connectedReviews.push(review);
+  }
 
   append(delta: string) {
     if (!this.rawStatus && !this.invalidated) this.text += delta;
@@ -84,7 +89,7 @@ export class ChatStreamFinalizer {
     if (this.invalidated || this.finalized || !this.rawStatus) return;
     if (this.rawStatus === 'completed' && !this.consumerSettled) return;
     this.finalized = true;
-    const annotations = [...(this.searchReference ? [this.searchReference] : []), ...(this.webSources ? [this.webSources] : [])];
+    const annotations = [...(this.searchReference ? [this.searchReference] : []), ...(this.webSources ? [this.webSources] : []), ...this.connectedReviews];
     this.commit({ requestId: this.requestId, text: this.text, artifacts: this.artifacts, status: this.rawStatus,
       ...(annotations.length ? { annotations } : {}) });
   }
@@ -98,7 +103,8 @@ export async function consumeCanonicalChatStream(stream: ReadableStream<Uint8Arr
   onArtifact?: (part: ChatMessagePart) => void,
   onToolEvent?: (event: { toolName: string; called: boolean; resultValidated: boolean }) => void,
   onSearchReference?: (reference: SearchReference) => void,
-  onWebSources?: (annotation: WebSourcesAnnotation) => void): Promise<CanonicalStreamStatus> {
+  onWebSources?: (annotation: WebSourcesAnnotation) => void,
+  onConnectedReview?: (annotation: ConnectedReviewAnnotation) => void): Promise<CanonicalStreamStatus> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let pending = '';
@@ -128,7 +134,7 @@ export async function consumeCanonicalChatStream(stream: ReadableStream<Uint8Arr
           try {
             const call: unknown = JSON.parse(line.slice(2));
             if (call && typeof call === 'object' && 'toolName' in call && typeof call.toolName === 'string'
-              && getArtifactTool(call.toolName) && 'toolCallId' in call && typeof call.toolCallId === 'string') {
+              && (getArtifactTool(call.toolName) || call.toolName === 'read_connected_file') && 'toolCallId' in call && typeof call.toolCallId === 'string') {
               toolCalls.set(call.toolCallId, call.toolName);
               onToolEvent?.({ toolName: call.toolName, called: true, resultValidated: false });
             }
@@ -139,6 +145,17 @@ export async function consumeCanonicalChatStream(stream: ReadableStream<Uint8Arr
             if (result && typeof result === 'object' && 'toolCallId' in result
               && typeof result.toolCallId === 'string' && toolCalls.has(result.toolCallId)) {
               const toolName = toolCalls.get(result.toolCallId)!;
+              if (toolName === 'read_connected_file') {
+                const value = 'result' in result ? result.result : null;
+                if (value && typeof value === 'object' && 'status' in value && value.status === 'review_required') {
+                  const review = connectedReviewAnnotation.safeParse({ type: 'vantra-connected-review', reviewId: 'reviewId' in value ? value.reviewId : null });
+                  if (review.success) onConnectedReview?.(review.data);
+                  else { streamError = true; providerError = true; }
+                }
+                toolCalls.delete(result.toolCallId);
+                newline = pending.indexOf('\n');
+                continue;
+              }
               const part = validatedArtifactPartFromToolResult(toolName,
                 'result' in result ? result.result : null);
               onToolEvent?.({ toolName, called: false, resultValidated: Boolean(part) });

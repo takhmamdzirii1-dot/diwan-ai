@@ -7,11 +7,13 @@ export const dynamic = 'force-dynamic';
 const headers = { 'Cache-Control': 'private, no-store' };
 const input = z.object({ reviewId: z.string().uuid(), approve: z.boolean() }).strict();
 
-export async function GET() {
+export async function GET(request?: Request) {
   const { data: { user } } = await (await createClient()).auth.getUser();
   if (!user) return NextResponse.json({ error: 'AUTHENTICATION_REQUIRED' }, { status: 401, headers });
   if (process.env.CONNECTED_APPS_WRITES_ENABLED !== 'true') return NextResponse.json({ reviews: [] }, { headers });
-  try { return NextResponse.json({ reviews: await listConnectedReviews(user.id) }, { headers }); }
+  const reviewId = request ? new URL(request.url).searchParams.get('reviewId') : null;
+  if (reviewId && !z.string().uuid().safeParse(reviewId).success) return NextResponse.json({ error: 'INVALID_ACTION' }, { status: 400, headers });
+  try { return NextResponse.json({ reviews: await listConnectedReviews(user.id, reviewId ?? undefined) }, { headers }); }
   catch { return NextResponse.json({ error: 'CONNECTED_APPS_UNAVAILABLE' }, { status: 503, headers }); }
 }
 

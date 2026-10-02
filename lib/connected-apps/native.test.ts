@@ -98,7 +98,7 @@ test('Drive model hints cannot reject or redirect the server-owned URL read', as
   const result = await read.execute!(args);
   assert.equal(result.status, 'ok'); assert.equal('partial' in result && result.partial, true);
   assert.ok('text' in result && result.text.length <= 8000); assert.equal(calls.length, 2);
-  assert.deepEqual(events, [{ stage: 'started' }, { stage: 'completed', status: 'ok', partial: true }]);
+  assert.deepEqual(events, [{ stage: 'started', actionId: 'read_google_drive_file' }, { stage: 'completed', actionId: 'read_google_drive_file', status: 'ok', partial: true }]);
 });
 
 test('Gmail selected read uses the owned mailbox and propagates access errors, not fabricated content', async () => {

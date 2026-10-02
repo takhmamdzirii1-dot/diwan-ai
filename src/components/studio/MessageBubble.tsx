@@ -20,6 +20,8 @@ import { messageDirection, webSourcesAnnotation, legacyWebSources, citationMarkd
 import { copyChatContent, copySelectionWithoutSources } from '@/lib/chat/copy-content';
 import { remarkCitationGroups, referencedSources } from '@/lib/chat/citation-presentation';
 import ChatSources, { CitationGroup } from './ChatSources';
+import ConnectedReviewCard from './ConnectedReviewCard';
+import { connectedReviewIds } from '@/lib/connected-apps/review-reference';
 
 const ArtifactDocumentPreview = dynamic(() => import('./ArtifactDocumentPreview'), { ssr: false });
 const ArtifactSmartCard = dynamic(() => import('./ArtifactSmartCard'), { ssr: false });
@@ -35,6 +37,7 @@ function isolatedNumbers(children: React.ReactNode): React.ReactNode {
 }
 
 export interface MessageBubbleProps {
+  hiddenReviewIds?: string[];
   message: Message;
   isLatest: boolean;
   isStreaming?: boolean;
@@ -98,7 +101,7 @@ function AttachmentThumbnail({ attachment }: { attachment: { name: string; url?:
   );
 }
 
-export default function MessageBubble({ message, isLatest, isStreaming, isThinking, onRegenerate, onRetryArtifact, onRequestPrompt, precedingUserMessage, agentRun, onStopAgent, sentAttachments = [] }: MessageBubbleProps) {
+export default function MessageBubble({ message, isLatest, isStreaming, isThinking, onRegenerate, onRetryArtifact, onRequestPrompt, precedingUserMessage, agentRun, onStopAgent, sentAttachments = [], hiddenReviewIds = [] }: MessageBubbleProps) {
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
   const [copiedMessage, setCopiedMessage] = useState(false);
   const [documentOpen, setDocumentOpen] = useState(false);
@@ -482,6 +485,8 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
               )}
             </div> : renderArtifactPart(part, index))}
             {!searchPending && displayedSources?.state === 'read' && <ChatSources annotation={displayedSources} locale={locale} direction={contentDirection} />}
+            {!isUser && connectedReviewIds({ toolInvocations, annotations: message.annotations }).filter(id => !hiddenReviewIds.includes(id))
+              .map(id => <ConnectedReviewCard key={id} reviewId={id} />)}
 
             {/* Message-Level Hover Controls */}
             {!isStreaming && artifactParts.length === 0 && (

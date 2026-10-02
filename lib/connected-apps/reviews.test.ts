@@ -17,9 +17,16 @@ test('owned encrypted reviews bind exact content/grant; concurrent approval disp
   const connection = { id: '00000000-0000-4000-8000-000000000002', app_id: 'gmail', user_id: owner, status: 'connected', scopes: grant.scopes,
     expires_at: grant.expiresAt, encrypted_credentials: encryptToken(JSON.stringify(grant)) };
   const reviews = new Map<string, Record<string, unknown>>(); let writes = 0; let ambiguousWrite = false;
-  let documentsCreated = 0; let documentsUpdated = 0;
+  let documentsCreated = 0; let documentsUpdated = 0; let sheetsCreated = 0;
   globalThis.fetch = async (input, options) => {
     const url = new URL(String(input)); const method = options?.method ?? 'GET';
+    if (url.hostname === 'sheets.googleapis.com') {
+      assert.equal(url.pathname, '/v4/spreadsheets'); assert.equal(url.searchParams.get('fields'), 'spreadsheetId');
+      const body = JSON.parse(String(options?.body));
+      assert.equal(body.properties.title, 'VANTRA Verification Sheet');
+      assert.deepEqual(body.sheets[0].data[0].rowData[0].values, [{ userEnteredValue: { stringValue: 'Status' } }, { userEnteredValue: { stringValue: 'Connected' } }]);
+      sheetsCreated++; return Response.json({ spreadsheetId: 'reviewed-sheet-123' });
+    }
     if (url.hostname === 'docs.googleapis.com') {
       assert.equal(method, 'POST');
       const body = JSON.parse(String(options?.body));
@@ -57,12 +64,18 @@ test('owned encrypted reviews bind exact content/grant; concurrent approval disp
       const body = JSON.parse(String(options?.body)); assert.equal(body.user_id, owner);
       assert.ok(!body.encrypted_payload.includes('Reviewed draft body'));
       let row = [...reviews.values()].find(row => row.operation_key === body.operation_key);
-      if (!row) { row = { ...body, id: crypto.randomUUID(), status: 'pending', expires_at: new Date(Date.now() + 900000).toISOString() }; reviews.set(String(row.id), row); }
+      if (row) return Response.json([]);
+      row = { ...body, id: crypto.randomUUID(), status: 'pending', expires_at: new Date(Date.now() + 900000).toISOString() }; reviews.set(String(row.id), row);
       return Response.json([row]);
     }
     const selected = [...reviews.values()].filter(row => url.searchParams.get('user_id') === `eq.${row.user_id}`
       && (!url.searchParams.has('id') || url.searchParams.get('id') === `eq.${row.id}`)
-      && (!url.searchParams.has('status') || url.searchParams.get('status') === `eq.${row.status}`));
+      && (!url.searchParams.has('status') || url.searchParams.get('status') === `eq.${row.status}`)
+      && (!url.searchParams.has('operation_key') || url.searchParams.get('operation_key') === `eq.${row.operation_key}`)
+      && ['connection_id', 'app_id', 'action_id', 'grant_fingerprint'].every(key => !url.searchParams.has(key) || url.searchParams.get(key) === `eq.${row[key]}`)
+      && (!url.searchParams.has('expires_at') || (url.searchParams.get('expires_at')!.startsWith('gt.')
+        ? Date.parse(String(row.expires_at)) > Date.parse(url.searchParams.get('expires_at')!.slice(3))
+        : Date.parse(String(row.expires_at)) <= Date.parse(url.searchParams.get('expires_at')!.slice(4)))));
     if (method === 'PATCH') selected.forEach(row => Object.assign(row, JSON.parse(String(options?.body))));
     return method === 'PATCH' ? new Response(null, { status: 204 }) : Response.json(selected);
   };
@@ -71,7 +84,10 @@ test('owned encrypted reviews bind exact content/grant; concurrent approval disp
     const adapter = gmailAdapter(); const action = adapter.actions.find(action => action.id === 'draft_gmail')!;
     const proposal = { userId: owner, operationId: 'turn-one', match: { adapter, action }, request: 'Draft a Gmail message',
       arguments: { to: 'qa@example.com', subject: 'Reviewed subject', body: 'Reviewed draft body' } };
-    await prepareConnectedReview(proposal); await prepareConnectedReview(proposal);
+    const first = await prepareConnectedReview(proposal);
+    const duplicate = await prepareConnectedReview({ ...proposal, operationId: 'retry-other-execution',
+      arguments: { body: 'Reviewed draft body', subject: 'Reviewed subject', to: 'qa@example.com' } });
+    assert.equal(first.sourceId, duplicate.sourceId);
     assert.equal(reviews.size, 1); assert.equal(writes, 0);
     const list = await listConnectedReviews(owner); assert.equal(list[0].arguments.body, 'Reviewed draft body');
     assert.ok(!JSON.stringify(list).includes(grant.accessToken));
@@ -95,6 +111,8 @@ test('owned encrypted reviews bind exact content/grant; concurrent approval disp
     const uncertain = [...reviews.values()].find(row => row.status === 'pending')!;
     ambiguousWrite = true;
     assert.equal((await resolveConnectedReview(owner, String(uncertain.id), true)).status, 'unknown'); assert.equal(writes, 2);
+    const uncertainRetry = await prepareConnectedReview({ ...proposal, operationId: 'uncertain-retry' });
+    assert.equal(uncertainRetry.sourceId, uncertain.id);
     assert.equal((await resolveConnectedReview(owner, String(uncertain.id), true)).status, 'not_executed'); assert.equal(writes, 2);
     await assert.rejects(prepareConnectedReview({ ...proposal, operationId: 'invalid', arguments: { ...proposal.arguments, endpoint: 'https://evil.example' } }));
     // The same owned queue and atomic claim used by Gmail also govern Docs creation.
@@ -114,6 +132,14 @@ test('owned encrypted reviews bind exact content/grant; concurrent approval disp
     assert.equal((await resolveConnectedReview(owner, pendingDoc.id, true)).status, 'not_executed');
     assert.equal(documentsCreated, 1); assert.equal(documentsUpdated, 1);
     assert.match((await listConnectedReviews(owner)).find(row => row.id === pendingDoc.id)!.result!.text, /reviewed-document-123/);
+    const sheet = { ...document, request: 'Create a Google Sheet named VANTRA Verification Sheet and set A1=Status and B1=Connected.',
+      arguments: { operation: 'create_spreadsheet', title: 'VANTRA Verification Sheet', rows: [['Status', 'Connected']] } };
+    const proposals = await Promise.all([prepareConnectedReview({ ...sheet, operationId: 'sheet-one' }), prepareConnectedReview({ ...sheet, operationId: 'sheet-retry' })]);
+    assert.equal(proposals[0].sourceId, proposals[1].sourceId); assert.equal(sheetsCreated, 0);
+    const sheetResults = await Promise.all([resolveConnectedReview(owner, proposals[0].sourceId, true), resolveConnectedReview(owner, proposals[1].sourceId, true)]);
+    assert.equal(sheetResults.filter(result => result.status === 'completed').length, 1); assert.equal(sheetsCreated, 1);
+    const stored = (await listConnectedReviews(owner, proposals[0].sourceId))[0];
+    assert.equal(stored.resultUrl, 'https://docs.google.com/spreadsheets/d/reviewed-sheet-123/edit');
   } finally {
     globalThis.fetch = previousFetch;
     for (const key of env) { const value = saved.get(key); if (value === undefined) delete process.env[key]; else process.env[key] = value; }
