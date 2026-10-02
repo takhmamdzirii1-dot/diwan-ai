@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createClient } from '@/src/lib/supabase/server';
 import { configuredConnectedApps, knownConnectedApp } from '@/lib/connected-apps/registry.server';
 import { disconnectUserConnection, listUserConnections, saveUserConnection } from '@/lib/connected-apps/store.server';
+import { logConnectedAppConfiguration } from '@/lib/connected-apps/configuration.server';
 
 export const dynamic = 'force-dynamic';
 const appRequest = z.object({ appId: z.string().min(1).max(80) }).strict();
@@ -22,6 +23,7 @@ function sameOrigin(request: Request) {
 export async function GET() {
   const id = await userId();
   if (!id) return NextResponse.json({ error: 'AUTHENTICATION_REQUIRED' }, { status: 401, headers: noStore });
+  logConnectedAppConfiguration();
   const adapters = configuredConnectedApps();
   try {
     const connections = await listUserConnections(id);
