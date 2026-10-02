@@ -1,5 +1,6 @@
 import { documentFromMarkdown } from '@/lib/artifacts/core';
 import type { ConversationAttachmentDraft } from '@/lib/chat/conversation-attachments';
+import type { ZodTypeAny } from 'zod';
 
 export type ConnectedAppError = 'app_not_connected' | 'permission_missing' | 'authorization_expired'
   | 'resource_not_found' | 'action_requires_confirmation' | 'provider_unavailable'
@@ -15,23 +16,33 @@ export type ConnectedAction = {
   id: string; description: string; classification: 'read' | 'write'; risk: 'low' | 'high';
   requiredScopes: readonly string[]; requiresConnection: boolean; requiresConfirmation: boolean;
   matches: (request: string) => boolean;
+  parameters?: ZodTypeAny;
+  reviewSummary?: (arguments_: Record<string, unknown>) => string;
 };
 export type ConnectedAppAdapter = {
   id: string; name: string; authorization: 'reference' | 'oauth'; actions: readonly ConnectedAction[];
+  requiresStore?: boolean;
   // A real OAuth adapter must initiate its own server-side authorization flow.
   connect?: () => Promise<{ scopes: string[] }>;
   oauth?: {
-    authorize: (input: { redirectUri: string; state: string; challenge: string }) => string;
-    exchange: (input: { redirectUri: string; code: string; verifier: string }) => Promise<ConnectedCredentials>;
+    authorize: (input: { redirectUri: string; state: string; challenge: string; context?: { shop: string } }) => string;
+    exchange: (input: { redirectUri: string; code: string; verifier: string; context?: { shop: string }; callbackParams?: string }) => Promise<ConnectedCredentials>;
     refresh?: (credentials: ConnectedCredentials) => Promise<ConnectedCredentials>;
     revoke?: (credentials: ConnectedCredentials) => Promise<void>;
   };
   execute: (input: { actionId: string; request: string; userId: string;
-    credential: string | null; signal?: AbortSignal }) => Promise<ConnectedResource>;
+    credential: string | null; signal?: AbortSignal; arguments?: Record<string, unknown> }) => Promise<ConnectedResource>;
 };
-export type ConnectedCredentials = { accessToken: string; refreshToken?: string; expiresAt: string;
-  scopes: string[]; account: { id: string; name: string; email?: string } };
+export type ConnectedCredentials = { accessToken: string; refreshToken?: string; expiresAt: string; grantId?: string;
+  scopes: string[]; account: { id: string; name: string; email?: string }; store?: { domain: string } };
 export type ConnectedActionMatch = { adapter: ConnectedAppAdapter; action: ConnectedAction };
+
+export function safeConnectedError(cause: unknown): ConnectedAppError {
+  const code = cause instanceof Error ? cause.message : '';
+  return (['app_not_connected', 'permission_missing', 'authorization_expired', 'resource_not_found',
+    'action_requires_confirmation', 'provider_unavailable', 'provider_rate_limited', 'action_failed'] as const)
+    .find(value => value === code) ?? 'provider_unavailable';
+}
 
 /** Conservative gate: mentioning an app/file is not permission to read it. */
 export function explicitConnectedReadRequest(request: string): boolean {
@@ -43,12 +54,21 @@ export function explicitConnectedReadRequest(request: string): boolean {
     || /^(?:lis|lisez|ouvre|ouvrez|cherche|cherchez|résume|résumez|analyse|analysez|crée|créez)\b/iu.test(text);
 }
 
+/** Connecting alone is never authority for an external write. Negations fail closed. */
+export function explicitConnectedWriteRequest(request: string): boolean {
+  const text = request.slice(0, 800).trim();
+  if (/\b(?:do not|don't|never|without|ne pas|sans)\b|(?:لا\s|بدون)/iu.test(text)) return false;
+  return /^(?:(?:please|can you|could you)\s+)*(?:create|update|draft|reply|send|publish|delete|edit|write|make|export)\b/iu.test(text)
+    || /^(?:أنشئ|انشئ|اكتب|عدل|عدّل|أرسل|ارسل|انشر|احذف|رد|جهز|صدر|صدّر)(?:\s|$)/u.test(text)
+    || /^(?:crée|créez|modifie|modifiez|rédige|rédigez|envoie|envoyez|publie|publiez|supprime|supprimez|exporte|exportez)\b/iu.test(text);
+}
+
 /** Deterministic, bounded discovery; no model call and no provider access. */
 export function relevantConnectedActions(request: string, adapters: readonly ConnectedAppAdapter[], limit = 3): ConnectedActionMatch[] {
-  if (!explicitConnectedReadRequest(request)) return [];
   const bounded = request.slice(0, 800);
   return adapters.flatMap((adapter) => adapter.actions.map((action) => ({ adapter, action })))
-    .filter(({ action }) => action.matches(bounded)).slice(0, limit);
+    .filter(({ action }) => (action.classification === 'write' ? explicitConnectedWriteRequest(request) : explicitConnectedReadRequest(request))
+      && action.matches(bounded)).slice(0, limit);
 }
 
 export function connectionError(connection: ConnectedAppConnection | null, action: ConnectedAction,
@@ -61,7 +81,8 @@ export function connectionError(connection: ConnectedAppConnection | null, actio
 }
 
 export async function executeConnectedAction(input: { match: ConnectedActionMatch; request: string;
-  userId: string; connection: ConnectedAppConnection | null; credential: string | null; signal?: AbortSignal }): Promise<{ resource: ConnectedResource; error: null } | { resource: null; error: ConnectedAppError }> {
+  userId: string; connection: ConnectedAppConnection | null; credential: string | null; signal?: AbortSignal;
+  arguments?: Record<string, unknown> }): Promise<{ resource: ConnectedResource; error: null } | { resource: null; error: ConnectedAppError }> {
   const { adapter, action } = input.match;
   if (!explicitConnectedReadRequest(input.request)) return { resource: null, error: 'action_requires_confirmation' };
   if (action.requiresConnection && input.connection?.appId !== adapter.id)
@@ -70,12 +91,13 @@ export async function executeConnectedAction(input: { match: ConnectedActionMatc
   if (blocked) return { resource: null, error: blocked };
   if (adapter.authorization === 'oauth' && !input.credential)
     return { resource: null, error: 'authorization_expired' };
-  // Phase 1 has no server-verified confirmation flow. Writes stay fail-closed.
+  // Read execution never accepts a client "confirmed" flag. Writes use the owned review queue.
   if (action.classification === 'write' || action.requiresConfirmation || action.risk === 'high')
     return { resource: null, error: 'action_requires_confirmation' };
   try {
+    const args = action.parameters ? action.parameters.parse(input.arguments ?? {}) : undefined;
     const resource = await adapter.execute({ actionId: action.id, request: input.request.slice(0, 800),
-      userId: input.userId, credential: input.credential, signal: input.signal });
+      userId: input.userId, credential: input.credential, signal: input.signal, arguments: args });
     if (!resource.sourceId || resource.sourceId.length > 256 || !resource.name || resource.name.length > 160
       || !/^text\/(plain|markdown|csv)$/.test(resource.mimeType) || !resource.text.trim()
       || resource.text.length > 30_000) return { resource: null, error: 'resource_not_found' };

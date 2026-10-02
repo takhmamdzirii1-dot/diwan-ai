@@ -2,25 +2,11 @@ import 'server-only';
 import { z } from 'zod';
 import { parseCredentials } from './oauth';
 import type { ConnectedAppAdapter, ConnectedCredentials } from './core';
+import { googleFileId } from './file-reference';
+export { googleFileId } from './file-reference';
 
 export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
 export const DRIVE_SCOPES = ['openid', 'email', DRIVE_SCOPE];
-
-/** Only explicit Google file URLs, not arbitrary endpoints or file discovery. */
-export function googleFileId(request: string): string | null {
-  const urls = request.match(/https:\/\/[^\s<>"']+/gu) ?? [];
-  const ids = new Set<string>();
-  for (const candidate of urls) {
-    try {
-      const url = new URL(candidate.replace(/[).،,]+$/u, ''));
-      if (!['drive.google.com', 'docs.google.com'].includes(url.hostname) || url.username || url.password || url.port) continue;
-      const id = url.pathname.match(/\/(?:file|document|spreadsheets|presentation)\/d\/([A-Za-z0-9_-]+)/u)?.[1]
-        ?? (url.hostname === 'drive.google.com' && url.pathname === '/open' ? url.searchParams.get('id') : null);
-      if (id && /^[A-Za-z0-9_-]{10,200}$/u.test(id)) ids.add(id);
-    } catch { /* malformed input is not authorization */ }
-  }
-  return ids.size === 1 ? [...ids][0] : null;
-}
 
 async function boundedBody(response: Response, max = 120_000) {
   if (Number(response.headers.get('content-length')) > max) { await response.body?.cancel(); throw new Error('resource_not_found'); }

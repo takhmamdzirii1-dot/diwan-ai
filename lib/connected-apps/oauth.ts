@@ -5,21 +5,23 @@ import { decryptToken, encryptToken } from '@/lib/ai/provider-connections';
 import type { ConnectedCredentials } from './core';
 
 export const credentialsSchema = z.object({ accessToken: z.string().min(1).max(16000),
-  refreshToken: z.string().min(1).max(16000).optional(), expiresAt: z.string().datetime(),
+  refreshToken: z.string().min(1).max(16000).optional(), expiresAt: z.string().datetime(), grantId: z.string().uuid().optional(),
   scopes: z.array(z.string().max(200)).max(20), account: z.object({ id: z.string().min(1).max(256),
-    name: z.string().min(1).max(160), email: z.string().email().max(254).optional() }).strict() }).strict();
+    name: z.string().min(1).max(160), email: z.string().email().max(254).optional() }).strict(),
+  store: z.object({ domain: z.string().min(1).max(253) }).strict().optional() }).strict();
 const stateSchema = z.object({ userId: z.string().uuid(), appId: z.string().min(1).max(80),
-  nonce: z.string().length(43), verifier: z.string().length(43), expires: z.number().int() }).strict();
+  nonce: z.string().length(43), verifier: z.string().length(43), expires: z.number().int(),
+  context: z.object({ shop: z.string().max(253) }).strict().optional() }).strict();
 export const OAUTH_COOKIE = 'vantra_connected_oauth';
 export const OAUTH_PATH = '/api/connected-apps/oauth';
 export function parseCredentials(input: unknown): ConnectedCredentials {
   return credentialsSchema.parse(input) as ConnectedCredentials;
 }
 
-export function startOAuthState(userId: string, appId: string, now = Date.now()) {
+export function startOAuthState(userId: string, appId: string, now = Date.now(), context?: { shop: string }) {
   const nonce = randomBytes(32).toString('base64url');
   const verifier = randomBytes(32).toString('base64url');
-  const state = stateSchema.parse({ userId, appId, nonce, verifier, expires: now + 600_000 });
+  const state = stateSchema.parse({ userId, appId, nonce, verifier, expires: now + 600_000, context });
   return { nonce, challenge: createHash('sha256').update(verifier).digest('base64url'), cookie: encryptToken(JSON.stringify(state)) };
 }
 

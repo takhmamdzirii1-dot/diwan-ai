@@ -17,7 +17,7 @@ function admin() {
 function publicConnection(row: StoredRow): ConnectedAppConnection {
   const credentials = storedCredentials(row);
   return { id: row.id, appId: row.app_id, scopes: row.scopes,
-    status: row.status, expiresAt: row.app_id === 'google_drive' && row.status === 'connected' && !credentials ? new Date(0).toISOString() : row.expires_at,
+    status: row.status, expiresAt: knownConnectedApp(row.app_id)?.authorization === 'oauth' && row.status === 'connected' && !credentials ? new Date(0).toISOString() : row.expires_at,
     ...(row.status === 'connected' && credentials ? { account: { name: credentials.account.name, email: credentials.account.email } } : {}) };
 }
 
@@ -59,7 +59,7 @@ export async function readUserConnection(userId: string, appId: string): Promise
     const original = row;
     const renewal = (async () => {
       try {
-        const refreshed = parseCredentials(await oauth.refresh!(credentials));
+        const refreshed = parseCredentials({ ...await oauth.refresh!(credentials), grantId: credentials.grantId });
         const { data, error } = await admin().from('connected_app_connections')
           .update({ encrypted_credentials: encryptToken(JSON.stringify(refreshed)), expires_at: refreshed.expiresAt,
             scopes: refreshed.scopes, updated_at: new Date().toISOString() })
@@ -89,7 +89,7 @@ export async function readUserConnection(userId: string, appId: string): Promise
 }
 
 export async function saveUserConnection(userId: string, appId: string, scopes: string[], credential?: ConnectedCredentials): Promise<ConnectedAppConnection> {
-  const grant = credential ? parseCredentials(credential) : null;
+  const grant = credential ? parseCredentials({ ...credential, grantId: crypto.randomUUID() }) : null;
   const { data, error } = await admin().from('connected_app_connections')
     .upsert({ user_id: userId, app_id: appId, status: 'connected', scopes: grant?.scopes ?? scopes,
       encrypted_credentials: grant ? encryptToken(JSON.stringify(grant)) : null,
@@ -101,6 +101,11 @@ export async function saveUserConnection(userId: string, appId: string, scopes: 
 }
 
 export async function disconnectUserConnection(userId: string, appId: string): Promise<{ revoked: boolean }> {
+  if (appId === 'woocommerce') {
+    const pending = await admin().from('connected_app_authorizations').update({ status: 'cancelled' })
+      .eq('user_id', userId).eq('app_id', appId).eq('status', 'pending');
+    if (pending.error) throw new Error('CONNECTED_APPS_UNAVAILABLE');
+  }
   const { data, error: readError } = await admin().from('connected_app_connections').select('encrypted_credentials')
     .eq('user_id', userId).eq('app_id', appId).maybeSingle();
   if (readError) throw new Error('CONNECTED_APPS_UNAVAILABLE');

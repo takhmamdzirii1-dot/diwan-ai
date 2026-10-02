@@ -2,18 +2,22 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import ConnectedActionReviews from './ConnectedActionReviews';
 
 type AppView = { id: string; name: string; canConnect: boolean; authorization: 'reference' | 'oauth';
+  requiresStore?: boolean;
   connection: { status: 'connected' | 'disconnected'; expiresAt: string | null; scopes: string[]; account?: { name: string; email?: string } } | null };
 
 export default function ConnectedAppsPanel() {
   const t = useTranslations('studio.settings.connectedAppsPanel');
+  const settings = useTranslations('studio.settings');
   const [apps, setApps] = useState<AppView[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState(false);
   const [signedOut, setSignedOut] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [stores, setStores] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let active = true;
@@ -45,7 +49,8 @@ export default function ConnectedAppsPanel() {
     try {
       if (connect && app.authorization === 'oauth') {
         const response = await fetch('/api/connected-apps/oauth/start', { method: 'POST',
-          headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ appId: app.id }) });
+          headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ appId: app.id,
+            ...(app.requiresStore ? { shop: stores[app.id]?.trim() ?? '' } : {}) }) });
         if (!response.ok) throw new Error('authorization_failed');
         const result = await response.json() as { authorizationUrl: string };
         window.location.assign(result.authorizationUrl); return;
@@ -75,6 +80,11 @@ export default function ConnectedAppsPanel() {
             <div><p className="text-sm font-medium text-[var(--studio-text-primary)]">{app.name}</p>
               {connected && app.connection?.account && <p dir="auto" className="text-xs text-[var(--studio-text-secondary)]">{app.connection.account.email ?? app.connection.account.name}</p>}
               <p className="mt-1 text-xs text-[var(--studio-text-secondary)]">{expired ? t('expired') : connected ? t('connected') : t('notConnected')}</p></div>
+            {app.requiresStore && (!connected || expired) && <label className="flex min-w-0 flex-col gap-1 text-xs text-[var(--studio-text-secondary)]">
+              {settings('connectedStoreDomain')}<input type="text" dir="ltr" value={stores[app.id] ?? ''} onChange={event => setStores(current => ({ ...current, [app.id]: event.target.value }))}
+                placeholder={app.id === 'woocommerce' ? 'your-store.example' : 'your-store.myshopify.com'} autoComplete="off" maxLength={253}
+                className="min-h-9 min-w-0 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3 text-[var(--studio-text-primary)]" />
+            </label>}
             {app.canConnect && <button type="button" disabled={busy !== null}
               onClick={() => void changeConnection(app, !connected || expired)}
               className="min-h-9 rounded-lg border border-[var(--studio-border-strong)] px-3 text-xs font-medium text-[var(--studio-text-primary)] hover:bg-[var(--studio-hover)] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
@@ -86,5 +96,6 @@ export default function ConnectedAppsPanel() {
         })}
     {feedback && <p role="status" className="text-xs text-[var(--studio-text-secondary)]">{feedback}</p>}
     {error && <p role="alert" className="text-xs text-[var(--studio-text-primary)]">{t('error')}</p>}
+    <ConnectedActionReviews />
   </div>;
 }

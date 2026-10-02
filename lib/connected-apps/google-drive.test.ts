@@ -22,9 +22,18 @@ test('one explicit file URL selects a read; mentions, unrelated hosts, multiple 
   assert.equal(googleFileId(request), fileId);
   assert.equal(googleFileId('https://docs.google.com.evil.example/document/d/sanitized-file-123'), null);
   assert.equal(googleFileId(request + ' https://docs.google.com/document/d/another-file-123'), null);
+  assert.equal(googleFileId('https://docs.google.com/document/d/YOUR_FILE_ID/edit'), null);
+  assert.equal(googleFileId('اقرأ هذا الملف من Google Drive: [ضع رابط الملف]'), null);
   const adapter = googleDriveAdapter();
   for (const text of ['My Google Drive account', `Do not read ${request}`]) assert.equal(relevantConnectedActions(text, [adapter]).length, 0);
   for (const text of [request, request.replace('Read', 'اقرأ'), request.replace('Read', 'Résume')]) assert.equal(relevantConnectedActions(text, [adapter]).length, 1);
+});
+
+test('unfinished Shopify onboarding cannot be enabled by credentials alone', () => {
+  const previous = process.env.SHOPIFY_CLIENT_ID;
+  process.env.SHOPIFY_CLIENT_ID = 'fixture-client';
+  try { assert.ok(!configuredConnectedApps().some(app => app.id === 'shopify')); }
+  finally { if (previous === undefined) delete process.env.SHOPIFY_CLIENT_ID; else process.env.SHOPIFY_CLIENT_ID = previous; }
 });
 
 test('OAuth exchange verifies account identity and scopes; refresh and revocation use server-only token endpoints', async () => {
@@ -65,6 +74,15 @@ test('authorized read exports real text through fixed API URLs and keeps credent
   const count = calls.length;
   assert.equal((await executeConnectedAction({ match, request, userId: 'u', connection: { ...connection, scopes: [] }, credential: JSON.stringify(grant) })).error, 'permission_missing');
   assert.equal(calls.length, count);
+});
+
+test('an inaccessible Drive file is not reported as read', async () => {
+  const adapter = googleDriveAdapter(async () => new Response('private upstream details', { status: 404 }));
+  const result = await executeConnectedAction({ match: relevantConnectedActions(request, [adapter])[0], request,
+    userId: 'u', connection: { id: 'c', appId: adapter.id, scopes: [DRIVE_SCOPE], status: 'connected', expiresAt: grant.expiresAt },
+    credential: JSON.stringify(grant) });
+  assert.equal(result.error, 'resource_not_found');
+  assert.equal(result.resource, null);
 });
 
 test('denied, expired, rate limited and unavailable responses expose only safe errors', async () => {

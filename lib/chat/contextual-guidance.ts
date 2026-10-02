@@ -3,6 +3,7 @@ import { isExplicitDocumentIntent } from '@/lib/artifacts/tool-registry';
 import { documentToText, type ChartArtifact, type DocumentArtifact, type PresentationArtifact, type SheetCell, type SpreadsheetArtifact } from '@/lib/artifacts/core';
 import { formatCapacityWait } from './chat-usage';
 import { routeChatIntent } from './intent-router';
+import { googleFileId, googleFileReadRequest } from '@/lib/connected-apps/file-reference';
 import type { ChatRequestOutcome } from './client-finalization';
 import { getConversationAttachments, getCurrentSpreadsheetAttachment, getSpreadsheetAttachments,
   type ConversationAttachmentStore } from './conversation-attachments';
@@ -106,11 +107,13 @@ export function attachmentMenuActions(hasModels: boolean, hasSpreadsheet: boolea
 export function guidanceForComposer(input: ComposerGuidanceInput): ChatGuidance | null {
   const { text, files, model, balance, balanceStatus, locale, requiresCredits } = input;
   if (model?.accessState === 'locked' || model?.requiredPlan) return planGuidance(model.requiredPlan, locale);
+  const connectedFile = googleFileReadRequest(text) && googleFileId(text) !== null;
+  if (googleFileReadRequest(text) && !connectedFile && files.length === 0) return connectedFileReferenceGuidance(locale);
   if (input.attachmentStore && input.conversationId && input.attachmentsHydrated !== false) {
     const resources = getConversationAttachments(input.attachmentStore, input.conversationId);
     const routed = routeChatIntent(text, resources, input.selectedAttachmentId);
     const unstoredFileSelected = files.length > resources.filter((item) => item.kind === 'file' || item.kind === 'image').length;
-    if (routed.confidence === 'high' && routed.resourceStatus === 'ambiguous') return {
+    if (!connectedFile && routed.confidence === 'high' && routed.resourceStatus === 'ambiguous') return {
       kind: 'requirement', message: routed.resourceKind === 'spreadsheet' ? say(locale, {
         en: 'Choose one attached spreadsheet to continue.',
         fr: 'Choisissez une feuille de calcul jointe pour continuer.',
@@ -120,7 +123,7 @@ export function guidanceForComposer(input: ComposerGuidanceInput): ChatGuidance 
         ar: 'اختر ملفًا مرفقًا للمتابعة.',
       }), actions: [],
     };
-    if (routed.confidence === 'high' && routed.resourceStatus === 'missing' && !unstoredFileSelected) return {
+    if (!connectedFile && routed.confidence === 'high' && routed.resourceStatus === 'missing' && !unstoredFileSelected) return {
       kind: 'requirement', message: say(locale, {
         en: 'I need the file first.', fr: "J'ai d'abord besoin du fichier.", ar: 'أحتاج إلى الملف أولًا.',
       }), actions: [routed.resourceKind === 'spreadsheet' ? 'upload_spreadsheet' : 'upload_file'],
@@ -131,7 +134,7 @@ export function guidanceForComposer(input: ComposerGuidanceInput): ChatGuidance 
   const spreadsheetReference = /\b(?:spreadsheet|workbook|sheet|tableur|feuille de calcul)\b|جدول\s*بيانات/i.test(text);
   const spreadsheetAction = /\b(?:analy[sz]e|create|make|build|chart|plot|graph|presentation|export|give me)\b/i.test(text);
   const spreadsheetWorkflow = /\bcharts?\b[\s\S]{0,100}\b(?:presentation|slides?)\b|\banother\s+chart\b/i.test(text);
-  if ((spreadsheetReference && spreadsheetAction || spreadsheetWorkflow) && input.attachmentStore && input.conversationId
+  if (!connectedFile && (spreadsheetReference && spreadsheetAction || spreadsheetWorkflow) && input.attachmentStore && input.conversationId
     && input.attachmentsHydrated !== false && files.length === 0) {
     const spreadsheets = getSpreadsheetAttachments(input.attachmentStore, input.conversationId);
     if (spreadsheets.length > 1 && !spreadsheets.some((item) => item.attachmentId === input.selectedAttachmentId)) return { kind: 'requirement',
@@ -146,7 +149,7 @@ export function guidanceForComposer(input: ComposerGuidanceInput): ChatGuidance 
     || /(?:حلل|لخص|اقرأ|افتح|استخرج|أنشئ)/.test(text);
   const missing = fileRequest && (/\b(?:this|the|attached|uploaded)\s+(?:file|document|pdf|image|photo|spreadsheet|workbook)\b/i.test(text)
     || /(?:هذا|هذه|المرفق|المرفقة)\s+(?:الملف|المستند|الصورة|الجدول)/.test(text));
-  if (missing && files.length === 0) {
+  if (!connectedFile && missing && files.length === 0) {
     if (input.attachmentStore && input.conversationId) {
       if (input.attachmentsHydrated === false) return null;
       const spreadsheets = getSpreadsheetAttachments(input.attachmentStore, input.conversationId);
@@ -172,6 +175,14 @@ export function guidanceForComposer(input: ComposerGuidanceInput): ChatGuidance 
   return null;
 }
 
+function connectedFileReferenceGuidance(locale: string): ChatGuidance {
+  return { kind: 'requirement', message: say(locale, {
+    en: 'Paste one real Google Drive file link, or upload the file instead. A placeholder is not a file link.',
+    fr: 'Collez un vrai lien de fichier Google Drive, ou importez le fichier. Un texte indicatif ne suffit pas.',
+    ar: 'أرسل رابطًا حقيقيًا واحدًا لملف Google Drive، أو ارفع الملف بدلًا منه. النص الإرشادي ليس رابط ملف.',
+  }), actions: ['upload_document'] };
+}
+
 function planGuidance(requiredPlan: string | null | undefined, locale: string): ChatGuidance {
   const plan = requiredPlan === 'lite' ? 'Lite' : requiredPlan === 'pro' ? 'Pro' : requiredPlan === 'max' ? 'Max' : null;
   return { kind: 'requirement', message: plan ? say(locale, {
@@ -191,7 +202,18 @@ export function guidanceForChatError(raw: string, locale: string): ChatGuidance 
     if ('requiredPlan' in parsed && typeof parsed.requiredPlan === 'string') requiredPlan = parsed.requiredPlan;
   } }
   catch { code = raw; }
-  if (/app_not_connected|authorization_expired|permission_missing/i.test(code)) return {
+  if (/CONNECTED_FILE_REFERENCE_REQUIRED/i.test(code)) return connectedFileReferenceGuidance(locale);
+  if (/authorization_expired/i.test(code)) return { kind: 'requirement', message: say(locale, {
+    en: 'Reconnect this app in Settings: its access has expired.', fr: 'Reconnectez cette application dans les paramètres : son accès a expiré.',
+    ar: 'أعد ربط هذا التطبيق من الإعدادات: انتهت صلاحية الوصول.' }), actions: ['open_connected_apps'] };
+  if (/permission_missing/i.test(code)) return { kind: 'requirement', message: say(locale, {
+    en: 'Reconnect this app and grant the required permission.', fr: 'Reconnectez cette application et accordez la permission requise.',
+    ar: 'أعد ربط التطبيق وامنحه الإذن المطلوب.' }), actions: ['open_connected_apps'] };
+  if (/resource_not_found/i.test(code)) return { kind: 'recoverable_error', message: say(locale, {
+    en: 'Check the file link and make sure the connected account can open it. No file was read.',
+    fr: 'Vérifiez le lien et l’accès du compte connecté. Aucun fichier n’a été lu.',
+    ar: 'تحقق من رابط الملف ومن قدرة الحساب المتصل على فتحه. لم تتم قراءة أي ملف.' }), actions: [] };
+  if (/app_not_connected/i.test(code)) return {
     kind: 'requirement', message: say(locale, {
       en: 'Connect this app in Settings to continue.', fr: 'Connectez cette application dans les paramètres pour continuer.',
       ar: 'اربط هذا التطبيق من الإعدادات للمتابعة.' }), actions: ['open_connected_apps', 'try_again'] };

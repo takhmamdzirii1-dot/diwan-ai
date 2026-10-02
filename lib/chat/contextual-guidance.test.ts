@@ -18,6 +18,27 @@ const presentation: PresentationArtifact = { ...base, type: 'presentation', slid
 const draft = { text: '', files: [] as Array<{ type: string }>, model: { visionInput: false, fileInput: false, creditCost: 2 },
   balance: 10, balanceStatus: 'ready', locale: 'en' };
 
+test('Drive links bypass local file gates, but placeholders request a real link', () => {
+  const text = 'اقرأ هذا الملف من Google Drive ولخصه في 5 نقاط: https://drive.google.com/file/d/abcdefghijk123456/view';
+  assert.equal(guidanceForComposer({ ...draft, text, locale: 'ar' }), null);
+  assert.equal(guidanceForComposer({ ...draft, text, attachmentStore: {},
+    conversationId: 'chat', attachmentsHydrated: true }), null);
+  const placeholder = guidanceForComposer({ ...draft, locale: 'ar',
+    text: 'اقرأ هذا الملف من Google Drive ولخصه في 5 نقاط: [ضع رابط الملف]' });
+  assert.match(placeholder!.message, /رابطًا حقيقيًا/);
+  assert.deepEqual(placeholder!.actions, ['upload_document']);
+  assert.deepEqual(guidanceForComposer({ ...draft, text: 'Read this file' })?.actions, ['upload_document']);
+  assert.equal(guidanceForComposer({ ...draft, text: 'Read this file from Google Drive: [paste link]',
+    files: [{ type: 'application/pdf' }], model: { fileInput: true } }), null);
+});
+
+test('connector failures give specific recovery steps without claiming a read', () => {
+  assert.match(guidanceForChatError('resource_not_found', 'en').message, /connected account.*No file was read/);
+  assert.match(guidanceForChatError('permission_missing', 'en').message, /grant the required permission/);
+  assert.match(guidanceForChatError('authorization_expired', 'en').message, /expired/);
+  assert.match(guidanceForChatError('app_not_connected', 'en').message, /Connect this app/);
+});
+
 test('missing file and wrong model produce task actions while ordinary text stays clean', () => {
   assert.deepEqual(guidanceForComposer({ ...draft, text: 'Analyze this spreadsheet' })?.actions, ['upload_spreadsheet']);
   assert.deepEqual(guidanceForComposer({ ...draft, text: 'Read this image' })?.actions, ['upload_image']);

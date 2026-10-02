@@ -31,6 +31,7 @@ export async function GET() {
     }
     return NextResponse.json({ apps: adapters.map((adapter) => ({ id: adapter.id, name: adapter.name,
       authorization: adapter.authorization, canConnect: configuredConnectedApps().some(app => app.id === adapter.id) && Boolean(adapter.connect || adapter.oauth),
+      requiresStore: adapter.requiresStore ?? false,
       connection: connections.find((item) => item.appId === adapter.id) ?? null })) }, { headers: noStore });
   } catch { return NextResponse.json({ error: 'CONNECTED_APPS_UNAVAILABLE' }, { status: 503, headers: noStore }); }
 }

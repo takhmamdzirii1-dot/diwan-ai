@@ -55,7 +55,8 @@ test('sensitive write remains blocked even when a caller claims confirmation', a
   const write: ConnectedAppAdapter = { ...adapter,
     actions: [{ ...adapter.actions[0], id: 'send_message', classification: 'write', risk: 'high',
       requiresConfirmation: true }], execute: async () => { called = true; throw new Error('should not execute'); } };
-  const selected = relevantConnectedActions('Read the example file', [write])[0];
+  assert.equal(relevantConnectedActions('Read the example file', [write]).length, 0);
+  const selected = { adapter: write, action: write.actions[0] };
   const result = await executeConnectedAction({ match: selected, request: 'Read the example file',
     userId: 'user-1', connection: connected, credential: null });
   assert.equal(result.error, 'action_requires_confirmation');
