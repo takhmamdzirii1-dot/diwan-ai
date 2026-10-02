@@ -33,7 +33,7 @@ export function googleWorkspaceAdapter(fetcher: typeof fetch = fetch): Connected
       if (input.operation === 'create_document' || input.operation === 'append_document') {
         let revision: string | undefined;
         if (input.operation === 'create_document') {
-          const created = z.object({ documentId: fileId }).parse(JSON.parse(await connectedBody(await docs('/v1/documents', {
+          const created = z.object({ documentId: fileId }).parse(JSON.parse(await connectedBody(await docs('/v1/documents?fields=documentId', {
             method: 'POST', headers, body: JSON.stringify({ title: input.title }) }, signal), 20_000))); id = created.documentId;
         } else {
           id = input.fileId;
@@ -43,7 +43,7 @@ export function googleWorkspaceAdapter(fetcher: typeof fetch = fetch): Connected
         await docs(`/v1/documents/${id}:batchUpdate`, { method: 'POST', headers, body: JSON.stringify({ requests: [
           { insertText: { endOfSegmentLocation: {}, text: input.text } }], ...(revision ? { writeControl: { requiredRevisionId: revision } } : {}) }) }, signal);
       } else if (input.operation === 'create_spreadsheet') {
-        const created = z.object({ spreadsheetId: fileId }).parse(JSON.parse(await connectedBody(await sheets('/v4/spreadsheets', { method: 'POST', headers,
+        const created = z.object({ spreadsheetId: fileId }).parse(JSON.parse(await connectedBody(await sheets('/v4/spreadsheets?fields=spreadsheetId', { method: 'POST', headers,
           body: JSON.stringify({ properties: { title: input.title }, sheets: [{ data: [{ rowData: input.rows.map(row => ({ values: row.map(value => ({ userEnteredValue: { stringValue: value } })) })) }] }] }) }, signal), 20_000)));
         id = created.spreadsheetId;
       } else {

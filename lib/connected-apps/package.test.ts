@@ -27,6 +27,29 @@ test('explicit EN/FR/AR mailbox requests expose Gmail; mere mentions and negatio
   } finally { if (previous === undefined) delete process.env.CONNECTED_APPS_WRITES_ENABLED; else process.env.CONNECTED_APPS_WRITES_ENABLED = previous; }
 });
 
+test('Workspace creation projects only IDs so styled create responses cannot fail after creating a blank file', async () => {
+  const calls: string[] = [];
+  const adapter = googleWorkspaceAdapter(async (input) => {
+    const url = new URL(String(input)); calls.push(url.pathname);
+    if (url.pathname === '/v1/documents') {
+      return Response.json(url.searchParams.get('fields') === 'documentId' ? { documentId: 'created-document-123' }
+        : { documentId: 'created-document-123', namedStyles: 'x'.repeat(23_135) });
+    }
+    if (url.pathname === '/v4/spreadsheets') {
+      assert.equal(url.searchParams.get('fields'), 'spreadsheetId');
+      return Response.json({ spreadsheetId: 'created-spreadsheet-123' });
+    }
+    assert.equal(url.pathname, '/v1/documents/created-document-123:batchUpdate');
+    return Response.json({ documentId: 'created-document-123' });
+  });
+  const input = { actionId: 'write_google_workspace', request: 'Create a Google Docs document', userId: 'owner',
+    credential: JSON.stringify({ ...grant, scopes: [WORKSPACE_SCOPE] }) };
+  const result = await adapter.execute({ ...input, arguments: { operation: 'create_document', title: 'QA', text: 'Exact reviewed content' } });
+  assert.match(result.text, /Completed/);
+  assert.deepEqual(calls, ['/v1/documents', '/v1/documents/created-document-123:batchUpdate']);
+  await adapter.execute({ ...input, arguments: { operation: 'create_spreadsheet', title: 'QA', rows: [['Safe cell']] } });
+});
+
 test('GitHub target authorization matches exact repository segments, not a prefix', () => {
   assert.equal(requestedGithubRepository('Read https://github.com/qa/project-other', 'qa', 'project'), false);
   assert.equal(requestedGithubRepository('Read https://github.com/qa/project/file', 'qa', 'project'), true);

@@ -24,6 +24,7 @@ test('owned encrypted reviews bind exact content/grant; concurrent approval disp
       assert.equal(method, 'POST');
       const body = JSON.parse(String(options?.body));
       if (url.pathname === '/v1/documents') {
+        assert.equal(url.searchParams.get('fields'), 'documentId');
         documentsCreated++; assert.equal(body.title, 'VANTRA reviewed QA document');
         return Response.json({ documentId: 'reviewed-document-123' });
       }
