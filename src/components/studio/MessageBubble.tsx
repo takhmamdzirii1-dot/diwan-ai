@@ -16,8 +16,8 @@ import { getDocumentActionEligibility, readableArtifactCopy } from '@/lib/chat/c
 import type { AgentRun, AgentStep } from '@/lib/chat/agent-runtime';
 import type { ConversationAttachment } from '@/lib/chat/conversation-attachments';
 import { canRegenerateAssistantMessage, formatChatTimestamp } from '@/lib/chat/message-history';
-import { messageDirection, webSourcesAnnotation, legacyWebSources, citationMarkdown } from '@/lib/chat/web-sources';
-import { copyChatContent } from '@/lib/chat/copy-content';
+import { messageDirection, webSourcesAnnotation, legacyWebSources, citationMarkdown, separateCitations, withCitationMetadata } from '@/lib/chat/web-sources';
+import { copyChatContent, copySelectionWithoutSources } from '@/lib/chat/copy-content';
 import { remarkCitationGroups, referencedSources } from '@/lib/chat/citation-presentation';
 import ChatSources, { CitationGroup } from './ChatSources';
 
@@ -125,14 +125,15 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
       ? artifactToolProgress(invocation.toolName, locale) : null).find(Boolean) : null;
   const artifactParts = parts.filter((part) => part.type !== 'text');
   const documentArtifact = parts.find((part) => part.type === 'document');
-  const openDocument = useMemo(() => documentOpen
-    ? documentArtifact?.artifact ?? documentFromMarkdown(message.id, message.content, locale) : null,
-  [documentOpen, documentArtifact, message.id, message.content, locale]);
   const safeContent = isStreaming ? streamingSafeText(message.content)
     : parts.filter((part) => part.type === 'text').map((part) => part.text).join('');
   const sources = !isUser ? webSourcesAnnotation(message.annotations) ?? legacyWebSources(message.annotations, safeContent) : null;
+  const openDocument = useMemo(() => documentOpen
+    ? documentArtifact?.artifact ?? documentFromMarkdown(message.id, separateCitations(message.content,
+      webSourcesAnnotation(message.annotations)?.sources ?? sources?.sources ?? []).text, locale) : null,
+  [documentOpen, documentArtifact, message.id, message.content, message.annotations, locale, sources]);
   const displayedSources = sources ? { ...sources, sources: referencedSources(
-    safeContent + '\n' + artifactParts.map((part) => JSON.stringify(part)).join('\n'), sources.sources) } : null;
+    withCitationMetadata(safeContent, sources) + '\n' + artifactParts.map((part) => JSON.stringify(part)).join('\n'), sources.sources) } : null;
   const contentDirection = messageDirection(isUser ? message.content : safeContent || precedingUserMessage?.content || '',
     locale.startsWith('ar') ? 'rtl' : 'ltr');
   const documentEligibility = !isUser && !isStreaming
@@ -177,7 +178,8 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   const smoothActive = !isUser && isStreaming && isLatest;
   const smoothContent = useSmoothText(isUser ? message.content : safeContent, smoothActive);
   const displayContent = smoothActive ? smoothContent : safeContent;
-  const renderParts: ChatMessagePart[] = isStreaming ? [{ type: 'text', text: displayContent }] : parts;
+  const searchPending = Boolean(isStreaming && sources);
+  const renderParts: ChatMessagePart[] = searchPending ? [] : isStreaming ? [{ type: 'text', text: displayContent }] : parts;
   const showStreamingCursor = smoothActive && displayContent.length > 0;
 
   const handleCopyCode = (code: string, id: string) => {
@@ -213,6 +215,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
 
   return (
     <motion.div
+      onCopy={(event) => copySelectionWithoutSources(event, contentDirection)}
       data-testid={`chat-message-${message.role}`}
       data-chat-debug-latest-assistant={isLatest && !isUser ? '' : undefined}
       dir="ltr"
@@ -311,15 +314,15 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                     : agentRun.currentStep === step ? '●' : '○'} {labels[step]}</li>;
               })}</ol>
             </section>}
-            {isThinking && (
+            {isThinking && !searchPending && (
               <div className="flex items-center gap-2 text-[13.5px] text-white/60 animate-pulse mb-3" role="status">
                 <span className="font-sans antialiased text-white/70 font-normal">{t('thinking')}</span>
               </div>
             )}
 
             {isStreaming && !displayContent && !sources && <p role="status" className="text-sm text-[var(--studio-text-secondary)]">{locale === 'ar' ? 'جارٍ تحضير المعاينة…' : locale === 'fr' ? 'Préparation de l’aperçu…' : 'Preparing preview…'}</p>}
-            {sources?.state === 'searching' && <ChatSources annotation={sources} locale={locale} />}
-            {toolProgress && <p className="mt-2 text-xs text-[var(--studio-text-secondary)]" role="status">{toolProgress}</p>}
+            {(searchPending || sources?.state === 'searching') && sources && <ChatSources annotation={{ ...sources, state: 'searching' }} locale={locale} direction={contentDirection} />}
+            {toolProgress && !searchPending && <p className="mt-2 text-xs text-[var(--studio-text-secondary)]" role="status">{toolProgress}</p>}
             {renderParts.map((part, index) => part.type === 'text' ? part.text && <div key={index} data-chat-rendered-text="" className={cn(
               "prose prose-invert max-w-none font-sans antialiased text-white/90 text-[15px] font-normal leading-relaxed",
               "prose-p:text-white/90 prose-p:text-[15px] prose-p:font-sans prose-p:antialiased prose-p:leading-relaxed prose-p:font-normal",
@@ -396,7 +399,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                     if (title?.startsWith('vantra-citations:') && sources) {
                       const ids = title.slice('vantra-citations:'.length).split(',');
                       return <CitationGroup sources={sources.sources.filter((source) => ids.includes(source.id))}
-                        registry={sources.sources} locale={locale} />;
+                        locale={locale} direction={contentDirection}>{isolatedNumbers(children)}</CitationGroup>;
                     }
                     if (/^(?:\d+|S\d+)$/u.test(String(children).trim())) return null;
                     return <a href={href} dir="auto" style={{ unicodeBidi: 'isolate' }} target="_blank" rel="noopener noreferrer" className="text-[var(--studio-text-primary)] underline underline-offset-4 transition-colors">
@@ -464,7 +467,8 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                   }
                 }}
               >
-                {citationMarkdown(part.text, sources?.sources)}
+                {citationMarkdown(withCitationMetadata(part.text, sources, renderParts.slice(0, index)
+                  .reduce((total, part) => total + (part.type === 'text' ? part.text.length : 0), 0)), sources?.sources)}
               </ReactMarkdown>
 
               {/* Streaming Cursor */}
@@ -477,7 +481,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                 </span>
               )}
             </div> : renderArtifactPart(part, index))}
-            {displayedSources?.state === 'read' && <ChatSources annotation={displayedSources} locale={locale} />}
+            {!searchPending && displayedSources?.state === 'read' && <ChatSources annotation={displayedSources} locale={locale} direction={contentDirection} />}
 
             {/* Message-Level Hover Controls */}
             {!isStreaming && artifactParts.length === 0 && (

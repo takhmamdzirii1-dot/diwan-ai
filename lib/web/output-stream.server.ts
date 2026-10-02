@@ -3,7 +3,7 @@ import { parseChatArtifact, validatedArtifactPartFromToolResult, type ChatMessag
 import { currentInformationUnavailable, type createChatSearch } from './chat-search.server';
 import type { ResponseLanguage } from '@/lib/chat/response-language';
 import type { StreamTerminalDiagnostics } from './stream-diagnostics';
-import { webSourcesSchema, sourceClass } from '@/lib/chat/web-sources';
+import { webSourcesSchema, sourceClass, separateCitations } from '@/lib/chat/web-sources';
 import { internalTextFrames } from '@/lib/chat/customer-answer';
 
 type Search = ReturnType<typeof createChatSearch>;
@@ -138,6 +138,16 @@ export function guardCurrentInformationStream(response: Response, search: Search
             // would discard it and replace it with a generic transport failure.
             controller.enqueue(encoder.encode(`0:${JSON.stringify(currentInformationUnavailable(options.language))}\n8:${JSON.stringify([{ type: 'vantra-search-context', executionId: options.executionId }, { type: 'vantra-web-verification', state: 'unverified', code: 'CURRENT_INFORMATION_UNVERIFIED' }])}\nd:{"finishReason":"error"}\n`));
           } else {
+            const citationSources = (search.evidence() ?? []).slice(0, 24).map((hit, index) => ({
+              id: hit.evidenceId ?? `S${index + 1}`, title: hit.title.slice(0, 300), url: hit.url,
+              sourceClass: sourceClass(hit.url, hit.evidenceLevel?.startsWith('primary') ?? false) }));
+            let projection = outcome && !structured ? separateCitations(outcome.text, citationSources) : null;
+            if (projection) {
+              const metadata = webSourcesSchema.safeParse({ type: 'vantra-web-sources', state: 'read',
+                sources: citationSources, readCount: citationSources.length, citations: projection.citations });
+              if (metadata.success) controller.enqueue(encoder.encode(`8:${JSON.stringify([metadata.data])}\n`));
+              else projection = null; // Presentation limits must not alter validated completion/settlement.
+            }
             const partKey = (part: ChatMessagePart) => 'artifact' in part ? `artifact:${part.artifact.id}`
               : part.type === 'file' ? `file:${part.name}` : null;
             const retained = new Map(outcome?.parts.map((part) => [partKey(part), part]) ?? []);
@@ -151,7 +161,7 @@ export function guardCurrentInformationStream(response: Response, search: Search
               if (outcome && line.startsWith('0:')) {
                 if (!textWritten) controller.enqueue(encoder.encode(`0:${JSON.stringify(structured
                   && outcome.parts[0] && 'artifact' in outcome.parts[0]
-                  ? JSON.stringify(outcome.parts[0].artifact) : outcome.text)}\n`));
+                  ? JSON.stringify(outcome.parts[0].artifact) : projection?.text ?? outcome.text)}\n`));
                 textWritten = true;
               } else if (outcome && frames.has(index)) {
                 const frame = frames.get(index)!;

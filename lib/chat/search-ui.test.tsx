@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { IntlProvider } from 'use-intl';
 import MessageBubble from '@/src/components/studio/MessageBubble';
 import studioMessages from '@/messages/studio-en.json';
-import { messageDirection, webSourcesAnnotation, legacyWebSources, type WebSourcesAnnotation } from './web-sources';
+import { messageDirection, webSourcesAnnotation, legacyWebSources, separateCitations, withCitationMetadata, sourceSiteName, type WebSourcesAnnotation } from './web-sources';
 import { vantraCoreSystemPrompt, webEvidenceInstruction } from './system-prompt';
 import { ChatStreamFinalizer, consumeCanonicalChatStream } from './client-finalization';
 
@@ -38,13 +38,66 @@ test('message direction is dominant and independent of a Latin-first list item o
   assert.match(html, /<bdi dir="ltr">\$42<\/bdi>/); assert.match(html, /<bdi dir="ltr">~5%<\/bdi>/);
 });
 
-test('search citations are badges; footer is collapsed with five rows and show more', () => {
+test('citations become visual-only block bubbles and a collapsed referenced-source control', () => {
   const html = render('Answer first. [Long official source title](https://source1.example/current)');
-  assert.match(html, /<sup class="chat-citation"/); assert.match(html, /chat-source-chips/);
-  assert.match(html, /Read <bdi>2<\/bdi> sources/); assert.match(html, /<details class="chat-source-footer">/);
-  assert.equal((html.match(/class="chat-source-row"/g) ?? []).length, 5);
-  assert.match(html, /Show <bdi>2<\/bdi> more/); assert.doesNotMatch(html, /<details[^>]+open/);
-  assert.doesNotMatch(render('Static text.', null), /chat-source-footer|chat-citation/);
+  assert.match(html, /data-source-bubble=""/); assert.match(html, /data-label="source1"/);
+  assert.match(html, /data-label="1 Sources"/); assert.match(html, /aria-expanded="false"/);
+  assert.doesNotMatch(html, /chat-source-chip|chat-source-row|<sup|Read .*sources/);
+  assert.doesNotMatch(render('Static text.', null), /data-source-bubble/);
+});
+
+test('clean message text persists citation offsets and can reconstruct render-only references', () => {
+  const original = 'A supported claim. [[source:S1]]\n\nAnother claim. [2]';
+  const separated = separateCitations(original, sources.sources);
+  assert.doesNotMatch(separated.text, /source:|\[2\]/);
+  const annotation = { ...sources, citations: separated.citations };
+  const html = render(separated.text, annotation);
+  assert.match(html, /data-label="source1"/); assert.match(html, /data-label="source2"/);
+  assert.match(withCitationMetadata(separated.text, annotation), /source:S1/);
+  assert.equal(sourceSiteName('https://blog.parfumdo.com/article'), 'parfumdo');
+  assert.equal(sourceSiteName('https://fr.example.co.uk/article'), 'example');
+  assert.equal(separateCitations('`array[1]`', sources.sources).text, '`array[1]`');
+});
+
+test('headings and colon lead-ins have no bubbles; differing sentence sources keep their own blocks', () => {
+  const html = render('# Heading [1]\n\nIntroduction: [1]\n\nFirst claim. [1] Second claim. [2]');
+  assert.doesNotMatch(html.match(/<h1[\s\S]*?<\/h1>/)?.[0] ?? '', /data-source-bubble/);
+  assert.doesNotMatch(html.match(/<p[^>]*>Introduction:[\s\S]*?<\/p>/)?.[0] ?? '', /data-source-bubble/);
+  assert.match(html, /First <span class="chat-source-tail"><bdi dir="auto">claim\./);
+  assert.match(html, /Second <span class="chat-source-tail"><bdi dir="auto">claim\./);
+});
+
+test('list items with the same source share one last-item bubble; distinct sources stay per item', () => {
+  const shared = render('- First. [1]\n- Second. [1]');
+  assert.equal((shared.match(/data-label="source1"/gu) ?? []).length, 1);
+  const distinct = render('- First. [1]\n- Second. [2]');
+  assert.equal((distinct.match(/data-label="source[12]"/gu) ?? []).length, 2);
+});
+
+test('shared table citations render below the table; distinct row citations stay with their row', () => {
+  const shared = render('| Metric | Value |\n| --- | --- |\n| A | 10 [1] |\n| B | 20 [1] |');
+  assert.doesNotMatch(shared.match(/<table[\s\S]*?<\/table>/)?.[0] ?? '', /data-source-bubble/);
+  assert.match(shared, /<\/table>[\s\S]*data-label="source1"/);
+  const distinct = render('| Metric | Value |\n| --- | --- |\n| A | 10 [1] |\n| B | 20 [2] |');
+  const rows = distinct.match(/<tr[\s\S]*?<\/tr>/gu) ?? [];
+  assert.match(rows[1], /data-label="source1"/); assert.doesNotMatch(rows[1], /data-label="source2"/);
+  assert.match(rows[2], /data-label="source2"/);
+});
+
+test('citation before sentence punctuation closes its own block, including nested emphasis', () => {
+  const html = render('First **important claim [1]**. Second supported claim [2].');
+  assert.match(html, /<bdi dir="auto"><strong[^>]*>claim <\/strong>\./);
+  const blocks = html.match(/<p[\s\S]*?<\/p>/gu) ?? [];
+  assert.match(blocks[0], /data-label="source1"/); assert.doesNotMatch(blocks[0], /data-label="source2"/);
+  assert.match(blocks[1], /data-label="source2"/);
+});
+
+test('search in progress shows only searching, never pending provider content or source bubbles', () => {
+  const html = renderToStaticMarkup(<IntlProvider locale="en" messages={studioMessages} timeZone="UTC">
+    <MessageBubble message={{ id: 'pending', role: 'assistant', content: 'Identify Intent. Tool Usage. Let us search.',
+      annotations: [sources] }} isLatest isStreaming isThinking />
+  </IntlProvider>);
+  assert.match(html, /Searching…/); assert.doesNotMatch(html, /Identify Intent|Tool Usage|Let us search|data-source-bubble/);
 });
 
 test('source metadata rejects secrets/unsafe URLs and supports old saved search messages', () => {

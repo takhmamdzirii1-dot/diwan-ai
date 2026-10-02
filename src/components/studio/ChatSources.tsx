@@ -1,7 +1,9 @@
 'use client';
-import React, { useState } from 'react';
-import { ExternalLink } from 'lucide-react';
-import { sourceDomain, sourceClass, type ChatWebSource, type WebSourcesAnnotation } from '@/lib/chat/web-sources';
+import React, { useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { ExternalLink, X } from 'lucide-react';
+import { sourceDomain, sourceSiteName, sourceClass, type ChatWebSource, type WebSourcesAnnotation } from '@/lib/chat/web-sources';
+import { subscribeSourceCopyFallback } from '@/lib/chat/copy-content';
 
 function SourceIcon({ domain }: { domain: string }) {
   const [failed, setFailed] = useState(false);
@@ -10,52 +12,71 @@ function SourceIcon({ domain }: { domain: string }) {
       alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} />;
 }
 
-export function CitationBadge({ source, index }: { source: ChatWebSource; index: number }) {
-  return <sup className="chat-citation"><a href={source.url} target="_blank" rel="noopener noreferrer"
-    dir="ltr" aria-label={`${index}: ${source.title || sourceDomain(source.url)}`} title={source.title}>
-    <bdi dir="ltr">{index}</bdi></a></sup>;
-}
-
-export function CitationGroup({ sources, registry, locale }: { sources: ChatWebSource[]; registry: ChatWebSource[]; locale: string }) {
+export function CitationGroup({ sources, locale, children, countLabel = false, direction }: {
+  sources: ChatWebSource[]; locale: string; children?: React.ReactNode; countLabel?: boolean; direction?: 'rtl' | 'ltr';
+}) {
   const [open, setOpen] = useState(false);
-  if (!sources.length) return null;
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const trigger = useRef<HTMLButtonElement>(null);
+  const card = useRef<HTMLDivElement>(null);
+  const id = useId();
+  useEffect(() => subscribeSourceCopyFallback(), []);
   const label = locale.startsWith('ar') ? 'المصادر' : 'Sources';
-  return <sup className="chat-citation chat-citation-group" onBlur={(event) => {
-    if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
-  }} onKeyDown={(event) => { if (event.key === 'Escape') { setOpen(false); event.currentTarget.querySelector('button')?.focus(); } }}>
-    <button type="button" dir="ltr" aria-label={`${label}: ${sources.map((s) => s.title).join('; ')}`}
-      aria-expanded={open} onClick={() => setOpen(!open)}><bdi>{sources.map((source) => registry.findIndex((s) => s.id === source.id) + 1).join(', ')}</bdi></button>
-    {open && <span className="chat-citation-popover" role="group" aria-label={label}>{sources.map((source) =>
-      <a key={source.id} href={source.url} target="_blank" rel="noopener noreferrer" dir="auto">{source.title || sourceDomain(source.url)}<ExternalLink size={12} aria-hidden="true" /></a>)}</span>}
-  </sup>;
+  const unique = sources.filter((source, index) => sources.findIndex((entry) => entry.url === source.url) === index);
+  useEffect(() => {
+    if (!open) return;
+    card.current?.querySelector<HTMLElement>('button, a')?.focus();
+    const dismiss = (event: PointerEvent) => {
+      if (!card.current?.contains(event.target as Node) && !trigger.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const keyboard = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { setOpen(false); trigger.current?.focus(); }
+      if (event.key === 'Tab') {
+        const controls = Array.from(card.current?.querySelectorAll<HTMLElement>('button, a') ?? []);
+        const first = controls[0]; const last = controls.at(-1);
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }
+    };
+    document.addEventListener('pointerdown', dismiss);
+    document.addEventListener('keydown', keyboard);
+    return () => { document.removeEventListener('pointerdown', dismiss); document.removeEventListener('keydown', keyboard); };
+  }, [open]);
+  if (!unique.length) return <>{children}</>;
+  const visualLabel = countLabel ? `${unique.length} ${label}` : sourceSiteName(unique[0].url);
+  return <span className="chat-source-tail"><bdi dir="auto">{children}</bdi><span className="chat-source-bubble-anchor" data-source-bubble="">
+    <button ref={trigger} type="button" className="chat-source-bubble" dir={countLabel ? direction : 'ltr'} data-label={visualLabel}
+      data-more={!countLabel && unique.length > 1 ? `+${unique.length - 1}` : undefined}
+      aria-label={`${label}: ${unique.map((source) => source.title).join('; ')}`} aria-expanded={open}
+      aria-haspopup="dialog" aria-controls={open ? id : undefined} onClick={() => {
+        const rect = trigger.current!.getBoundingClientRect();
+        const height = Math.min(360, 66 + unique.length * 68);
+        setPosition({ left: Math.max(16, Math.min(rect.left, window.innerWidth - 340)),
+          top: rect.bottom + height < window.innerHeight ? rect.bottom + 4 : Math.max(16, rect.top - height) });
+        setOpen(!open);
+      }}><SourceIcon domain={sourceDomain(unique[0].url)} /></button>
+    {open && createPortal(<div className="chat-source-card-layer">
+      <div ref={card} id={id} role="dialog" aria-label={label} className="chat-source-card"
+        dir={direction ?? (locale.startsWith('ar') ? 'rtl' : 'ltr')} style={position}>
+        <header><strong>{label}</strong><button type="button" aria-label={locale.startsWith('ar') ? 'إغلاق' : locale.startsWith('fr') ? 'Fermer' : 'Close'}
+          onClick={() => { setOpen(false); trigger.current?.focus(); }}><X size={16} /></button></header>
+        {unique.map((source) => <a key={source.id} href={source.url} target="_blank" rel="noopener noreferrer">
+          <SourceIcon domain={sourceDomain(source.url)} /><span><span dir="auto">{source.title || sourceDomain(source.url)}</span>
+            <small dir="ltr">{new URL(source.url).hostname}</small></span><ExternalLink size={14} aria-hidden="true" />
+        </a>)}
+      </div>
+    </div>, trigger.current?.closest('.studio-overlay-root') ?? document.body)}
+  </span></span>;
 }
 
-export default function ChatSources({ annotation, locale }: { annotation: WebSourcesAnnotation; locale: string }) {
-  const [expanded, setExpanded] = useState(false);
+export default function ChatSources({ annotation, locale, direction }: { annotation: WebSourcesAnnotation; locale: string; direction?: 'rtl' | 'ltr' }) {
   const ar = locale.startsWith('ar'); const fr = locale.startsWith('fr');
   const rank = { primary: 0, news: 1, other: 2, forum: 3 };
   const sorted = [...annotation.sources].sort((a, b) => rank[a.sourceClass ?? sourceClass(a.url)!]
     - rank[b.sourceClass ?? sourceClass(b.url)!]);
-  const uniqueSources = sorted.filter((source, index) => sorted.findIndex((candidate) => candidate.url === source.url) === index);
-  return <section className="chat-sources" data-chat-sources="">
-    <p role="status" aria-live="polite" className="chat-search-status">{annotation.state === 'searching'
-      ? ar ? 'جارٍ البحث…' : fr ? 'Recherche…' : 'Searching…'
-      : annotation.readCount === 0 ? annotation.sources.length > 0
-        ? ar ? 'المصادر متاحة أدناه.' : fr ? 'Sources disponibles ci-dessous.' : 'Sources available below.'
-        : ar ? 'لم تتوفر مصادر مقروءة.' : fr ? 'Aucune source disponible.' : 'No sources available.'
-      : ar ? <>تمت قراءة <bdi>{annotation.readCount}</bdi> مصادر</> : fr ? <><bdi>{annotation.readCount}</bdi> sources lues</>
-        : <>Read <bdi>{annotation.readCount}</bdi> sources</>}</p>
-      {uniqueSources.length > 0 && <details className="chat-source-footer"><summary>{ar ? 'المصادر' : 'Sources'} · <bdi>{uniqueSources.length}</bdi></summary>
-        <div className="chat-source-rows">{uniqueSources.slice(0, expanded ? undefined : 5).map((source) => {
-          const domain = sourceDomain(source.url);
-          return <a key={source.id} href={source.url} target="_blank" rel="noopener noreferrer" className="chat-source-row">
-            <SourceIcon domain={domain} /><span className="chat-source-title" dir="auto">{source.title || domain}</span>
-            <span className="chat-source-domain" dir="ltr">{domain}</span><ExternalLink size={13} aria-hidden="true" />
-          </a>;
-        })}</div>
-        {!expanded && uniqueSources.length > 5 && <button type="button" onClick={() => setExpanded(true)} className="chat-source-more">
-          {ar ? <>عرض <bdi>{uniqueSources.length - 5}</bdi> أخرى</> : fr ? <>Afficher <bdi>{uniqueSources.length - 5}</bdi> de plus</>
-            : <>Show <bdi>{uniqueSources.length - 5}</bdi> more</>}</button>}
-      </details>}
+  return <section className="chat-sources" data-chat-sources="" dir={direction}>
+    {annotation.state === 'searching'
+      ? <p role="status" aria-live="polite" className="chat-search-status">{ar ? 'جارٍ البحث…' : fr ? 'Recherche…' : 'Searching…'}</p>
+      : annotation.sources.length > 0 ? <CitationGroup sources={sorted} locale={locale} direction={direction} countLabel /> : null}
   </section>;
 }

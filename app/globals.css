@@ -157,7 +157,7 @@
   font-size: 12px; line-height: 1.5; vertical-align: baseline;
 }
 .chat-citation-popover a { display: flex; align-items: center; gap: 6px; padding: 6px; text-align: start; }
-.chat-sources { min-width: 0; margin-top: 12px; font-size: 12px; color: var(--studio-text-secondary); }
+.chat-sources { min-width: 0; margin-top: 12px; font-size: 12px; color: var(--studio-text-secondary); text-align: start; }
 .chat-search-status { color: var(--studio-text-secondary); font-size: 12px; margin: 0 0 6px; }
 .chat-source-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chat-source-chip { display: inline-flex; min-width: 0; max-width: 100%; align-items: center; gap: 6px;
@@ -178,6 +178,53 @@
 .chat-source-more { padding: 5px 0; cursor: pointer; color: var(--studio-text-primary); }
 .chat-sources a:hover, .chat-citation a:hover { color: var(--studio-text-primary); background: var(--studio-hover); }
 @media (prefers-reduced-motion: reduce) { .chat-message-action { transition: none; } }
+
+/* Visual-only block citations; 22px bubble within a 44px accessible button. */
+.chat-source-tail { white-space: nowrap; }
+.chat-source-bubble-anchor { display: inline-block; margin-inline-start: 5px; vertical-align: middle; user-select: none; }
+.chat-source-bubble {
+  display: inline-flex; align-items: center; position: relative; height: 44px; max-width: 90px; margin-block: -11px;
+  padding: 0; border: 0; background: transparent; color: var(--studio-text-primary); font-size: 12px;
+  font-family: inherit; cursor: pointer; user-select: none; animation: chat-source-appear 150ms ease-out;
+}
+.chat-source-bubble::before {
+  content: attr(data-label); height: 22px; line-height: 20px; border: 1px solid var(--studio-border-strong);
+  border-radius: 11px; padding-inline: 24px 7px; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; background: var(--studio-card); box-sizing: border-box;
+}
+.chat-source-bubble > :is(img, span) { position: absolute; left: 6px; top: 15px; width: 14px; height: 14px; }
+.chat-source-bubble[data-more]::before { padding-inline-end: 25px; }
+.chat-source-bubble[data-more]::after { content: attr(data-more); position: absolute; right: 6px; top: 11px; line-height: 22px; font-size: 11px; }
+.chat-source-bubble img { filter: grayscale(1); transition: filter 150ms; }
+.chat-source-bubble:hover::before { background: var(--studio-hover); }
+.chat-source-bubble:hover img { filter: grayscale(0); }
+.chat-source-bubble:focus-visible, .chat-source-card :is(button, a):focus-visible {
+  outline: 2px solid var(--studio-text-primary); outline-offset: 2px;
+}
+.chat-source-card-layer { position: fixed; inset: 0; z-index: 160; pointer-events: none; }
+.chat-source-card {
+  position: fixed; width: 324px; max-width: calc(100vw - 32px); max-height: min(360px, 70svh); overflow-y: auto;
+  padding: 12px; border: 1px solid var(--studio-border-strong); border-radius: 12px; pointer-events: auto;
+  background: var(--studio-popover); color: var(--studio-text-primary); font-size: 12px; line-height: 1.5;
+  white-space: normal; user-select: text;
+}
+.chat-source-card header { display: flex; align-items: center; justify-content: space-between; }
+.chat-source-card header button { display: grid; place-items: center; width: 44px; height: 44px; cursor: pointer; }
+.chat-source-card a { display: flex; gap: 8px; align-items: center; padding: 10px 4px; min-height: 44px;
+  border-top: 1px solid var(--studio-border); color: var(--studio-text-primary); text-decoration: none; }
+.chat-source-card a:hover { background: var(--studio-hover); }
+.chat-source-card a > span { flex: 1; min-width: 0; }
+.chat-source-card a > span > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-source-card small { display: block; color: var(--studio-text-secondary); overflow-wrap: anywhere; text-align: start; }
+.chat-source-card svg { flex-shrink: 0; }
+@keyframes chat-source-appear { from { opacity: 0; } to { opacity: 1; } }
+@media (max-width: 640px) {
+  .chat-source-card-layer { background: var(--studio-overlay); pointer-events: auto; }
+  .chat-source-card { top: auto !important; left: 0 !important; bottom: 0; width: 100%; max-width: none;
+    border-radius: 16px 16px 0 0; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+}
+@media print { [data-source-bubble], .chat-source-card-layer { display: none !important; } }
+@media (prefers-reduced-motion: reduce) { .chat-source-bubble, .chat-source-bubble img { transition: none; animation: none; } }
 
 .studio-overlay-root,
 .studio-overlay-root .custom-scrollbar,

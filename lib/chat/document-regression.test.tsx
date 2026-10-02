@@ -135,7 +135,7 @@ test('copy is clean RTL text plus escaped HTML; real factual and ordered-list nu
 test('stored Arabic document renders citations inside bold/lists; unsourced markers disappear', () => {
   const artifact = documentFromMarkdown('stored-doc', markdown, 'ar');
   const html = renderToStaticMarkup(<ArtifactDocumentPreview artifact={artifact} locale="ar" onClose={() => {}} sources={sources} />);
-  assert.equal((html.match(/class="chat-citation chat-citation-group"/gu) ?? []).length, 2);
+  assert.equal((html.match(/class="chat-source-bubble"/gu) ?? []).length, 3);
   assert.match(html, /<ol dir="rtl"/); assert.doesNotMatch(html, /source:S1/);
   assert.equal(citationMarkdown('Useful **text [1]** and 42.'), 'Useful **text ** and 42.');
 });
@@ -146,8 +146,8 @@ test('nested repeated citations collapse at paragraph boundaries without changin
   const artifact = documentFromMarkdown('grouped', 'Claim **one [[source:S1]]** and *two [[source:S2]]*; corroboration [[source:S1]].\n\nSeparate claim [[source:S2]].', 'en');
   const before = JSON.stringify(artifact);
   const html = renderToStaticMarkup(<ArtifactDocumentPreview artifact={artifact} locale="en" onClose={() => {}} sources={registry} />);
-  assert.equal((html.match(/class="chat-citation chat-citation-group"/gu) ?? []).length, 2);
-  assert.match(html, /<bdi>1, 2<\/bdi>/u);
+  assert.equal((html.match(/class="chat-source-bubble"/gu) ?? []).length, 3);
+  assert.match(html, /data-label="example" data-more="\+1"/u);
   assert.match(html, /<strong>one <\/strong>/u);
   assert.doesNotMatch(html, /unused.example|Unreferenced|source:S/u);
   assert.equal(JSON.stringify(artifact), before);
@@ -159,9 +159,10 @@ test('collapsed source panel keeps exact referenced pages and primary before out
     sources: [{ id: 'S2', title: 'Forum', url: 'https://www.reddit.com/r/test' },
       { id: 'S3', title: 'News', url: 'https://ar.reuters.com/article' }, ...sources,
       { id: 'S4', title: 'Duplicate domain', url: 'https://ar.example.com/a' }] }} />);
-  assert.ok(html.indexOf('example.com') < html.indexOf('reuters.com'));
-  assert.ok(html.indexOf('reuters.com') < html.indexOf('reddit.com'));
+  assert.ok(html.indexOf('Official account') < html.indexOf('News'));
+  assert.ok(html.indexOf('News') < html.indexOf('Forum'));
   assert.match(html, /المصادر/); assert.doesNotMatch(html, /Read 0/);
   assert.equal((html.match(/class="chat-source-chip"/gu) ?? []).length, 0);
-  assert.equal((html.match(/class="chat-source-row"/gu) ?? []).length, 4);
+  assert.equal((html.match(/class="chat-source-row"/gu) ?? []).length, 0);
+  assert.match(html, /aria-expanded="false"/);
 });

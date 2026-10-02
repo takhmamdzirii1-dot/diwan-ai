@@ -18,6 +18,35 @@ export function copyPayload(text: string, sourceUrls: readonly string[] = [], di
   return { plain: isolatedPlainText(clean, dir), html: `<div dir="${dir}" style="white-space:pre-wrap;unicode-bidi:isolate">${html}</div>` };
 }
 
+/** Native select-all copy fallback; source cards themselves remain selectable. */
+export function copySelectionWithoutSources(event: { clipboardData: DataTransfer | null; preventDefault(): void }, direction: TextDirection) {
+  if (!event.clipboardData) return;
+  const selection = window.getSelection();
+  if (!selection?.rangeCount) return;
+  const content = document.createElement('div');
+  for (let index = 0; index < selection.rangeCount; index++) content.append(selection.getRangeAt(index).cloneContents());
+  if (!content.querySelector('[data-source-bubble]')) return;
+  content.querySelectorAll('[data-source-bubble]').forEach((node) => node.remove());
+  content.querySelectorAll('p, li, h1, h2, h3, h4, tr').forEach((node) => node.append('\n'));
+  const payload = copyPayload(content.textContent ?? '', [], direction);
+  event.clipboardData.setData('text/plain', payload.plain);
+  event.clipboardData.setData('text/html', payload.html);
+  event.preventDefault();
+}
+
+let sourceCopySubscribers = 0;
+const sourceCopyFallback = (event: ClipboardEvent) => {
+  if (event.defaultPrevented) return;
+  const anchor = window.getSelection()?.anchorNode;
+  const element = anchor instanceof Element ? anchor : anchor?.parentElement;
+  copySelectionWithoutSources(event, element && getComputedStyle(element).direction === 'rtl' ? 'rtl' : 'ltr');
+};
+/** One listener for select-all even when the browser dispatches copy on body. */
+export function subscribeSourceCopyFallback() {
+  if (sourceCopySubscribers++ === 0) document.addEventListener('copy', sourceCopyFallback);
+  return () => { if (--sourceCopySubscribers === 0) document.removeEventListener('copy', sourceCopyFallback); };
+}
+
 /** Rich clipboard when supported; native copy-event fallback for embedded browsers. */
 export async function copyChatContent(text: string, sourceUrls: readonly string[] = [], direction?: TextDirection) {
   const { plain, html } = copyPayload(text, sourceUrls, direction);

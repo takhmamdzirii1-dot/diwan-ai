@@ -2,7 +2,7 @@ import type { DocumentArtifact } from './core';
 import type { ParagraphChild } from 'docx';
 import { documentDirection } from './document-direction';
 import { bidiRuns } from '@/lib/chat/bidi';
-import { citationMarkdown, type ChatWebSource } from '@/lib/chat/web-sources';
+import { separateCitations, type ChatWebSource } from '@/lib/chat/web-sources';
 
 // Loaded only after the user chooses Word export.
 export async function documentToDocx(document: DocumentArtifact, sources: readonly ChatWebSource[] = []): Promise<Blob> {
@@ -10,7 +10,7 @@ export async function documentToDocx(document: DocumentArtifact, sources: readon
   const direction = documentDirection(document);
   const rtl = direction === 'rtl';
   const alignment = rtl ? AlignmentType.RIGHT : AlignmentType.LEFT;
-  const runs = (value: string): ParagraphChild[] => citationMarkdown(value, sources).split(/(\[[^\]]+\]\(https?:\/\/[^)]+\)|\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean).flatMap<ParagraphChild>((part) => {
+  const runs = (value: string): ParagraphChild[] => separateCitations(value, sources).text.split(/(\[[^\]]+\]\(https?:\/\/[^)]+\)|\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean).flatMap<ParagraphChild>((part) => {
     const link = /^\[([^\]]+)\]\((https?:\/\/[^)]+)\)$/u.exec(part);
     if (link) return [new ExternalHyperlink({ link: link[2], children: bidiRuns(link[1], direction).map((run) => new TextRun({ text: run.text,
       rightToLeft: run.direction ? run.direction === 'rtl' : rtl, superScript: sources.some((source) => source.url === link[2]) })) })];
