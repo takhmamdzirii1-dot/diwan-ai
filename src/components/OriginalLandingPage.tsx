@@ -19,6 +19,8 @@ import WhyVantra from './landing/WhyVantra';
 import { useModal } from '../context/ModalContext';
 import useUser from '../hooks/useUser';
 import { ProofSection } from './landing/PhaseTwoSections';
+import LandingTracking from './landing/LandingTracking';
+import { trackLandingEvent } from '@/src/lib/marketing-analytics';
 
 /**
  * VANTRA — Global Landing Experience.
@@ -35,6 +37,9 @@ export default function OriginalLandingPage({ catalog }: { catalog: LandingCatal
 
   const { scrollYProgress } = useScroll();
   const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 26, mass: 0.3 });
+  const trackCta = (location: 'header' | 'hero' | 'final' | 'pricing') => {
+    if (!isLoading) trackLandingEvent({ event: 'cta_click', variant: 'home', locale: locale === 'ar' || locale === 'fr' ? locale : 'en', location });
+  };
 
   /** Cinematic jump into the Studio — optionally carrying a prompt. */
   const enterStudio = useCallback(
@@ -49,6 +54,12 @@ export default function OriginalLandingPage({ catalog }: { catalog: LandingCatal
 
   const handlePricingAction = (planId?: string) => {
     if (isLoading) return;
+    const plan = catalog.plans.find(plan => plan.id === planId);
+    if (!planId || (plan?.publicVisible && plan.active && ['pro', 'max'].includes(plan.planCode))) {
+      trackCta('pricing');
+      trackLandingEvent({ event: 'pricing_select', variant: 'home', locale: locale === 'ar' || locale === 'fr' ? locale : 'en',
+        location: 'pricing', plan: !planId ? 'free' : plan!.planCode as 'pro' | 'max' });
+    }
     if (!planId) { handlePrimaryAction(); return; }
     if (!catalog.plans.some(plan => plan.id === planId && plan.publicVisible && plan.active && ['pro', 'max'].includes(plan.planCode))) return;
     if (user) openTopUpModal({ id: planId });
@@ -63,6 +74,7 @@ export default function OriginalLandingPage({ catalog }: { catalog: LandingCatal
 
   return (
     <div className="landing-grid-background min-h-screen text-white antialiased">
+      <LandingTracking variant="home" locale={locale} />
       {/* Scroll progress — hairline at the very top */}
       <motion.div
         style={{ scaleX: progress }}
@@ -74,15 +86,15 @@ export default function OriginalLandingPage({ catalog }: { catalog: LandingCatal
         user={user}
         authLoading={isLoading}
         onSignIn={() => !isLoading && openAuthModal('signin')}
-        onOpenStudio={() => enterStudio()}
-        onStartFree={() => !isLoading && openAuthModal('signup')}
+        onOpenStudio={() => { trackCta('header'); enterStudio(); }}
+        onStartFree={() => { trackCta('header'); if (!isLoading) openAuthModal('signup'); }}
       />
 
       <HeroSection
         user={user}
         authLoading={isLoading}
-        onEnterStudio={enterStudio}
-        onRequireAuth={() => !isLoading && openAuthModal('signup')}
+        onEnterStudio={prompt => { trackCta('hero'); enterStudio(prompt); }}
+        onRequireAuth={() => { trackCta('hero'); if (!isLoading) openAuthModal('signup'); }}
       />
 
       <PartnersSection brands={catalog.brands} />
@@ -93,7 +105,7 @@ export default function OriginalLandingPage({ catalog }: { catalog: LandingCatal
       <Testimonials />
       <GlobalPricing catalog={catalog} onGetStarted={handlePricingAction} />
       <Faq gateways={catalog.gateways} />
-      <FinalCta onGetStarted={handlePrimaryAction} />
+      <FinalCta onGetStarted={() => { trackCta('final'); handlePrimaryAction(); }} />
       <GlobalFooter />
     </div>
   );

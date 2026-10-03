@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { readAttribution } from '../lib/attribution';
+import { beginSignupTracking } from '../lib/marketing-analytics';
 import { VantraLogo } from './VantraLogo';
 
 export interface AuthModalProps {
@@ -99,6 +100,9 @@ export default function AuthModal({
     try {
       setGoogleLoading(true);
       setError(null);
+      // OAuth can create a new account from either tab; the server distinguishes
+      // new accounts from existing sign-ins using Auth's creation timestamp.
+      beginSignupTracking();
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -149,6 +153,7 @@ export default function AuthModal({
           router.replace('/studio/chat');
         }
       } else {
+        beginSignupTracking();
         const attribution = readAttribution();
         const { data, error } = await supabase.auth.signUp({
           email,

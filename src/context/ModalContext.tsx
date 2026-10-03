@@ -7,6 +7,7 @@ import { StudioThemeProvider } from './StudioThemeContext';
 import useUser from '../hooks/useUser';
 import { LANDING_PLAN_INTENT_KEY, saveLandingPlan, takeLandingPlan } from '../content/landing-plan-intent';
 import { usePathname } from 'next/navigation';
+import { finishSignupTracking } from '../lib/marketing-analytics';
 
 export interface ModalContextType {
   isAuthModalOpen: boolean;
@@ -33,6 +34,7 @@ export function ModalProvider({ children, checkoutThemeLocale }: { children: Rea
   const [topUpPlan, setTopUpPlan] = useState<TopUpPlan>(DEFAULT_TOPUP_PLAN);
   const { user } = useUser();
   const pathname = usePathname();
+  useEffect(() => { if (user) void finishSignupTracking(); }, [user?.id, pathname]);
 
   const openAuthModal = useCallback((mode: 'signin' | 'signup' = 'signin') => {
     try { localStorage.removeItem(LANDING_PLAN_INTENT_KEY); } catch {}

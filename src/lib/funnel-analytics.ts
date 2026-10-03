@@ -1,4 +1,5 @@
 'use client';
+import { markMarketingInteraction, trackMarketingPixel } from './marketing-analytics';
 
 type FunnelEvent = 'trial_started' | 'trial_expired' | 'free_media_exhausted' | 'paywall_shown'
   | 'pro_accepted' | 'pro_declined' | 'lite_shown' | 'lite_accepted' | 'lite_declined'
@@ -9,6 +10,12 @@ type FunnelEvent = 'trial_started' | 'trial_expired' | 'free_media_exhausted' | 
   | 'reactivation_started' | 'reactivation_completed' | 'reactivation_failed';
 
 export function trackFunnelEvent(event: FunnelEvent, key: string, metadata?: Record<string, string | number | boolean | null>) {
+  // This helper is invoked by existing interaction handlers, never an eager
+  // third-party loader. Outcome conversions remain server-only.
+  if (event === 'checkout_started') {
+    markMarketingInteraction();
+    trackMarketingPixel(event, `${event}:${key}`);
+  }
   return fetch('/api/analytics/funnel', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

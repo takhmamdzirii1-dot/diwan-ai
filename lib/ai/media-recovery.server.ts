@@ -4,7 +4,7 @@ import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
 import { getPrunaPredictionStatus } from './providers/media';
 import { persistGeneratedMedia } from './library-media';
 import { recordProviderResult } from '@/lib/credits/generation-finance';
-import { recordFunnelEvent } from '@/lib/analytics/funnel-events';
+import { recordFunnelEvent, recordFirstGenerationSuccess } from '@/lib/analytics/funnel-events';
 import { mediaStatus, reconcileMediaExecution, type RecoveryExecution } from './media-recovery';
 
 function client() {
@@ -63,6 +63,7 @@ export async function finishPreparedMedia(executionId: string, userId: string, t
     p_token: token, p_terminal: terminal, p_outcome: outcome, p_provider_status: providerStatus,
     p_error: error ?? null, p_provider_cost_minor: null });
   if (value.error) throw new Error('MEDIA_FINALIZATION_PENDING');
+  await recordFirstGenerationSuccess(userId, executionId, value.data);
   return value.data as Record<string, unknown>;
 }
 
@@ -111,6 +112,7 @@ export async function recoverOwnedMedia(executionId: string, userId: string) {
         p_provider_cost_minor: providerStatus === 'succeeded' ? row!.media_context?.providerCostMinor ?? null : null,
       });
       if (value.error) throw new Error('MEDIA_FINALIZATION_PENDING');
+      await recordFirstGenerationSuccess(userId, executionId, value.data);
       // Telemetry is best-effort AFTER canonical settlement, never its authority.
       if (!value.data?.idempotent) {
         if (providerStatus === 'succeeded' || providerStatus === 'failed' || providerStatus === 'canceled') {

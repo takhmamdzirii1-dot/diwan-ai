@@ -6,18 +6,11 @@
  * → signup → trial → paywall → plan funnels. No fingerprinting, no
  * third-party calls, no fabricated numbers.
  */
-export interface LandingAttribution {
-  utm_source?: string;
-  utm_medium?: string;
-  utm_campaign?: string;
-  utm_content?: string;
-  utm_term?: string;
-  landing_variant?: string;
-  first_seen?: string;
-}
+import { sanitizeAttribution, type LandingAttribution } from '@/lib/analytics/marketing';
+export type { LandingAttribution } from '@/lib/analytics/marketing';
 
 const STORAGE_KEY = 'vantra_attribution_v1';
-const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as const;
+const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid'] as const;
 
 function pickParams(search: string): Partial<LandingAttribution> {
   const params = new URLSearchParams(search);
@@ -37,7 +30,7 @@ export function captureLandingAttribution(variant: string): void {
       landing_variant: variant.slice(0, 60),
       first_seen: new Date().toISOString(),
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(attribution));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitizeAttribution(attribution)));
   } catch {
     /* Attribution is optional and must never break the page. */
   }
@@ -49,7 +42,7 @@ export function readAttribution(): LandingAttribution | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as LandingAttribution;
     if (!parsed || typeof parsed !== 'object') return null;
-    return parsed;
+    return sanitizeAttribution(parsed);
   } catch {
     return null;
   }

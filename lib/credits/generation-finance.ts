@@ -2,6 +2,7 @@ import 'server-only';
 
 import { createHash, randomUUID } from 'node:crypto';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
+import { recordFirstGenerationSuccess } from '@/lib/analytics/funnel-events';
 import type { EffectiveRuntimeModel } from '@/lib/models/runtime-config';
 import type { ResolvedProviderRoute } from '@/lib/ai/providers/routes';
 import { routeSnapshot } from '@/lib/ai/providers/routes';
@@ -289,6 +290,7 @@ export async function finalizeGeneration(args: {
     p_attempt_count: args.attemptCount ?? 1,
   });
   if (error) throw new Error(error.message || 'EXECUTION_FINALIZATION_FAILED');
+  await recordFirstGenerationSuccess(args.userId, args.executionId, data);
   return data as RpcJson;
 }
 

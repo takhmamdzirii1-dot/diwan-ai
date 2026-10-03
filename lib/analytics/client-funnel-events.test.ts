@@ -4,10 +4,11 @@ import { isClientFunnelEvent } from './client-funnel-events';
 
 test('payment and lifecycle outcomes cannot be forged through the client event route', () => {
   for (const event of [
-    'payment_approved', 'payment_rejected',
+    'payment_submitted', 'payment_approved', 'payment_rejected',
     'renewal_completed', 'renewal_failed',
     'reactivation_completed', 'reactivation_failed',
     'model_trial_used', 'model_trial_exhausted',
+    'signup_completed', 'first_generation_succeeded', 'landing_view', 'cta_click', 'pricing_select',
   ]) assert.equal(isClientFunnelEvent(event), false, event);
 });
 
