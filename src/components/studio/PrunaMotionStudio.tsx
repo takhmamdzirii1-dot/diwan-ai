@@ -2,7 +2,8 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Clapperboard, Download, FolderOpen, ImagePlus, LoaderCircle, RotateCcw, X } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
+import { mediaFailureText } from './media-recovery-client';
 import { cn } from '@/lib/utils';
 import {
   PRUNA_SOURCE_IMAGE_MAX_BYTES,
@@ -102,6 +103,7 @@ export default function PrunaMotionStudio({
   onModelAccessRequest?: (model: ChatModelOption) => void;
   planCode?: string;
 }) {
+  const locale = useLocale();
   const t = useTranslations('studio.video');
   const executionT = useTranslations('studio.videoExecution');
   const modelsT = useTranslations('studio.models');
@@ -289,7 +291,7 @@ export default function PrunaMotionStudio({
           ? executionT('signIn')
           : code === 'VIDEO_GENERATION_UNAVAILABLE'
             ? executionT('unavailable')
-            : t('errors.generation'));
+            : mediaFailureText(cause, locale, t('errors.generation')));
     } finally {
       submitGuardRef.current = false;
       setIsSubmitting(false);

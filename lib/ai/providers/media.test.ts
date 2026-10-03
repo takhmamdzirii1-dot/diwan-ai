@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { ResolvedProviderRoute } from './routes';
-import { submitPrunaVideoRoute } from './media';
+import { getPrunaPredictionStatus, MediaProviderError, submitPrunaVideoRoute } from './media';
 
 const route: ResolvedProviderRoute = {
   id: 'route-pruna-video',
@@ -14,6 +14,42 @@ const route: ResolvedProviderRoute = {
   fallback: false,
   providerConfig: { provider_id: 'pruna_ai' },
 };
+
+test('status 429 honors Retry-After without an in-function retry; submit 429 never resubmits', { concurrency: false }, async context => {
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.PRUNA_API_KEY;
+  process.env.PRUNA_API_KEY = 'test-key';
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalKey == null) delete process.env.PRUNA_API_KEY;
+    else process.env.PRUNA_API_KEY = originalKey;
+  });
+  let calls = 0;
+  globalThis.fetch = async () => { calls++; return Response.json({}, { status: 429, headers: { 'Retry-After': '600' } }); };
+  await assert.rejects(getPrunaPredictionStatus('prediction'), cause => cause instanceof MediaProviderError
+    && cause.code === 'PROVIDER_RATE_LIMITED' && cause.retryAfterMs === 600_000);
+  assert.equal(calls, 1);
+  await assert.rejects(submitPrunaVideoRoute(route, { prompt: 'fixture', duration: 5, resolution: '480p', mode: 'speed', sourceMode: 'text', aspectRatio: '16:9' }),
+    cause => cause instanceof MediaProviderError && cause.code === 'PROVIDER_BUSY');
+  assert.equal(calls, 2);
+});
+
+test('provider cancel is terminal; succeeded without a URL remains a known provider success for recovery', { concurrency: false }, async context => {
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.PRUNA_API_KEY;
+  process.env.PRUNA_API_KEY = 'test-key';
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalKey == null) delete process.env.PRUNA_API_KEY;
+    else process.env.PRUNA_API_KEY = originalKey;
+  });
+  globalThis.fetch = async () => Response.json({ status: 'cancelled' });
+  await assert.rejects(getPrunaPredictionStatus('prediction'), cause => cause instanceof MediaProviderError && cause.code === 'PROVIDER_CANCELLED');
+  globalThis.fetch = async () => Response.json({ status: 'succeeded' });
+  const result = await getPrunaPredictionStatus('prediction');
+  assert.equal(result.state, 'completed');
+  assert.equal(result.mediaUrl, undefined);
+});
 
 test('Pruna I2V uploads the source and omits aspect_ratio from prediction input', {
   concurrency: false,

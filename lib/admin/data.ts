@@ -467,6 +467,7 @@ export async function getAdminProviders(): Promise<AdminDataResult<AdminProvider
           providerStatus: typeof metadata.provider_status === 'string' ? metadata.provider_status : null,
           providerCostRecorded: providerCosts.has(String(execution.reservation_id)),
           failedAttemptCount: String(execution.state) === 'failed' ? attemptsRecorded : 0,
+          creditsCharged: Number(execution.credits_charged ?? 0), createdAt: execution.created_at,
         });
         for (const flag of derived) flagCounts.set(flag, (flagCounts.get(flag) ?? 0) + 1);
       }
@@ -782,6 +783,7 @@ export async function getAdminJobs(filters: {
           providerStatus,
           providerCostRecorded: cost?.actual_cost_minor != null,
           failedAttemptCount,
+          creditsCharged: Number(row.credits_charged ?? 0), reservationState: reservation?.state, createdAt: row.created_at,
         }),
         creditsReserved: numericMetadata('credits_reserved') ?? (reservation?.amount == null ? null : numericString(reservation.amount)),
         creditsReleased: numericMetadata('credits_released'),

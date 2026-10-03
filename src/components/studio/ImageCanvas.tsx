@@ -4,7 +4,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ChevronDown, Download, FolderOpen, ImageIcon, LoaderCircle, Paperclip, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
+import { mediaFailureText } from './media-recovery-client';
 import { isModelSelectable, type StudioRuntimeModelDefinition } from '@/src/config/studio-registry';
 import { PrimaryButton, StateBlock } from './AppShell';
 import CreationWorkspace from './CreationWorkspace';
@@ -35,6 +36,7 @@ function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.R
 }
 
 export default function ImageCanvas({ models, onGenerate, onOpenLibrary, onModelAccessRequest }: { models: StudioRuntimeModelDefinition[]; onGenerate?: (draft: ImageRequestDraft) => Promise<ImageGenerationResult>; onOpenLibrary?: () => void; onModelAccessRequest?: (model: ChatModelOption) => void }) {
+  const locale = useLocale();
   const t = useTranslations('studio.image');
   const modelsT = useTranslations('studio.models');
   const libraryT = useTranslations('studio.library');
@@ -149,7 +151,7 @@ export default function ImageCanvas({ models, onGenerate, onOpenLibrary, onModel
           ? t('errors.signIn')
           : code === 'IMAGE_GENERATION_UNAVAILABLE'
             ? t('errors.unavailable')
-            : t('errors.generation'));
+            : mediaFailureText(cause, locale, t('errors.generation')));
     } finally {
       setIsSubmitting(false);
     }

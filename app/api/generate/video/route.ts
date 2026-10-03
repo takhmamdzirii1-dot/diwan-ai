@@ -10,7 +10,6 @@ import {
 import {
   MediaProviderError,
   submitPrunaVideoRoute,
-  waitForPrunaPrediction,
 } from '@/lib/ai/providers/media';
 import { resolveProviderRoutes } from '@/lib/ai/providers/routes';
 import { resolveRuntimeModelAccess } from '@/lib/models/plan-entitlements.server';
@@ -27,8 +26,8 @@ import {
   reserveGenerationCredits,
   resolveOperationKey,
 } from '@/lib/credits/generation-finance';
-import { providerFailureCategory, resolveTerminalCustomerCharge } from '@/lib/credits/generation-policy';
-import { persistGeneratedMedia } from '@/lib/ai/library-media';
+import { providerFailureCategory } from '@/lib/credits/generation-policy';
+import { prepareMediaRecovery, checkpointMedia, recoverOwnedMedia, reconcileOwnedMedia, finishPreparedMedia, confirmedMediaRelease, replayMediaOperation } from '@/lib/ai/media-recovery.server';
 import { requireMediaGenerationAccess } from '@/lib/access/trial-access';
 import { freeVideoDurationAllowed } from '@/lib/access/trial-state';
 import { recordFunnelEvent } from '@/lib/analytics/funnel-events';
@@ -41,6 +40,7 @@ const MAX_JSON_BYTES = 32_000;
 const MAX_MULTIPART_BYTES = PRUNA_SOURCE_IMAGE_MAX_BYTES * 2 + 64 * 1024;
 
 function safeResponseCode(code: string) {
+  if (code === 'PROVIDER_BUSY' || code === 'CONCURRENCY_LIMITED') return 'GENERATION_BUSY';
   if (/INSUFFICIENT_CREDITS/.test(code)) return 'INSUFFICIENT_CREDITS';
   if (/FREE_ACCESS_RESTRICTED|FREE_VIDEO_TRIAL_EXHAUSTED|FREE_MEDIA_EXPIRED|PAID_PLAN_REACTIVATION_REQUIRED|LITE_VIDEO_ALLOWANCE_EXHAUSTED|PAID_MEDIA_ACCESS_REQUIRED|MODEL_TRIAL_EXHAUSTED|MODEL_TRIAL_UNCONFIGURED/.test(code)) {
     return code;
@@ -174,6 +174,11 @@ export async function POST(request: Request) {
 
   let execution;
   try {
+    const replay = await replayMediaOperation(user.id, operationKey, payloadHash, runtimeModel.key, route.id);
+    if (replay) return NextResponse.json(replay);
+    const reconciled = await reconcileOwnedMedia(user.id, 'video');
+    // Do not concatenate slow recovery with a fresh I2V upload/submit.
+    if (reconciled.length) throw new Error('CONCURRENCY_LIMITED');
     execution = await beginGenerationExecution({
       userId: user.id, operationKey, payloadHash, model: runtimeModel, route,
     });
@@ -182,7 +187,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: safeResponseCode(code), reason: runtimeAccessReasonForError(code) }, { status: responseStatus(code) });
   }
   if (execution.idempotent) {
-    return NextResponse.json({ error: 'REQUEST_ALREADY_PROCESSED' }, { status: 409 });
+    const status = await recoverOwnedMedia(execution.executionId, user.id);
+    return NextResponse.json(status ?? { error: 'REQUEST_ALREADY_PROCESSED' }, { status: status ? 200 : 409 });
   }
 
   let reservation: Awaited<ReturnType<typeof reserveGenerationCredits>> = null;
@@ -228,11 +234,17 @@ export async function POST(request: Request) {
   }
 
   const startedAt = Date.now();
+  let recoveryToken: string | null = null;
   let providerStarted = false;
   let providerOperationId: string | null = null;
   let providerStatus: string | null = null;
   let providerAttemptCount = 0;
   try {
+    recoveryToken = await prepareMediaRecovery(execution.executionId, user.id, {
+      prompt: input.prompt, duration: input.duration, customerCharge: reservation?.customerCharge ?? 0,
+      providerCostMinor: prunaProviderCostMinor(input),
+      ...(resolvedAccess.access.state === 'trial' ? { trialPlan: resolvedAccess.currentPlan } : {}),
+    });
     await markGenerationStreaming(execution.executionId, user.id, reservation?.reservationId ?? null);
     const attempt = await beginGenerationProviderAttempt({
       executionId: execution.executionId, userId: user.id,
@@ -250,94 +262,32 @@ export async function POST(request: Request) {
       rawStatus: submitted.rawStatus,
       attemptId: attempt?.attemptId,
     });
-    const result = submitted.state === 'completed'
-      ? submitted
-      : await waitForPrunaPrediction(providerOperationId, {
-        maxAttempts: 12,
-        initialDelayMs: 1_000,
-        signal: request.signal,
-      });
-    providerStatus = result.rawStatus ?? result.state;
-    if (result.state !== 'completed' || !result.mediaUrl) {
-      throw new MediaProviderError('PROVIDER_RESULT_NOT_READY', true);
-    }
-
-    const libraryAsset = await persistGeneratedMedia({
-      executionId: execution.executionId,
-      userId: user.id,
-      modality: 'video',
-      modelId: runtimeModel.modelId,
-      prompt: input.prompt,
-      mimeType: result.mimeType ?? 'video/mp4',
-      mediaUrl: result.mediaUrl,
-      duration: input.duration,
+    await checkpointMedia(execution.executionId, user.id, recoveryToken!, {
+      provider_operation_id: providerOperationId, provider_status: providerStatus,
+      submitted_at: new Date().toISOString(), attempt_count: providerAttemptCount || 1,
+      provider: route.providerId, providerModel: route.providerModelId,
+      duration: input.duration, resolution: input.resolution, mode: input.mode, sourceMode: input.sourceMode,
+      ...(input.aspectRatio ? { aspectRatio: input.aspectRatio } : {}),
     });
-
-    const latencyMs = Date.now() - startedAt;
-    const providerCostMinor = prunaProviderCostMinor(input);
-    const customerCharge = resolveTerminalCustomerCharge({
-      state: 'completed',
-      configuredCharge: reservation?.customerCharge ?? runtimeModel.customerCreditPrice!,
-    });
-    const finalizeArgs = {
-      executionId: execution.executionId,
-      userId: user.id,
-      reservationId: reservation?.reservationId ?? null,
-      operationKey,
-      payloadHash,
-      terminalStatus: 'completed' as const,
-      customerCharge,
-      finishReason: 'video_generated',
-      actualUsage: {
-        provider: route.providerId,
-        providerModel: route.providerModelId,
-        sourceMode: input.sourceMode,
-        duration: input.duration,
-        resolution: input.resolution,
-        ...(input.aspectRatio ? { aspectRatio: input.aspectRatio } : {}),
-        mode: input.mode,
-        latencyMs,
-        delivery: result.delivery,
-        provider_status: providerStatus,
-        providerPricing: 'pruna-p-video-2-pro-published-2026-09-19',
-      },
-      providerCostMinor,
-      providerCostCurrency: providerCostMinor == null ? null : 'USD',
-      providerOperationId,
-      attemptCount: providerAttemptCount || 1,
-    };
-    let financialResult;
-    try {
-      financialResult = await finalizeGeneration(finalizeArgs);
-    } catch {
-      financialResult = await finalizeGeneration(finalizeArgs);
-    }
-    if (financialResult.state !== 'completed') throw new Error('EXECUTION_FINALIZATION_FAILED');
-    try {
-      await finalizeModelTrialAccess({ userId: user.id, operationKey, outcome: 'completed' });
-    } catch (cause) {
-      console.error('[video-generation] trial completion needs reconciliation', {
-        executionId: execution.executionId,
-        code: cause instanceof Error ? cause.message : 'MODEL_TRIAL_FINALIZATION_FAILED',
-      });
-    }
-    if (resolvedAccess.access.state === 'trial') {
-      await recordFunnelEvent({ userId: user.id, event: 'model_trial_used', key: operationKey, metadata: { model: runtimeModel.modelId, modality: 'video', plan: resolvedAccess.currentPlan } }).catch(() => undefined);
-    }
-    await recordProviderResult(route.providerId, true);
-    return NextResponse.json({
-      video: { src: libraryAsset.src, mimeType: libraryAsset.mimeType },
-      libraryAssetId: libraryAsset.id,
-      creditsCharged: Number(financialResult.credits_charged ?? customerCharge),
-    });
+    return NextResponse.json({ executionId: execution.executionId, state: 'processing', retryAfterMs: 5000 }, { status: 202 });
   } catch (cause) {
     const internalCode = cause instanceof MediaProviderError
       ? cause.code
       : cause instanceof Error ? cause.message : 'VIDEO_GENERATION_FAILED';
+    // Accepted provider work continues. A recording/transport error must not
+    // release its hold as if the prediction itself failed.
+    if (providerOperationId && recoveryToken) {
+      await checkpointMedia(execution.executionId, user.id, recoveryToken, {
+        provider_operation_id: providerOperationId, provider_status: providerStatus ?? 'accepted',
+        submitted_at: new Date().toISOString(), attempt_count: providerAttemptCount || 1,
+      }).catch(() => console.error('[video-generation] accepted operation recording pending', { executionId: execution.executionId }));
+      return NextResponse.json({ executionId: execution.executionId, state: 'processing', retryAfterMs: 5000 }, { status: 202 });
+    }
     const providerCancelled = internalCode === 'PROVIDER_CANCELLED';
     const failureOwner = cause instanceof MediaProviderError ? 'provider' as const : 'vantra' as const;
     try {
-      await finalizeGeneration({
+      if (recoveryToken) await finishPreparedMedia(execution.executionId, user.id, recoveryToken, providerCancelled ? 'provider_cancelled' : 'failed', 'failed', providerCancelled ? 'canceled' : 'failed', internalCode);
+      else await finalizeGeneration({
         executionId: execution.executionId,
         userId: user.id,
         reservationId: reservation?.reservationId ?? null,
@@ -365,9 +315,11 @@ export async function POST(request: Request) {
     if (failureOwner === 'provider') {
       await recordProviderResult(route.providerId, false, internalCode);
     }
-    await finalizeModelTrialAccess({ userId: user.id, operationKey, outcome: 'released' });
+    if (!recoveryToken && await confirmedMediaRelease(execution.executionId, user.id).catch(() => false)) {
+      await finalizeModelTrialAccess({ userId: user.id, operationKey, outcome: 'released' });
+    }
     return NextResponse.json(
-      { error: safeResponseCode(internalCode) },
+      { error: safeResponseCode(internalCode), executionId: execution.executionId, creditsReleased: await confirmedMediaRelease(execution.executionId, user.id).catch(() => false) },
       { status: responseStatus(internalCode) }
     );
   }

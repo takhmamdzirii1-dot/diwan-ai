@@ -53,6 +53,8 @@ import ChatGuidanceCard from './ChatGuidanceCard';
 import { decideWebSearchWithHistory } from '@/lib/web/selection';
 import { useChatRecovery } from './useChatRecovery';
 import type { DurableMessage } from '@/lib/chat/durable-history';
+import MediaRecoveryNotice from './MediaRecoveryNotice';
+import { waitForOwnedMedia, MediaExecutionError } from './media-recovery-client';
 
 const ArtifactSpreadsheetPreview = dynamic(() => import('./ArtifactSpreadsheetPreview'), { ssr: false });
 const FileAttachmentPreview = dynamic(() => import('./FileAttachmentPreview'), { ssr: false });
@@ -143,8 +145,11 @@ export default function StudioDashboard({
     applyModelPlanAccess(model, planStatus === 'ready' ? planCode : 'free')),
   [models, planCode, planStatus]);
   const chatModels = useMemo(() => entitledModels.filter((model) => model.modality === 'chat'), [entitledModels]);
-  const imageModels = useMemo(() => entitledModels.filter((model) => model.modality === 'image'), [entitledModels]);
-  const videoModels = useMemo(() => entitledModels.filter((model) => model.modality === 'video'), [entitledModels]);
+  const [mediaPriceQuotes, setMediaPriceQuotes] = useState<Record<string, number>>({});
+  const imageModels = useMemo(() => entitledModels.filter((model) => model.modality === 'image')
+    .map(model => mediaPriceQuotes[model.id] == null ? model : { ...model, verifiedCreditCost: mediaPriceQuotes[model.id] }), [entitledModels, mediaPriceQuotes]);
+  const videoModels = useMemo(() => entitledModels.filter((model) => model.modality === 'video')
+    .map(model => mediaPriceQuotes[model.id] == null ? model : { ...model, verifiedCreditCost: mediaPriceQuotes[model.id] }), [entitledModels, mediaPriceQuotes]);
   const defaultChatModel = chatModels.find(isModelSelectable) ?? null;
   const [selectedModelId, setSelectedModelId] = useState(defaultChatModel?.id ?? '');
   const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null);
@@ -1002,11 +1007,35 @@ export default function StudioDashboard({
     window.dispatchEvent(new CustomEvent('vantra-prefill-prompt', { detail: { prompt: text } }));
   }, []);
 
+  const refreshMediaQuote = useCallback(async (modality: 'image' | 'video', modelId: string) => {
+    const response = await fetch(`/api/generate/media/quote?modality=${modality}&modelId=${encodeURIComponent(modelId)}`, { cache: 'no-store' });
+    const estimate = await response.json() as { error?: string; catalogCredits: number; canGenerate: boolean; requiredPlan?: import('@/lib/models/plan-entitlements').ModelPlanCode | null };
+    await refreshBalance();
+    if (!response.ok) {
+      const code = estimate.error;
+      const model = { id: modelId, name: models.find(item => item.id === modelId)?.displayName ?? modelId, requiredPlan: estimate.requiredPlan };
+      if (code === 'FREE_ACCESS_RESTRICTED') showActivation('free_access_restricted', modality);
+      else if (code === 'FREE_MEDIA_EXPIRED') showActivation('free_media_expired', modality);
+      else if (code === 'FREE_IMAGE_TRIAL_EXHAUSTED') showActivation('image_allowance_exhausted', modality);
+      else if (code === 'FREE_VIDEO_TRIAL_EXHAUSTED') showActivation('video_allowance_exhausted', modality);
+      else if (code === 'LITE_VIDEO_ALLOWANCE_EXHAUSTED') showActivation('video_allowance_exhausted', modality);
+      else if (code === 'PAID_PLAN_REACTIVATION_REQUIRED') showActivation('paid_lapsed', modality);
+      else if (code === 'MODEL_PLAN_ACCESS_REQUIRED') showActivation('model_locked', modality, model);
+      else if (/^MODEL_TRIAL_/.test(code ?? '')) showActivation('model_trial_exhausted', modality, model);
+      else throw new Error(code ?? 'GENERATION_QUOTE_UNAVAILABLE');
+      throw new Error('ACCESS_PROMPTED');
+    }
+    setMediaPriceQuotes(current => ({ ...current, [modelId]: estimate.catalogCredits }));
+    if ((modality === 'image' ? imageModels : videoModels).find(model => model.id === modelId)?.verifiedCreditCost !== estimate.catalogCredits) throw new Error('GENERATION_PRICE_UPDATED');
+    if (!estimate.canGenerate) throw new Error('INSUFFICIENT_CREDITS');
+  }, [models, imageModels, videoModels, refreshBalance, showActivation]);
+
   const handleImageGenerate = useCallback(async (draft: ImageRequestDraft): Promise<ImageGenerationResult> => {
     if (!user) {
       openAuthModal('signin');
       throw new Error('AUTHENTICATION_REQUIRED');
     }
+    await refreshMediaQuote('image', draft.modelId);
     const response = await fetch('/api/generate/image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1021,10 +1050,19 @@ export default function StudioDashboard({
     const payload = await response.json().catch(() => null) as {
       error?: string;
       image?: { src?: string; mimeType?: string };
+      executionId?: string;
+      creditsReleased?: boolean;
       creditsCharged?: number;
       libraryAssetId?: string;
       requiredPlan?: import('@/lib/models/plan-entitlements').ModelPlanCode | null;
     } | null;
+    await refreshBalance();
+    if (response.ok && payload?.executionId && !payload.image) {
+      try {
+        const terminal = await waitForOwnedMedia(payload.executionId);
+        if (terminal.result) { payload.image = terminal.result; payload.libraryAssetId = terminal.result.libraryAssetId; payload.creditsCharged = terminal.creditsCharged; }
+      } finally { await refreshBalance(); }
+    }
     if (!response.ok || !payload?.image?.src || !payload.libraryAssetId) {
       const code = payload?.error;
       if (code === 'FREE_ACCESS_RESTRICTED') showActivation('free_access_restricted', 'image');
@@ -1034,6 +1072,7 @@ export default function StudioDashboard({
       else if (code === 'MODEL_TRIAL_EXHAUSTED' || code === 'MODEL_TRIAL_UNCONFIGURED') showActivation('model_trial_exhausted', 'image', { id: draft.modelId, name: imageModels.find((item) => item.id === draft.modelId)?.displayName ?? draft.modelId, requiredPlan: payload?.requiredPlan });
       else if (code === 'MODEL_PLAN_ACCESS_REQUIRED') showActivation('model_locked', 'image', { id: draft.modelId, name: imageModels.find((item) => item.id === draft.modelId)?.displayName ?? draft.modelId, requiredPlan: payload?.requiredPlan });
       if (/FREE_ACCESS_RESTRICTED|FREE_MEDIA_EXPIRED|FREE_IMAGE_TRIAL_EXHAUSTED|PAID_PLAN_REACTIVATION_REQUIRED|MODEL_TRIAL_|MODEL_PLAN_ACCESS_REQUIRED/.test(code ?? '')) throw new Error('ACCESS_PROMPTED');
+      if (payload?.creditsReleased && payload.executionId) throw new MediaExecutionError({ executionId: payload.executionId, modality: 'image', state: 'failed', creditsReleased: true, creditsCharged: 0, timeout: false, retryAfterMs: 5000 });
       throw new Error(payload?.error ?? 'IMAGE_GENERATION_FAILED');
     }
     await refreshBalance();
@@ -1043,13 +1082,14 @@ export default function StudioDashboard({
       creditsCharged: payload.creditsCharged ?? 0,
       libraryAssetId: payload.libraryAssetId,
     };
-  }, [imageModels, openAuthModal, refreshBalance, showActivation, user]);
+  }, [imageModels, openAuthModal, refreshBalance, refreshMediaQuote, showActivation, user]);
 
   const handleVideoGenerate = useCallback(async (draft: VideoRequestDraft): Promise<VideoGenerationResult> => {
     if (!user) {
       openAuthModal('signin');
       throw new Error('AUTHENTICATION_REQUIRED');
     }
+    await refreshMediaQuote('video', draft.modelId);
     const operationId = crypto.randomUUID();
     let body: BodyInit;
     let headers: HeadersInit | undefined;
@@ -1085,10 +1125,23 @@ export default function StudioDashboard({
     const payload = await response.json().catch(() => null) as {
       error?: string;
       video?: { src?: string; mimeType?: string };
+      executionId?: string;
+      creditsReleased?: boolean;
       creditsCharged?: number;
       libraryAssetId?: string;
       requiredPlan?: import('@/lib/models/plan-entitlements').ModelPlanCode | null;
     } | null;
+    await refreshBalance();
+    if (response.ok && payload?.executionId && !payload.video) {
+      try {
+        const terminal = await waitForOwnedMedia(payload.executionId);
+        if (terminal.result) {
+          payload.video = terminal.result;
+          payload.libraryAssetId = terminal.result.libraryAssetId;
+          payload.creditsCharged = terminal.creditsCharged;
+        }
+      } finally { await refreshBalance(); }
+    }
     if (!response.ok || !payload?.video?.src || !payload.libraryAssetId) {
       const code = payload?.error;
       if (code === 'FREE_ACCESS_RESTRICTED') showActivation('free_access_restricted', 'video');
@@ -1100,6 +1153,7 @@ export default function StudioDashboard({
       else if (code === 'MODEL_TRIAL_EXHAUSTED' || code === 'MODEL_TRIAL_UNCONFIGURED') showActivation('model_trial_exhausted', 'video', { id: draft.modelId, name: videoModels.find((item) => item.id === draft.modelId)?.displayName ?? draft.modelId, requiredPlan: payload?.requiredPlan });
       else if (code === 'MODEL_PLAN_ACCESS_REQUIRED') showActivation('model_locked', 'video', { id: draft.modelId, name: videoModels.find((item) => item.id === draft.modelId)?.displayName ?? draft.modelId, requiredPlan: payload?.requiredPlan });
       if (/FREE_ACCESS_RESTRICTED|FREE_MEDIA_EXPIRED|FREE_VIDEO_TRIAL_EXHAUSTED|FREE_VIDEO_DURATION_LIMIT|LITE_VIDEO_DURATION_LIMIT|PAID_PLAN_REACTIVATION_REQUIRED|MODEL_TRIAL_|MODEL_PLAN_ACCESS_REQUIRED/.test(code ?? '')) throw new Error('ACCESS_PROMPTED');
+      if (payload?.creditsReleased && payload.executionId && payload.error !== 'GENERATION_BUSY') throw new MediaExecutionError({ executionId: payload.executionId, modality: 'video', state: 'failed', creditsReleased: true, creditsCharged: 0, timeout: false, retryAfterMs: 5000 });
       throw new Error(payload?.error ?? 'VIDEO_GENERATION_FAILED');
     }
     await refreshBalance();
@@ -1109,7 +1163,7 @@ export default function StudioDashboard({
       creditsCharged: payload.creditsCharged ?? 0,
       libraryAssetId: payload.libraryAssetId,
     };
-  }, [openAuthModal, refreshBalance, showActivation, user, videoModels]);
+  }, [openAuthModal, refreshBalance, refreshMediaQuote, showActivation, user, videoModels]);
 
   const totalTokens = useMemo(
     () => Math.ceil(messages.reduce((acc, m) => acc + (m.content?.length || 0), 0) / 4),
@@ -1167,6 +1221,7 @@ export default function StudioDashboard({
         </button>
 
         {/* Center content */}
+        <MediaRecoveryNotice userId={user?.id} locale={locale} refreshBalance={refreshBalance} onOpenLibrary={() => onWorkspaceChange('library')} />
         <div className="flex-1 relative min-h-0 overflow-hidden">
           <>
             {/* ── Chat Studio ── */}

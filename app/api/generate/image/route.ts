@@ -22,6 +22,7 @@ import { requireMediaGenerationAccess } from '@/lib/access/trial-access';
 import { recordFunnelEvent } from '@/lib/analytics/funnel-events';
 import { finalizeModelTrialAccess, reserveModelTrialAccess } from '@/lib/models/model-trial.server';
 import { runtimeAccessReasonForError } from '@/lib/models/model-access';
+import { reconcileOwnedMedia, prepareMediaRecovery, observeMedia, finishPreparedMedia, checkpointMedia, confirmedMediaRelease } from '@/lib/ai/media-recovery.server';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -120,6 +121,7 @@ export async function POST(request: Request) {
 
   let execution;
   try {
+    await reconcileOwnedMedia(user.id, 'image');
     execution = await beginGenerationExecution({
       userId: user.id,
       operationKey,
@@ -182,9 +184,13 @@ export async function POST(request: Request) {
   }
 
   const startedAt = Date.now();
+  let recoveryToken: string | null = null;
+  let providerSucceeded = false;
+  let durableResultExists = false;
   let providerStarted = false;
   let providerAttemptCount = 0;
   try {
+    recoveryToken = await prepareMediaRecovery(execution.executionId, user.id, { prompt: input.prompt, customerCharge: reservation?.customerCharge ?? 0 });
     await markGenerationStreaming(
       execution.executionId,
       user.id,
@@ -204,6 +210,13 @@ export async function POST(request: Request) {
     if (result.state !== 'completed' || (!result.mediaBase64 && !result.mediaUrl)) {
       throw new MediaProviderError('PROVIDER_INVALID_RESPONSE', true);
     }
+    providerSucceeded = true;
+    await observeMedia(execution.executionId, user.id, recoveryToken, {
+      provider_status: 'succeeded', provider_operation_id: result.providerOperationId,
+      provider: route.providerId, providerModel: route.providerModelId, delivery: result.delivery,
+      width: input.width, height: input.height, aspectRatio: input.aspectRatio, outputCount: 1,
+      attempt_count: providerAttemptCount || 1,
+    });
 
     const libraryAsset = await persistGeneratedMedia({
       executionId: execution.executionId,
@@ -219,40 +232,19 @@ export async function POST(request: Request) {
     });
 
     const latencyMs = Date.now() - startedAt;
+    durableResultExists = true;
+    await observeMedia(execution.executionId, user.id, recoveryToken, { durable_media_saved: true, result_saved_at: new Date().toISOString(), latencyMs });
     const customerCharge = resolveTerminalCustomerCharge({
       state: 'completed',
       configuredCharge: reservation?.customerCharge ?? runtimeModel.customerCreditPrice!,
     });
-    const finalizeArgs = {
-      executionId: execution.executionId,
-      userId: user.id,
-      reservationId: reservation?.reservationId ?? null,
-      operationKey,
-      payloadHash,
-      terminalStatus: 'completed' as const,
-      customerCharge,
-      finishReason: 'image_generated',
-      actualUsage: {
-        provider: route.providerId,
-        providerModel: route.providerModelId,
-        width: input.width,
-        height: input.height,
-        aspectRatio: input.aspectRatio,
-        outputCount: 1,
-        latencyMs,
-        delivery: result.delivery,
-        provider_status: result.rawStatus ?? result.state,
-      },
-      providerOperationId: result.providerOperationId,
-      attemptCount: providerAttemptCount || 1,
-    };
     let financialResult;
     try {
-      financialResult = await finalizeGeneration(finalizeArgs);
+      financialResult = await finishPreparedMedia(execution.executionId, user.id, recoveryToken, 'completed', 'completed', 'succeeded');
     } catch {
       // The terminal RPC is idempotent. One same-payload retry resolves an
       // ambiguous transport failure without charging twice.
-      financialResult = await finalizeGeneration(finalizeArgs);
+      financialResult = await finishPreparedMedia(execution.executionId, user.id, recoveryToken, 'completed', 'completed', 'succeeded');
     }
     if (financialResult.state !== 'completed') throw new Error('EXECUTION_FINALIZATION_FAILED');
     try {
@@ -278,8 +270,13 @@ export async function POST(request: Request) {
       ? cause.code
       : cause instanceof Error ? cause.message : 'IMAGE_GENERATION_FAILED';
     const failureOwner = cause instanceof MediaProviderError ? 'provider' as const : 'vantra' as const;
+    if (durableResultExists && recoveryToken) {
+      await checkpointMedia(execution.executionId, user.id, recoveryToken, { provider_status: 'succeeded', durable_media_saved: true, recovery_stage: 'settlement_retry' }, 5).catch(() => undefined);
+      return NextResponse.json({ executionId: execution.executionId, state: 'processing', retryAfterMs: 5000 }, { status: 202 });
+    }
     try {
-      await finalizeGeneration({
+      if (recoveryToken) await finishPreparedMedia(execution.executionId, user.id, recoveryToken, 'failed', providerSucceeded ? 'our_loss' : 'failed', providerSucceeded ? 'succeeded' : 'failed', internalCode);
+      else await finalizeGeneration({
         executionId: execution.executionId,
         userId: user.id,
         reservationId: reservation?.reservationId ?? null,
@@ -304,9 +301,11 @@ export async function POST(request: Request) {
     if (failureOwner === 'provider') {
       await recordProviderResult(route.providerId, false, internalCode);
     }
-    await finalizeModelTrialAccess({ userId: user.id, operationKey, outcome: 'released' });
+    if (!recoveryToken && await confirmedMediaRelease(execution.executionId, user.id).catch(() => false)) {
+      await finalizeModelTrialAccess({ userId: user.id, operationKey, outcome: 'released' });
+    }
     return NextResponse.json(
-      { error: safeResponseCode(internalCode) },
+      { error: safeResponseCode(internalCode), executionId: execution.executionId, creditsReleased: await confirmedMediaRelease(execution.executionId, user.id).catch(() => false) },
       { status: responseStatus(internalCode) }
     );
   }

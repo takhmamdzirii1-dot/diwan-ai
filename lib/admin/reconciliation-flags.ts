@@ -3,6 +3,10 @@ export const RECONCILIATION_FLAGS = [
   'cost_without_success',
   'mismatched_terminal_state',
   'repeated_provider_failure',
+  'customer_charged_provider_failed',
+  'customer_released_provider_succeeded',
+  'stale',
+  'abandoned',
 ] as const;
 
 export type ReconciliationFlag = (typeof RECONCILIATION_FLAGS)[number];
@@ -20,6 +24,10 @@ export function reconciliationFlags(input: {
   providerStatus?: string | null;
   providerCostRecorded?: boolean;
   failedAttemptCount?: number;
+  creditsCharged?: number;
+  reservationState?: string | null;
+  createdAt?: string;
+  now?: number;
 }) {
   const flags = new Set<ReconciliationFlag>();
   if (Array.isArray(input.stored)) {
@@ -36,5 +44,9 @@ export function reconciliationFlags(input: {
     flags.add('mismatched_terminal_state');
   }
   if ((input.failedAttemptCount ?? 0) >= 2) flags.add('repeated_provider_failure');
+  if ((input.creditsCharged ?? 0) > 0 && failedProviderStates.has(providerStatus)) flags.add('customer_charged_provider_failed');
+  if (input.reservationState === 'released' && successfulProviderStates.has(providerStatus)) flags.add('customer_released_provider_succeeded');
+  if (['reserved', 'streaming'].includes(input.executionState) && input.createdAt
+    && (input.now ?? Date.now()) - Date.parse(input.createdAt) >= 30 * 60_000) flags.add('stale');
   return RECONCILIATION_FLAGS.filter((flag) => flags.has(flag));
 }

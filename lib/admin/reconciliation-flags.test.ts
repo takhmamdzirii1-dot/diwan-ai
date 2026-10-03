@@ -33,3 +33,10 @@ test('does not invent flags for a consistent successful execution', () => {
     failedAttemptCount: 0,
   }), []);
 });
+
+test('media mismatches and stale/abandoned executions are evidence-backed', () => {
+  assert.ok(reconciliationFlags({ executionState: 'completed', providerStatus: 'failed', creditsCharged: 20 }).includes('customer_charged_provider_failed'));
+  assert.ok(reconciliationFlags({ executionState: 'failed', providerStatus: 'succeeded', reservationState: 'released' }).includes('customer_released_provider_succeeded'));
+  assert.deepEqual(reconciliationFlags({ executionState: 'streaming', createdAt: '2026-10-03T10:00:00Z', now: Date.parse('2026-10-03T10:30:00Z') }), ['stale']);
+  assert.deepEqual(reconciliationFlags({ executionState: 'failed', stored: ['abandoned'] }), ['abandoned']);
+});

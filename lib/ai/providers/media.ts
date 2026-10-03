@@ -44,11 +44,13 @@ export class MediaProviderError extends Error {
   constructor(
     public readonly code: string,
     public readonly retryable: boolean,
-    options?: { cause?: unknown }
+    options?: { cause?: unknown; retryAfterMs?: number }
   ) {
     super(code, options);
     this.name = 'MediaProviderError';
+    this.retryAfterMs = options?.retryAfterMs;
   }
+  readonly retryAfterMs?: number;
 }
 
 function validateInput(route: ResolvedProviderRoute, input: MediaProviderInput) {
@@ -346,6 +348,7 @@ export async function submitPrunaVideoRoute(
   }
   const body = await response.json().catch(() => ({})) as PrunaPredictionBody;
   const providerCode = typeof body.error === 'object' ? body.error.code : undefined;
+  if (response.status === 429) throw new MediaProviderError('PROVIDER_BUSY', true);
   if (!response.ok) throw responseError(response.status, providerCode);
   if (!body.id) throw new MediaProviderError('PROVIDER_INVALID_RESPONSE', true);
   return {
@@ -380,19 +383,23 @@ export async function getPrunaPredictionStatus(
   }
   const body = await response.json().catch(() => ({})) as PrunaPredictionBody;
   const providerCode = typeof body.error === 'object' ? body.error.code : undefined;
+  if (response.status === 429) {
+    const header = response.headers.get('retry-after');
+    const seconds = header && /^\d+(?:\.\d+)?$/.test(header) ? Number(header) * 1000
+      : header ? Date.parse(header) - Date.now() : 15_000;
+    throw new MediaProviderError('PROVIDER_RATE_LIMITED', true,
+      { retryAfterMs: Math.max(5_000, Math.min(1_800_000, Number.isFinite(seconds) ? seconds : 15_000)) });
+  }
   if (!response.ok) throw responseError(response.status, providerCode);
   const status = body.status?.toLowerCase();
   if (!status) throw new MediaProviderError('PROVIDER_INVALID_RESPONSE', true);
-  if (status === 'failed' || status === 'canceled') {
+  if (status === 'failed' || status === 'canceled' || status === 'cancelled') {
     throw new MediaProviderError(
-      status === 'canceled' ? 'PROVIDER_CANCELLED' : 'PROVIDER_EXECUTION_FAILED',
+      status !== 'failed' ? 'PROVIDER_CANCELLED' : 'PROVIDER_EXECUTION_FAILED',
       false
     );
   }
   const mediaUrl = prunaMediaUrl(body);
-  if (status === 'succeeded' && !mediaUrl) {
-    throw new MediaProviderError('PROVIDER_INVALID_RESPONSE', true);
-  }
   return {
     state: status === 'succeeded' ? 'completed' : 'queued',
     providerOperationId,
