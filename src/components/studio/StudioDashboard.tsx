@@ -1533,14 +1533,14 @@ export default function StudioDashboard({
           {/* ── Image Canvas ── */}
           {activeWorkspace === 'image' && (
             <motion.div key="image" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }} className="absolute inset-0">
-              <ImageCanvas models={imageModels} recovery={mediaRecovery.image} onGenerate={handleImageGenerate} onOpenLibrary={() => onWorkspaceChange('library')} onModelAccessRequest={(model) => requestModelAccess('image', model)} />
+              <ImageCanvas accountId={user?.id} models={imageModels} recovery={mediaRecovery.image} onAddCredits={openTopUpModal} onGenerate={handleImageGenerate} onOpenLibrary={() => onWorkspaceChange('library')} onModelAccessRequest={(model) => requestModelAccess('image', model)} />
             </motion.div>
           )}
 
             {/* ── Motion Studio ── */}
             {activeWorkspace === 'video' && (
               <motion.div key="video" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }} className="absolute inset-0">
-                <PrunaMotionStudio models={videoModels} recovery={mediaRecovery.video} planCode={planCode} onGenerate={handleVideoGenerate} onOpenLibrary={() => onWorkspaceChange('library')} onModelAccessRequest={(model) => requestModelAccess('video', model)} />
+                <PrunaMotionStudio accountId={user?.id} models={videoModels} recovery={mediaRecovery.video} onAddCredits={openTopUpModal} planCode={planCode} onGenerate={handleVideoGenerate} onOpenLibrary={() => onWorkspaceChange('library')} onModelAccessRequest={(model) => requestModelAccess('video', model)} />
               </motion.div>
             )}
 

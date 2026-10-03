@@ -1,5 +1,9 @@
 'use client';
 
+import MediaGenerate from './MediaGenerate';
+import { generationAction, useGenerationQuote } from './media-generation-quote';
+import generateStyles from './MediaGenerate.module.css';
+
 import type { MediaStatus } from '@/lib/ai/media-recovery';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -94,6 +98,8 @@ function ImageUploadField({
 
 export default function PrunaMotionStudio({
   models,
+  accountId,
+  onAddCredits,
   recovery,
   onGenerate,
   onOpenLibrary,
@@ -101,6 +107,8 @@ export default function PrunaMotionStudio({
   planCode = 'free',
 }: {
   models: StudioRuntimeModelDefinition[];
+  accountId?: string;
+  onAddCredits?: () => void;
   recovery?: MediaStatus;
   onGenerate?: (draft: VideoRequestDraft) => Promise<VideoGenerationResult>;
   onOpenLibrary?: () => void;
@@ -208,6 +216,8 @@ export default function PrunaMotionStudio({
     && Boolean(prompt.trim())
     && (sourceMode !== 'image' || Boolean(sourceImage))
     && !isSubmitting;
+  const quote = useGenerationQuote('video', selectedModel?.id, JSON.stringify([duration, resolution, generationMode, aspectRatio, sourceMode]), accountId, isSubmitting);
+  const action = { prompt, modelId: selectedModel?.id, available: configurationValid && prompt.length <= (capabilities?.maxPromptChars ?? 2000), generating: isSubmitting, sourceMissing: sourceMode === 'image' && !sourceImage, quote };
 
   useEffect(() => () => {
     if (sourceImageUrl) URL.revokeObjectURL(sourceImageUrl);
@@ -279,6 +289,7 @@ export default function PrunaMotionStudio({
   }, [modelId, capabilities, sourceMode, planCode]);
 
   const buildDraft = () => {
+    if (!generationAction(action).canGenerate) return null;
     if (!prompt.trim()) {
       setError(t('errors.prompt'));
       return null;
@@ -344,7 +355,7 @@ export default function PrunaMotionStudio({
     previewLabel={t('previewLabel')}
     controls={<>
       <div className="studio-creation-header mb-6"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">{t('eyebrow')}</p><h1 className="mt-2 text-2xl font-semibold tracking-tight text-white">{t('title')}</h1><p className="mt-2 max-w-sm text-[13px] leading-relaxed text-[var(--studio-text-secondary)]">{t('description')}</p></div>
-      <form className="studio-creation-form space-y-5" onSubmit={submitDraft} noValidate>
+      <form className={`studio-creation-form space-y-5 ${generateStyles.form}`} onSubmit={submitDraft} onKeyDown={(event) => { if (event.key === 'Enter' && !generationAction(action).canGenerate) event.preventDefault(); }} noValidate>
         {supportedSourceModes.length > 1 && <Segmented
           value={sourceMode}
           onChange={(value) => {
@@ -377,7 +388,7 @@ export default function PrunaMotionStudio({
           {availableGenerationModes.length > 0 && <div className="space-y-2" role="group" aria-label={t('modeLabel')}><FieldLabel>{t('modeShort')}</FieldLabel>{options(availableGenerationModes, generationMode, (value) => setGenerationMode(value), (value) => executionT(value))}</div>}
         </div>
         {error && <p role="alert" className="text-[12px] text-red-300">{error}</p>}
-        <div className="studio-creation-action space-y-2"><PrimaryButton type="submit" disabled={!generationAvailable} className="w-full">{isSubmitting ? t('generating') : t('generate')}</PrimaryButton>{!configurationValid && <p className="text-center text-[11.5px] font-medium text-white/60">{t('unavailableNote')}</p>}</div>
+        <MediaGenerate {...action} label={t('generate')} onAddCredits={onAddCredits} />
       </form>
     </>}
     preview={<div className="flex min-h-[320px] w-full flex-col gap-3 lg:h-full lg:min-h-0">

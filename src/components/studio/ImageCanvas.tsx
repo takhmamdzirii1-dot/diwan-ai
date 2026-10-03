@@ -1,5 +1,9 @@
 'use client';
 
+import MediaGenerate from './MediaGenerate';
+import { generationAction, useGenerationQuote } from './media-generation-quote';
+import generateStyles from './MediaGenerate.module.css';
+
 import type { MediaStatus } from '@/lib/ai/media-recovery';
 import MediaPreviewDialog from './MediaPreviewDialog';
 import { Maximize } from 'lucide-react';
@@ -39,7 +43,7 @@ function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.R
   return <label htmlFor={htmlFor} className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/55">{children}</label>;
 }
 
-export default function ImageCanvas({ recovery, models, onGenerate, onOpenLibrary, onModelAccessRequest }: { recovery?: MediaStatus; models: StudioRuntimeModelDefinition[]; onGenerate?: (draft: ImageRequestDraft) => Promise<ImageGenerationResult>; onOpenLibrary?: () => void; onModelAccessRequest?: (model: ChatModelOption) => void }) {
+export default function ImageCanvas({ recovery, models, onGenerate, onOpenLibrary, onModelAccessRequest, onAddCredits, accountId }: { recovery?: MediaStatus; models: StudioRuntimeModelDefinition[]; onGenerate?: (draft: ImageRequestDraft) => Promise<ImageGenerationResult>; onOpenLibrary?: () => void; onModelAccessRequest?: (model: ChatModelOption) => void; onAddCredits?: () => void; accountId?: string }) {
   const locale = useLocale();
   const t = useTranslations('studio.image');
   const modelsT = useTranslations('studio.models');
@@ -108,6 +112,8 @@ export default function ImageCanvas({ recovery, models, onGenerate, onOpenLibrar
   const capabilities = selectedModel?.capabilities as ImageModelCapabilities | undefined;
   const hasAdvanced = Boolean(capabilities && (capabilities.maxOutputs > 1 || capabilities.negativePrompt));
   const generationAvailable = Boolean(onGenerate && selectedModel && isModelSelectable(selectedModel) && capabilities?.textToImage);
+  const quote = useGenerationQuote('image', selectedModel?.id, JSON.stringify([aspectRatio, outputCount]), accountId, isSubmitting);
+  const action = { prompt, modelId: selectedModel?.id, available: generationAvailable && prompt.length <= 2000, generating: isSubmitting, quote };
 
   useEffect(() => () => {
     if (referenceUrl) URL.revokeObjectURL(referenceUrl);
@@ -140,6 +146,7 @@ export default function ImageCanvas({ recovery, models, onGenerate, onOpenLibrar
   }, [modelId]);
 
   const buildDraft = () => {
+    if (!generationAction(action).canGenerate) return null;
     if (!prompt.trim()) {
       setError(t('errors.prompt'));
       return null;
@@ -209,7 +216,7 @@ export default function ImageCanvas({ recovery, models, onGenerate, onOpenLibrar
             <p className="mt-2 max-w-sm text-[13px] leading-relaxed text-[var(--studio-text-secondary)]">{t('description')}</p>
           </div>
 
-          <form className="studio-creation-form space-y-5" onSubmit={submitDraft} noValidate>
+          <form className={`studio-creation-form space-y-5 ${generateStyles.form}`} onSubmit={submitDraft} onKeyDown={(event) => { if (event.key === 'Enter' && !generationAction(action).canGenerate) event.preventDefault(); }} noValidate>
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-3"><FieldLabel htmlFor="image-prompt">{t('prompt')}</FieldLabel><span dir="ltr" aria-label={`${viewerT('characters')}: ${prompt.length} / 2000`} className={`text-[10px] tabular-nums ${prompt.length > 2000 ? 'text-red-300' : 'text-[var(--studio-text-muted)]'}`}>{prompt.length} / 2000</span></div>
               <textarea id="image-prompt" value={prompt} onChange={(event) => { setPrompt(event.target.value); setError(null); }} rows={5} placeholder={t('promptPlaceholder')} className="studio-creation-prompt w-full resize-y rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-raised)] px-3.5 py-3 text-[14px] leading-relaxed text-white outline-none transition-[border-color,background-color] duration-150 placeholder:text-white/40 hover:bg-[var(--studio-hover)] focus-visible:border-[var(--studio-border-strong)] focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none" />
@@ -243,7 +250,7 @@ export default function ImageCanvas({ recovery, models, onGenerate, onOpenLibrar
             </div>}
 
             {error && <p role="alert" className="text-[12px] text-red-300">{error}</p>}
-            <div className="studio-creation-action space-y-2"><PrimaryButton type="submit" disabled={!generationAvailable || isSubmitting} className="w-full">{isSubmitting ? t('generating') : t('generate')}</PrimaryButton>{!generationAvailable && <p className="text-center text-[11.5px] font-medium text-white/60">{t('unavailableNote')}</p>}</div>
+            <MediaGenerate {...action} label={t('generate')} onAddCredits={onAddCredits} />
           </form>
         </>}
       preview={<div className="flex min-h-[320px] w-full flex-col gap-3 lg:h-full lg:min-h-0">
