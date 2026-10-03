@@ -31,6 +31,7 @@ function safeResponseCode(code: string) {
   if (/INSUFFICIENT_CREDITS/.test(code)) return 'INSUFFICIENT_CREDITS';
   if (/FREE_ACCESS_RESTRICTED|FREE_IMAGE_TRIAL_EXHAUSTED|FREE_MEDIA_EXPIRED|PAID_PLAN_REACTIVATION_REQUIRED|PAID_MEDIA_ACCESS_REQUIRED|MODEL_TRIAL_EXHAUSTED|MODEL_TRIAL_UNCONFIGURED/.test(code)) return code;
   if (/MODEL_CUSTOMER_PRICE_UNCONFIGURED/.test(code)) return 'MODEL_CUSTOMER_PRICE_UNCONFIGURED';
+  if (/CONCURRENCY_LIMITED|PROVIDER_BUSY/.test(code)) return 'GENERATION_BUSY';
   if (/MODEL_|INVALID_|UNSUPPORTED_/.test(code)) return code;
   if (/NO_CONFIGURED_PROVIDER_ROUTE|PROVIDER_NOT_CONFIGURED/.test(code)) return 'IMAGE_GENERATION_UNAVAILABLE';
   return 'IMAGE_GENERATION_FAILED';
@@ -101,6 +102,7 @@ export async function POST(request: Request) {
     if (!route) throw new Error('NO_CONFIGURED_PROVIDER_ROUTE');
   } catch (cause) {
     const code = cause instanceof Error ? cause.message : 'NO_CONFIGURED_PROVIDER_ROUTE';
+    console.warn('[image] route unavailable', { modelId: runtimeModel.modelId, operationId: typeof body.operationId === 'string' && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(body.operationId) ? body.operationId : null, code });
     return NextResponse.json({ error: safeResponseCode(code), reason: runtimeAccessReasonForError(code) }, { status: responseStatus(code) });
   }
 
@@ -191,6 +193,7 @@ export async function POST(request: Request) {
   let providerAttemptCount = 0;
   try {
     recoveryToken = await prepareMediaRecovery(execution.executionId, user.id, { prompt: input.prompt, customerCharge: reservation?.customerCharge ?? 0 });
+    await observeMedia(execution.executionId, user.id, recoveryToken, { aspectRatio: input.aspectRatio });
     await markGenerationStreaming(
       execution.executionId,
       user.id,
@@ -262,6 +265,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       image: { src: libraryAsset.src, mimeType: libraryAsset.mimeType },
+      executionId: execution.executionId,
       libraryAssetId: libraryAsset.id,
       creditsCharged: Number(financialResult.credits_charged ?? customerCharge),
     });

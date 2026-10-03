@@ -54,6 +54,9 @@ import { decideWebSearchWithHistory } from '@/lib/web/selection';
 import { useChatRecovery } from './useChatRecovery';
 import type { DurableMessage } from '@/lib/chat/durable-history';
 import MediaRecoveryNotice from './MediaRecoveryNotice';
+import type { MediaStatus } from '@/lib/ai/media-recovery';
+import { rememberMediaOperation } from './media-operation-memory';
+import { submitMedia } from './media-submission';
 import { waitForOwnedMedia, MediaExecutionError } from './media-recovery-client';
 
 const ArtifactSpreadsheetPreview = dynamic(() => import('./ArtifactSpreadsheetPreview'), { ssr: false });
@@ -146,6 +149,14 @@ export default function StudioDashboard({
   [models, planCode, planStatus]);
   const chatModels = useMemo(() => entitledModels.filter((model) => model.modality === 'chat'), [entitledModels]);
   const [mediaPriceQuotes, setMediaPriceQuotes] = useState<Record<string, number>>({});
+  const [mediaRecovery, setMediaRecovery] = useState<Partial<Record<'image' | 'video', MediaStatus>>>({});
+  const mediaOwnerRef = useRef(user?.id);
+  mediaOwnerRef.current = user?.id;
+  const receiveMediaStatus = useCallback((status: MediaStatus) => {
+    if (mediaOwnerRef.current !== user?.id) return;
+    setMediaRecovery(current => ({ ...current, [status.modality]: status }));
+  }, [user?.id]);
+  useEffect(() => { setMediaRecovery({}); }, [user?.id]);
   const imageModels = useMemo(() => entitledModels.filter((model) => model.modality === 'image')
     .map(model => mediaPriceQuotes[model.id] == null ? model : { ...model, verifiedCreditCost: mediaPriceQuotes[model.id] }), [entitledModels, mediaPriceQuotes]);
   const videoModels = useMemo(() => entitledModels.filter((model) => model.modality === 'video')
@@ -1036,7 +1047,10 @@ export default function StudioDashboard({
       throw new Error('AUTHENTICATION_REQUIRED');
     }
     await refreshMediaQuote('image', draft.modelId);
-    const response = await fetch('/api/generate/image', {
+    const operationId = crypto.randomUUID();
+    rememberMediaOperation(user.id, 'image', operationId);
+    receiveMediaStatus({ executionId: operationId, modality: 'image', state: 'queued', creditsCharged: 0, creditsReleased: false, timeout: false, retryAfterMs: 5000, context: draft });
+    const response = await submitMedia('/api/generate/image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1044,9 +1058,9 @@ export default function StudioDashboard({
         modelId: draft.modelId,
         aspectRatio: draft.aspectRatio,
         outputCount: draft.outputCount ?? 1,
-        operationId: crypto.randomUUID(),
+        operationId,
       }),
-    });
+    }, { executionId: operationId, modality: 'image', state: 'queued', creditsCharged: 0, creditsReleased: false, timeout: false, retryAfterMs: 5000, context: draft }, receiveMediaStatus);
     const payload = await response.json().catch(() => null) as {
       error?: string;
       image?: { src?: string; mimeType?: string };
@@ -1057,9 +1071,10 @@ export default function StudioDashboard({
       requiredPlan?: import('@/lib/models/plan-entitlements').ModelPlanCode | null;
     } | null;
     await refreshBalance();
+    if (!response.ok) receiveMediaStatus({ executionId: payload?.executionId ?? operationId, modality: 'image', state: 'failed', creditsCharged: 0, creditsReleased: payload?.creditsReleased === true, timeout: false, retryAfterMs: 5000, context: draft });
     if (response.ok && payload?.executionId && !payload.image) {
       try {
-        const terminal = await waitForOwnedMedia(payload.executionId);
+        const terminal = await waitForOwnedMedia(payload.executionId, undefined, receiveMediaStatus);
         if (terminal.result) { payload.image = terminal.result; payload.libraryAssetId = terminal.result.libraryAssetId; payload.creditsCharged = terminal.creditsCharged; }
       } finally { await refreshBalance(); }
     }
@@ -1076,13 +1091,14 @@ export default function StudioDashboard({
       throw new Error(payload?.error ?? 'IMAGE_GENERATION_FAILED');
     }
     await refreshBalance();
+    receiveMediaStatus({ executionId: payload.executionId ?? operationId, modality: 'image', state: 'completed', result: { src: payload.image.src, mimeType: payload.image.mimeType ?? 'image/png', libraryAssetId: payload.libraryAssetId }, creditsCharged: payload.creditsCharged ?? 0, creditsReleased: false, timeout: false, retryAfterMs: 5000, context: draft });
     return {
       src: payload.image.src,
       mimeType: payload.image.mimeType ?? 'image/png',
       creditsCharged: payload.creditsCharged ?? 0,
       libraryAssetId: payload.libraryAssetId,
     };
-  }, [imageModels, openAuthModal, refreshBalance, refreshMediaQuote, showActivation, user]);
+  }, [imageModels, openAuthModal, refreshBalance, refreshMediaQuote, showActivation, user, receiveMediaStatus]);
 
   const handleVideoGenerate = useCallback(async (draft: VideoRequestDraft): Promise<VideoGenerationResult> => {
     if (!user) {
@@ -1091,6 +1107,8 @@ export default function StudioDashboard({
     }
     await refreshMediaQuote('video', draft.modelId);
     const operationId = crypto.randomUUID();
+    rememberMediaOperation(user.id, 'video', operationId);
+    receiveMediaStatus({ executionId: operationId, modality: 'video', state: 'queued', creditsCharged: 0, creditsReleased: false, timeout: false, retryAfterMs: 5000, context: draft });
     let body: BodyInit;
     let headers: HeadersInit | undefined;
     if (draft.sourceMode === 'image' && draft.sourceImage) {
@@ -1117,11 +1135,11 @@ export default function StudioDashboard({
         operationId,
       });
     }
-    const response = await fetch('/api/generate/video', {
+    const response = await submitMedia('/api/generate/video', {
       method: 'POST',
       headers,
       body,
-    });
+    }, { executionId: operationId, modality: 'video', state: 'queued', creditsCharged: 0, creditsReleased: false, timeout: false, retryAfterMs: 5000, context: draft }, receiveMediaStatus);
     const payload = await response.json().catch(() => null) as {
       error?: string;
       video?: { src?: string; mimeType?: string };
@@ -1132,9 +1150,10 @@ export default function StudioDashboard({
       requiredPlan?: import('@/lib/models/plan-entitlements').ModelPlanCode | null;
     } | null;
     await refreshBalance();
+    if (!response.ok) receiveMediaStatus({ executionId: payload?.executionId ?? operationId, modality: 'video', state: 'failed', creditsCharged: 0, creditsReleased: payload?.creditsReleased === true, timeout: false, retryAfterMs: 5000, context: draft });
     if (response.ok && payload?.executionId && !payload.video) {
       try {
-        const terminal = await waitForOwnedMedia(payload.executionId);
+        const terminal = await waitForOwnedMedia(payload.executionId, undefined, receiveMediaStatus);
         if (terminal.result) {
           payload.video = terminal.result;
           payload.libraryAssetId = terminal.result.libraryAssetId;
@@ -1157,13 +1176,14 @@ export default function StudioDashboard({
       throw new Error(payload?.error ?? 'VIDEO_GENERATION_FAILED');
     }
     await refreshBalance();
+    receiveMediaStatus({ executionId: payload.executionId ?? operationId, modality: 'video', state: 'completed', result: { src: payload.video.src, mimeType: payload.video.mimeType ?? 'video/mp4', libraryAssetId: payload.libraryAssetId }, creditsCharged: payload.creditsCharged ?? 0, creditsReleased: false, timeout: false, retryAfterMs: 5000, context: draft });
     return {
       src: payload.video.src,
       mimeType: payload.video.mimeType ?? 'video/mp4',
       creditsCharged: payload.creditsCharged ?? 0,
       libraryAssetId: payload.libraryAssetId,
     };
-  }, [openAuthModal, refreshBalance, refreshMediaQuote, showActivation, user, videoModels]);
+  }, [openAuthModal, refreshBalance, refreshMediaQuote, showActivation, user, videoModels, receiveMediaStatus]);
 
   const totalTokens = useMemo(
     () => Math.ceil(messages.reduce((acc, m) => acc + (m.content?.length || 0), 0) / 4),
@@ -1221,7 +1241,7 @@ export default function StudioDashboard({
         </button>
 
         {/* Center content */}
-        <MediaRecoveryNotice userId={user?.id} locale={locale} refreshBalance={refreshBalance} onOpenLibrary={() => onWorkspaceChange('library')} />
+        <MediaRecoveryNotice userId={user?.id} locale={locale} refreshBalance={refreshBalance} onOpenLibrary={() => onWorkspaceChange('library')} onStatus={receiveMediaStatus} />
         <div className="flex-1 relative min-h-0 overflow-hidden">
           <>
             {/* ── Chat Studio ── */}
@@ -1513,14 +1533,14 @@ export default function StudioDashboard({
           {/* ── Image Canvas ── */}
           {activeWorkspace === 'image' && (
             <motion.div key="image" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }} className="absolute inset-0">
-              <ImageCanvas models={imageModels} onGenerate={handleImageGenerate} onOpenLibrary={() => onWorkspaceChange('library')} onModelAccessRequest={(model) => requestModelAccess('image', model)} />
+              <ImageCanvas models={imageModels} recovery={mediaRecovery.image} onGenerate={handleImageGenerate} onOpenLibrary={() => onWorkspaceChange('library')} onModelAccessRequest={(model) => requestModelAccess('image', model)} />
             </motion.div>
           )}
 
             {/* ── Motion Studio ── */}
             {activeWorkspace === 'video' && (
               <motion.div key="video" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.23, 1, 0.32, 1] }} className="absolute inset-0">
-                <PrunaMotionStudio models={videoModels} planCode={planCode} onGenerate={handleVideoGenerate} onOpenLibrary={() => onWorkspaceChange('library')} onModelAccessRequest={(model) => requestModelAccess('video', model)} />
+                <PrunaMotionStudio models={videoModels} recovery={mediaRecovery.video} planCode={planCode} onGenerate={handleVideoGenerate} onOpenLibrary={() => onWorkspaceChange('library')} onModelAccessRequest={(model) => requestModelAccess('video', model)} />
               </motion.div>
             )}
 

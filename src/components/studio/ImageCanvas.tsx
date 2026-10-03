@@ -1,11 +1,15 @@
 'use client';
 
+import type { MediaStatus } from '@/lib/ai/media-recovery';
+import MediaPreviewDialog from './MediaPreviewDialog';
+import { Maximize } from 'lucide-react';
+
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ChevronDown, Download, FolderOpen, ImageIcon, LoaderCircle, Paperclip, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslations, useLocale } from 'next-intl';
-import { mediaFailureText } from './media-recovery-client';
+import { mediaFailureText, MediaExecutionError } from './media-recovery-client';
 import { isModelSelectable, type StudioRuntimeModelDefinition } from '@/src/config/studio-registry';
 import { PrimaryButton, StateBlock } from './AppShell';
 import CreationWorkspace from './CreationWorkspace';
@@ -35,7 +39,7 @@ function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.R
   return <label htmlFor={htmlFor} className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/55">{children}</label>;
 }
 
-export default function ImageCanvas({ models, onGenerate, onOpenLibrary, onModelAccessRequest }: { models: StudioRuntimeModelDefinition[]; onGenerate?: (draft: ImageRequestDraft) => Promise<ImageGenerationResult>; onOpenLibrary?: () => void; onModelAccessRequest?: (model: ChatModelOption) => void }) {
+export default function ImageCanvas({ recovery, models, onGenerate, onOpenLibrary, onModelAccessRequest }: { recovery?: MediaStatus; models: StudioRuntimeModelDefinition[]; onGenerate?: (draft: ImageRequestDraft) => Promise<ImageGenerationResult>; onOpenLibrary?: () => void; onModelAccessRequest?: (model: ChatModelOption) => void }) {
   const locale = useLocale();
   const t = useTranslations('studio.image');
   const modelsT = useTranslations('studio.models');
@@ -43,6 +47,7 @@ export default function ImageCanvas({ models, onGenerate, onOpenLibrary, onModel
   const viewerT = useTranslations('studio.mediaViewer');
   const reduceMotion = useReducedMotion();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const submittingRef = useRef(false);
   const [prompt, setPrompt] = useState('');
   const [modelId, setModelId] = useState(models.find(isModelSelectable)?.id ?? models[0]?.id ?? '');
   const [aspectRatio, setAspectRatio] = useState<ModelAspectRatio | ''>('');
@@ -52,8 +57,24 @@ export default function ImageCanvas({ models, onGenerate, onOpenLibrary, onModel
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [referenceUrl, setReferenceUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [locallySubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<ImageGenerationResult | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const recovering = recovery?.state === 'queued' || recovery?.state === 'processing';
+  const isSubmitting = locallySubmitting || recovering;
+  useEffect(() => {
+    if (!recovery) return;
+    if (recovery.context) {
+      setPrompt(recovery.context.prompt); setModelId(recovery.context.modelId);
+      const caps = models.find(model => model.id === recovery.context!.modelId)?.capabilities as ImageModelCapabilities | undefined;
+      if (caps?.aspectRatios.includes(recovery.context.aspectRatio as ModelAspectRatio)) setAspectRatio(recovery.context.aspectRatio as ModelAspectRatio);
+    }
+    if (recovery.state === 'completed' && recovery.result) {
+      setResult({ ...recovery.result, creditsCharged: recovery.creditsCharged }); setError(null);
+    } else if (recovery.state === 'failed') {
+      setResult(null); setError(mediaFailureText(new MediaExecutionError(recovery), locale, t('errors.generation')));
+    } else { setResult(null); setError(null); }
+  }, [recovery]);
   const [sessionResults, setSessionResults] = useState<(ImageGenerationResult & SessionResult)[]>([]);
   const libraryResults = useRecentLibraryResults('image');
   // Session results stay first and instant; recent Library assets backfill
@@ -81,6 +102,9 @@ export default function ImageCanvas({ models, onGenerate, onOpenLibrary, onModel
     trialAllowance: model.trialAllowance,
   }));
   const selectedModel = models.find((model) => model.id === modelId);
+  useEffect(() => {
+    if (!models.some(model => model.id === modelId && isModelSelectable(model))) setModelId(models.find(isModelSelectable)?.id ?? '');
+  }, [models, modelId]);
   const capabilities = selectedModel?.capabilities as ImageModelCapabilities | undefined;
   const hasAdvanced = Boolean(capabilities && (capabilities.maxOutputs > 1 || capabilities.negativePrompt));
   const generationAvailable = Boolean(onGenerate && selectedModel && isModelSelectable(selectedModel) && capabilities?.textToImage);
@@ -136,7 +160,8 @@ export default function ImageCanvas({ models, onGenerate, onOpenLibrary, onModel
 
   const generate = async (draft: ImageRequestDraft) => {
     setError(null);
-    if (!onGenerate) return;
+    if (!onGenerate || submittingRef.current || recovering) return;
+    submittingRef.current = true;
     setIsSubmitting(true);
     try {
       const completed = await onGenerate(draft);
@@ -154,6 +179,7 @@ export default function ImageCanvas({ models, onGenerate, onOpenLibrary, onModel
             : mediaFailureText(cause, locale, t('errors.generation')));
     } finally {
       setIsSubmitting(false);
+      submittingRef.current = false;
     }
   };
 
@@ -231,6 +257,8 @@ export default function ImageCanvas({ models, onGenerate, onOpenLibrary, onModel
                 : <StateBlock icon={<ImageIcon className="h-6 w-6" />} title={t('emptyTitle')} description={t('emptyDescription')} />}
         </div>
         {result && !isSubmitting && <div className="flex flex-wrap items-center justify-end gap-2">
+          <button type="button" onClick={() => setPreviewOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--studio-border)] px-3 text-xs text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]"><Maximize className="h-4 w-4" />{viewerT('fullscreen')}</button>
+          {previewOpen && <MediaPreviewDialog src={result.src} kind="image" label={t('resultAlt')} closeLabel={libraryT('closePreview')} onClose={() => setPreviewOpen(false)} />}
           {result.libraryAssetId && onOpenLibrary && <button type="button" onClick={onOpenLibrary} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)]"><FolderOpen className="h-4 w-4" />{libraryT('openInLibrary')}</button>}
           <button type="button" onClick={downloadResult} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)]"><Download className="h-4 w-4" />{t('download')}</button>
           <button type="button" onClick={regenerate} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--studio-border)] px-3 text-[12px] font-medium text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)]"><RotateCcw className="h-4 w-4" />{t('regenerate')}</button>

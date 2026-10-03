@@ -1,9 +1,11 @@
 'use client';
 
+import type { MediaStatus } from '@/lib/ai/media-recovery';
+
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Clapperboard, Download, FolderOpen, ImagePlus, LoaderCircle, RotateCcw, X } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
-import { mediaFailureText } from './media-recovery-client';
+import { mediaFailureText, MediaExecutionError } from './media-recovery-client';
 import { cn } from '@/lib/utils';
 import {
   PRUNA_SOURCE_IMAGE_MAX_BYTES,
@@ -92,12 +94,14 @@ function ImageUploadField({
 
 export default function PrunaMotionStudio({
   models,
+  recovery,
   onGenerate,
   onOpenLibrary,
   onModelAccessRequest,
   planCode = 'free',
 }: {
   models: StudioRuntimeModelDefinition[];
+  recovery?: MediaStatus;
   onGenerate?: (draft: VideoRequestDraft) => Promise<VideoGenerationResult>;
   onOpenLibrary?: () => void;
   onModelAccessRequest?: (model: ChatModelOption) => void;
@@ -128,8 +132,28 @@ export default function PrunaMotionStudio({
   const [endImage, setEndImage] = useState<File | null>(null);
   const [endImageUrl, setEndImageUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [locallySubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<VideoGenerationResult | null>(null);
+  const recovering = recovery?.state === 'queued' || recovery?.state === 'processing';
+  const isSubmitting = locallySubmitting || recovering;
+  useEffect(() => {
+    if (!recovery) return;
+    if (recovery.context) {
+      const context = recovery.context;
+      setPrompt(context.prompt); setModelId(context.modelId);
+      const caps = models.find(model => model.id === context.modelId)?.capabilities as VideoModelCapabilities | undefined;
+      if (caps?.durations.includes(context.duration as ModelVideoDuration)) setDuration(context.duration as ModelVideoDuration);
+      if (caps?.aspectRatios.includes(context.aspectRatio as ModelAspectRatio)) setAspectRatio(context.aspectRatio as ModelAspectRatio);
+      if (context.sourceMode === 'image' || context.sourceMode === 'text') setSourceMode(context.sourceMode);
+      if (context.resolution === '480p' || context.resolution === '768p') setResolution(context.resolution);
+      if (context.mode === 'speed' || context.mode === 'quality') setGenerationMode(context.mode);
+    }
+    if (recovery.state === 'completed' && recovery.result) {
+      setResult({ ...recovery.result, creditsCharged: recovery.creditsCharged }); setError(null);
+    } else if (recovery.state === 'failed') {
+      setResult(null); setError(mediaFailureText(new MediaExecutionError(recovery), locale, executionT('errorTitle')));
+    } else { setResult(null); setError(null); }
+  }, [recovery]);
   const [sessionResults, setSessionResults] = useState<(VideoGenerationResult & SessionResult)[]>([]);
   const libraryResults = useRecentLibraryResults('video');
   // Session results stay first and instant; recent Library assets backfill
@@ -157,6 +181,9 @@ export default function PrunaMotionStudio({
     trialAllowance: model.trialAllowance,
   }));
   const selectedModel = models.find((model) => model.id === modelId);
+  useEffect(() => {
+    if (!models.some(model => model.id === modelId && isModelSelectable(model))) setModelId(models.find(isModelSelectable)?.id ?? '');
+  }, [models, modelId]);
   const capabilities = selectedModel?.capabilities as VideoModelCapabilities | undefined;
   const visibility = selectedModel?.surfaceVisibility;
   const supportedSourceModes: PrunaVideoSourceMode[] = videoSourceModes(capabilities, visibility);
@@ -274,7 +301,7 @@ export default function PrunaMotionStudio({
   };
 
   const generate = async (draft: VideoRequestDraft) => {
-    if (!onGenerate || submitGuardRef.current) return;
+    if (!onGenerate || submitGuardRef.current || recovering) return;
     submitGuardRef.current = true;
     setError(null);
     setIsSubmitting(true);

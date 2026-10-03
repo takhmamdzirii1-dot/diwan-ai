@@ -145,6 +145,15 @@ export async function reconcileOwnedMedia(userId: string, modality?: 'image' | '
   return Promise.all((rows.data ?? []).map(row => recoverOwnedMedia(row.id, userId)));
 }
 
+/** Reattach by the customer's existing operation key, including terminal results.
+ * No dispatch, reservation, or client-submitted context is accepted here. */
+export async function recoverOwnedMediaOperation(userId: string, operationKey: string) {
+  const value = await client().from('ai_executions').select('id').eq('user_id', userId)
+    .eq('operation_key', operationKey).in('modality', ['image', 'video']).maybeSingle();
+  if (value.error) throw new Error('MEDIA_STATUS_UNAVAILABLE');
+  return value.data ? recoverOwnedMedia(value.data.id, userId) : null;
+}
+
 /** Scheduler processes a bounded oldest batch; it never creates generations. */
 export async function reconcileMediaBatch() {
   const rows = await client().from('ai_executions').select('id,user_id')

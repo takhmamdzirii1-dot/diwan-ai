@@ -14,12 +14,19 @@ export type MediaStatus = {
   executionId: string; modality: 'image' | 'video'; state: 'queued' | 'processing' | 'completed' | 'failed';
   result?: { src: string; mimeType: string; libraryAssetId: string };
   creditsCharged: number; creditsReleased: boolean; timeout: boolean; error?: string; retryAfterMs: number;
+  context?: { prompt: string; modelId: string; aspectRatio?: string; duration?: number; resolution?: string; mode?: string; sourceMode?: string };
 };
 
 export function mediaStatus(row: RecoveryExecution): MediaStatus {
   const terminal = !['reserved', 'streaming'].includes(row.state);
   return {
     executionId: row.id, modality: row.modality,
+    ...(row.media_context ? { context: {
+      prompt: row.media_context.prompt, modelId: row.model_id,
+      duration: row.media_context.duration,
+      ...Object.fromEntries(['aspectRatio', 'resolution', 'mode', 'sourceMode'].flatMap(key =>
+        typeof row.execution_metadata[key] === 'string' ? [[key, row.execution_metadata[key]]] : [])),
+    } } : {}),
     state: row.state === 'completed' ? 'completed' : terminal ? 'failed'
       : row.execution_metadata.provider_operation_id ? 'processing' : 'queued',
     creditsCharged: Number(row.credits_charged ?? 0),

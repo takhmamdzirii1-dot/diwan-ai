@@ -1,4 +1,5 @@
 import 'server-only';
+import { legacyJobPage, canonicalJobPage, jobCursor } from './job-identity';
 
 import { notFound } from 'next/navigation';
 import type { User } from '@supabase/supabase-js';
@@ -685,12 +686,14 @@ export async function getAdminJobs(filters: {
     const seen = filters.cursor && /^\d{1,6}$/.test(filters.seen ?? '') ? Number(filters.seen) : 0;
     const matchingUsers = q ? auth.users.filter((user) => user.email?.toLowerCase().includes(q.toLowerCase()) || user.id === q).slice(0, 30).map((user) => user.id) : [];
     const matchingModels = rawQuery ? effectiveModels.filter((model) => model.displayName.toLowerCase().includes(rawQuery.toLowerCase())).slice(0, 30).map((model) => model.modelId) : [];
-    const cursor = filters.cursor && !Number.isNaN(Date.parse(filters.cursor)) ? filters.cursor : null;
+    const cursor = jobCursor(filters.cursor);
     const rangeStart = filters.range === 'all' ? null : new Date(Date.now() - (filters.range === '30d' ? 30 : 7) * 86_400_000).toISOString();
     let executionsQuery = client.from('ai_executions')
       .select('id,user_id,operation_key,modality,model_id,provider_id,provider_model_id,reservation_id,state,credits_charged,error_code,execution_metadata,created_at,updated_at,completed_at', { count: 'exact' })
-      .order('created_at', { ascending: false }).limit(51);
-    if (cursor) executionsQuery = executionsQuery.lt('created_at', cursor);
+      .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(51);
+    if (cursor && (!q || !cursor.id)) executionsQuery = cursor.id
+      ? executionsQuery.or(`created_at.lt.${cursor.at},and(created_at.eq.${cursor.at},id.lt.${cursor.id})`)
+      : executionsQuery.lt('created_at', cursor.at);
     if (rangeStart) executionsQuery = executionsQuery.gte('created_at', rangeStart);
     if (filters.status && filters.status !== 'all') executionsQuery = executionsQuery.eq('state', filters.status);
     if (filters.modality && filters.modality !== 'all') executionsQuery = executionsQuery.eq('modality', filters.modality);
@@ -701,12 +704,17 @@ export async function getAdminJobs(filters: {
       if (/^[0-9a-f-]{36}$/i.test(q)) clauses.push(`id.eq.${q}`);
       if (matchingUsers.length) clauses.push(`user_id.in.(${matchingUsers.join(',')})`);
       if (matchingModels.length) clauses.push(`model_id.in.(${matchingModels.join(',')})`);
-      executionsQuery = executionsQuery.or(clauses.join(','));
+      executionsQuery = executionsQuery.or(cursor?.id
+        ? `and(or(created_at.lt.${cursor.at},and(created_at.eq.${cursor.at},id.lt.${cursor.id})),or(${clauses.join(',')}))`
+        : clauses.join(','));
     }
+    const generationQuery = () => {
     let generationsQuery = client.from('generations')
       .select('id,user_id,type,prompt,model_id,status,metadata,error_message,created_at,updated_at', { count: 'exact' })
-      .order('created_at', { ascending: false }).limit(51);
-    if (cursor) generationsQuery = generationsQuery.lt('created_at', cursor);
+      .order('created_at', { ascending: false }).order('id', { ascending: false });
+    if (cursor && (!q || !cursor.id)) generationsQuery = cursor.id
+      ? generationsQuery.or(`created_at.lt.${cursor.at},and(created_at.eq.${cursor.at},id.lt.${cursor.id})`)
+      : generationsQuery.lt('created_at', cursor.at);
     if (rangeStart) generationsQuery = generationsQuery.gte('created_at', rangeStart);
     if (filters.status && filters.status !== 'all') generationsQuery = generationsQuery.eq('status', filters.status);
     if (filters.modality && filters.modality !== 'all') generationsQuery = generationsQuery.eq('type', filters.modality);
@@ -717,9 +725,22 @@ export async function getAdminJobs(filters: {
       if (/^[0-9a-f-]{36}$/i.test(q)) clauses.push(`id.eq.${q}`);
       if (matchingUsers.length) clauses.push(`user_id.in.(${matchingUsers.join(',')})`);
       if (matchingModels.length) clauses.push(`model_id.in.(${matchingModels.join(',')})`);
-      generationsQuery = generationsQuery.or(clauses.join(','));
+      generationsQuery = generationsQuery.or(cursor?.id
+        ? `and(or(created_at.lt.${cursor.at},and(created_at.eq.${cursor.at},id.lt.${cursor.id})),or(${clauses.join(',')}))`
+        : clauses.join(','));
     }
-    const [executions, generations] = await Promise.all([executionsQuery, generationsQuery]);
+    return generationsQuery;
+    };
+    const [executions, legacy] = await Promise.all([executionsQuery, legacyJobPage(async (offset, size) => {
+      const value = await generationQuery().select('id').range(offset, offset + size - 1);
+      if (value.error) throw value.error;
+      return (value.data ?? []).map(row => row.id);
+    }, async ids => {
+      const value = await client.from('ai_executions').select('id').in('id', ids);
+      if (value.error) throw value.error;
+      return (value.data ?? []).map(row => row.id);
+    })]);
+    const generations = legacy.ids.length ? await generationQuery().in('id', legacy.ids).limit(51) : { data: [], error: null };
     if (executions.error) throw executions.error;
     if (generations.error) throw generations.error;
     const reservationIds = (executions.data ?? []).map((row: any) => row.reservation_id).filter(Boolean);
@@ -811,12 +832,11 @@ export async function getAdminJobs(filters: {
         usageMetadata: null, webSearch: null,
       };
     });
-    const combined = [...executionRows, ...generationRows].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    const jobs = combined.slice(0, 50);
+    const { jobs, nextCursor } = canonicalJobPage(executionRows, generationRows);
     return { available: true, data: {
       jobs,
-      nextCursor: combined.length > 50 ? jobs.at(-1)?.createdAt ?? null : null,
-      total: seen + (executions.count ?? 0) + (generations.count ?? 0),
+      nextCursor,
+      total: seen + (executions.count ?? 0) + legacy.count,
     } };
   } catch (error) {
     console.error('[admin] jobs query failed', { message: error instanceof Error ? error.message : 'Unknown error' });

@@ -5,6 +5,12 @@ import { reconcileMediaExecution, mediaStatus, MEDIA_MAX_AGE_MS, type RecoveryEx
 import { nextMediaPollDelay, MediaExecutionError, mediaFailureText, waitForOwnedMedia } from '@/src/components/studio/media-recovery-client';
 
 const now = Date.parse('2026-10-03T12:00:00Z');
+test('owned recovery carries customer prompt/settings but no provider or financial context to the canvas', () => {
+  const status = mediaStatus(execution({ execution_metadata: { aspectRatio: '9:16', sourceMode: 'image', resolution: '480p', mode: 'quality', secret: 'not-client-data' } }));
+  assert.deepEqual(status.context, { prompt: 'fixture', modelId: 'public-model', duration: undefined, aspectRatio: '9:16', sourceMode: 'image', resolution: '480p', mode: 'quality' });
+  assert.equal(JSON.stringify(status).includes('not-client-data'), false);
+  assert.equal(JSON.stringify(status).includes('providerCost'), false);
+});
 function execution(overrides: Partial<RecoveryExecution> = {}): RecoveryExecution {
   return { id: 'execution', user_id: 'owner', modality: 'video', model_id: 'public-model', provider_id: 'pruna_ai',
     provider_model_id: 'p-video-2-pro', operation_key: 'operation', payload_hash: 'hash', reservation_id: 'reservation',

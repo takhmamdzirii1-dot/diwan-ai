@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Check, Download, Grid2X2, Image as ImageIcon, List, Search, Trash2, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/src/lib/supabase/client';
 import { SupabaseMediaRepository, type ProductionMediaRecord } from './media-repository';
 import { GhostButton, StateBlock } from './AppShell';
+import MediaPreviewDialog from './MediaPreviewDialog';
 
 type FilterKey = 'all' | 'images' | 'videos';
 type SortKey = 'newest' | 'oldest';
@@ -19,7 +20,6 @@ const mediaRepository = new SupabaseMediaRepository(supabase);
 export default function MediaLibrary() {
   const t = useTranslations('studio.library');
   const reduceMotion = useReducedMotion();
-  const dialogRef = useRef<HTMLDivElement>(null);
   const [saved, setSaved] = useState<MediaItem[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [filter, setFilter] = useState<FilterKey>('all');
@@ -41,14 +41,6 @@ export default function MediaLibrary() {
     void sync();
     return () => { active = false; };
   }, []);
-
-  useEffect(() => {
-    if (!preview) return;
-    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && setPreview(null);
-    window.addEventListener('keydown', onKey);
-    dialogRef.current?.focus();
-    return () => window.removeEventListener('keydown', onKey);
-  }, [preview]);
 
   const items = useMemo<MediaItem[]>(() => saved, [saved]);
   const visible = useMemo(() => {
@@ -125,6 +117,6 @@ export default function MediaLibrary() {
       </motion.div>}
     </div>
 
-    <AnimatePresence>{preview && <motion.div className="fixed inset-0 z-[80] flex items-center justify-center bg-[var(--studio-overlay)] p-4 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.16 }} onMouseDown={(event) => event.target === event.currentTarget && setPreview(null)}><motion.div ref={dialogRef} role="dialog" aria-modal="true" aria-label={t('preview')} tabIndex={-1} initial={reduceMotion ? false : { opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: reduceMotion ? 0 : 0.16 }} className="relative max-h-[92dvh] w-full max-w-5xl overflow-hidden rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-popover)] shadow-[var(--studio-shadow)]"><button type="button" onClick={() => setPreview(null)} aria-label={t('closePreview')} className="absolute end-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--studio-border)] bg-[var(--studio-popover)] text-[var(--studio-text-secondary)] hover:bg-[var(--studio-hover)] hover:text-[var(--studio-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--studio-accent)]"><X className="h-4 w-4" /></button>{preview.kind === 'video' ? <video src={preview.assetUrl} controls playsInline aria-label={t('video')} className="max-h-[76dvh] w-full object-contain bg-[var(--studio-recessed)]" /> : <img src={preview.assetUrl} alt={t('generatedImage')} className="max-h-[76dvh] w-full object-contain bg-[var(--studio-recessed)]" />}<div className="flex items-center justify-between gap-4 border-t border-[var(--studio-border-subtle)] p-4"><div className="min-w-0"><p className="line-clamp-2 text-sm text-[var(--studio-text-primary)]">{preview.prompt || t('untitled')}</p><p className="mt-1 text-xs text-[var(--studio-text-muted)]">{preview.model}</p></div><GhostButton onClick={() => download(preview)}><Download className="h-4 w-4" />{t('download')}</GhostButton></div></motion.div></motion.div>}</AnimatePresence>
+    {preview && <MediaPreviewDialog src={preview.assetUrl} kind={preview.kind} label={t('preview')} closeLabel={t('closePreview')} onClose={() => setPreview(null)}><div className="flex items-center justify-between gap-4 border-t border-[var(--studio-border-subtle)] p-4"><div className="min-w-0"><p className="line-clamp-2 text-sm text-[var(--studio-text-primary)]">{preview.prompt || t('untitled')}</p><p className="mt-1 text-xs text-[var(--studio-text-muted)]">{preview.model}</p></div><GhostButton onClick={() => download(preview)}><Download className="h-4 w-4" />{t('download')}</GhostButton></div></MediaPreviewDialog>}
   </div>;
 }

@@ -1,4 +1,5 @@
 import 'server-only';
+import { isStudioMediaRouteSupported } from '@/lib/ai/media-route-support';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { PROVIDER_REGISTRY } from '@/lib/ai/image-providers/router';
@@ -398,7 +399,8 @@ export async function getStudioRuntimeModels(client?: SupabaseClient): Promise<S
       && providerConfigurationSummary(String(row.provider_id), row).configured,
   ]));
   const routeReady = new Set((routesResult.data ?? [])
-    .filter((row) => row.enabled && providerReady.get(String(row.provider_id)))
+    .filter((row) => row.enabled && providerReady.get(String(row.provider_id))
+      && isStudioMediaRouteSupported(models.find(model => model.key === row.model_key)?.modality, String(row.provider_id)))
     .map((row) => String(row.model_key)));
   const studioModels = models
     .filter(isStudioCatalogVisible)
