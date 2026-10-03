@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
+import { VERIFIED_TESTIMONIALS } from '@/src/content/verified-testimonials';
 import { SectionHeading } from './ui';
 
 interface Testimonial {
@@ -53,7 +54,8 @@ function MarqueeRow({
 
 export default function Testimonials() {
   const t = useTranslations('testimonials');
-  const rows = t.raw('rows') as Testimonial[][];
+  if (!VERIFIED_TESTIMONIALS.length) return null;
+  const rows: Testimonial[][] = [[...VERIFIED_TESTIMONIALS], [...VERIFIED_TESTIMONIALS]];
 
   return (
     <section id="signals" className="relative overflow-hidden !py-24 md:!py-28">

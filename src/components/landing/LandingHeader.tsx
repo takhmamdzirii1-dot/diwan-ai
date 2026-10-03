@@ -26,7 +26,6 @@ const NAV_LINKS = [
   { key: 'studio', id: 'showcase' },
   { key: 'why', id: 'why-vantra' },
   { key: 'workflow', id: 'how' },
-  { key: 'signals', id: 'signals' },
   { key: 'pricing', id: 'pricing' },
   { key: 'faq', id: 'faq' },
 ] as const;

@@ -1,9 +1,9 @@
 {
   "metadata": {
     "title": "VANTRA | Un espace IA pour le Chat, l’Image et la Vidéo",
-    "description": "Accédez à des modèles d’IA de pointe pour le Chat, l’Image et la Vidéo dans un seul espace VANTRA, avec des Crédits VANTRA unifiés et une facturation locale en DA.",
+    "description": "Chat, images et vidéos dans un seul espace. Les Images et Vidéos utilisent des Crédits VANTRA ; le Chat a ses propres limites d’usage.",
     "openGraphTitle": "VANTRA — Changez de modèle, pas de plateforme",
-    "openGraphDescription": "Un seul espace et un système de Crédits VANTRA unifiés pour le Chat, l’Image et la Vidéo."
+    "openGraphDescription": "Chat, images et vidéos dans un seul espace. Les Images et Vidéos utilisent des Crédits VANTRA ; le Chat a ses propres limites d’usage."
   },
   "navigation": {
     "why": "Pourquoi VANTRA",
@@ -23,12 +23,23 @@
     "backToTop": "VANTRA — retour en haut",
     "signedInAs": "Connecté en tant que {name}",
     "languageLabel": "Langue",
-    "languages": { "fr": "Français", "ar": "Arabe", "en": "Anglais" }
+    "languages": {
+      "fr": "Français",
+      "ar": "Arabe",
+      "en": "Anglais"
+    }
+  },
+  "payment": {
+    "manual": "Virement manuel via {methods}, vérifié avant activation.",
+    "manualUnavailable": "Consultez les moyens de paiement manuel disponibles au paiement ; les paiements sont vérifiés avant activation.",
+    "cardsLive": "Le paiement par carte via {methods} est disponible.",
+    "cardsSoon": "Paiement par carte {methods} : bientôt disponible.",
+    "period": "Un paiement. 30 jours. Sans renouvellement automatique."
   },
   "hero": {
     "badge": "L’IA mondiale. Le paiement local.",
     "title": "Changez de modèle, pas de plateforme.",
-    "subtitle": "Discutez, créez des images et générez des vidéos dans un seul espace, avec des Crédits VANTRA unifiés.",
+    "subtitle": "Chat, images et vidéos dans un seul espace. Les Images et Vidéos utilisent des Crédits VANTRA ; le Chat a ses propres limites d’usage.",
     "placeholder": "Demandez. Imaginez. Créez.",
     "inputLabel": "Posez une question ou décrivez ce que vous voulez créer",
     "generate": "Générer",
@@ -43,13 +54,31 @@
     "seePricing": "Voir les tarifs",
     "trust": "Payez localement en DA · Sans carte internationale",
     "stats": [
-      { "label": "Modèles compatibles" },
-      { "label": "Facturation locale" },
-      { "label": "Crédits VANTRA unifiés" },
-      { "label": "Chat · Image · Vidéo" }
+      {
+        "label": "Modèles compatibles"
+      },
+      {
+        "label": "Facturation locale"
+      },
+      {
+        "label": "Crédits VANTRA unifiés"
+      },
+      {
+        "label": "Chat · Image · Vidéo"
+      }
+    ],
+    "microcopy": [
+      "Payez localement en DZD",
+      "Un paiement, 30 jours",
+      "Sans renouvellement automatique",
+      "Aucune carte pour commencer"
     ]
   },
-  "partners": { "aria": "Écosystème de modèles IA VANTRA", "label": "Un seul espace. Plusieurs modèles." },
+  "partners": {
+    "aria": "Écosystème de modèles IA VANTRA",
+    "label": "Un seul espace. Plusieurs modèles.",
+    "independent": "VANTRA est indépendant et n’est pas affilié aux fournisseurs de modèles."
+  },
   "showcase": {
     "aria": "Studio IA unifié VANTRA",
     "eyebrow": "Un studio unifié",
@@ -66,15 +95,39 @@
     "title": "L’IA mondiale, pensée pour l’Algérie.",
     "subtitle": "Accédez à des modèles d’IA de pointe, créez dans tous les formats et payez localement en DA.",
     "localTitle": "Payez localement en DA",
-    "localDescription": "Des options de paiement local adaptées à l’Algérie. Aucune carte internationale requise.",
-    "localTags": ["Pensé pour l’Algérie", "Sans carte internationale"],
-    "features": [
-      { "title": "Un seul solde", "description": "Un solde partagé pour le Chat, l’Image et la Vidéo.", "visual": "balance" },
-      { "title": "Des modèles d’IA de pointe", "description": "Accédez à des modèles d’IA de pointe depuis un seul espace.", "visual": "models" },
-      { "title": "Un seul espace", "description": "Passez du Chat à l’Image et à la Vidéo sans changer d’outil.", "visual": "workspace" }
+    "localDescription": "Virement manuel via BaridiMob / CCP, vérifié avant activation.",
+    "localTags": [
+      "Pensé pour l’Algérie",
+      "Sans carte internationale"
     ],
-    "modelLabels": ["GPT", "Claude", "Gemini", "+ Autres modèles"],
-    "modes": ["Chat", "Image", "Vidéo"]
+    "features": [
+      {
+        "title": "Crédits VANTRA",
+        "description": "Des Crédits VANTRA pour les Images et Vidéos. Le Chat a ses propres limites d’usage.",
+        "visual": "balance"
+      },
+      {
+        "title": "Des modèles d’IA de pointe",
+        "description": "Accédez à des modèles d’IA de pointe depuis un seul espace.",
+        "visual": "models"
+      },
+      {
+        "title": "Un seul espace",
+        "description": "Passez du Chat à l’Image et à la Vidéo sans changer d’outil.",
+        "visual": "workspace"
+      }
+    ],
+    "modelLabels": [
+      "GPT",
+      "Claude",
+      "Gemini",
+      "+ Autres modèles"
+    ],
+    "modes": [
+      "Chat",
+      "Image",
+      "Vidéo"
+    ]
   },
   "workflow": {
     "label": "Méthode",
@@ -115,16 +168,46 @@
     "catalogPendingAction": "Bientôt disponible",
     "creditsValue": "{count} Crédits VANTRA",
     "catalogPlanDescription": "Une formule VANTRA configurée par le propriétaire.",
-    "creditsIncluded": "Crédits VANTRA unifiés",
+    "creditsIncluded": "Crédits VANTRA",
     "selectPlan": "Choisir cette formule",
     "localPayment": "Un paiement. 30 jours. Sans renouvellement automatique.",
     "monthlyCadence": "/ 30 jours",
     "imageEstimate": "Environ {min} à {max} images aux tarifs actuels des modèles",
     "videoEstimate": "Environ {min} à {max} vidéos aux tarifs actuels des modèles",
     "tiers": [
-      { "name": "Gratuit", "blurb": "Un essai unique avec une sélection de modèles performants", "cta": "Commencer avec VANTRA", "features": ["5 images + 1 vidéo", "Essai unique", "Sélection de modèles performants", "Aucun portefeuille Média récurrent"] },
-      { "name": "Pro", "blurb": "30 jours d’accès créatif", "cta": "Choisir Pro", "features": ["3 000 Crédits VANTRA", "Modèles Core + Premium/Advanced"] },
-      { "name": "Max", "blurb": "Pour un usage intensif", "cta": "Choisir Max", "features": ["Chat, Image et Vidéo", "Accès aux modèles premium", "Le plus de crédits mensuels", "Limites de génération maximales", "Priorité de génération maximale"] }
+      {
+        "name": "Gratuit",
+        "blurb": "Un essai unique avec une sélection de modèles performants",
+        "cta": "Commencer avec VANTRA",
+        "features": [
+          "5 images + 1 vidéo",
+          "Essai unique",
+          "Sélection de modèles performants",
+          "L’essai Images et Vidéos est utilisable une seule fois par compte"
+        ]
+      },
+      {
+        "name": "Pro",
+        "blurb": "30 jours d’accès créatif",
+        "cta": "Choisir Pro",
+        "features": [
+          "3 000 Crédits VANTRA",
+          "Limites d’usage du Chat distinctes",
+          "Accès aux modèles selon votre formule",
+          "Renouvellement manuel après 30 jours"
+        ]
+      },
+      {
+        "name": "MAX",
+        "blurb": "Pour un usage intensif",
+        "cta": "Choisir MAX",
+        "features": [
+          "Chat, Image et Vidéo",
+          "Limites d’usage du Chat distinctes",
+          "Accès aux modèles selon votre formule",
+          "Renouvellement manuel après 30 jours"
+        ]
+      }
     ]
   },
   "faq": {
@@ -132,18 +215,53 @@
     "title": "Vos questions, sans détour.",
     "subtitle": "Les réponses essentielles avant de commencer.",
     "items": [
-      { "question": "Comment fonctionne le paiement local ?", "answer": "Payez en dinars algériens avec les moyens de paiement locaux disponibles lors du paiement." },
-      { "question": "Ai-je besoin d’une carte internationale ?", "answer": "Non. VANTRA est conçu pour prendre en charge les options de paiement local en Algérie sans exiger de carte internationale." },
-      { "question": "Quelle est la différence entre Free, Pro et Max ?", "answer": "Chaque formule offre un niveau différent d’accès aux modèles, de crédits mensuels, de limites de génération et de priorité." },
-      { "question": "Comment fonctionnent les Crédits unifiés ?", "answer": "Un seul solde VANTRA est utilisé pour le Chat, l’Image et la Vidéo. Les modèles et les types de génération peuvent consommer des quantités de crédits différentes." },
-      { "question": "Que se passe-t-il quand mes crédits sont épuisés ?", "answer": "Votre accès dépend de votre formule actuelle. Vous pouvez attendre la prochaine réinitialisation des crédits ou choisir une formule avec une allocation plus importante." },
-      { "question": "Quels modèles d’IA puis-je utiliser ?", "answer": "Les modèles disponibles dépendent de votre formule et des modèles actuellement pris en charge par VANTRA." },
-      { "question": "Puis-je utiliser le Chat, l’Image et la Vidéo avec une seule formule ?", "answer": "Oui. VANTRA réunit le Chat, l’Image et la Vidéo dans un seul espace sous le même solde partagé." },
-      { "question": "Que puis-je faire avec le contenu généré ?", "answer": "Vous pouvez enregistrer, retrouver, exporter ou continuer à travailler avec le contenu généré dans VANTRA." }
+      {
+        "question": "Comment fonctionne le paiement local ?",
+        "answer": "Virement manuel via BaridiMob / CCP, vérifié avant activation. Un paiement. 30 jours. Sans renouvellement automatique."
+      },
+      {
+        "question": "Ai-je besoin d’une carte internationale ?",
+        "answer": "Non. VANTRA est conçu pour prendre en charge les options de paiement local en Algérie sans exiger de carte internationale."
+      },
+      {
+        "question": "Quelle est la différence entre Free, Pro et MAX ?",
+        "answer": "Free propose un essai média unique. Pro et MAX offrent 30 jours d’accès payant, avec des Crédits VANTRA et des limites de Chat différents."
+      },
+      {
+        "question": "Comment fonctionnent les Crédits VANTRA ?",
+        "answer": "Des Crédits VANTRA pour les Images et Vidéos. Le Chat a ses propres limites d’usage."
+      },
+      {
+        "question": "Que se passe-t-il quand mes crédits sont épuisés ?",
+        "answer": "Avec une formule payante éligible active, achetez des Crédits VANTRA ou renouvelez manuellement votre formule. Les crédits achetés restent sur votre compte ; leur utilisation nécessite un accès payant actif."
+      },
+      {
+        "question": "Quels modèles d’IA puis-je utiliser ?",
+        "answer": "Les modèles disponibles dépendent de votre formule et des modèles actuellement pris en charge par VANTRA."
+      },
+      {
+        "question": "Puis-je utiliser le Chat, l’Image et la Vidéo avec une seule formule ?",
+        "answer": "Oui. Un seul espace réunit Chat, Image et Vidéo. Les limites du Chat sont distinctes des Crédits VANTRA pour Images et Vidéos."
+      },
+      {
+        "question": "Que puis-je faire avec le contenu généré ?",
+        "answer": "Vous pouvez enregistrer, retrouver, exporter ou continuer à travailler avec le contenu généré dans VANTRA."
+      }
     ]
   },
   "finalCta": { "eyebrow": "QUAND VOUS VOULEZ", "title": "Un espace. Tous les formats.", "subtitle": "Discutez, créez des images et générez des vidéos avec un seul solde VANTRA partagé.", "button": "Commencer avec VANTRA →", "microcopy": "Chat · Image · Vidéo · Paiement local en DA" },
-  "footer": { "aria": "Navigation de pied de page", "models": "Modèles", "pricing": "Tarifs", "faq": "FAQ", "terms": "Conditions", "privacy": "Confidentialité", "billing": "Facturation", "twitter": "X / Twitter", "status": "Statut" },
+  "footer": {
+    "aria": "Navigation de pied de page",
+    "models": "Modèles",
+    "pricing": "Tarifs",
+    "faq": "FAQ",
+    "terms": "Conditions",
+    "privacy": "Confidentialité",
+    "billing": "Facturation",
+    "twitter": "X / Twitter",
+    "status": "Statut",
+    "support": "Assistance"
+  },
   "auth": {
     "signInTitle": "Connectez-vous à VANTRA",
     "createTitle": "Créez votre compte VANTRA",
@@ -186,7 +304,12 @@
     "returnToStudio": "Continuer vers VANTRA Studio"
   },
   "go": {
-    "nav": { "how": "Comment ça marche", "models": "Modèles", "pricing": "Tarifs", "faq": "FAQ" },
+    "nav": {
+      "how": "Comment ça marche",
+      "models": "Modèles",
+      "pricing": "Tarifs",
+      "faq": "FAQ"
+    },
     "hero": {
       "all-ai": {
         "eyebrow": "Chat · Image · Vidéo au même endroit",
@@ -218,10 +341,22 @@
     },
     "benefitsLabel": "Pourquoi VANTRA",
     "benefitItems": {
-      "workspace": { "title": "Un espace, plusieurs modèles", "text": "Des modèles de Chat, d'Image et de Vidéo côte à côte. Un seul solde, un seul compte, zéro jonglage." },
-      "together": { "title": "Chat, image et vidéo ensemble", "text": "Rédigez l'idée, générez le visuel, produisez le clip — sans quitter votre espace." },
-      "localpay": { "title": "Payez en DA", "text": "Des formules simples en dinars algériens avec des moyens de paiement locaux. Aucune carte internationale requise." },
-      "switch": { "title": "Changez de modèle librement", "text": "Choisissez le meilleur modèle pour chaque tâche. Ni abonnements multiples, ni comptes à gérer." }
+      "workspace": {
+        "title": "Un espace, plusieurs modèles",
+        "text": "Un seul espace réunit Chat, Image et Vidéo. Les limites du Chat sont distinctes des Crédits VANTRA pour Images et Vidéos."
+      },
+      "together": {
+        "title": "Chat, image et vidéo ensemble",
+        "text": "Rédigez l'idée, générez le visuel, produisez le clip — sans quitter votre espace."
+      },
+      "localpay": {
+        "title": "Payez en DA",
+        "text": "Des formules simples en dinars algériens avec des moyens de paiement locaux. Aucune carte internationale requise."
+      },
+      "switch": {
+        "title": "Changez de modèle librement",
+        "text": "Choisissez le meilleur modèle pour chaque tâche. Ni abonnements multiples, ni comptes à gérer."
+      }
     },
     "preview": {
       "label": "Aperçu du produit",
@@ -236,15 +371,30 @@
       "videoTitle": "Vidéo",
       "videoNote": "Clip promo de 15 s"
     },
-    "proof": { "label": "Preuve des capacités", "note": "Une sélection des familles de modèles disponibles dans VANTRA. La disponibilité dépend de votre formule." },
+    "proof": {
+      "label": "Preuve des capacités",
+      "note": "VANTRA est indépendant et n’est pas affilié aux fournisseurs de modèles. Une sélection des familles de modèles disponibles dans VANTRA. La disponibilité dépend de votre formule."
+    },
     "trust": {
       "label": "Confiance",
       "title": "Des conditions claires, un paiement local",
       "items": [
-        { "title": "Payez en dinars algériens", "text": "Virement manuel BaridiMob et CCP, vérifié par notre équipe avant toute activation." },
-        { "title": "Sans renouvellement automatique", "text": "Un paiement couvre 30 jours. Rien ne se renouvelle seul — vous décidez à chaque fois." },
-        { "title": "Un essai gratuit pour commencer", "text": "Essayez VANTRA gratuitement avec un essai unique. Aucune carte requise pour explorer." },
-        { "title": "Des paiements vérifiés", "text": "Chaque paiement manuel est vérifié avant l'ajout des crédits ou de l'accès." }
+        {
+          "title": "Payez en dinars algériens",
+          "text": "Virement manuel BaridiMob et CCP, vérifié par notre équipe avant toute activation."
+        },
+        {
+          "title": "Sans renouvellement automatique",
+          "text": "Un paiement couvre 30 jours. Rien ne se renouvelle seul — vous décidez à chaque fois."
+        },
+        {
+          "title": "Un essai gratuit pour commencer",
+          "text": "Essayez VANTRA gratuitement avec un essai unique. Aucune carte requise pour explorer."
+        },
+        {
+          "title": "Des paiements vérifiés",
+          "text": "Chaque paiement manuel est vérifié avant l'ajout des crédits ou de l'accès."
+        }
       ]
     },
     "faq": {
@@ -252,11 +402,26 @@
       "title": "Vos questions, nos réponses",
       "subtitle": "L'essentiel avant de commencer.",
       "items": [
-        { "question": "Que puis-je faire avec VANTRA ?", "answer": "Du Chat, de la génération d'images et de vidéos depuis un seul espace, le tout dépensé depuis un solde unique de crédits unifiés." },
-        { "question": "Ai-je besoin de plusieurs abonnements IA ?", "answer": "Non. Une seule formule VANTRA donne accès à plusieurs modèles de référence, fini l'empilement d'abonnements." },
-        { "question": "Comment fonctionne le paiement ?", "answer": "Payez en dinars algériens avec les moyens locaux affichés au moment du paiement. Les virements manuels sont vérifiés par notre équipe avant activation." },
-        { "question": "Y a-t-il un renouvellement automatique ?", "answer": "Non. Un paiement couvre 30 jours et rien ne se renouvelle automatiquement. Vous ne rachetez que quand vous voulez." },
-        { "question": "Que se passe-t-il après l'essai gratuit ?", "answer": "L'essai gratuit est une allocation unique. À la fin, choisissez une formule pour continuer à créer — votre compte et votre historique sont conservés." }
+        {
+          "question": "Que puis-je faire avec VANTRA ?",
+          "answer": "Oui. Un seul espace réunit Chat, Image et Vidéo. Les limites du Chat sont distinctes des Crédits VANTRA pour Images et Vidéos."
+        },
+        {
+          "question": "Ai-je besoin de plusieurs abonnements IA ?",
+          "answer": "Non. Une seule formule VANTRA donne accès à plusieurs modèles de référence, fini l'empilement d'abonnements."
+        },
+        {
+          "question": "Comment fonctionne le paiement ?",
+          "answer": "Virement manuel via BaridiMob / CCP, vérifié avant activation. Un paiement. 30 jours. Sans renouvellement automatique."
+        },
+        {
+          "question": "Y a-t-il un renouvellement automatique ?",
+          "answer": "Non. Un paiement couvre 30 jours et rien ne se renouvelle automatiquement. Vous ne rachetez que quand vous voulez."
+        },
+        {
+          "question": "Que se passe-t-il après l'essai gratuit ?",
+          "answer": "L'essai gratuit est une allocation unique. À la fin, choisissez une formule pour continuer à créer — votre compte et votre historique sont conservés."
+        }
       ]
     }
   },

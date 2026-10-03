@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { loadLandingCatalog } from '@/lib/marketing/catalog.server';
 import { hasLocale } from 'next-intl';
 import { notFound } from 'next/navigation';
 import App from '../../../src/App';
@@ -30,6 +31,7 @@ export async function generateMetadata({
   const { metadata } = await loadMessages(locale);
 
   return {
+    robots: { index: true, follow: true },
     title: metadata.title,
     description: metadata.description,
     alternates: {
@@ -54,5 +56,5 @@ export default async function LocalizedMarketingPage({
 }) {
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) notFound();
-  return <App />;
+  return <App catalog={await loadLandingCatalog()} />;
 }

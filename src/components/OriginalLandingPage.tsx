@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback } from 'react';
+import type { LandingCatalog } from '@/src/content/landing-catalog';
 import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { motion, useScroll, useSpring } from 'framer-motion';
@@ -25,7 +26,7 @@ import useUser from '../hooks/useUser';
  * Cinematic wipe bridges Landing → Studio; guest prompts are stashed and
  * prefilled inside the Studio composer after authentication.
  */
-export default function OriginalLandingPage() {
+export default function OriginalLandingPage({ catalog }: { catalog: LandingCatalog }) {
   const locale = useLocale();
   const { user, isLoading } = useUser();
   const { openAuthModal, openTopUpModal } = useModal();
@@ -81,13 +82,13 @@ export default function OriginalLandingPage() {
         onRequireAuth={() => !isLoading && openAuthModal('signup')}
       />
 
-      <PartnersSection />
+      <PartnersSection brands={catalog.brands} />
       <CinematicScrollMockup />
-      <WhyVantra />
+      <WhyVantra catalog={catalog} />
       <HowItWorks />
       <Testimonials />
-      <GlobalPricing onGetStarted={handlePricingAction} />
-      <Faq />
+      <GlobalPricing catalog={catalog} onGetStarted={handlePricingAction} />
+      <Faq gateways={catalog.gateways} />
       <FinalCta onGetStarted={handlePrimaryAction} />
       <GlobalFooter />
     </div>

@@ -3,6 +3,8 @@
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { VantraWordmark } from '../VantraLogo';
+import type { LandingCatalog } from '@/src/content/landing-catalog';
+import { paymentCopy } from './PaymentCopy';
 
 type SupportingFeature = {
   title: string;
@@ -16,9 +18,8 @@ const CARD_MOTION = {
   viewport: { once: true, margin: '-70px' },
 };
 
-const MODEL_CHIPS = ['GPT-4o', 'Claude 3.5', 'Gemini 1.5', '+ More models'];
 const FEATURE_EYEBROWS: Record<SupportingFeature['visual'], string> = {
-  balance: 'ONE BALANCE',
+  balance: 'VANTRA Credits',
   models: 'FRONTIER MODELS',
   workspace: 'UNIFIED WORKSPACE',
 };
@@ -46,7 +47,7 @@ function PaymentVisual() {
         <div className="mt-6 text-center text-[54px] font-semibold leading-none tracking-[-0.06em] text-[#f7f7f7]">DA</div>
         <div className="mt-4 flex items-center justify-between border-t border-white/[0.12] pt-2 text-[7px] font-medium tracking-[0.15em] text-white/38">
           <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-2.5 w-3.5 rounded-sm border border-white/20 bg-white/[0.035]" /><VantraWordmark className="w-9 h-1.5" /></span>
-          <span>•••• 2040</span>
+          <span>DZD</span>
         </div>
       </div>
     </div>
@@ -59,23 +60,19 @@ function ModeIcon({ index }: { index: number }) {
   return <svg aria-hidden="true" className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="3" width="11" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.25" /><path d="m7 6 4 2-4 2V6Z" fill="currentColor" /></svg>;
 }
 
-function BalanceVisual({ modes }: { modes: string[] }) {
+function BalanceVisual({ modes, label }: { modes: string[]; label: string }) {
   return (
     <div dir="ltr" className="relative w-full max-w-[288px] pb-5 pt-2">
       <span aria-hidden="true" className="absolute bottom-0 left-1/2 h-16 w-[92%] -translate-x-1/2 [background-image:linear-gradient(rgba(255,255,255,0.09)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.09)_1px,transparent_1px)] [background-size:12px_12px] opacity-20 [transform:translateX(-50%)_perspective(130px)_rotateX(60deg)] [mask-image:linear-gradient(to_bottom,rgba(0,0,0,0.7),transparent)]" />
       <div className="relative rounded-[19px] border border-white/[0.24] bg-[linear-gradient(180deg,#151517_0%,#0b0b0c_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_14px_28px_rgba(0,0,0,0.28)]">
         <div className="flex items-center justify-between text-[9px] font-semibold tracking-[0.17em] text-white/55">
-          <span>VANTRA BALANCE</span>
+          <span>{label}</span>
           <span aria-hidden="true" className="text-xs tracking-[0.2em] text-white/45">•••</span>
         </div>
-        <div className="mt-4 flex items-center justify-between">
-          <span className="text-[34px] font-medium leading-none tracking-[-0.045em] text-[#f5f5f5]">12,450</span>
-          <span className="rounded-[10px] border border-white/[0.16] bg-white/[0.035] px-3 py-2 text-xs text-white/85">DA</span>
-        </div>
-        <div className="mt-4 grid grid-cols-3 divide-x divide-white/[0.06] border-t border-white/[0.12] pt-3">
+        <div className="mt-4 grid grid-cols-2 divide-x divide-white/[0.06] border-t border-white/[0.12] pt-3">
           {modes.map((mode, index) => (
             <span key={mode} className="flex flex-col items-center justify-center gap-1.5 px-2 py-1 text-[10px] text-white/75">
-              <ModeIcon index={index} />
+              <ModeIcon index={index + 1} />
               {mode}
             </span>
           ))}
@@ -85,10 +82,10 @@ function BalanceVisual({ modes }: { modes: string[] }) {
   );
 }
 
-function ModelsVisual() {
+function ModelsVisual({ names }: { names: string[] }) {
   return (
     <div dir="ltr" className="grid w-full max-w-[296px] grid-cols-2 gap-2">
-      {MODEL_CHIPS.map((label, index) => (
+      {names.slice(0, 4).map((label, index) => (
         <span key={label} className="flex min-h-[64px] items-center rounded-[13px] border border-white/[0.22] bg-[linear-gradient(180deg,#121214,#0b0b0c)] px-3.5 text-xs font-medium text-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
           <span aria-hidden="true" className="me-2.5 flex h-6 w-6 items-center justify-center text-[17px] text-white">{index === 0 ? '◎' : index === 1 ? 'AI' : index === 2 ? '✦' : '+'}</span>
           {label}
@@ -121,8 +118,10 @@ function WorkspaceVisual({ modes }: { modes: string[] }) {
   );
 }
 
-export default function WhyVantra() {
+export default function WhyVantra({ catalog }: { catalog: LandingCatalog }) {
   const t = useTranslations('why');
+  const payment = useTranslations('payment');
+  const pricing = useTranslations('pricing');
   const features = t.raw('features') as SupportingFeature[];
   const modes = t.raw('modes') as string[];
   const localTags = t.raw('localTags') as string[];
@@ -162,7 +161,7 @@ export default function WhyVantra() {
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#a8a8a8]">LOCAL PAYMENTS</p>
                   <h3 className="mt-3 text-[30px] font-semibold leading-tight tracking-[-0.035em] text-[#f3f3f3]">{t('localTitle')}</h3>
-                  <p className="mt-3 max-w-[275px] text-[17px] leading-[1.55] text-[#b0b0b0]">{t('localDescription')}</p>
+                  <p className="mt-3 max-w-[275px] text-[17px] leading-[1.55] text-[#b0b0b0]">{paymentCopy(payment, catalog.gateways)}</p>
                 </div>
                 <PaymentVisual />
               </div>
@@ -186,13 +185,13 @@ export default function WhyVantra() {
                 <div className="absolute left-7 top-7 sm:left-8 sm:top-8"><NumberBadge>{`0${index + 2}`}</NumberBadge></div>
                 <div className="grid flex-1 gap-6 pt-14 sm:-translate-y-4 sm:grid-cols-[minmax(0,1fr)_minmax(250px,296px)] sm:items-center">
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#a8a8a8]">{FEATURE_EYEBROWS[feature.visual]}</p>
+                    <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#a8a8a8]">{feature.visual === 'balance' ? pricing('creditsIncluded') : FEATURE_EYEBROWS[feature.visual]}</p>
                     <h3 className="mt-3 text-[30px] font-semibold leading-tight tracking-[-0.035em] text-[#f3f3f3]">{feature.title}</h3>
                     <p className="mt-3 max-w-[330px] text-[17px] leading-[1.55] text-[#b0b0b0]">{feature.description}</p>
                   </div>
                   <div className="flex justify-start sm:justify-end">
-                    {feature.visual === 'balance' && <BalanceVisual modes={modes} />}
-                    {feature.visual === 'models' && <ModelsVisual />}
+                    {feature.visual === 'balance' && <BalanceVisual modes={modes.slice(1)} label={pricing('creditsIncluded')} />}
+                    {feature.visual === 'models' && <ModelsVisual names={catalog.modelNames} />}
                     {feature.visual === 'workspace' && <WorkspaceVisual modes={modes} />}
                   </div>
                 </div>

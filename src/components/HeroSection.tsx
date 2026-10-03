@@ -5,7 +5,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Lock, Sparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { LiquidMetalButton } from '@/components/ui/liquid-metal-button';
-import { HERO_STAT_VALUES } from '../content/marketingFacts';
+
 import { Magnetic } from './landing/ui';
 
 interface HeroSectionProps {
@@ -24,10 +24,7 @@ const PATHS = [
 
 export default function HeroSection({ user, authLoading, onEnterStudio, onRequireAuth }: HeroSectionProps) {
   const t = useTranslations('hero');
-  const stats = (t.raw('stats') as { label: string }[]).map((stat, index) => ({
-    ...stat,
-    number: HERO_STAT_VALUES[index],
-  }));
+  const microcopy = t.raw('microcopy') as string[];
   const reduce = useReducedMotion();
   const [heroPrompt, setHeroPrompt] = useState('');
   const [simulating, setSimulating] = useState(false);
@@ -299,11 +296,8 @@ export default function HeroSection({ user, authLoading, onEnterStudio, onRequir
           transition={{ duration: 0.7, delay: 0.44 }}
           className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-[68px] border-t border-white/[0.06] pt-10 max-w-5xl mx-auto w-full"
         >
-          {stats.map((s) => (
-            <div key={s.label} className="flex flex-col items-center gap-2">
-              <span dir="ltr" className="text-3xl font-bold text-white">{s.number}</span>
-              <span className="text-sm text-white/45">{s.label}</span>
-            </div>
+          {microcopy.map((label) => (
+            <p key={label} className="flex min-h-16 items-center justify-center text-sm leading-relaxed text-white/65">{label}</p>
           ))}
         </motion.div>
       </div>

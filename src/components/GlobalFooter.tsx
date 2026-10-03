@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { SITE_LINKS } from '@/src/content/site';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { VantraLogo, VantraWordmark } from './VantraLogo';
@@ -15,8 +16,9 @@ export default function GlobalFooter() {
     { key: 'terms', href: `/${locale}/terms` },
     { key: 'privacy', href: `/${locale}/privacy` },
     { key: 'billing', href: `/${locale}/billing` },
-    { key: 'status', href: '#' },
-    { key: 'twitter', href: 'https://x.com', external: true },
+    ...(SITE_LINKS.status ? [{ key: 'status', href: SITE_LINKS.status, external: true }] : []),
+    ...(SITE_LINKS.social ? [{ key: 'twitter', href: SITE_LINKS.social, external: true }] : []),
+    ...(SITE_LINKS.support ? [{ key: 'support', href: SITE_LINKS.support, external: true }] : []),
   ];
 
   return (
@@ -38,7 +40,7 @@ export default function GlobalFooter() {
               key={l.key}
               href={l.href}
               {...(l.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-              className="rounded text-[13px] text-white/45 transition-colors duration-200 hover:text-white/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+              className="rounded inline-flex min-h-11 items-center text-[13px] text-white/60 transition-colors duration-200 hover:text-white/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
             >
               {t(l.key)}
             </Link>

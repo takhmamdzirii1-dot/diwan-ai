@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
+import type { GatewayAvailability } from '@/src/content/landing-catalog';
+import { paymentCopy } from '@/src/components/landing/PaymentCopy';
 import { cn } from '@/lib/utils';
 
 interface FaqItem {
@@ -20,8 +22,9 @@ export const FAQ_OWNER_TODOS = [
   'Confirm generated-content ownership, commercial-use, and video-download terms.',
 ] as const;
 
-export default function Faq() {
+export default function Faq({ gateways }: { gateways: GatewayAvailability }) {
   const t = useTranslations('faq');
+  const payment = useTranslations('payment');
   const items = t.raw('items') as FaqItem[];
   const [open, setOpen] = useState<number | null>(0);
   const [titleLead, titleRest] = t('title').split(/,\s*/, 2);
@@ -103,7 +106,7 @@ export default function Faq() {
                       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                       className="overflow-hidden"
                     >
-                      <p className="max-w-[680px] pb-7 pe-14 text-[14px] leading-[1.75] text-white/48 sm:text-[14.5px]">{item.answer}</p>
+                      <p className="max-w-[680px] pb-7 pe-14 text-[14px] leading-[1.75] text-white/48 sm:text-[14.5px]">{item.question === items[0].question ? `${paymentCopy(payment, gateways)} ${payment('period')}` : item.answer}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>

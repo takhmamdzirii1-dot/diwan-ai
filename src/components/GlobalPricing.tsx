@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
+import type { LandingCatalog } from '@/src/content/landing-catalog';
+import { paymentCopy } from './landing/PaymentCopy';
 import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
@@ -23,34 +25,12 @@ type PricingCard = {
   free: boolean;
 };
 
-type OutcomeEstimate = { min: number; max: number } | null;
-
-export default function GlobalPricing({ onGetStarted }: { onGetStarted: (planId?: string) => void }) {
+export default function GlobalPricing({ onGetStarted, catalog }: { onGetStarted: (planId?: string) => void; catalog: LandingCatalog }) {
   const t = useTranslations('pricing');
   const locale = useLocale() as Locale;
   const tiers = t.raw('tiers') as LocalizedPricingTier[];
-  const [plans, setPlans] = useState<PaymentPlan[]>([]);
-  const [proEstimates, setProEstimates] = useState<{ image: OutcomeEstimate; video: OutcomeEstimate }>({ image: null, video: null });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-    fetch('/api/payments/plans', { cache: 'no-store' })
-      .then(async (response) => {
-        const body = await response.json();
-        if (!response.ok || !Array.isArray(body.plans)) throw new Error('catalog unavailable');
-        if (active) {
-          setPlans(body.plans);
-          setProEstimates({
-            image: body.proOutcomeEstimates?.image ?? null,
-            video: body.proOutcomeEstimates?.video ?? null,
-          });
-        }
-      })
-      .catch(() => { if (active) setPlans([]); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, []);
+  const { plans, proEstimates, gateways } = catalog;
+  const payment = useTranslations('payment');
 
   const cards = useMemo<PricingCard[]>(() => {
     const publicPlans = plans.filter(isPublicCatalogPlan);
@@ -93,6 +73,7 @@ export default function GlobalPricing({ onGetStarted }: { onGetStarted: (planId?
         >
           {t('subtitle')}
         </motion.p>
+        <p className="mx-auto mt-4 max-w-[820px] text-xs leading-relaxed text-white/60">{paymentCopy(payment, gateways)}</p>
       </div>
 
       {/* Tiers — original presentation, with paid values supplied by the owner catalog. */}
@@ -100,7 +81,7 @@ export default function GlobalPricing({ onGetStarted }: { onGetStarted: (planId?
         {cards.map(({ tier, plan, free }, i) => {
           const recommended = plan?.featured ?? (!free && i === 1);
           const localPaymentAvailable = Boolean(plan && plan.active && !free);
-          const unavailable = !free && !plan;
+          const unavailable = !free && (!plan || !plan.active);
           const catalogFeatures = plan && !free
             ? [t('creditsValue', { count: plan.unifiedCredits.toLocaleString(locale) }), ...tier.features.slice(1)]
             : tier.features;
@@ -133,7 +114,7 @@ export default function GlobalPricing({ onGetStarted }: { onGetStarted: (planId?
               </span>
             )}
 
-            <p className="text-[13px] font-semibold text-white/65">{plan?.name ?? tier.name}</p>
+            <p className="text-[13px] font-semibold text-white/65">{plan?.planCode === 'max' ? 'MAX' : tier.name}</p>
 
             <div className="mt-5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
               <span dir="ltr" className="text-[42px] font-bold leading-none tracking-[-0.045em] text-[#f7f7f7] lg:text-[46px]">
@@ -142,11 +123,11 @@ export default function GlobalPricing({ onGetStarted }: { onGetStarted: (planId?
               {plan?.kind === 'subscription' && !free && <span className="text-[12px] font-medium text-white/35">{t('monthlyCadence')}</span>}
             </div>
             {localPaymentAvailable && (
-              <p className="mt-3 text-[11px] font-medium text-white/40">{t('localPayment')}</p>
+              <p className="mt-3 text-[11px] font-medium text-white/60">{t('localPayment')}</p>
             )}
 
             <p className={cn('max-w-[300px] text-[13px] leading-[1.65] text-white/50', localPaymentAvailable ? 'mt-4' : 'mt-5')}>
-              {plan?.description ?? (unavailable && !loading ? t('catalogPendingShort') : tier.blurb)}
+              {unavailable ? t('catalogPendingShort') : tier.blurb}
             </p>
 
             <ul className="mt-7 flex flex-1 flex-col gap-4 border-t border-white/[0.075] pt-7">

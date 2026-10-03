@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 import { routing } from '../i18n/routing';
 import { LEGAL_DOCUMENTS } from '../src/content/legal';
 
-const baseUrl = 'https://ai-alpha-delta-six.vercel.app';
+import { SITE_ORIGIN as baseUrl } from '@/src/content/site';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const languages = Object.fromEntries(

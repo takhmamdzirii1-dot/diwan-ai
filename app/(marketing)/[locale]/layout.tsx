@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { SITE_ORIGIN } from '@/src/content/site';
 import React from 'react';
 import { hasLocale } from 'next-intl';
 import { NextIntlClientProvider } from 'next-intl';
@@ -10,7 +11,7 @@ import { loadMessages } from '../../../i18n/messages';
 import { routing } from '../../../i18n/routing';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://ai-alpha-delta-six.vercel.app'),
+  metadataBase: new URL(SITE_ORIGIN),
   icons: { icon: [{ url: '/icon.svg', type: 'image/svg+xml' }, { url: '/brand/vantra-icon-32.png', sizes: '32x32', type: 'image/png' }], apple: '/brand/vantra-icon-256.png' },
 };
 

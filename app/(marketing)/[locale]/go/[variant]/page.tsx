@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { loadLandingCatalog } from '@/lib/marketing/catalog.server';
 import { hasLocale } from 'next-intl';
 import { notFound } from 'next/navigation';
 import GoLanding from '../../../../../src/components/go/GoLanding';
@@ -59,5 +60,5 @@ export default async function GoVariantPage({
 }) {
   const { locale, variant } = await params;
   if (!hasLocale(routing.locales, locale) || !isGoVariant(variant)) notFound();
-  return <GoLanding variant={variant} />;
+  return <GoLanding variant={variant} catalog={await loadLandingCatalog()} />;
 }

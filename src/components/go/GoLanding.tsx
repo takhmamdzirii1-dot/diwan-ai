@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect } from 'react';
+import type { LandingCatalog } from '@/src/content/landing-catalog';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import GlobalFooter from '../GlobalFooter';
@@ -28,7 +29,7 @@ import { VARIANT_SECONDARY_TARGET, VARIANT_SECTIONS, type GoSectionKey, type GoV
  * signed-in visitors go to Studio (or TopUp for paid plans). Pricing cards
  * render live catalog values with the project's visibility rules intact.
  */
-export default function GoLanding({ variant }: { variant: GoVariant }) {
+export default function GoLanding({ variant, catalog }: { variant: GoVariant; catalog: LandingCatalog }) {
   const locale = useLocale();
   const tNav = useTranslations('go.nav');
   const { user, isLoading } = useUser();
@@ -82,7 +83,7 @@ export default function GoLanding({ variant }: { variant: GoVariant }) {
   const sections: Record<GoSectionKey, React.ReactNode> = {
     benefits: <GoBenefits variant={variant} />,
     preview: <GoPreview onPrimary={handlePrimaryAction} />,
-    proof: <GoProof />,
+    proof: <GoProof brands={catalog.brands} />,
     how: (
       <div className="-mt-10 -mb-14 md:-mt-12 md:-mb-16">
         <HowItWorks />
@@ -90,11 +91,11 @@ export default function GoLanding({ variant }: { variant: GoVariant }) {
     ),
     pricing: (
       <div className="-my-8 md:-my-12">
-        <GlobalPricing onGetStarted={handlePricingAction} />
+        <GlobalPricing catalog={catalog} onGetStarted={handlePricingAction} />
       </div>
     ),
-    trust: <GoTrust />,
-    faq: <GoFaq />,
+    trust: <GoTrust gateways={catalog.gateways} />,
+    faq: <GoFaq gateways={catalog.gateways} />,
   };
 
   return (

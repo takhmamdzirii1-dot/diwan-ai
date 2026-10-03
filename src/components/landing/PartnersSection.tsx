@@ -3,32 +3,13 @@
 import { LogoCloud } from '@/components/ui/logo-cloud-3';
 import { useTranslations } from 'next-intl';
 
-const LOBE_ICON = 'https://unpkg.com/@lobehub/icons-static-png@latest';
+import type { LandingBrand } from '@/src/content/landing-catalog';
 
-const logos = [
-  { name: 'GPT', asset: 'dark/openai.png' },
-  { name: 'Claude', asset: 'dark/claude-color.png' },
-  { name: 'Gemini', asset: 'dark/gemini-color.png' },
-  { name: 'Nano Banana', asset: 'dark/nanobanana-color.png' },
-  { name: 'Grok', asset: 'dark/grok.png' },
-  { name: 'Kling', asset: 'dark/kling-color.png' },
-  { name: 'DeepSeek', asset: 'dark/deepseek-color.png' },
-  { name: 'FLUX', asset: 'dark/flux.png' },
-  { name: 'Qwen', asset: 'dark/qwen-color.png' },
-  { name: 'Seedance', asset: 'dark/bytedance-color.png' },
-  { name: 'Kimi', asset: 'dark/kimi-color.png' },
-  { name: 'GLM', asset: 'dark/zai.png' },
-  { name: 'Hailuo', asset: 'dark/hailuo-color.png' },
-  { name: 'Seedream', asset: 'dark/bytedance-color.png' },
-].map(({ name, asset }) => ({
-  alt: `${name} wordmark`,
-  name,
-  src: `${LOBE_ICON}/${asset}`,
-}));
-
-export default function PartnersSection() {
+export default function PartnersSection({ brands }: { brands: LandingBrand[] }) {
   const t = useTranslations('partners');
 
+  if (!brands.length) return null;
+  const logos = brands.map((brand) => ({ name: brand.name, alt: brand.name, src: brand.iconUrl }));
   return (
     <section
       id="models"
@@ -39,6 +20,7 @@ export default function PartnersSection() {
         {t('label')}
       </p>
       <LogoCloud logos={logos} />
+      <p className="mt-5 px-6 text-center text-xs leading-relaxed text-white/55">{t('independent')}</p>
     </section>
   );
 }

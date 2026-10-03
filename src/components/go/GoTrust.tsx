@@ -2,12 +2,15 @@
 
 import { BadgeCheck, Banknote, Gift, ShieldCheck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import type { GatewayAvailability } from '@/src/content/landing-catalog';
+import { paymentCopy } from '@/src/components/landing/PaymentCopy';
 
 const TRUST_ICONS = [Banknote, ShieldCheck, Gift, BadgeCheck];
 
 /** Trust section — only real, currently-true statements. No counters, no reviews. */
-export default function GoTrust() {
+export default function GoTrust({ gateways }: { gateways: GatewayAvailability }) {
   const t = useTranslations('go.trust');
+  const payment = useTranslations('payment');
   const items = t.raw('items') as { title: string; text: string }[];
 
   return (
@@ -33,7 +36,7 @@ export default function GoTrust() {
                 <h3 className="mt-4 text-[15px] font-semibold leading-snug text-[#f5f5f5]">
                   {item.title}
                 </h3>
-                <p className="mt-2 text-[13.5px] leading-relaxed text-white/50">{item.text}</p>
+                <p className="mt-2 text-[13.5px] leading-relaxed text-white/50">{i === 0 ? paymentCopy(payment, gateways) : item.text}</p>
               </div>
             );
           })}

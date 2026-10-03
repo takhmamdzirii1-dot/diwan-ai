@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import type { GatewayAvailability } from '@/src/content/landing-catalog';
+import { paymentCopy } from '@/src/components/landing/PaymentCopy';
 import { cn } from '@/lib/utils';
 
 interface GoFaqItem {
@@ -10,8 +12,9 @@ interface GoFaqItem {
 }
 
 /** Conversion-focused FAQ for paid traffic. Same accessible accordion pattern as the homepage. */
-export default function GoFaq() {
+export default function GoFaq({ gateways }: { gateways: GatewayAvailability }) {
   const t = useTranslations('go.faq');
+  const payment = useTranslations('payment');
   const items = t.raw('items') as GoFaqItem[];
   const [open, setOpen] = useState<number | null>(0);
 
@@ -65,7 +68,7 @@ export default function GoFaq() {
                     aria-labelledby={`go-faq-trigger-${i}`}
                   >
                     <p className="max-w-[62ch] pb-7 pe-4 text-[14px] leading-[1.75] text-white/50">
-                      {item.answer}
+                      {item.question === items[2].question ? `${paymentCopy(payment, gateways)} ${payment('period')}` : item.answer}
                     </p>
                   </div>
                 )}

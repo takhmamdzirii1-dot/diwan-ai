@@ -20,6 +20,7 @@ export default function GoHero({
 }) {
   const t = useTranslations(`go.hero.${variant}`);
   const tp = useTranslations('go.preview');
+  const th = useTranslations('hero');
   const modalities = [
     { icon: MessageSquare, label: tp('chatTitle') },
     { icon: ImageIcon, label: tp('imageTitle') },
@@ -58,6 +59,7 @@ export default function GoHero({
             {t('secondary')}
           </button>
         </div>
+        <p className="mx-auto mt-6 max-w-[62ch] text-xs leading-relaxed text-white/65">{(th.raw('microcopy') as string[]).join(' · ')}</p>
         <div className="mx-auto mt-10 grid max-w-[560px] grid-cols-3 gap-2.5 sm:gap-3" aria-label={t('eyebrow')}>
           {modalities.map(({ icon: Icon, label }) => (
             <div
