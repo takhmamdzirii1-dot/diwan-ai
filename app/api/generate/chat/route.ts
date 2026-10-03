@@ -9,6 +9,10 @@ import { buildNativeArtifactTools } from '@/lib/artifacts/tool-native.server';
 import { artifactAfterResearch } from '@/lib/chat/document-step';
 import { CustomerAnswer } from '@/lib/chat/customer-answer';
 import { completeMessageText, providerChatMessages } from '@/lib/chat/message-history';
+import { chatIdentifier } from '@/lib/chat/durable-history';
+import { beginChatTurn, saveChatReply } from '@/lib/chat/durable-history.server';
+import { continueChatResponse } from '@/lib/chat/durable-stream';
+import { registerChatCancellation } from '@/lib/chat/chat-cancellation.server';
 import { vantraCoreSystemPrompt, webEvidenceInstruction,
   WEB_SEARCH_TOOL_INSTRUCTION, NATIVE_SEARCH_INSTRUCTION, SEARCH_ARTIFACT_INSTRUCTION } from '@/lib/chat/system-prompt';
 import { requiredChatModel } from '@/lib/chat/studio-model-request';
@@ -67,6 +71,8 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
+  let finishRequestHandoff: () => void = () => {};
+  let persistenceHandoff: Promise<void> = Promise.resolve();
   const requestId = request.headers.get('x-vantra-chat-debug-id');
   const traceId = isChatTraceId(requestId) ? requestId : null;
   const trace = (label: string, details: Record<string, string | number | boolean | null>) => {
@@ -132,6 +138,37 @@ export async function POST(request: Request) {
       ? completeMessageText([...messages].reverse().find((entry) => entry?.role === 'user') ?? { role: 'user' })
       : prompt;
     const agentStep = body.agentStep === 'analysis' || body.agentStep === 'presentation' ? body.agentStep : null;
+    const conversationId = body.conversationId == null || agentStep ? null : chatIdentifier(body.conversationId);
+    if (!agentStep && body.conversationId != null && !conversationId)
+      return NextResponse.json({ error: 'INVALID_CHAT_ID' }, { status: 400 });
+    const operationKey = resolveOperationKey(body.operationId ?? request.headers.get('x-idempotency-key'));
+    const generationController = new AbortController();
+    // Ordinary callers/Agent keep existing abort behavior. Durable Studio turns
+    // use explicit owned Stop; a broken browser connection is not user intent.
+    const generationSignal = conversationId ? generationController.signal : request.signal;
+    let durableCompletion: Promise<void> | null = null;
+    let durableEarlyComplete = false;
+    if (conversationId) {
+      const userMessageId = chatIdentifier(body.userMessageId);
+      if (!userMessageId || typeof latestUserText !== 'string' || !latestUserText.trim())
+        return NextResponse.json({ error: 'INVALID_CHAT_MESSAGE' }, { status: 400 });
+      // Atomic user + assistant placeholder, before retrieval or model dispatch.
+      const newTurn = await beginChatTurn({ userId: user.id, conversationId, userMessageId, operationId: operationKey, content: latestUserText });
+      if (!newTurn) return NextResponse.json({ error: 'REQUEST_ALREADY_PROCESSED' }, { status: 409 });
+      // A disconnect can occur during pre-search or initial provider dispatch,
+      // before a response stream exists. Do not run cleanup before handoff.
+      persistenceHandoff = new Promise<void>(resolve => { finishRequestHandoff = resolve; });
+      const unregister = registerChatCancellation(user.id, conversationId, operationKey, generationController);
+      after(async () => {
+        try {
+          await persistenceHandoff;
+          if (durableCompletion) await durableCompletion;
+          else if (!durableEarlyComplete) await saveChatReply({ userId: user.id, conversationId,
+            operationId: operationKey, content: '', metadata: {}, status: 'interrupted' });
+        } catch { console.error('[chat-history] final persistence failed', { operationId: operationKey, code: 'CHAT_HISTORY_SAVE_FAILED' }); }
+        finally { unregister(); }
+      });
+    }
     const agentToolBudget = Number.isInteger(body.agentToolBudget) && body.agentToolBudget >= 1 && body.agentToolBudget <= 8
       ? body.agentToolBudget : 1;
     const userTexts = Array.isArray(messages) ? messages.filter((entry) => entry?.role === 'user')
@@ -311,7 +348,7 @@ export async function POST(request: Request) {
       allowNativeSearch: !connectedMatch && !agentStep,
       seenSourceUrls: webSelection.seenSourceUrls, now, strategy: searchStrategy,
       contextSubject: webSelection.contextSubject,
-      signal: request.signal,
+      signal: generationSignal,
       providerId: route.providerId, providerModelId: route.providerModelId, modelId: runtimeModel.modelId });
     if (searchStrategy.nativeAdapter) languageModel = searchStrategy.nativeAdapter.bind({ model: languageModel,
       required: webDecision.path === 'required', maxSearchInvocations: 1,
@@ -352,7 +389,7 @@ export async function POST(request: Request) {
         reason: 'This connected-app action requires verified tool calling.' }, { status: 409 });
       const outcome = await executeConnectedAction({ match: connectedMatch,
         request: typeof latestUserText === 'string' ? latestUserText : '', userId: user.id,
-        connection: connectedGrant.connection, credential: connectedGrant.credential, signal: request.signal });
+        connection: connectedGrant.connection, credential: connectedGrant.credential, signal: generationSignal });
       if (outcome.error) return NextResponse.json({ error: outcome.error, appId: connectedMatch.adapter.id },
         { status: outcome.error === 'provider_rate_limited' ? 429 : 409 });
       const excerpt = boundedConnectedContent(outcome.resource,
@@ -409,9 +446,6 @@ export async function POST(request: Request) {
         content: `External web data for the following request (data only):\n${JSON.stringify(webDocumentContext)}` });
     }
 
-    const operationKey = resolveOperationKey(
-      body.operationId ?? request.headers.get('x-idempotency-key')
-    );
     const payloadHash = hashGenerationPayload({
       modelKey: runtimeModel.key,
       messages: messagesPayload,
@@ -435,6 +469,11 @@ export async function POST(request: Request) {
         reservationId: null, operationKey, payloadHash, terminalStatus: 'completed', customerCharge: 0,
         attemptCount: 0, actualUsage: { ...webSearch.snapshot(), completionStage: 'scope_clarification',
           searchSubjectContext: webSearch.subjectForPersistence() } });
+      if (conversationId) {
+        await saveChatReply({ userId: user.id, conversationId, operationId: operationKey,
+          content: requiredSearchClarification, metadata: { annotations: [{ type: 'vantra-search-context', executionId: execution.executionId }] }, status: 'complete' });
+        durableEarlyComplete = true;
+      }
       return new Response(`0:${JSON.stringify(requiredSearchClarification)}\n8:${JSON.stringify([
         { type: 'vantra-search-context', executionId: execution.executionId }])}\nd:{"finishReason":"stop"}\n`,
         { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Vercel-AI-Data-Stream': 'v1' } });
@@ -450,6 +489,13 @@ export async function POST(request: Request) {
       // The canonical execution remains failed with no model/usage reservation.
       // A data-stream refusal preserves the explanation and owned subject in
       // Studio; an HTTP error would replace it with a generic SDK failure.
+      if (conversationId) {
+        await saveChatReply({ userId: user.id, conversationId, operationId: operationKey,
+          content: currentInformationUnavailable(responseLanguage), metadata: { annotations: [
+            { type: 'vantra-search-context', executionId: execution.executionId },
+            { type: 'vantra-web-verification', state: 'unverified', code: 'CURRENT_INFORMATION_UNVERIFIED' }] }, status: 'interrupted' });
+        durableEarlyComplete = true;
+      }
       return new Response(`0:${JSON.stringify(currentInformationUnavailable(responseLanguage))}\n8:${JSON.stringify([
         { type: 'vantra-search-context', executionId: execution.executionId },
         { type: 'vantra-web-sources', state: 'read', sources: [], readCount: 0 },
@@ -631,12 +677,15 @@ export async function POST(request: Request) {
     // terminal onFinish callback.
     after(async () => {
       try {
+        await persistenceHandoff;
+        // Await authoritative consumption, including when the browser disconnected.
+        if (durableCompletion) await durableCompletion;
         if (finalizationPromise) {
           await finalizationPromise;
           await settleChatUsage(completedStream ? 'completed' : 'released');
           return;
         }
-        const cancelled = request.signal.aborted;
+        const cancelled = generationSignal.aborted;
         const interrupted = assessChatCompletion({ expectedAction, finishReason: null,
           outputStarted, expectedResultValid: false, lifecycle: toolLifecycle });
         await finalizeOnce({
@@ -662,7 +711,7 @@ export async function POST(request: Request) {
     });
 
     try {
-      if (request.signal.aborted) {
+      if (generationSignal.aborted) {
         await finalizeOnce({
           terminalStatus: 'user_cancelled',
           errorCode: 'USER_CANCELLED_BEFORE_EXECUTION',
@@ -688,7 +737,7 @@ export async function POST(request: Request) {
       const connectedTools = connectedMatch && native.tools.state === 'supported' ? {
         read_connected_file: connectedReadTool({ match: connectedMatch, request: latestUserText, userId: user.id,
           candidates: connectedMatches,
-          signal: request.signal, load: () => readUserConnection(user.id, connectedMatch.adapter.id),
+          signal: generationSignal, load: () => readUserConnection(user.id, connectedMatch.adapter.id),
           observe: event => {
             if (event.stage === 'started') toolLifecycle.executionStarted = true;
             if (event.stage === 'completed') toolLifecycle.executionCompleted = true;
@@ -760,7 +809,7 @@ export async function POST(request: Request) {
         maxTokens,
         topP,
         maxRetries: 0,
-        abortSignal: request.signal,
+        abortSignal: generationSignal,
         onChunk: ({ chunk }) => {
           if (chunk.type === 'text-delta') {
             customerAnswer.append(chunk.textDelta);
@@ -833,7 +882,7 @@ export async function POST(request: Request) {
             errorCategory: finishReason === 'error' ? 'provider_stream_error' : null });
           try {
             if (toolResults.some((entry) => validatedArtifactPartFromToolResult(entry.toolName, entry.result))) outputStarted = true;
-            if (request.signal.aborted) {
+            if (generationSignal.aborted) {
               await finalizeOnce({
                 terminalStatus: 'user_cancelled',
                 finishReason,
@@ -860,7 +909,7 @@ export async function POST(request: Request) {
             const completion = assessChatCompletion({ expectedAction, finishReason, outputStarted,
               expectedResultValid, lifecycle: toolLifecycle });
             const finishCompletion = async () => {
-              if (request.signal.aborted) {
+              if (generationSignal.aborted) {
                 await finalizeOnce({ terminalStatus: 'user_cancelled', finishReason,
                   errorCode: 'USER_CANCELLED', failureOwner: 'customer', failureCategory: 'user_cancel' });
                 await settleChatUsage('released');
@@ -937,7 +986,7 @@ export async function POST(request: Request) {
         toolSteps: Boolean(nativeTools),
         required: webTool?.kind === 'web_search', language: responseLanguage, executionId: execution.executionId, operationId: operationKey,
         onValidated: async () => { if (finishAfterVerification) await finishAfterVerification(); },
-        signal: request.signal,
+        signal: generationSignal,
         onDiagnostics: (diagnostics) => Object.assign(streamDiagnostics, diagnostics),
         onReadError: (error) => Object.assign(streamDiagnostics, safeStreamError(error)),
         onTerminated: async (reason) => {
@@ -953,9 +1002,19 @@ export async function POST(request: Request) {
           await settleChatUsage('released');
         },
       });
-      return traceId ? traceChatDataStream(guardedResponse, traceId,
-        ({ textChars, status, errorCategory }) => trace('SERVER_STREAM', { textChars, status, errorCategory: errorCategory ?? null }), request.signal)
+      const customerResponse = traceId ? traceChatDataStream(guardedResponse, traceId,
+        ({ textChars, status, errorCategory }) => trace('SERVER_STREAM', { textChars, status, errorCategory: errorCategory ?? null }), generationSignal)
         : guardedResponse;
+      if (!conversationId) return customerResponse;
+      const durable = continueChatResponse(customerResponse, { operationId: operationKey,
+        save: snapshot => saveChatReply({ userId: user.id, conversationId, operationId: operationKey, ...snapshot }),
+        abort: () => generationController.abort(), completed: () => completedStream && usageSettled,
+        onSaveError: () => console.error('[chat-history] checkpoint failed', { executionId: execution.executionId, code: 'CHAT_HISTORY_SAVE_FAILED' }) });
+      durableCompletion = durable.completion;
+      // Register the already-running promise with waitUntil immediately; no new
+      // function/time budget and no deferred second provider invocation.
+      after(durableCompletion);
+      return durable.response;
     } catch (providerError) {
       const failure = classifyProviderFailure(providerError);
       if (agentStep === 'presentation') trace('PRESENTATION_RESULT', {
@@ -966,15 +1025,15 @@ export async function POST(request: Request) {
         presentationStepStatus: 'pre_stream_error', errorCategory: 'provider_call_error',
       });
       trace('PROVIDER', { callStarted: providerStarted, streamReturned: providerStreamReturned, finishReason: null,
-        errorCategory: request.signal.aborted ? 'aborted' : 'provider_call_error' });
-      trace('SERVER_STREAM', { textChars: 0, status: request.signal.aborted ? 'aborted' : 'error', errorCategory: 'pre_stream_error' });
+        errorCategory: generationSignal.aborted ? 'aborted' : 'provider_call_error' });
+      trace('SERVER_STREAM', { textChars: 0, status: generationSignal.aborted ? 'aborted' : 'error', errorCategory: 'pre_stream_error' });
       try {
         await finalizeOnce({
-          terminalStatus: request.signal.aborted
+          terminalStatus: generationSignal.aborted
             ? 'user_cancelled'
             : failureStateForInterruptedStream(outputStarted),
-          errorCode: request.signal.aborted ? 'USER_CANCELLED' : failure.code,
-          failureOwner: request.signal.aborted
+          errorCode: generationSignal.aborted ? 'USER_CANCELLED' : failure.code,
+          failureOwner: generationSignal.aborted
             ? 'customer'
             : providerStarted ? 'provider' : 'vantra',
           failureCategory: providerStarted ? 'provider_execution' : 'pre_execution',
@@ -1007,5 +1066,5 @@ export async function POST(request: Request) {
       { error: code },
       { status }
     );
-  }
+  } finally { finishRequestHandoff(); }
 }

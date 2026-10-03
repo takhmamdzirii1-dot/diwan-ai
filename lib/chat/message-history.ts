@@ -24,14 +24,14 @@ export function formatChatTimestamp(value: unknown, locale: string, now = new Da
 }
 
 export function canRegenerateAssistantMessage(message: { role: string; content?: unknown;
-  vantraParts?: unknown; toolInvocations?: unknown; vantraFailureKind?: unknown }, agentResult = false): boolean {
-  if (message.role !== 'assistant' || agentResult || typeof message.content !== 'string' || !message.content.trim()) return false;
+  vantraParts?: unknown; toolInvocations?: unknown; vantraFailureKind?: unknown; vantraStatus?: unknown }, agentResult = false): boolean {
+  if (message.role !== 'assistant' || agentResult) return false;
   if (message.vantraFailureKind) return false;
   if (Array.isArray(message.vantraParts) && message.vantraParts.some((part) => part && typeof part === 'object'
     && 'type' in part && part.type !== 'text')) return false;
   if (Array.isArray(message.toolInvocations) && message.toolInvocations.some((part) => part && typeof part === 'object'
     && 'state' in part && part.state === 'result')) return false;
-  return true;
+  return message.vantraStatus === 'interrupted' || typeof message.content === 'string' && Boolean(message.content.trim());
 }
 
 function textParts(value: unknown): string | null {

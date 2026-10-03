@@ -113,6 +113,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   codeBlockCounter.current = 0;
 
   const isUser = message.role === 'user';
+  const recoveryStatus = (message as Message & { vantraStatus?: string }).vantraStatus;
   const failureKind = (message as Message & { vantraFailureKind?: string }).vantraFailureKind;
   const toolInvocations = (message as Message & { toolInvocations?: unknown }).toolInvocations;
   const parts = !isUser && !isStreaming
@@ -178,7 +179,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
   });
 
   // Fluid typewriter reveal while the assistant is streaming
-  const smoothActive = !isUser && isStreaming && isLatest;
+  const smoothActive = !isUser && isStreaming && isLatest && recoveryStatus !== 'streaming';
   const smoothContent = useSmoothText(isUser ? message.content : safeContent, smoothActive);
   const displayContent = smoothActive ? smoothContent : safeContent;
   const searchPending = Boolean(isStreaming && sources);
@@ -323,7 +324,13 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
               </div>
             )}
 
-            {isStreaming && !displayContent && !sources && <p role="status" className="text-sm text-[var(--studio-text-secondary)]">{locale === 'ar' ? 'جارٍ تحضير المعاينة…' : locale === 'fr' ? 'Préparation de l’aperçu…' : 'Preparing preview…'}</p>}
+            {recoveryStatus === 'streaming' && <p role="status" className="text-sm text-[var(--studio-text-secondary)]">{locale === 'ar' ? 'جارٍ إنشاء الرد…' : locale === 'fr' ? 'Génération en cours…' : 'Generating…'}</p>}
+            {recoveryStatus === 'interrupted' && <div className="flex items-center gap-2 text-sm text-[var(--studio-text-secondary)]" role="status">
+              {locale === 'ar' ? 'توقف إنشاء الرد.' : locale === 'fr' ? 'Génération interrompue.' : 'Response interrupted.'}
+              {isLatest && onRegenerate && <button type="button" onClick={onRegenerate} className="chat-message-action rounded-lg border border-[var(--studio-border)] px-3 py-2">
+                {locale === 'ar' ? 'إعادة الإنشاء' : locale === 'fr' ? 'Régénérer' : 'Regenerate'}</button>}
+            </div>}
+            {isStreaming && recoveryStatus !== 'streaming' && !displayContent && !sources && <p role="status" className="text-sm text-[var(--studio-text-secondary)]">{locale === 'ar' ? 'جارٍ تحضير المعاينة…' : locale === 'fr' ? 'Préparation de l’aperçu…' : 'Preparing preview…'}</p>}
             {(searchPending || sources?.state === 'searching') && sources && <ChatSources annotation={{ ...sources, state: 'searching' }} locale={locale} direction={contentDirection} />}
             {toolProgress && !searchPending && <p className="mt-2 text-xs text-[var(--studio-text-secondary)]" role="status">{toolProgress}</p>}
             {renderParts.map((part, index) => part.type === 'text' ? part.text && <div key={index} data-chat-rendered-text="" className={cn(
@@ -500,7 +507,7 @@ export default function MessageBubble({ message, isLatest, isStreaming, isThinki
                 >
                   {copiedMessage ? <Check className="h-3.5 w-3.5 text-white" /> : <Copy className="h-3.5 w-3.5" />}
                 </button>}
-                {isLatest && onRegenerate && canRegenerateAssistantMessage(message, Boolean(agentRun)) && (
+                {recoveryStatus !== 'interrupted' && isLatest && onRegenerate && canRegenerateAssistantMessage(message, Boolean(agentRun)) && (
                   <button
                     type="button"
                     onClick={onRegenerate}

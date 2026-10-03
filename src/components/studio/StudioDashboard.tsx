@@ -51,6 +51,8 @@ import { deterministicContextOutput, expectedOutputType, partMatchesRequestedAct
   validateRequestedChatOutput } from '@/lib/chat/action-routing';
 import ChatGuidanceCard from './ChatGuidanceCard';
 import { decideWebSearchWithHistory } from '@/lib/web/selection';
+import { useChatRecovery } from './useChatRecovery';
+import type { DurableMessage } from '@/lib/chat/durable-history';
 
 const ArtifactSpreadsheetPreview = dynamic(() => import('./ArtifactSpreadsheetPreview'), { ssr: false });
 const FileAttachmentPreview = dynamic(() => import('./FileAttachmentPreview'), { ssr: false });
@@ -154,6 +156,8 @@ export default function StudioDashboard({
   });
   const debugRequestIdRef = useRef<string | null>(null);
   const requestTrackerRef = useRef(new ChatRequestTracker());
+  const historyRevisionRef = useRef(0);
+  const durableOperationRef = useRef<{ conversationId: string; operationId: string } | null>(null);
   const [requestOutcome, setRequestOutcome] = useState<ChatRequestOutcome | null>(null);
   const recordRequestOutcome = useCallback((requestId: string, conversationId: string, reason: ChatTerminationReason) => {
     const outcome = requestTrackerRef.current.finish(requestId, conversationId, reason);
@@ -282,6 +286,17 @@ export default function StudioDashboard({
     id: activeSessionId || 'default-session',
     api: '/api/generate/chat',
     experimental_prepareRequestBody: ({ messages: requestMessages, requestBody }) => {
+      historyRevisionRef.current++;
+      const durableConversationId = activeSessionIdRef.current ?? 'default-session';
+      const suppliedOperation = requestBody && 'operationId' in requestBody ? requestBody.operationId : null;
+      const operationId = typeof suppliedOperation === 'string' ? suppliedOperation : crypto.randomUUID();
+      durableOperationRef.current = { conversationId: durableConversationId, operationId };
+      if (user) try { sessionStorage.setItem(`vantra_active_chat_${user.id}`, durableConversationId); } catch { /* Recovery via history. */ }
+      // Immediate legacy cache keeps attachment cards/browser-only resources on
+      // this device too. Server rows remain the durable completion authority.
+      try { localStorage.setItem(`vantra_chat_${durableConversationId}`, serializeChatSession(requestMessages,
+        message => chatPartsFromMessage(message.content, locale, (message as Message & { vantraParts?: unknown }).vantraParts))); }
+      catch { /* The server persists the user turn before dispatch. */ }
       const requestId = crypto.randomUUID();
       debugRequestIdRef.current = requestId;
       requestTrackerRef.current.begin(requestId, activeSessionId ?? 'default-session');
@@ -290,7 +305,9 @@ export default function StudioDashboard({
       if (chatDebugEnabled) {
         console.info('[VANTRA_CHAT_DEBUG] CLIENT_SEND', { requestId, messageCount: requestMessages.length, started: true });
       }
-      return { messages: chatRequestMessages(requestMessages), ...requestBody };
+      return { messages: chatRequestMessages(requestMessages), ...requestBody,
+        conversationId: durableConversationId, operationId,
+        userMessageId: [...requestMessages].reverse().find(message => message.role === 'user')?.id };
     },
     fetch: async (input, init) => {
       const requestId = debugRequestIdRef.current ?? crypto.randomUUID();
@@ -460,6 +477,10 @@ export default function StudioDashboard({
     void reload({ body: chatModelRequestBody(currentModelId) });
   }, [currentModelId, reload]);
 
+  useChatRecovery({ userId: user?.id, sessionId: activeSessionId,
+    busy: isLoading || canonicalPending || agentRun?.status === 'running', revision: historyRevisionRef,
+    setSessionId: setActiveSessionId, setSessions, setMessages });
+
   const runAgentRequest = useCallback(async (run: AgentRun,
     context: { assistantId: string; history: Array<{ role: string; content: string }>; modelId: string }) => {
     const controller = new AbortController();
@@ -535,7 +556,8 @@ export default function StudioDashboard({
     setAgentRun(cancelled);
   }, []);
 
-  const chatBusy = isLoading || canonicalPending || agentRun?.status === 'running';
+  const recoveringReply = messages.some(message => (message as Message & Partial<DurableMessage>).vantraStatus === 'streaming');
+  const chatBusy = isLoading || canonicalPending || recoveringReply || agentRun?.status === 'running';
   // Presentation only: use the shared decision while required retrieval is
   // awaiting response headers. Actual source progress comes from the server.
   const awaitingSearch = chatBusy && messages.at(-1)?.role === 'user'
@@ -553,6 +575,14 @@ export default function StudioDashboard({
     setCanonicalPending(false);
   }, []);
   const abortChatRequest = useCallback((reason: 'user_stop' | 'navigation_abort' | 'conversation_switch_abort') => {
+    if (reason === 'user_stop') {
+      const recovered = [...messages].reverse().find(message => (message as Message & Partial<DurableMessage>).vantraStatus === 'streaming') as (Message & Partial<DurableMessage>) | undefined;
+      const operation = recovered?.vantraOperationId && activeSessionIdRef.current
+        ? { conversationId: activeSessionIdRef.current, operationId: recovered.vantraOperationId } : durableOperationRef.current;
+      if (operation) void fetch('/api/chat/history', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'stop', ...operation }), keepalive: true });
+      if (recovered) setMessages(messages.map(message => message.id === recovered.id ? { ...message, vantraStatus: 'interrupted' } : message));
+    }
     const agent = agentRunRef.current;
     if (agent && (agent.status === 'running' || agent.status === 'waiting_for_user')
       && agent.conversationId === (activeSessionIdRef.current ?? 'default-session') && messages.length > 0) {
@@ -573,7 +603,7 @@ export default function StudioDashboard({
     recordRequestOutcome(current.requestId, current.conversationId, reason);
     discardFinalization();
     stop();
-  }, [abortAgentRun, discardFinalization, locale, messages, recordRequestOutcome, stop]);
+  }, [abortAgentRun, discardFinalization, locale, messages, recordRequestOutcome, stop, setMessages]);
   const abortOnUnmountRef = useRef(abortChatRequest);
   abortOnUnmountRef.current = abortChatRequest;
   useEffect(() => {
@@ -596,18 +626,21 @@ export default function StudioDashboard({
     agentRunRef.current = null; agentMessageRef.current = null; setAgentRun(null); setPendingFile(null);
     // Lazy creation: no DB/list record yet â€” just a draft id so the composer stays live.
     setActiveSessionId(`draft-${Date.now()}`);
+    if (user) try { sessionStorage.removeItem(`vantra_active_chat_${user.id}`); } catch { /* Keep in memory. */ }
     setMessages([]);
     onWorkspaceChange('chat');
-  }, [abortChatRequest, onWorkspaceChange, setMessages]);
+  }, [abortChatRequest, onWorkspaceChange, setMessages, user]);
 
   const handleSelectSession = useCallback((sessionId: string) => {
     abortChatRequest('conversation_switch_abort');
     agentRunRef.current = null; agentMessageRef.current = null; setAgentRun(null); setPendingFile(null);
     setActiveSessionId(sessionId);
+    if (user) try { sessionStorage.setItem(`vantra_active_chat_${user.id}`, sessionId); } catch { /* Keep in memory. */ }
     onWorkspaceChange('chat');
-  }, [abortChatRequest, onWorkspaceChange]);
+  }, [abortChatRequest, onWorkspaceChange, user]);
 
   const handleDeleteSession = useCallback((sessionId: string) => {
+    if (user) void fetch(`/api/chat/history?conversationId=${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
     if (sessionId === activeSessionId) abortChatRequest('conversation_switch_abort');
     if (sessionId === activeSessionId) { agentRunRef.current = null; agentMessageRef.current = null; setAgentRun(null); setPendingFile(null); }
     try {
@@ -631,7 +664,7 @@ export default function StudioDashboard({
       }
       return next;
     });
-  }, [activeSessionId, abortChatRequest]);
+  }, [activeSessionId, abortChatRequest, user]);
 
   // Persistence per session
   useEffect(() => {
@@ -1238,7 +1271,8 @@ export default function StudioDashboard({
                                 precedingUserMessage={msg.role === 'assistant'
                                   ? [...messages.slice(0, idx)].reverse().find((entry) => entry.role === 'user') ?? null : null}
                                 isLatest={idx === messages.length - 1}
-                                isStreaming={(isLoading || canonicalPending) && idx === messages.length - 1 && msg.role === 'assistant'}
+                                isStreaming={((isLoading || canonicalPending) && idx === messages.length - 1 && msg.role === 'assistant')
+                                  || (msg as Message & Partial<DurableMessage>).vantraStatus === 'streaming'}
                                 onRegenerate={chatBusy || !currentModelId || !canRegenerateAssistantMessage(msg,
                                   msg.id === agentMessageRef.current?.assistantId) ? undefined : retryChatResponse}
                                 onRetryArtifact={() => {
