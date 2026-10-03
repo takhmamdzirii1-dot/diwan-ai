@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { VantraLogo, VantraWordmark } from './VantraLogo';
 
-export default function GlobalFooter() {
+export default function GlobalFooter({ legalOnly = false }: { legalOnly?: boolean }) {
   const t = useTranslations('footer');
   const locale = useLocale();
   const links = [
@@ -35,7 +35,7 @@ export default function GlobalFooter() {
 
         {/* Links */}
         <nav aria-label={t('aria')} className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3 sm:justify-end lg:gap-x-7">
-          {links.map((l) => (
+          {links.filter(l => !legalOnly || ['terms', 'privacy', 'billing', 'support'].includes(l.key)).map((l) => (
             <Link
               key={l.key}
               href={l.href}

@@ -1,7 +1,8 @@
 'use client';
 
 import { Image as ImageIcon, Play, SendHorizonal } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { landingCopy } from '@/src/content/landing-phase-two';
 
 /**
  * Lightweight static product preview. Pure markup — no AI requests, no
@@ -9,6 +10,7 @@ import { useTranslations } from 'next-intl';
  */
 export default function GoPreview({ onPrimary }: { onPrimary: () => void }) {
   const t = useTranslations('go.preview');
+  const copy = landingCopy(useLocale());
 
   return (
     <section id="preview" className="relative scroll-mt-20">
@@ -83,7 +85,7 @@ export default function GoPreview({ onPrimary }: { onPrimary: () => void }) {
             onClick={onPrimary}
             className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl bg-[#f5f5f5] px-8 text-[15px] font-semibold text-black transition-[background-color,transform] duration-200 hover:bg-white active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]"
           >
-            {t('cta')}
+            {copy.start}
           </button>
           <p className="mt-3 text-[12.5px] text-white/40">{t('microcopy')}</p>
         </div>

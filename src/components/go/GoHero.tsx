@@ -1,7 +1,8 @@
 'use client';
 
 import { Image as ImageIcon, MessageSquare, Play } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { landingCopy } from '@/src/content/landing-phase-two';
 import type { GoVariant } from '@/src/go/variants';
 
 /**
@@ -21,6 +22,7 @@ export default function GoHero({
   const t = useTranslations(`go.hero.${variant}`);
   const tp = useTranslations('go.preview');
   const th = useTranslations('hero');
+  const copy = landingCopy(useLocale());
   const modalities = [
     { icon: MessageSquare, label: tp('chatTitle') },
     { icon: ImageIcon, label: tp('imageTitle') },
@@ -49,7 +51,7 @@ export default function GoHero({
             onClick={onPrimary}
             className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl bg-[#f5f5f5] px-8 text-[15px] font-semibold text-black shadow-[0_14px_42px_-18px_rgba(255,255,255,0.38)] transition-[background-color,transform] duration-200 hover:bg-white active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]"
           >
-            {t('cta')}
+            {copy.start}
           </button>
           <button
             type="button"

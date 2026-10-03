@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect } from 'react';
 import type { LandingCatalog } from '@/src/content/landing-catalog';
 import { useRouter } from 'next/navigation';
-import { useLocale, useTranslations } from 'next-intl';
+import { useLocale } from 'next-intl';
 import GlobalFooter from '../GlobalFooter';
 import GlobalPricing from '../GlobalPricing';
 import HowItWorks from '../landing/HowItWorks';
@@ -19,6 +19,7 @@ import { useModal } from '../../context/ModalContext';
 import useUser from '../../hooks/useUser';
 import { captureLandingAttribution } from '../../lib/attribution';
 import { VARIANT_SECONDARY_TARGET, VARIANT_SECTIONS, type GoSectionKey, type GoVariant } from '../../go/variants';
+import { ProofSection, VariantContent } from '../landing/PhaseTwoSections';
 
 /**
  * Paid-ads landing composer. One architecture for every variant:
@@ -31,9 +32,8 @@ import { VARIANT_SECONDARY_TARGET, VARIANT_SECTIONS, type GoSectionKey, type GoV
  */
 export default function GoLanding({ variant, catalog }: { variant: GoVariant; catalog: LandingCatalog }) {
   const locale = useLocale();
-  const tNav = useTranslations('go.nav');
   const { user, isLoading } = useUser();
-  const { openAuthModal, openTopUpModal } = useModal();
+  const { openAuthModal, openTopUpModal, openPlanSignup } = useModal();
   const router = useRouter();
 
   useEffect(() => {
@@ -53,10 +53,12 @@ export default function GoLanding({ variant, catalog }: { variant: GoVariant; ca
   const handlePricingAction = useCallback(
     (planId?: string) => {
       if (isLoading) return;
-      if (user) openTopUpModal(planId ? { id: planId } : undefined);
-      else openAuthModal('signup');
+      if (!planId) { handlePrimaryAction(); return; }
+      if (!catalog.plans.some(plan => plan.id === planId && plan.publicVisible && plan.active && ['pro', 'max'].includes(plan.planCode))) return;
+      if (user) openTopUpModal({ id: planId });
+      else openPlanSignup(planId);
     },
-    [isLoading, user, openTopUpModal, openAuthModal]
+    [isLoading, user, openTopUpModal, openPlanSignup, catalog.plans, handlePrimaryAction]
   );
 
   const handleSecondaryAction = useCallback(() => {
@@ -65,16 +67,6 @@ export default function GoLanding({ variant, catalog }: { variant: GoVariant; ca
       ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [variant]);
 
-  const navLinks = React.useMemo(
-    () => [
-      { id: 'how', label: tNav('how') },
-      { id: 'models', label: tNav('models') },
-      { id: 'pricing', label: tNav('pricing') },
-      { id: 'faq', label: tNav('faq') },
-    ],
-    [tNav]
-  );
-
   /**
    * Shared homepage sections keep their own rhythm untouched; landing-only
    * compress wrappers tighten them for paid traffic without affecting the
@@ -82,7 +74,7 @@ export default function GoLanding({ variant, catalog }: { variant: GoVariant; ca
    */
   const sections: Record<GoSectionKey, React.ReactNode> = {
     benefits: <GoBenefits variant={variant} />,
-    preview: <GoPreview onPrimary={handlePrimaryAction} />,
+    preview: <><GoPreview onPrimary={handlePrimaryAction} />{variant !== 'ai-in-dzd' && <VariantContent variant={variant} catalog={catalog} />}<ProofSection index={0} /></>,
     proof: <GoProof brands={catalog.brands} />,
     how: (
       <div className="-mt-10 -mb-14 md:-mt-12 md:-mb-16">
@@ -91,6 +83,7 @@ export default function GoLanding({ variant, catalog }: { variant: GoVariant; ca
     ),
     pricing: (
       <div className="-my-8 md:-my-12">
+        {variant === 'ai-in-dzd' && <VariantContent variant={variant} catalog={catalog} />}
         <GlobalPricing catalog={catalog} onGetStarted={handlePricingAction} />
       </div>
     ),
@@ -105,8 +98,8 @@ export default function GoLanding({ variant, catalog }: { variant: GoVariant; ca
         authLoading={isLoading}
         onSignIn={() => !isLoading && openAuthModal('signin')}
         onOpenStudio={() => enterStudio()}
-        onStartFree={() => !isLoading && openAuthModal('signup')}
-        navLinks={navLinks}
+        onStartFree={handlePrimaryAction}
+        compact
       />
 
       <main lang={locale}>
@@ -123,7 +116,7 @@ export default function GoLanding({ variant, catalog }: { variant: GoVariant; ca
         </div>
       </main>
 
-      <GlobalFooter />
+      <GlobalFooter legalOnly />
     </div>
   );
 }

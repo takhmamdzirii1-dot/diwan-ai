@@ -3,7 +3,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Lock, Sparkles } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { landingCopy } from '@/src/content/landing-phase-two';
 import { LiquidMetalButton } from '@/components/ui/liquid-metal-button';
 
 import { Magnetic } from './landing/ui';
@@ -24,6 +25,7 @@ const PATHS = [
 
 export default function HeroSection({ user, authLoading, onEnterStudio, onRequireAuth }: HeroSectionProps) {
   const t = useTranslations('hero');
+  const copy = landingCopy(useLocale());
   const microcopy = t.raw('microcopy') as string[];
   const reduce = useReducedMotion();
   const [heroPrompt, setHeroPrompt] = useState('');
@@ -267,7 +269,7 @@ export default function HeroSection({ user, authLoading, onEnterStudio, onRequir
         >
           <Magnetic strength={0.18}>
             <LiquidMetalButton
-              label={authLoading ? t('openStudio') : user ? t('openStudio') : t('start')}
+              label={user ? t('openStudio') : copy.start}
               onClick={handlePrimaryAction}
             />
           </Magnetic>

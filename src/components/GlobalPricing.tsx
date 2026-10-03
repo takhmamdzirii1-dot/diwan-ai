@@ -11,6 +11,8 @@ import { formatDa } from '../content/marketingFacts';
 import type { Locale } from '../../i18n/routing';
 import type { PaymentPlan } from '@/lib/payments/types';
 import { isPublicCatalogPlan } from '@/lib/payments/plan-catalog';
+import { landingCopy } from '../content/landing-phase-two';
+import { ComparePlans, PricingReassurance, ProofSection } from './landing/PhaseTwoSections';
 
 interface LocalizedPricingTier {
   name: string;
@@ -28,6 +30,7 @@ type PricingCard = {
 export default function GlobalPricing({ onGetStarted, catalog }: { onGetStarted: (planId?: string) => void; catalog: LandingCatalog }) {
   const t = useTranslations('pricing');
   const locale = useLocale() as Locale;
+  const copy = landingCopy(locale);
   const tiers = t.raw('tiers') as LocalizedPricingTier[];
   const { plans, proEstimates, gateways } = catalog;
   const payment = useTranslations('payment');
@@ -101,7 +104,7 @@ export default function GlobalPricing({ onGetStarted, catalog }: { onGetStarted:
             viewport={{ once: true, margin: '-60px' }}
             transition={{ duration: 0.55, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
             className={cn(
-              'relative flex h-[500px] flex-col overflow-visible rounded-[24px] border p-7 transition-[background-color,border-color] duration-200 lg:h-[520px] lg:p-8',
+              'relative flex min-h-[500px] flex-col overflow-visible rounded-[24px] border p-7 transition-[background-color,border-color] duration-200 lg:min-h-[520px] lg:p-8',
               recommended
                 ? 'border-white/[0.22] bg-[#111112] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_24px_70px_rgba(0,0,0,0.24)]'
                 : 'border-white/[0.085] bg-[#09090a]/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] hover:border-white/[0.13] hover:bg-[#0b0b0c]'
@@ -153,13 +156,16 @@ export default function GlobalPricing({ onGetStarted, catalog }: { onGetStarted:
                     : 'border border-white/[0.14] bg-white/[0.025] text-white/85 hover:border-white/[0.22] hover:bg-white/[0.055] hover:text-white'
                 )}
               >
-                {unavailable ? t('catalogPendingAction') : tier.cta}
+                {unavailable ? t('catalogPendingAction') : free ? copy.start : plan?.planCode === 'max' ? copy.chooseMax : copy.choosePro}
               </button>
+              {!free && <PricingReassurance gateways={gateways} />}
             </div>
           </motion.div>
           );
         })}
       </div>
+      <ComparePlans catalog={catalog} />
+      <div className="px-6"><ProofSection index={1} /></div>
     </section>
   );
 }

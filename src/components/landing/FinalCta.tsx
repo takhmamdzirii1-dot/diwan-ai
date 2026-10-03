@@ -2,11 +2,13 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { landingCopy } from '@/src/content/landing-phase-two';
 import { Magnetic } from './ui';
 
 export default function FinalCta({ onGetStarted }: { onGetStarted: () => void }) {
   const t = useTranslations('finalCta');
+  const copy = landingCopy(useLocale());
 
   return (
     <section className="relative overflow-hidden pb-24 pt-28 md:pb-28 md:pt-32">
@@ -60,7 +62,7 @@ export default function FinalCta({ onGetStarted }: { onGetStarted: () => void })
               onClick={onGetStarted}
               className="h-16 w-[min(336px,calc(100vw-48px))] cursor-pointer rounded-xl bg-[#f5f5f5] px-8 text-[15px] font-semibold text-black shadow-[0_14px_42px_-18px_rgba(255,255,255,0.38)] transition-[background-color,transform] duration-200 hover:bg-white active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505] sm:px-10"
             >
-              {t('button')}
+              {copy.start}
             </button>
           </Magnetic>
         </motion.div>

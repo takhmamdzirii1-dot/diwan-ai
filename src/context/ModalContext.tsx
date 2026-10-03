@@ -4,11 +4,15 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import AuthModal from '../components/AuthModal';
 import TopUpModal, { type TopUpPlan } from '../components/TopUpModal';
 import { StudioThemeProvider } from './StudioThemeContext';
+import useUser from '../hooks/useUser';
+import { LANDING_PLAN_INTENT_KEY, saveLandingPlan, takeLandingPlan } from '../content/landing-plan-intent';
+import { usePathname } from 'next/navigation';
 
 export interface ModalContextType {
   isAuthModalOpen: boolean;
   authMode: 'signin' | 'signup';
   openAuthModal: (mode?: 'signin' | 'signup') => void;
+  openPlanSignup: (planId: string) => void;
   closeAuthModal: () => void;
   isTopUpModalOpen: boolean;
   topUpPlan: TopUpPlan;
@@ -27,9 +31,18 @@ export function ModalProvider({ children, checkoutThemeLocale }: { children: Rea
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
   const [topUpPlan, setTopUpPlan] = useState<TopUpPlan>(DEFAULT_TOPUP_PLAN);
+  const { user } = useUser();
+  const pathname = usePathname();
 
   const openAuthModal = useCallback((mode: 'signin' | 'signup' = 'signin') => {
+    try { localStorage.removeItem(LANDING_PLAN_INTENT_KEY); } catch {}
     setAuthMode(mode);
+    setIsAuthModalOpen(true);
+  }, []);
+
+  const openPlanSignup = useCallback((planId: string) => {
+    try { saveLandingPlan(localStorage, planId); } catch {}
+    setAuthMode('signup');
     setIsAuthModalOpen(true);
   }, []);
 
@@ -45,6 +58,19 @@ export function ModalProvider({ children, checkoutThemeLocale }: { children: Rea
   const closeTopUpModal = useCallback(() => {
     setIsTopUpModalOpen(false);
   }, []);
+
+  useEffect(() => {
+    // AuthModal redirects into Studio. Consume there, not in the marketing
+    // provider that is about to unmount during the auth redirect.
+    if (!user || !pathname?.startsWith('/studio/')) return;
+    try {
+      const planId = takeLandingPlan(localStorage);
+      if (planId) {
+        setIsAuthModalOpen(false);
+        openTopUpModal({ id: planId });
+      }
+    } catch {}
+  }, [user?.id, pathname, openTopUpModal]);
 
   // Global window listener & binding for static HTML buttons
   useEffect(() => {
@@ -76,6 +102,7 @@ export function ModalProvider({ children, checkoutThemeLocale }: { children: Rea
         isAuthModalOpen,
         authMode,
         openAuthModal,
+        openPlanSignup,
         closeAuthModal,
         isTopUpModalOpen,
         topUpPlan,
@@ -122,6 +149,7 @@ export function useModal(): ModalContextType {
         }
       },
       closeAuthModal: () => {},
+      openPlanSignup: () => {},
       isTopUpModalOpen: false,
       topUpPlan: DEFAULT_TOPUP_PLAN,
       openTopUpModal: () => {},

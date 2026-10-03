@@ -10,6 +10,7 @@ export type LandingCatalog = {
   brands: LandingBrand[];
   proEstimates: { image: OutcomeEstimate; video: OutcomeEstimate };
   gateways: GatewayAvailability;
+  modelAccessCounts?: Record<'free' | 'pro' | 'max', number>;
 };
 
 /** Public presentation only; never serialize routing, pricing internals or credentials. */

@@ -18,6 +18,7 @@ import LandingHeader from './landing/LandingHeader';
 import WhyVantra from './landing/WhyVantra';
 import { useModal } from '../context/ModalContext';
 import useUser from '../hooks/useUser';
+import { ProofSection } from './landing/PhaseTwoSections';
 
 /**
  * VANTRA — Global Landing Experience.
@@ -29,7 +30,7 @@ import useUser from '../hooks/useUser';
 export default function OriginalLandingPage({ catalog }: { catalog: LandingCatalog }) {
   const locale = useLocale();
   const { user, isLoading } = useUser();
-  const { openAuthModal, openTopUpModal } = useModal();
+  const { openAuthModal, openTopUpModal, openPlanSignup } = useModal();
   const router = useRouter();
 
   const { scrollYProgress } = useScroll();
@@ -48,8 +49,10 @@ export default function OriginalLandingPage({ catalog }: { catalog: LandingCatal
 
   const handlePricingAction = (planId?: string) => {
     if (isLoading) return;
-    if (user) openTopUpModal(planId ? { id: planId } : undefined);
-    else openAuthModal('signup');
+    if (!planId) { handlePrimaryAction(); return; }
+    if (!catalog.plans.some(plan => plan.id === planId && plan.publicVisible && plan.active && ['pro', 'max'].includes(plan.planCode))) return;
+    if (user) openTopUpModal({ id: planId });
+    else openPlanSignup(planId);
   };
 
   const handlePrimaryAction = () => {
@@ -84,6 +87,7 @@ export default function OriginalLandingPage({ catalog }: { catalog: LandingCatal
 
       <PartnersSection brands={catalog.brands} />
       <CinematicScrollMockup />
+      <ProofSection index={0} />
       <WhyVantra catalog={catalog} />
       <HowItWorks />
       <Testimonials />

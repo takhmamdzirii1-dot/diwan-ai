@@ -8,6 +8,7 @@ import { VantraLogo, VantraWordmark } from '../VantraLogo';
 import { cn } from '@/lib/utils';
 import { Link, usePathname } from '@/i18n/navigation';
 import { updateUserLanguageIfNeeded } from '@/src/lib/auth/user-language';
+import { landingCopy } from '@/src/content/landing-phase-two';
 
 interface LandingHeaderProps {
   /** Supabase user (null = guest) */
@@ -19,6 +20,7 @@ interface LandingHeaderProps {
   onStartFree: () => void;
   /** Optional anchor-nav override (paid landing pages). Defaults to homepage sections. */
   navLinks?: readonly { id: string; label: string }[];
+  compact?: boolean;
 }
 
 /** Nav links → landing section anchors */
@@ -34,13 +36,13 @@ const LOCALES = ['fr', 'ar', 'en'] as const;
 
 /** Auth-aware glass header. Transparent at top, frosted after scroll.
  *  Desktop: brand · centered nav · auth actions. Mobile: brand · Start Free · menu. */
-export default function LandingHeader({ user, authLoading, onSignIn, onOpenStudio, onStartFree, navLinks }: LandingHeaderProps) {
+export default function LandingHeader({ user, authLoading, onSignIn, onOpenStudio, onStartFree, navLinks, compact = false }: LandingHeaderProps) {
   const t = useTranslations('navigation');
   const locale = useLocale();
   const pathname = usePathname();
   const links = React.useMemo(
-    () => navLinks ?? NAV_LINKS.map((l) => ({ id: l.id, label: t(l.key) })),
-    [navLinks, t]
+    () => compact ? [] : navLinks ?? NAV_LINKS.map((l) => ({ id: l.id, label: t(l.key) })),
+    [compact, navLinks, t]
   );
   const [routeHash, setRouteHash] = useState('');
   const [scrolled, setScrolled] = useState(false);
@@ -164,6 +166,7 @@ export default function LandingHeader({ user, authLoading, onSignIn, onOpenStudi
           title={t(`languages.${nextLocale}`)}
           className={cn(
             'flex min-h-9 min-w-9 items-center justify-center rounded-lg px-2 text-[10.5px] font-semibold tracking-[0.08em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
+            compact && 'min-h-11 min-w-11',
             locale === nextLocale
               ? 'bg-[#d4d4d4] text-[#171717] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]'
               : 'text-white/45 hover:bg-white/[0.06] hover:text-white'
@@ -174,6 +177,16 @@ export default function LandingHeader({ user, authLoading, onSignIn, onOpenStudi
       ))}
     </div>
   );
+
+  if (compact) return <header data-go-header className="fixed inset-x-0 top-0 z-[90] border-b border-white/[0.06] bg-[#050505]/95">
+    <div className="mx-auto flex min-h-16 max-w-[1440px] flex-wrap items-center justify-between gap-2 px-4 py-2 sm:px-6">
+      <Link href="/" aria-label="VANTRA" dir="ltr" className="flex min-h-11 items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
+        <VantraLogo tone="dark" className="h-7 w-7" /><VantraWordmark tone="white" className="hidden h-[13px] w-[76px] sm:block" />
+      </Link>
+      {languageSwitcher()}
+      <button type="button" disabled={authLoading} onClick={onStartFree} className={cn(primaryBtn, '!h-auto min-h-11 max-w-[45%] px-3 py-2 text-center disabled:opacity-50')}>{landingCopy(locale).start}</button>
+    </div>
+  </header>;
 
   return (
     <header
@@ -236,7 +249,7 @@ export default function LandingHeader({ user, authLoading, onSignIn, onOpenStudi
                 {t('signIn')}
               </button>
               <button type="button" onClick={onStartFree} className={cn(primaryBtn, 'px-[18px]')}>
-                {t('start')}
+                {landingCopy(locale).start}
               </button>
             </>
           )}
@@ -248,7 +261,7 @@ export default function LandingHeader({ user, authLoading, onSignIn, onOpenStudi
             <div className="h-11 w-24 animate-pulse rounded-xl border border-white/[0.06] bg-white/[0.035] motion-reduce:animate-none" aria-hidden="true" />
           ) : !user ? (
             <button type="button" onClick={onStartFree} className={cn(primaryBtn, 'px-3.5 text-[12px]')}>
-              {t('start')}
+              {landingCopy(locale).start}
             </button>
           ) : (
             <span
@@ -339,7 +352,7 @@ export default function LandingHeader({ user, authLoading, onSignIn, onOpenStudi
                       }}
                       className={cn(primaryBtn, 'w-full')}
                     >
-                      {t('start')}
+                      {landingCopy(locale).start}
                     </button>
                   </>
                 )}

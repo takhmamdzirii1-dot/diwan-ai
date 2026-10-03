@@ -39,6 +39,10 @@ export const loadLandingCatalog = cache(async (): Promise<LandingCatalog> => {
   return {
     plans,
     ...landingModelPresentation(models),
+    modelAccessCounts: Object.fromEntries(['free', 'pro', 'max'].map(code => [code,
+      models.filter(model => model.enabled && model.visibleInStudio && !model.archived
+        && model.planAccess[code as 'free' | 'pro' | 'max'].state !== 'locked').length,
+    ])) as Record<'free' | 'pro' | 'max', number>,
     proEstimates: {
       image: pro ? estimatePlanOutcomes(models, 'pro', 'image', pro.unifiedCredits) : null,
       video: pro ? estimatePlanOutcomes(models, 'pro', 'video', pro.unifiedCredits) : null,
