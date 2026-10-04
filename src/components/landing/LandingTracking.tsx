@@ -2,29 +2,41 @@
 import { useEffect, useRef, useState } from 'react';
 import { captureLandingAttribution } from '@/src/lib/attribution';
 import { CONSENT_KEY, markMarketingInteraction, setMarketingConsent, trackLandingEvent } from '@/src/lib/marketing-analytics';
+import { analyticsInteractionId, productAnalyticsConfigured, trackProductEvent } from '@/src/lib/product-analytics';
 
 const consentCopy = {
-  en: ['Allow optional advertising measurement?', 'Allow', 'Not now'],
-  fr: ['Autoriser la mesure publicitaire facultative ?', 'Autoriser', 'Pas maintenant'],
-  ar: ['السماح بقياس الإعلانات الاختياري؟', 'السماح', 'ليس الآن'],
+  en: ['Allow optional analytics and advertising measurement?', 'Allow', 'Not now'],
+  fr: ['Autoriser la mesure facultative des visites et de la publicité ?', 'Autoriser', 'Pas maintenant'],
+  ar: ['السماح بقياس الزيارات والإعلانات الاختياري؟', 'السماح', 'ليس الآن'],
 };
 
 export default function LandingTracking({ variant, locale }: { variant: 'home' | 'all-ai' | 'ai-in-dzd' | 'creators'; locale: string }) {
   const seen = useRef(false);
+  const pricingSeen = useRef(false);
+  const visitId = useRef('');
   const [showConsent, setShowConsent] = useState(false);
   const lang = locale === 'ar' || locale === 'fr' ? locale : 'en';
   useEffect(() => {
     captureLandingAttribution(variant);
+    visitId.current ||= analyticsInteractionId();
     if (!seen.current) { seen.current = true; trackLandingEvent({ event: 'landing_view', variant, locale: lang }); }
     const interaction = () => {
       markMarketingInteraction();
-      if (/^\d{5,30}$/.test(process.env.NEXT_PUBLIC_META_PIXEL_ID ?? '')) {
+      if (productAnalyticsConfigured() || /^\d{5,30}$/.test(process.env.NEXT_PUBLIC_META_PIXEL_ID ?? '')) {
         try { if (!localStorage.getItem(CONSENT_KEY)) setShowConsent(true); } catch {}
       }
     };
     window.addEventListener('pointerdown', interaction, { once: true, passive: true });
     window.addEventListener('keydown', interaction, { once: true });
-    return () => { window.removeEventListener('pointerdown', interaction); window.removeEventListener('keydown', interaction); };
+    const pricing = document.getElementById('pricing');
+    const observer = pricing && typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(entries => {
+      if (!pricingSeen.current && entries.some(entry => entry.isIntersecting)) {
+        pricingSeen.current = true;
+        trackProductEvent('pricing_view', visitId.current, { landing_variant: variant, locale: lang });
+      }
+    }, { threshold: 0.1 }) : null;
+    if (pricing) observer?.observe(pricing);
+    return () => { observer?.disconnect(); window.removeEventListener('pointerdown', interaction); window.removeEventListener('keydown', interaction); };
   }, [variant, lang]);
   if (!showConsent) return null;
   const choose = (value: boolean) => { setMarketingConsent(value); setShowConsent(false); };

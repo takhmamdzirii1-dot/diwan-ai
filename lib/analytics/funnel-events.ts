@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { getSupabaseAdminClient } from '@/lib/admin/supabase-admin';
 import { sanitizeAttribution, isCompletedGeneration } from './marketing';
 import { scheduleMetaConversion } from './meta.server';
+import { schedulePosthogConversion } from './posthog.server';
 
 export const FUNNEL_EVENTS = [
   'landing_view', 'cta_click', 'pricing_select', 'signup_completed', 'first_generation_succeeded',
@@ -45,6 +46,28 @@ export async function recordFunnelEvent(input: {
     console.error('[funnel] event write failed', { event: input.event, code: error.code });
   }
   if (error) return false;
+  // Only new, trusted outcome rows can emit conversion events. Their immutable
+  // UUID is also PostHog's insert ID, never a payment reference or client value.
+  try {
+    const event = input.event === 'payment_approved' ? 'payment_success'
+      : input.event === 'payment_rejected' ? 'payment_failed'
+      : input.event === 'signup_completed' ? 'signup_completed' : null;
+    if (event && auth.user?.user_metadata?.marketing_consent === true) {
+      const locale = auth.user?.user_metadata?.language;
+      schedulePosthogConversion({ event, id, userId: input.userId, consent: true,
+        occurredAt: input.occurredAt, properties: async () => {
+          let orderProperties: Record<string, unknown> = {};
+          if (event !== 'signup_completed') {
+            const order = await admin.from('payment_orders').select('status,entitlement,payment_method')
+              .eq('id', input.key).eq('user_id', input.userId).maybeSingle();
+            if (order.error || order.data?.status !== (event === 'payment_success' ? 'approved' : 'rejected')) return null;
+            orderProperties = { plan: order.data.entitlement?.plan_code, payment_method: order.data.payment_method,
+              ...(event === 'payment_failed' ? { error_code: 'PAYMENT_REJECTED' } : {}) };
+          }
+          return { ...safeAcquisition, locale, ...orderProperties };
+        } });
+    }
+  } catch { console.warn('[analytics] conversion preparation unavailable', { event: input.event }); }
   // No change to payment authority/snapshots: read the approved immutable order
   // only to report its real value. Never send client-reported prices to Meta.
   try {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, Lock, User, ArrowRight, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { readAttribution } from '../lib/attribution';
 import { beginSignupTracking } from '../lib/marketing-analytics';
+import { analyticsInteractionId, trackProductEvent } from '../lib/product-analytics';
 import { VantraLogo } from './VantraLogo';
 
 export interface AuthModalProps {
@@ -39,6 +40,14 @@ export default function AuthModal({
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const signupAttempt = useRef('');
+  useEffect(() => {
+    if (!internalIsOpen) { signupAttempt.current = ''; return; }
+    if (mode === 'signup') {
+      signupAttempt.current ||= analyticsInteractionId();
+      trackProductEvent('signup_started', signupAttempt.current, { locale });
+    }
+  }, [internalIsOpen, mode, locale]);
 
   // Sync with prop if provided
   useEffect(() => {

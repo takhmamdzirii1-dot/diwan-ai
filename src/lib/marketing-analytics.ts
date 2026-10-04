@@ -1,6 +1,7 @@
 'use client';
 import { META_EVENTS, type LandingEvent, type LandingEventInput } from '@/lib/analytics/marketing';
 import { readAttribution } from './attribution';
+import { syncAnalyticsConsent, trackProductEvent } from './product-analytics';
 
 export const SIGNUP_INTENT_KEY = 'vantra_signup_tracking_v1';
 export const CONSENT_KEY = 'vantra_marketing_consent';
@@ -45,6 +46,7 @@ export function setMarketingConsent(granted: boolean) {
   const value = granted ? 'granted' : 'denied';
   try { localStorage.setItem(CONSENT_KEY, value); } catch {}
   document.cookie = `${CONSENT_KEY}=${value}; Path=/; Max-Age=31536000; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
+  syncAnalyticsConsent();
   (window as PixelWindow).fbq?.('consent', granted ? 'grant' : 'revoke');
   if (!granted) pendingPixel = [];
   else flushPixelEvents();
@@ -101,6 +103,8 @@ export function trackLandingEvent(input: LandingEventInput) {
   try {
     installListeners();
     const event = { ...input, id: crypto.randomUUID() } as LandingEvent;
+    trackProductEvent(event.event === 'pricing_select' ? 'plan_selected' : event.event, event.id,
+      { landing_variant: event.variant, locale: event.locale, ...('plan' in event ? { plan: event.plan } : {}) });
     if (queue.length >= 20) flushMarketingEvents();
     queue.push(event);
     trackMarketingPixel(event.event, event.id);

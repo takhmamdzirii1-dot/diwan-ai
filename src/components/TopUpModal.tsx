@@ -7,6 +7,7 @@ import { ArrowLeft, Banknote, Building2, Check, CheckCircle2, Clipboard, Clock3,
 import type { ManualTransferDestination, PaymentMethod, PaymentOrder, PaymentPlan, TopUpCatalogContext } from '@/lib/payments/types';
 import { isPurchasablePlan } from '@/lib/payments/plan-catalog';
 import { trackFunnelEvent } from '@/src/lib/funnel-analytics';
+import { trackProductEvent } from '@/src/lib/product-analytics';
 import useUser from '@/src/hooks/useUser';
 
 export interface TopUpPlan { id: string; mode?: 'checkout' | 'credits'; }
@@ -73,6 +74,9 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
   const dialog = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const selectedPlan = useMemo(() => plans.find((item) => item.id === selectedPlanId) ?? null, [plans, selectedPlanId]);
+  useEffect(() => {
+    if (isOpen && selectedPlan) trackProductEvent('plan_selected', `${checkoutAttempt.current}:${selectedPlan.id}`, { plan: selectedPlan.planCode, locale });
+  }, [isOpen, selectedPlan, locale]);
   const checkoutTitle = flow === 'credits'
     ? t('buyCredits')
     : selectedPlan?.kind === 'subscription' ? t('activatePlan', { plan: selectedPlan.name }) : t('title');
@@ -181,13 +185,16 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
         );
       }
       window.dispatchEvent(new Event('vantra-payment-updated'));
-    } catch (cause) { setError(translateError(cause instanceof Error ? cause.message : 'PAYMENT_ORDER_CREATE_FAILED')); }
+    } catch (cause) {
+      trackProductEvent('payment_failed', `${checkoutAttempt.current}:create`, { plan: selectedPlan.planCode, payment_method: method, error_code: 'PAYMENT_ORDER_CREATE_FAILED' });
+      setError(translateError(cause instanceof Error ? cause.message : 'PAYMENT_ORDER_CREATE_FAILED'));
+    }
     finally { setBusy(false); inFlight.current = false; }
   };
   const continueMethod = () => {
     if (!selectedPlan || !available[method] || busy) return;
     void trackFunnelEvent('checkout_started', checkoutAttempt.current, { planId: selectedPlan.id, planCode: selectedPlan.planCode });
-    void trackFunnelEvent('payment_method_selected', `${checkoutAttempt.current}:${method}`, { planId: selectedPlan.id, method });
+    void trackFunnelEvent('payment_method_selected', `${checkoutAttempt.current}:${method}`, { planId: selectedPlan.id, planCode: selectedPlan.planCode, method });
     if (manual) void createOrder();
     else { setGatewayFailed(false); setStep(3); }
   };
@@ -202,7 +209,10 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
       if (!response.ok) throw new Error(body.error ?? 'PAYMENT_SUBMISSION_FAILED');
       setOrder(body.order); setConfirmation(true); window.dispatchEvent(new Event('vantra-payment-updated'));
       timer.current = setTimeout(() => { setSubmitted(true); setConfirmation(false); }, 1000);
-    } catch (cause) { setError(translateError(cause instanceof Error ? cause.message : 'PAYMENT_SUBMISSION_FAILED')); }
+    } catch (cause) {
+      trackProductEvent('payment_failed', `${checkoutAttempt.current}:submit`, { plan: selectedPlan?.planCode, payment_method: method, error_code: 'PAYMENT_SUBMISSION_FAILED' });
+      setError(translateError(cause instanceof Error ? cause.message : 'PAYMENT_SUBMISSION_FAILED'));
+    }
     finally { setBusy(false); inFlight.current = false; }
   };
   const startGateway = async () => {
@@ -216,7 +226,10 @@ export default function TopUpModal({ isOpen, onClose, plan }: TopUpModalProps) {
       const redirect = new URL(body.redirectUrl);
       if (redirect.protocol !== 'https:') throw new Error('GATEWAY_UNAVAILABLE');
       window.location.assign(redirect.toString());
-    } catch { setGatewayFailed(true); setBusy(false); inFlight.current = false; }
+    } catch {
+      trackProductEvent('payment_failed', `${checkoutAttempt.current}:gateway`, { plan: selectedPlan.planCode, payment_method: method, error_code: 'GATEWAY_UNAVAILABLE' });
+      setGatewayFailed(true); setBusy(false); inFlight.current = false;
+    }
   };
   const methodCard = (id: PaymentMethod, Icon: React.ElementType, detail: string) => {
     const active = method === id;

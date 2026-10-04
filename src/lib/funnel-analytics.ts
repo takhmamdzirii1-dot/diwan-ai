@@ -1,5 +1,6 @@
 'use client';
 import { markMarketingInteraction, trackMarketingPixel } from './marketing-analytics';
+import { trackProductEvent } from './product-analytics';
 
 type FunnelEvent = 'trial_started' | 'trial_expired' | 'free_media_exhausted' | 'paywall_shown'
   | 'pro_accepted' | 'pro_declined' | 'lite_shown' | 'lite_accepted' | 'lite_declined'
@@ -10,6 +11,9 @@ type FunnelEvent = 'trial_started' | 'trial_expired' | 'free_media_exhausted' | 
   | 'reactivation_started' | 'reactivation_completed' | 'reactivation_failed';
 
 export function trackFunnelEvent(event: FunnelEvent, key: string, metadata?: Record<string, string | number | boolean | null>) {
+  if (event === 'checkout_started' || event === 'payment_method_selected') {
+    trackProductEvent(event, key, { plan: metadata?.planCode, payment_method: metadata?.method });
+  }
   // This helper is invoked by existing interaction handlers, never an eager
   // third-party loader. Outcome conversions remain server-only.
   if (event === 'checkout_started') {
