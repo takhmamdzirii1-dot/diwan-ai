@@ -14,7 +14,6 @@ type Pending = { event: BrowserAnalyticsEvent; properties: Record<string, string
 let pending: Pending[] = [];
 const config = () => posthogConfiguration({ NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
   NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST });
-export const productAnalyticsConfigured = () => !!config();
 export function analyticsInteractionId() { try { return crypto.randomUUID(); } catch { return ''; } }
 function consent() { return !denied() && !['1', 'yes'].includes(window.navigator?.doNotTrack ?? ''); }
 function denied() { return document.cookie.split('; ').includes(`${ANALYTICS_CONSENT_KEY}=denied`); }

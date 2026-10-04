@@ -14,7 +14,7 @@ required after setting them. No database migration is needed.
 
 The SDK uses Next.js `instrumentation-client.ts`, with its no-external bundle
 lazy-loaded automatically on public marketing/conversion routes. The blocking
-consent prompt is disabled, not deleted. Explicit previous opt-outs and Do Not
+consent prompt has been removed after approval. Explicit previous opt-outs and Do Not
 Track remain respected. Meta Pixel/CAPI retain their existing consent behavior.
 Public autocapture, heatmaps and lightweight Web Vitals are enabled; surveys,
 feature-flag evaluation, copied-text capture and exception capture are disabled.
@@ -79,12 +79,10 @@ can apply, especially at 100% replay; monitor usage. A proxy reduces common
 third-party blocking but cannot guarantee delivery. Configure Session Replay
 and Heatmaps in the PostHog project; this code does not change dashboard settings.
 
-## Cleanup candidates — approval required, nothing deleted
+## Approved cleanup
 
-- Dormant consent banner JSX, copy/state and interaction branch in
-  `LandingTracking.tsx`: disabled by `consentPromptEnabled`; no longer shown.
-- `productAnalyticsConfigured()` export/import: only referenced by that dormant
-  banner branch. Remove only together with the approved banner cleanup.
+Removed only the dormant consent banner JSX/copy/state/branch and its redundant
+`productAnalyticsConfigured()` helper. Landing interaction hooks remain intact.
 
 Keep consent cookie/helpers, attribution, first-party marketing events and
 Meta hooks: they remain referenced by Pixel/CAPI, explicit opt-outs and funnels.
