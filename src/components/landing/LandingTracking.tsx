@@ -9,6 +9,8 @@ const consentCopy = {
   fr: ['Autoriser la mesure facultative des visites et de la publicité ?', 'Autoriser', 'Pas maintenant'],
   ar: ['السماح بقياس الزيارات والإعلانات الاختياري؟', 'السماح', 'ليس الآن'],
 };
+// Retained pending cleanup approval. Meta consent helpers/state are NOT removed.
+const consentPromptEnabled = false;
 
 export default function LandingTracking({ variant, locale }: { variant: 'home' | 'all-ai' | 'ai-in-dzd' | 'creators'; locale: string }) {
   const seen = useRef(false);
@@ -22,7 +24,7 @@ export default function LandingTracking({ variant, locale }: { variant: 'home' |
     if (!seen.current) { seen.current = true; trackLandingEvent({ event: 'landing_view', variant, locale: lang }); }
     const interaction = () => {
       markMarketingInteraction();
-      if (productAnalyticsConfigured() || /^\d{5,30}$/.test(process.env.NEXT_PUBLIC_META_PIXEL_ID ?? '')) {
+      if (consentPromptEnabled && (productAnalyticsConfigured() || /^\d{5,30}$/.test(process.env.NEXT_PUBLIC_META_PIXEL_ID ?? ''))) {
         try { if (!localStorage.getItem(CONSENT_KEY)) setShowConsent(true); } catch {}
       }
     };

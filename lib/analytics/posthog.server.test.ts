@@ -11,7 +11,7 @@ test('approved outcome is owned, consented, immutable and emitted once on parall
   const rows = new Set<string>();
   const captures: Record<string, unknown>[] = [];
   const afterTasks: (() => Promise<void>)[] = [];
-  let consent = true;
+  let consent: boolean | undefined = true;
   const userId = '11111111-1111-4111-8111-111111111111';
   try {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://fixture.supabase.test';
@@ -64,6 +64,9 @@ test('approved outcome is owned, consented, immutable and emitted once on parall
     consent = true;
     await request(() => recordFunnelEvent({ userId, event: 'signup_completed', key: 'signup' }));
     await afterTasks.shift()!(); assert.equal(captures[2].event, 'signup_completed');
+    consent = undefined; // No popup grant is required for PostHog; Meta still requires one.
+    await request(() => recordFunnelEvent({ userId, event: 'payment_approved', key: 'default-on' }));
+    await afterTasks.shift()!(); assert.equal(captures[3].event, 'payment_success');
   } finally {
     globalThis.fetch = saved.fetch;
     for (const key of ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'NEXT_PUBLIC_POSTHOG_KEY', 'NEXT_PUBLIC_POSTHOG_HOST', 'NEXT_PUBLIC_META_PIXEL_ID']) {

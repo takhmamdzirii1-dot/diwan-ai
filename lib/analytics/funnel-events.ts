@@ -52,7 +52,8 @@ export async function recordFunnelEvent(input: {
     const event = input.event === 'payment_approved' ? 'payment_success'
       : input.event === 'payment_rejected' ? 'payment_failed'
       : input.event === 'signup_completed' ? 'signup_completed' : null;
-    if (event && auth.user?.user_metadata?.marketing_consent === true) {
+    // PostHog defaults on; preserve explicit withdrawal. Meta keeps its opt-in below.
+    if (event && auth.user && auth.user.user_metadata?.marketing_consent !== false) {
       const locale = auth.user?.user_metadata?.language;
       schedulePosthogConversion({ event, id, userId: input.userId, consent: true,
         occurredAt: input.occurredAt, properties: async () => {

@@ -1,5 +1,5 @@
 'use client';
-import { ANALYTICS_CONSENT_KEY, UUID, posthogConfiguration, publicAnalyticsPath, replayAllowed, safeAnalyticsProperties, safePosthogWireEvent, type BrowserAnalyticsEvent } from '@/lib/analytics/posthog';
+import { ANALYTICS_CONSENT_KEY, UUID, posthogConfiguration, publicAnalyticsPath, replayAllowed, safeAnalyticsProperties, safePosthogWireEvent, safeReplayNetwork, type BrowserAnalyticsEvent } from '@/lib/analytics/posthog';
 import { readAttribution } from './attribution';
 import type { PostHog } from 'posthog-js';
 
@@ -16,12 +16,22 @@ const config = () => posthogConfiguration({ NEXT_PUBLIC_POSTHOG_KEY: process.env
   NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST });
 export const productAnalyticsConfigured = () => !!config();
 export function analyticsInteractionId() { try { return crypto.randomUUID(); } catch { return ''; } }
-function consent() { return document.cookie.split('; ').includes(`${ANALYTICS_CONSENT_KEY}=granted`); }
+function consent() { return !denied() && !['1', 'yes'].includes(window.navigator?.doNotTrack ?? ''); }
 function denied() { return document.cookie.split('; ').includes(`${ANALYTICS_CONSENT_KEY}=denied`); }
+const autocapture = {
+  dom_event_allowlist: ['click', 'change', 'submit'] as ('click' | 'change' | 'submit')[],
+  element_allowlist: ['a', 'button', 'form', 'select'] as ('a' | 'button' | 'form' | 'select')[],
+  css_selector_ignorelist: ['.ph-no-autocapture', '[data-ph-no-autocapture]', '[data-studio-theme]', 'input', 'textarea', '[contenteditable="true"]'],
+  capture_copied_text: false,
+};
+const performanceCapture = { web_vitals: true, web_vitals_attribution: false, network_timing: true };
+function stopRecording() { try { client?.stopSessionRecording(); } catch {} }
 
 function syncPublicPage() {
   if (!client || !consent()) return;
   const path = publicAnalyticsPath(window.location.pathname);
+  client.set_config({ autocapture: path ? autocapture : false, capture_heatmaps: !!path,
+    capture_performance: path ? performanceCapture : false, capture_pageleave: !!path });
   if (path && path !== lastPage) {
     client.capture('$pageview', { ...safeAnalyticsProperties({ ...readAttribution(), locale: path.split('/')[1] }),
       $current_url: `https://joinvantra.com${path}` });
@@ -29,9 +39,12 @@ function syncPublicPage() {
   lastPage = path;
   if (!replayAllowed(window.location)) { client.stopSessionRecording(); return; }
   if (!recording) {
-    // Load only the recorder, only on permitted public pages after consent.
-    recording = import('posthog-js/dist/lazy-recorder').then(() => {
-      if (consent() && replayAllowed(window.location)) client?.startSessionRecording();
+    // Lazy recorder + lightweight (no attribution/DOM selectors) Web Vitals.
+    recording = Promise.all([import('posthog-js/dist/lazy-recorder'), import('posthog-js/dist/web-vitals')]).then(() => {
+      if (consent() && replayAllowed(window.location)) {
+        client?.set_config({ capture_performance: performanceCapture });
+        client?.startSessionRecording({ sampling: true, linked_flag: true, url_trigger: true, event_trigger: true });
+      }
     }).catch(() => {}).finally(() => { recording = undefined; });
   }
 }
@@ -41,14 +54,14 @@ export function installAnalyticsNavigation() {
   for (const method of ['pushState', 'replaceState'] as const) {
     const original = window.history[method];
     window.history[method] = function (...args: Parameters<History[typeof method]>) {
-      client?.stopSessionRecording();
+      stopRecording();
       const result = original.apply(this, args);
-      syncPublicPage();
+      syncAnalyticsConsent(); // Entering a public route can initialize after a direct private-page load.
       return result;
     };
   }
-  window.addEventListener('popstate', () => { client?.stopSessionRecording(); syncPublicPage(); });
-  window.addEventListener('hashchange', () => { client?.stopSessionRecording(); syncPublicPage(); });
+  window.addEventListener('popstate', () => { stopRecording(); syncAnalyticsConsent(); });
+  window.addEventListener('hashchange', () => { stopRecording(); syncAnalyticsConsent(); });
   syncAnalyticsConsent();
 }
 
@@ -85,26 +98,29 @@ export function syncAnalyticsConsent() {
       return;
     }
     const settings = config();
-    if (!settings || loading) return;
+    if (!settings || loading || (!publicAnalyticsPath(window.location.pathname) && !pending.length)) return;
     // Official SDK's no-external entry; not shipped on the critical render path.
-    // No surveys/flag evaluations/autocapture. Replay needs the SDK's remote recording configuration.
+    // No surveys/flag evaluations. Public-only capture; explicit funnel intents can still be recorded elsewhere.
     loading = import('posthog-js/no-external').then(({ default: posthog }) => {
       if (!consent()) return;
       posthog.init(settings.key, {
-        api_host: settings.host, autocapture: false, capture_pageview: false, capture_pageleave: false,
+        api_host: '/v-events', ui_host: settings.host.includes('eu.') ? 'https://eu.posthog.com' : 'https://us.posthog.com',
+        autocapture: false, capture_pageview: false, capture_pageleave: false,
         disable_session_recording: true, disable_surveys: true, disable_external_dependency_loading: true,
         advanced_disable_feature_flags: true,
-        capture_performance: false, capture_exceptions: false, enable_heatmaps: false, rageclick: false,
+        capture_performance: false, capture_exceptions: false, capture_heatmaps: false, rageclick: false,
         capture_dead_clicks: false, opt_in_site_apps: false, ip: false, respect_dnt: true,
         person_profiles: 'identified_only', persistence: 'localStorage',
-        enable_recording_console_log: false,
+        mask_all_text: true, mask_all_element_attributes: true, mask_personal_data_properties: true,
+        enable_recording_console_log: true,
         session_recording: {
           maskAllInputs: true, maskTextSelector: '*', maskAllElementAttributes: true,
           blockSelector: '[data-studio-theme], input[type="file"], input[type="hidden"], iframe',
           recordHeaders: false, recordBody: false, captureJsonLd: false,
-          maskCapturedNetworkRequestFn: () => null,
+          sampleRate: 1,
+          maskCapturedNetworkRequestFn: data => safeReplayNetwork(data) as typeof data,
         },
-        before_send: event => event.event === '$snapshot' && (!consent() || !replayAllowed(window.location))
+        before_send: event => !consent() || (event.event.startsWith('$') && event.event !== '$identify' && !replayAllowed(window.location))
           ? null : safePosthogWireEvent(event),
       });
       client = posthog;
