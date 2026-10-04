@@ -1,7 +1,14 @@
 import Link from 'next/link';
 import GlobalFooter from '../GlobalFooter';
 import { VantraLogo, VantraWordmark } from '../VantraLogo';
-import { LEGAL_DOCUMENTS, legalContent, legalUi, type LegalDocumentId, type LegalLocale } from '../../content/legal';
+import { LEGAL_DOCUMENTS, legalContent, legalUi, type LegalDocumentId, type LegalLocale, type LegalText } from '../../content/legal';
+
+function LegalTextContent({ text }: { text: LegalText }) {
+  if (typeof text === 'string') return text;
+  return text.map((part, index) => typeof part === 'string' ? part : (
+    <a key={index} href={part.href} target="_blank" rel="noopener noreferrer" className="text-[#1FD8B8] underline underline-offset-4 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1FD8B8]">{part.text}</a>
+  ));
+}
 
 export default function LegalPage({ locale, document }: { locale: LegalLocale; document: LegalDocumentId }) {
   const copy = legalContent[locale][document];
@@ -40,12 +47,23 @@ export default function LegalPage({ locale, document }: { locale: LegalLocale; d
             <section key={section.title} className="border-b border-white/[0.065] py-8 last:border-b-0 sm:py-10">
               <h2 className="text-xl font-semibold tracking-tight text-white sm:text-[22px]">{section.title}</h2>
               <div className="mt-4 space-y-4 text-[14px] leading-7 text-white/64 sm:text-[15px]">
-                {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+                {section.paragraphs.map((paragraph, index) => <p key={index}><LegalTextContent text={paragraph} /></p>)}
                 {section.items && (
                   <ul className="space-y-3 ps-5 marker:text-white/35">
                     {section.items.map((item) => <li key={item} className="ps-1">{item}</li>)}
                   </ul>
                 )}
+                {section.subsections?.map((subsection) => (
+                  <div key={subsection.title} className="space-y-3">
+                    <h3 className="font-semibold text-white">{subsection.title}</h3>
+                    {subsection.paragraphs.map((paragraph, index) => <p key={index}><LegalTextContent text={paragraph} /></p>)}
+                    {subsection.items && (
+                      <ul className="space-y-3 ps-5 marker:text-white/35">
+                        {subsection.items.map((item) => <li key={item} className="ps-1">{item}</li>)}
+                      </ul>
+                    )}
+                  </div>
+                ))}
               </div>
             </section>
           ))}

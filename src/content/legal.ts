@@ -2,7 +2,13 @@ export const LEGAL_DOCUMENTS = ['privacy', 'terms', 'billing'] as const;
 export type LegalDocumentId = (typeof LEGAL_DOCUMENTS)[number];
 export type LegalLocale = 'en' | 'fr' | 'ar';
 
-type LegalSection = { title: string; paragraphs: readonly string[]; items?: readonly string[] };
+export type LegalText = string | readonly (string | { text: string; href: string })[];
+type LegalSection = {
+  title: string;
+  paragraphs: readonly LegalText[];
+  items?: readonly string[];
+  subsections?: readonly { title: string; paragraphs: readonly LegalText[]; items?: readonly string[] }[];
+};
 type LegalDocument = {
   label: string;
   title: string;
@@ -15,6 +21,48 @@ export const legalUi: Record<LegalLocale, { back: string; updated: string; navig
   en: { back: 'Back to VANTRA', updated: 'Last updated', navigation: 'Legal navigation' },
   fr: { back: 'Retour à VANTRA', updated: 'Dernière mise à jour', navigation: 'Navigation juridique' },
   ar: { back: 'العودة إلى VANTRA', updated: 'آخر تحديث', navigation: 'التنقل القانوني' },
+};
+
+const googleApiDisclosure: Record<LegalLocale, LegalSection> = {
+  en: {
+    title: '9. Google API Data & Limited Use Disclosure',
+    paragraphs: ['VANTRA accesses, uses, and processes user data obtained through Google APIs strictly to provide user-facing AI and productivity features explicitly requested by you.'],
+    subsections: [
+      { title: 'Google Scopes & Specific Usage:', paragraphs: [], items: [
+        'Google Drive (drive.readonly, drive.file): Used strictly when you explicitly select or provide files to allow the AI assistant to read, analyze, summarize, or manage specific documents upon your request. VANTRA does not scan, index, or access your Google Drive in the background.',
+        'Gmail (gmail.readonly, gmail.compose): Used strictly to view relevant emails or help you draft and compose replies within the assistant interface based on your instructions. VANTRA never reads emails in the background and sends or creates drafts only upon direct user confirmation.',
+      ] },
+      { title: 'Google Limited Use Requirements:', paragraphs: [["VANTRA's use and transfer to any other app of information received from Google APIs will adhere to the ", { text: 'Google API Services User Data Policy', href: 'https://developers.google.com/terms/api-services-user-data-policy' }, ', including the Limited Use requirements.']] },
+      { title: 'Prohibition on AI Model Training:', paragraphs: ['Data accessed through Google APIs (including Google Drive files and Gmail messages) is NEVER used to train, retrain, fine-tune, or improve generalized artificial intelligence (AI) or machine learning (ML) models.'] },
+      { title: 'Data Deletion & Access Revocation:', paragraphs: [['Users can revoke VANTRA’s access to their Google account at any time through the ', { text: 'Google Security Settings', href: 'https://myaccount.google.com/permissions' }, '. You can also request complete deletion of your data at any time by contacting us at support@joinvantra.com.']] },
+    ],
+  },
+  fr: {
+    title: '9. Données des API Google et déclaration d’utilisation limitée',
+    paragraphs: ['VANTRA accède aux données utilisateur obtenues via les API Google, les utilise et les traite uniquement pour fournir les fonctionnalités d’IA et de productivité destinées aux utilisateurs que vous demandez explicitement.'],
+    subsections: [
+      { title: 'Autorisations Google et usages spécifiques :', paragraphs: [], items: [
+        'Google Drive (drive.readonly, drive.file) : Utilisés uniquement lorsque vous sélectionnez ou fournissez explicitement des fichiers afin que l’assistant IA puisse lire, analyser, résumer ou gérer des documents précis à votre demande. VANTRA ne parcourt, n’indexe ni n’accède à votre Google Drive en arrière-plan.',
+        'Gmail (gmail.readonly, gmail.compose) : Utilisés uniquement pour consulter les e-mails pertinents ou vous aider à rédiger des brouillons et des réponses dans l’interface de l’assistant selon vos instructions. VANTRA ne lit jamais les e-mails en arrière-plan et n’envoie des messages ou ne crée des brouillons qu’après votre confirmation directe.',
+      ] },
+      { title: 'Exigences d’utilisation limitée de Google :', paragraphs: [['L’utilisation par VANTRA et le transfert à toute autre application des informations reçues des API Google respectent la ', { text: 'Google API Services User Data Policy', href: 'https://developers.google.com/terms/api-services-user-data-policy' }, ', y compris les exigences d’utilisation limitée (Limited Use).']] },
+      { title: 'Interdiction de l’entraînement des modèles d’IA :', paragraphs: ['Les données consultées via les API Google (y compris les fichiers Google Drive et les messages Gmail) ne sont JAMAIS utilisées pour entraîner, réentraîner, affiner ou améliorer des modèles généralisés d’intelligence artificielle (IA) ou d’apprentissage automatique (ML).'] },
+      { title: 'Suppression des données et révocation de l’accès :', paragraphs: [['Vous pouvez révoquer à tout moment l’accès de VANTRA à votre compte Google via les ', { text: 'paramètres de sécurité Google', href: 'https://myaccount.google.com/permissions' }, '. Vous pouvez également demander la suppression complète de vos données à tout moment en nous contactant à support@joinvantra.com.']] },
+    ],
+  },
+  ar: {
+    title: '9. بيانات واجهات Google والإفصاح عن الاستخدام المحدود',
+    paragraphs: ['تصل VANTRA إلى بيانات المستخدم التي تحصل عليها عبر واجهات Google وتستخدمها وتعالجها حصراً لتوفير ميزات الذكاء الاصطناعي والإنتاجية الموجهة للمستخدم التي تطلبها صراحةً.'],
+    subsections: [
+      { title: 'نطاقات Google والاستخدامات المحددة:', paragraphs: [], items: [
+        'Google Drive (drive.readonly, drive.file): تُستخدم حصراً عندما تختار الملفات أو تقدمها صراحةً للسماح لمساعد الذكاء الاصطناعي بقراءة مستندات محددة أو تحليلها أو تلخيصها أو إدارتها بناءً على طلبك. لا تفحص VANTRA ملفات Google Drive أو تفهرسها أو تصل إليها في الخلفية.',
+        'Gmail (gmail.readonly, gmail.compose): تُستخدم حصراً لعرض رسائل البريد ذات الصلة أو مساعدتك في إعداد المسودات وصياغة الردود داخل واجهة المساعد وفق تعليماتك. لا تقرأ VANTRA رسائل البريد في الخلفية مطلقاً ولا ترسل رسائل أو تنشئ مسودات إلا بعد تأكيد مباشر منك.',
+      ] },
+      { title: 'متطلبات الاستخدام المحدود من Google:', paragraphs: [['يلتزم استخدام VANTRA للمعلومات الواردة من واجهات Google ونقلها إلى أي تطبيق آخر بـ', { text: 'سياسة بيانات المستخدم لخدمات Google API', href: 'https://developers.google.com/terms/api-services-user-data-policy' }, '، بما في ذلك متطلبات الاستخدام المحدود (Limited Use).']] },
+      { title: 'حظر تدريب نماذج الذكاء الاصطناعي:', paragraphs: ['لا تُستخدم البيانات التي يتم الوصول إليها عبر واجهات Google (بما في ذلك ملفات Google Drive ورسائل Gmail) أبداً لتدريب نماذج الذكاء الاصطناعي (AI) أو التعلم الآلي (ML) العامة أو إعادة تدريبها أو ضبطها أو تحسينها.'] },
+      { title: 'حذف البيانات وإلغاء الوصول:', paragraphs: [['يمكنك إلغاء وصول VANTRA إلى حساب Google الخاص بك في أي وقت عبر ', { text: 'إعدادات أمان Google', href: 'https://myaccount.google.com/permissions' }, '. ويمكنك أيضاً طلب الحذف الكامل لبياناتك في أي وقت بالتواصل معنا على support@joinvantra.com.']] },
+    ],
+  },
 };
 
 export const legalContent: Record<LegalLocale, Record<LegalDocumentId, LegalDocument>> = {
@@ -33,7 +81,8 @@ export const legalContent: Record<LegalLocale, Record<LegalDocumentId, LegalDocu
         { title: '6. Retention and deletion', paragraphs: ['We retain information only for as long as reasonably necessary for the purposes described here, including providing the service, maintaining security and audit records, resolving disputes, and meeting legal obligations. Retention periods vary by data type and account activity. You may request deletion of your account or personal information. Some information may remain temporarily in backups or be retained where required for security, fraud prevention, accounting, or law.'] },
         { title: '7. Security', paragraphs: ['We use reasonable technical and organizational safeguards designed to protect personal information. No system is completely secure, and VANTRA cannot guarantee that unauthorized access, loss, or misuse will never occur. You are responsible for protecting your credentials and notifying us of suspected account compromise.'] },
         { title: '8. Your rights and choices', paragraphs: ['Depending on applicable law, you may have rights to access, correct, delete, restrict, or object to certain processing; request a portable copy of information; withdraw consent where processing relies on consent; or complain to a competent authority. We may need to verify your identity before fulfilling a request. You can also manage language and session preferences through the service or browser.'] },
-        { title: '9. Changes and contact', paragraphs: ['We may update this policy as VANTRA evolves. Material changes will be communicated through an appropriate notice where required. For privacy questions or requests, contact privacy@joinvantra.com.'] },
+        googleApiDisclosure.en,
+        { title: '10. Changes and contact', paragraphs: ['We may update this policy as VANTRA evolves. Material changes will be communicated through an appropriate notice where required. For privacy questions or requests, contact privacy@joinvantra.com.'] },
       ],
     },
     terms: {
@@ -85,7 +134,8 @@ export const legalContent: Record<LegalLocale, Record<LegalDocumentId, LegalDocu
       { title: '6. Conservation et suppression', paragraphs: ['Nous conservons les informations pendant la durée raisonnablement nécessaire aux finalités décrites, notamment le service, la sécurité, les audits, les litiges et les obligations légales. La durée dépend du type de donnée et de l’activité du compte. Vous pouvez demander la suppression du compte ou de vos données. Certaines informations peuvent subsister temporairement dans les sauvegardes ou être conservées pour la sécurité, la prévention de la fraude, la comptabilité ou la loi.'] },
       { title: '7. Sécurité', paragraphs: ['Nous appliquons des mesures techniques et organisationnelles raisonnables. Aucun système n’est totalement sûr et VANTRA ne peut garantir l’absence de tout accès non autorisé, perte ou usage abusif. Vous devez protéger vos identifiants et nous signaler toute compromission présumée.'] },
       { title: '8. Vos droits et choix', paragraphs: ['Selon la loi applicable, vous pouvez demander l’accès, la rectification, la suppression, la limitation ou l’opposition à certains traitements, la portabilité, le retrait du consentement ou saisir une autorité compétente. Une vérification d’identité peut être nécessaire. Vous pouvez aussi gérer la langue et les sessions dans le service ou le navigateur.'] },
-      { title: '9. Modifications et contact', paragraphs: ['Cette politique peut évoluer avec VANTRA. Les changements importants feront l’objet d’une information appropriée lorsque la loi l’exige. Pour toute question ou demande : privacy@joinvantra.com.'] },
+      googleApiDisclosure.fr,
+      { title: '10. Modifications et contact', paragraphs: ['Cette politique peut évoluer avec VANTRA. Les changements importants feront l’objet d’une information appropriée lorsque la loi l’exige. Pour toute question ou demande : privacy@joinvantra.com.'] },
     ] },
     terms: { label: 'Conditions', title: 'Conditions d’utilisation', description: 'Les règles applicables à l’accès et à l’utilisation de VANTRA.', updated: '8 septembre 2026', sections: [
       { title: '1. Acceptation et capacité', paragraphs: ['En accédant à VANTRA ou en l’utilisant, vous acceptez ces Conditions. Si vous agissez pour une personne ou une organisation, vous confirmez avoir l’autorité nécessaire. Vous devez avoir la capacité juridique requise par la loi applicable.'] },
@@ -124,7 +174,8 @@ export const legalContent: Record<LegalLocale, Record<LegalDocumentId, LegalDocu
       { title: '6. الاحتفاظ والحذف', paragraphs: ['نحتفظ بالمعلومات للمدة اللازمة بشكل معقول للأغراض الموضحة، ومنها تقديم الخدمة والأمان والتدقيق وتسوية النزاعات والالتزامات القانونية. تختلف المدة حسب نوع البيانات ونشاط الحساب. يمكنك طلب حذف الحساب أو المعلومات الشخصية. قد تبقى بعض البيانات مؤقتاً في النسخ الاحتياطية أو تُحفظ للأمان ومنع الاحتيال والمحاسبة أو بموجب القانون.'] },
       { title: '7. الأمان', paragraphs: ['نستخدم تدابير تقنية وتنظيمية معقولة لحماية المعلومات. لا يوجد نظام آمن بالكامل، ولا تضمن VANTRA استحالة الوصول غير المصرح أو الفقد أو سوء الاستخدام. أنت مسؤول عن حماية بيانات الدخول وإبلاغنا عند الاشتباه باختراق الحساب.'] },
       { title: '8. حقوقك وخياراتك', paragraphs: ['وفقاً للقانون المطبق، قد يحق لك طلب الوصول أو التصحيح أو الحذف أو التقييد أو الاعتراض على بعض المعالجة، وطلب نسخة قابلة للنقل، وسحب الموافقة، أو تقديم شكوى لجهة مختصة. قد نحتاج للتحقق من هويتك. ويمكنك إدارة اللغة والجلسات من خلال الخدمة أو المتصفح.'] },
-      { title: '9. التغييرات والتواصل', paragraphs: ['قد نحدّث هذه السياسة مع تطور VANTRA. سنقدم إشعاراً مناسباً بالتغييرات الجوهرية عندما يلزم. للأسئلة أو طلبات الخصوصية: privacy@joinvantra.com.'] },
+      googleApiDisclosure.ar,
+      { title: '10. التغييرات والتواصل', paragraphs: ['قد نحدّث هذه السياسة مع تطور VANTRA. سنقدم إشعاراً مناسباً بالتغييرات الجوهرية عندما يلزم. للأسئلة أو طلبات الخصوصية: privacy@joinvantra.com.'] },
     ] },
     terms: { label: 'الشروط', title: 'شروط الاستخدام', description: 'القواعد التي تنطبق عند الوصول إلى VANTRA أو استخدامها.', updated: '8 سبتمبر 2026', sections: [
       { title: '1. القبول والأهلية', paragraphs: ['باستخدام VANTRA فإنك توافق على هذه الشروط. إذا كنت تستخدمها نيابة عن شخص أو جهة، فأنت تؤكد امتلاكك الصلاحية لإلزامها. ويجب أن تكون مؤهلاً قانونياً لإبرام هذه الاتفاقية وفق القانون المطبق.'] },
